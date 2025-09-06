@@ -1,27 +1,21 @@
 import { EventStore, mapEventsToStore } from "applesauce-core";
 import { RelayPool, onlyEvents } from "applesauce-relay";
 import { createAddressLoader, createEventLoader, createTimelineLoader } from "applesauce-loaders/loaders";
-import { create } from "applesauce-factory";
+import { writable, derived } from "svelte/store";
+import { getEventUID, getProfileContent } from "applesauce-core/helpers";
+import { map, take } from "rxjs";
 
-const pubkey = "1c5ff3caacd842c01dca8f378231b16617516d214da75c7aeabbe9e1efe9c0f6";
 
 const eventStore = new EventStore();
 const pool = new RelayPool();
-const eventLoader = createEventLoader(pool, { eventStore });
-
 
 const relays = [
   "wss://relay.damus.io",
   "wss://nos.lol",
-  "wss://relay.snort.social"
+  "wss://relay.snort.social",
+  "wss://theforest.nostr1.com",
+  "wss://relay-rpi.edufeed.org"
 ];
-
-export const loader = createTimelineLoader(
-  pool,
-  ["wss://relay.damus.io "],
-  { kinds: [1], authors: [pubkey] },
-  { eventStore },
-)
 
 export const communikeyLoader = createTimelineLoader(
   pool,
@@ -36,4 +30,35 @@ export const profileLoader = createAddressLoader(
     eventStore,
     lookupRelays: ["wss://purplepag.es/"],
   }
+);
+
+export function loadUserProfile(kind, pubkey) {
+  return profileLoader({ kind, pubkey, relays }).pipe(
+    // Take only the first (most recent) profile
+    take(1),
+    map((event) => getProfileContent(event)),
+  );
+}
+
+export const joinedCommunitiesLoader = createAddressLoader(
+  pool,
+  {
+    eventStore,
+    lookupRelays: ["wss://theforest.nostr1.com", "wss://relay-rpi.edufeed.org"],
+    extraRelays: ["wss://theforest.nostr1.com", "wss://relay-rpi.edufeed.org"]
+  }
 )
+
+export function loadJoinedCommunities(pubkey, identifier) {
+  console.log("loading joined communities")
+  return joinedCommunitiesLoader({ kind: 30382, pubkey, identifier, relays }).pipe(
+    take(1),
+    mapEventsToStore(eventStore)
+  )
+}
+
+
+// Create an event loader (do this once at the app level)
+export const eventLoader = createEventLoader(pool);
+
+export const addressLoader = createAddressLoader(pool);

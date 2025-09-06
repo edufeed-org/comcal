@@ -1,48 +1,49 @@
 <script>
-	export let pubkey;
-	import { profileLoader } from '$lib/store';
-	import { get, writable } from 'svelte/store';
-	import { getProfileContent } from 'applesauce-core/helpers';
+	let { pubkey } = $props();
 
-	let profile = writable(null);
+	import { loadUserProfile } from '$lib/store';
+	import { getProfilePicture } from 'applesauce-core/helpers';
+	import { userJoinedCommunity } from '$lib/shared.svelte';
+	import { communities } from '$lib/shared.svelte';
 
-	profileLoader({
-		kind: 0,
-		pubkey
-	}).subscribe({
-		next: (event) => {
-			console.log('found profile', event);
-			profile.set(event);
-		},
-		complete: () => {
-			console.log('complete');
+	/**
+	 * User profile state either null or an applesauce profile 
+	 */
+	let userProfile = $state(null);
+
+	loadUserProfile(0, pubkey).subscribe((profile) => {
+		if (profile) {
+			// console.log('Profile loaded:', profile);
+			userProfile = profile;
 		}
+	});
+
+	const joined = $derived.by(() => {
+		return userJoinedCommunity(pubkey, communities);
 	});
 </script>
 
 <div class="card w-96 bg-base-100 shadow-sm">
+	<p>
+		Joined: {joined}
+	</p>
+
 	<figure class="px-10 pt-10">
-		{#if $profile}
-			<img
-				src={getProfileContent($profile).picture || pubkey}
-				alt="Shoes"
-				class="rounded-xl"
-			/>
-		{/if}
+		<img
+			src={getProfilePicture(userProfile) || `https://robohash.org/${pubkey}`}
+			alt="Shoes"
+			class="rounded-xl"
+		/>
 	</figure>
 	<div class="card-body items-center text-center">
 		<h2 class="card-title">
-			{#if $profile}
-				{getProfileContent($profile).name || getProfileContent($profile).display_name || pubkey}
-			{/if}
+			{userProfile?.name}
 		</h2>
 		<p>
-			{#if $profile}
-        {getProfileContent($profile).about || 'No bio available'}
-      {/if}
+			{userProfile?.about || 'No bio available'}
 		</p>
 		<div class="card-actions">
-			<button class="btn btn-primary">Visit</button>
+			<a href={pubkey ? `/c/${pubkey}` : '#'} class="btn btn-primary">Visit</a>
 		</div>
 	</div>
 </div>
