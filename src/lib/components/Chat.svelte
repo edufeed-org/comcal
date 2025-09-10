@@ -120,7 +120,9 @@
 			// Sign and publish the event
 			const signedEvent = await activeUser.signer.signEvent(chatEvent);
 
-			// For now, just log the event - publishing implementation needs to be completed
+			// Add immediately to local messages for instant UI feedback
+			messages = [...messages, signedEvent].sort((a, b) => a.created_at - b.created_at);
+
 			console.log('Chat event created:', signedEvent);
 
 			try {

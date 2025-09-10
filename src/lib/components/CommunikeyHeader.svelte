@@ -19,17 +19,21 @@
 		</div>
 	</div>
 
-	<span>{profile.name}</span>
+	<div class="flex gap-2">
+		<span>{profile.name}</span>
 
-	<div class="flex flex-wrap">
-		{#each communikeyContentTypes as contentType}
-			<div class="badge badge-soft badge-primary">{contentType.name}</div>
-		{/each}
+		<div class="flex flex-wrap">
+			{#each communikeyContentTypes as contentType}
+				<div class="badge badge-soft badge-primary">{contentType.name}</div>
+			{/each}
+		</div>
+
 	</div>
-
-	{#if getJoined()}
-		<div class="badge badge-soft badge-success">Joined</div>
-	{:else}
-		<div class="badge badge-soft badge-outline">Not Joined</div>
-	{/if}
+	<div class="ml-auto mr-2">
+		{#if getJoined()}
+			<div class="badge badge-soft badge-success">Joined</div>
+		{:else}
+			<div class="badge badge-soft badge-outline">Not Joined</div>
+		{/if}
+	</div>
 </div>
