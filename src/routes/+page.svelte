@@ -1,14 +1,10 @@
 <script>
 	import CommunikeyCard from '$lib/components/CommunikeyCard.svelte';
 	import { useAllCommunities } from '$lib/stores/all-communities.svelte.js';
-	import { useCommunityMembership } from '$lib/stores/community-membership.svelte.js';
+	import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte.js';
 
 	const getAllCommunities = useAllCommunities();
-
-	// Create a derived list of joined communities for the sidebar
-	let joinedCommunities = $derived(
-		getAllCommunities().filter(community => useCommunityMembership(community.pubkey)())
-	);
+	const getJoinedCommunities = useJoinedCommunitiesList();
 </script>
 
 <svelte:head>
@@ -20,7 +16,7 @@
 	<div class="w-1/4">
 		<h2>Joined Communities</h2>
 		<div class="space-y-2">
-			{#each joinedCommunities as community}
+			{#each getJoinedCommunities() as community}
 				<div class="card bg-base-100 shadow-sm p-3">
 					<div class="flex items-center gap-2">
 						<div class="avatar">
@@ -37,7 +33,7 @@
 					</div>
 				</div>
 			{/each}
-			{#if joinedCommunities.length === 0}
+			{#if getJoinedCommunities().length === 0}
 				<p class="text-sm text-base-content/60">No joined communities yet</p>
 			{/if}
 		</div>

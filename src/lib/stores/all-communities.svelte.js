@@ -1,29 +1,27 @@
-import { addressLoader, communikeyTimelineLoader } from '$lib/loaders';
-import { eventStore } from '$lib/store.svelte';
-import { TimelineModel } from 'applesauce-core/models';
+import { communikeyTimelineLoader } from '$lib/loaders';
+
+// Global state that persists across page navigations
+let globalCommunities = $state(/** @type {import('nostr-tools').Event[]} */ ([]));
+let globalSubscription = null;
 
 /**
  * Custom hook for loading and managing all communities
  * @returns {() => Array<import('nostr-tools').Event>} - Reactive getter function returning array of all community events
  */
 export function useAllCommunities() {
-	let allCommunities = $state(/** @type {import('nostr-tools').Event[]} */ ([]));
-
-	// Subscribe to community timeline reactively
-	$effect(() => {
-		// Reset communities when effect starts
-		allCommunities = [];
-
-		const subscription = communikeyTimelineLoader().subscribe((communityEvent) => {
+	// Initialize global subscription only once
+	if (!globalSubscription) {
+		globalSubscription = communikeyTimelineLoader().subscribe((communityEvent) => {
 			console.log("Fetched community:", communityEvent);
 
-			// Add the new community event to the array
-			allCommunities = [...allCommunities, communityEvent];
+			// Check if community already exists to avoid duplicates
+			const exists = globalCommunities.some(c => c.id === communityEvent.id);
+			if (!exists) {
+				globalCommunities = [...globalCommunities, communityEvent];
+			}
 		});
-
-		return () => subscription.unsubscribe();
-	});
+	}
 
 	// Return a getter function that provides reactive access to all communities
-	return () => allCommunities;
+	return () => globalCommunities;
 }
