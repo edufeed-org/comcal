@@ -1,4 +1,4 @@
-import { loadUserProfile } from '$lib/store.svelte';
+import { loadUserProfile } from '$lib/loaders';
 import { manager } from '$lib/accounts.svelte';
 
 /**

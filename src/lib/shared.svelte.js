@@ -1,5 +1,5 @@
 import { getTagValue } from 'applesauce-core/helpers';
-import { loadUserProfile } from './store.svelte';
+import { loadUserProfile } from './loaders';
 import { eventStore } from './store.svelte';
 
 export let signer = $state({
