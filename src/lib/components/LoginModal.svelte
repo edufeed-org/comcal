@@ -2,17 +2,14 @@
 	let { modalId } = $props();
 
 	import { ExtensionSigner } from 'applesauce-signers';
-	import { signer, userProfile, joinedCommunities } from '$lib/shared.svelte.js';
-	import { loadRelationships, loadUserProfile, eventStore } from '$lib/store.svelte.js';
+	import { signer, userProfile } from '$lib/shared.svelte.js';
 
 	import { manager } from '$lib/accounts.svelte';
 	import { ExtensionAccount } from 'applesauce-accounts/accounts';
-	import { getProfileContent, getProfilePicture } from 'applesauce-core/helpers';
 	import AccountProfile from './AccountProfile.svelte';
 
 	let accounts = $state([]);
 	manager.accounts$.subscribe((account) => {
-		console.log('something in accounts changed', account);
 		accounts = account;
 	});
 
@@ -22,26 +19,14 @@
 				signer.signer = new ExtensionSigner();
 				const pk = await signer.signer.getPublicKey();
 				const account = new ExtensionAccount(pk, signer.signer);
+				// FIXME don't add duplicate accounts
+				// if (!manager.getAccount(pk)) {
+				// }
 				manager.addAccount(account);
-				console.log('Account added:', account);
 				manager.setActive(account);
-				console.log('Manager:', manager);
 
-				// // FIXME this needs to happen somewhere else
-				const communities = eventStore.getByFilters({ kinds: [10222] })
-				const relationships = eventStore.getByFilters({ kinds: [30382], '#p': [pk] })
-				console.log("Loaded communities:", communities);
-				for (const community of communities) {
-					// load community relationships
-					console.log('Loading joined communities for:', pk, "and identifier", community.pubkey);
-					loadRelationships(pk, community.pubkey).subscribe((relationship) => {
-						if (relationship) {
-							// console.log('relationship loaded:', relationship);
-							joinedCommunities.push(relationship)
-						}
-					});
-				}
-				document.getElementById(modalId).close();
+				const modal = /** @type {HTMLDialogElement} */ (document.getElementById(modalId));
+				if (modal) modal.close();
 			case 'NSEC':
 				return null;
 			case 'Bunker':

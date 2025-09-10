@@ -10,9 +10,7 @@ export let userProfile = $state({
 	profile: null
 });
 
-export let joinedCommunities = $state([]);
-
-export function communityProfile(pubkey) {
+export function communityProfile(pubkey /** @type {string} */) {
 	let profile = null;
 	loadUserProfile(0, pubkey).subscribe((event) => {
 		if (event) {
@@ -22,30 +20,4 @@ export function communityProfile(pubkey) {
 		}
 	});
 	return profile;
-}
-
-// FIXME
-export function userJoinedCommunity(pubkey, relationship) {
-	let joined = false;
-	let relationships = eventStore.getReplaceable(30382, pubkey, communityPubkey);
-
-	console.log('relationships', relationships);
-	relationships.find((c) => {
-		const community = getTagValue(c, 'd');
-		const relationship = getTagValue(c, 'n');
-		console.log('community', community);
-		console.log('relationship', relationship);
-		if (pubkey === community && relationship === 'follow') {
-			joined = true;
-		}
-	});
-	console.log('userJoinedCommunity', pubkey, joined);
-	return joined;
-}
-
-export function userJoined(pubkey, communities) {
-	const joined = $derived.by(() => {
-		return userJoinedCommunity(pubkey, communities);
-	});
-	return joined;
 }

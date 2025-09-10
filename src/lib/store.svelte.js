@@ -7,7 +7,7 @@ import { manager } from './accounts.svelte';
 
 export const eventStore = new EventStore();
 export const pool = new RelayPool();
-export let communities = $state({ communities: [] });
+
 
 export const relays = [
 	'wss://relay.damus.io',

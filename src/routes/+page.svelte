@@ -1,17 +1,14 @@
 <script>
 	import CommunikeyCard from '$lib/components/CommunikeyCard.svelte';
-	import { eventStore, pool, relays, communities } from '$lib/store.svelte';
-	import { onMount } from 'svelte';
-	import { createTimelineLoader } from 'applesauce-loaders/loaders';
+	import { useAllCommunities } from '$lib/stores/all-communities.svelte.js';
+	import { useCommunityMembership } from '$lib/stores/community-membership.svelte.js';
 
-	const timeline = createTimelineLoader(pool, relays, { kinds: [10222] }, { eventStore });
+	const getAllCommunities = useAllCommunities();
 
-	onMount(() => {
-		timeline().subscribe();
-		eventStore.timeline({ kinds: [10222] }).subscribe((events) => {
-			communities.communities = events;
-		});
-	});
+	// Create a derived list of joined communities for the sidebar
+	let joinedCommunities = $derived(
+		getAllCommunities().filter(community => useCommunityMembership(community.pubkey)())
+	);
 </script>
 
 <svelte:head>
@@ -22,12 +19,33 @@
 <div class="flex flex-row gap-8">
 	<div class="w-1/4">
 		<h2>Joined Communities</h2>
-		<!-- Add any additional content for joined communities here -->
+		<div class="space-y-2">
+			{#each joinedCommunities as community}
+				<div class="card bg-base-100 shadow-sm p-3">
+					<div class="flex items-center gap-2">
+						<div class="avatar">
+							<div class="w-8 rounded-full">
+								<img src={`https://robohash.org/${community.pubkey}`} alt="Community" />
+							</div>
+						</div>
+						<div class="flex-1 min-w-0">
+							<p class="text-sm font-medium truncate">
+								{community.pubkey.slice(0, 8)}...
+							</p>
+						</div>
+						<a href={`/c/${community.pubkey}`} class="btn btn-xs btn-primary">Visit</a>
+					</div>
+				</div>
+			{/each}
+			{#if joinedCommunities.length === 0}
+				<p class="text-sm text-base-content/60">No joined communities yet</p>
+			{/if}
+		</div>
 	</div>
 	<div class="w-3/4">
 		<div class="flex flex-wrap gap-2">
-			{#each communities.communities as event}
-				<CommunikeyCard pubkey={event.pubkey} />
+			{#each getAllCommunities() as community}
+				<CommunikeyCard pubkey={community.pubkey} />
 			{/each}
 		</div>
 	</div>
