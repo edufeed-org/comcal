@@ -1,28 +1,22 @@
 import { EventStore, mapEventsToStore } from "applesauce-core";
-import { RelayPool, onlyEvents } from "applesauce-relay";
-import { createAddressLoader, createEventLoader, createTimelineLoader } from "applesauce-loaders/loaders";
-import { writable, derived } from "svelte/store";
-import { getEventUID, getProfileContent } from "applesauce-core/helpers";
+import { RelayPool } from "applesauce-relay";
+import { createAddressLoader, createEventLoader } from "applesauce-loaders/loaders";
+import { getProfileContent } from "applesauce-core/helpers";
 import { map, take } from "rxjs";
+import { manager } from "./accounts.svelte";
 
 
-const eventStore = new EventStore();
-const pool = new RelayPool();
+export const eventStore = new EventStore();
+export const pool = new RelayPool();
+export let communities = $state({ communities: [] });
 
-const relays = [
+export const relays = [
   "wss://relay.damus.io",
   "wss://nos.lol",
   "wss://relay.snort.social",
   "wss://theforest.nostr1.com",
   "wss://relay-rpi.edufeed.org"
 ];
-
-export const communikeyLoader = createTimelineLoader(
-  pool,
-  relays,
-  { kinds: [10222] },
-  { eventStore }
-)
 
 export const profileLoader = createAddressLoader(
   pool,
@@ -49,11 +43,13 @@ export const joinedCommunitiesLoader = createAddressLoader(
   }
 )
 
-export function loadJoinedCommunities(pubkey, identifier) {
-  console.log("loading joined communities")
+export function loadRelationships(pubkey, identifier) {
   return joinedCommunitiesLoader({ kind: 30382, pubkey, identifier, relays }).pipe(
     take(1),
-    mapEventsToStore(eventStore)
+    mapEventsToStore(eventStore),
+    map((event) => {
+      return event;
+    })
   )
 }
 
@@ -62,3 +58,14 @@ export function loadJoinedCommunities(pubkey, identifier) {
 export const eventLoader = createEventLoader(pool);
 
 export const addressLoader = createAddressLoader(pool);
+
+eventStore.timeline({ kinds: [10222] })
+  .subscribe();
+
+// make a subscription to relationship events?
+manager.active$.subscribe((account) => {
+  if (account) {
+    const pk = account.pubkey;
+    loadRelationships(pk).subscribe();
+  }
+});

@@ -1,19 +1,19 @@
 <script>
 	import CommunikeyCard from '$lib/components/CommunikeyCard.svelte';
-	import { communikeyLoader } from '$lib/store';
-	import { communities } from '$lib/shared.svelte';
+	import { eventStore, pool, relays, communities } from '$lib/store.svelte';
 	import { onMount } from 'svelte';
+	import { createTimelineLoader } from 'applesauce-loaders/loaders';
+
+	const timeline = createTimelineLoader(pool, relays, { kinds: [10222] }, { eventStore });
 
 	onMount(() => {
-		communikeyLoader().subscribe({
-			next: (event) => {
-				communities.push(event);
-		},
-		complete: () => {
-			console.log('complete');
-		}
+		timeline().subscribe();
+		eventStore.timeline({ kinds: [10222] })
+		.subscribe((events) => {
+			communities.communities = events;
+		});
 	});
-});
+
 </script>
 
 <svelte:head>
@@ -21,16 +21,14 @@
 	<meta name="description" content="Real-time Nostr feed powered by SvelteKit" />
 </svelte:head>
 
-
 <div class="flex flex-row gap-8">
 	<div class="w-1/4">
 		<h2>Joined Communities</h2>
 		<!-- Add any additional content for joined communities here -->
 	</div>
 	<div class="w-3/4">
-		<h2>Live Feed</h2>
 		<div class="flex flex-wrap gap-2">
-			{#each communities as event}
+			{#each communities.communities as event}
 				<CommunikeyCard pubkey={event.pubkey} />
 			{/each}
 		</div>

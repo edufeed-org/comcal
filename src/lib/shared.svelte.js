@@ -1,5 +1,6 @@
-import { getProfileContent, getTagValue } from "applesauce-core/helpers";
-import { loadUserProfile } from "./store";
+import { getTagValue } from "applesauce-core/helpers";
+import { loadUserProfile } from "./store.svelte";
+import { eventStore } from "./store.svelte";
 
 export let signer = $state({
   signer: null
@@ -8,8 +9,6 @@ export let signer = $state({
 export let userProfile = $state({
   profile: null
 });
-
-export let communities = $state([]);
 
 export let joinedCommunities = $state([])
 
@@ -25,13 +24,19 @@ export function communityProfile(pubkey) {
     return profile;
 }
 
-export function userJoinedCommunity(pubkey, communities) {
+// FIXME
+export function userJoinedCommunity(pubkey, relationship) {
   let joined = false;
-  joinedCommunities.find((c) => {
+  let relationships = eventStore.getReplaceable(30382, pubkey, communityPubkey);
+
+  
+
+  console.log("relationships", relationships);
+  relationships.find((c) => {
     const community = getTagValue(c, "d");
     const relationship = getTagValue(c, "n");
-    // console.log("community", community);
-    // console.log("relationship", relationship);
+    console.log("community", community);
+    console.log("relationship", relationship);
     if (
       pubkey === community &&
       relationship === "follow"
@@ -39,6 +44,7 @@ export function userJoinedCommunity(pubkey, communities) {
       joined = true;
     }
   });
+  console.log("userJoinedCommunity", pubkey, joined);
   return joined;
 }
 

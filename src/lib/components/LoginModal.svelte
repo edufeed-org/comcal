@@ -2,12 +2,13 @@
 	let {modalId} = $props()
 
 	import { ExtensionSigner } from 'applesauce-signers';
-	import { signer, userProfile, joinedCommunities, communities } from '$lib/shared.svelte.js';
-	import { loadJoinedCommunities, loadUserProfile } from '$lib/store.js';
+	import { signer, userProfile, joinedCommunities } from '$lib/shared.svelte.js';
+	import { loadRelationships, loadUserProfile, eventStore } from '$lib/store.svelte.js';
 
 	import { manager } from '$lib/accounts.svelte';
 	import { ExtensionAccount } from 'applesauce-accounts/accounts';
 	import { getProfileContent, getProfilePicture } from 'applesauce-core/helpers';
+	import AccountProfile from './AccountProfile.svelte';
 
 	let accounts = $state([])
 	manager.accounts$.subscribe((account) => {
@@ -35,10 +36,14 @@
 					}
 				});
 
+				// FIXME this needs to happen somewhere else
+				const communities = eventStore.getByFilters({ kinds: [10222] })
+				const relationships = eventStore.getByFilters({ kinds: [30382], '#p': [pk] })
+				console.log("Loaded communities:", communities);
 				for (const community of communities) {
 					// load community relationships
-					// console.log('Loading joined communities for:', pk, "and identifier", community.pubkey);
-					loadJoinedCommunities(pk, community.pubkey).subscribe((relationship) => {
+					console.log('Loading joined communities for:', pk, "and identifier", community.pubkey);
+					loadRelationships(pk, community.pubkey).subscribe((relationship) => {
 						if (relationship) {
 							// console.log('relationship loaded:', relationship);
 							joinedCommunities.push(relationship)
@@ -67,18 +72,10 @@
 		</div>
 		<h1 class="text-lg font-bold mt-4">Don't have an account yet?</h1>
 		<button class="btn" disabled>Sign Up!</button>
-		<h1>Logged In Accounts</h1>
+		<h1>Available Accounts</h1>
 		<ul>
 			{#each accounts as account}
-			{@const profile = loadUserProfile(0, account.pubkey)}
-			<div class="w-full border border-purple-400 rounded-md p-2 flex items-center">
-				<div tabindex="0" role="button" class="btn avatar btn-circle btn-ghost">
-					<div class="w-10 rounded-full">
-						<img alt="" src={getProfilePicture(userProfile.profile)} />
-					</div>
-				</div>
-				<li>{#if profile?.name} {getProfileContent(profile).name} {/if} {#if account === manager.active} (active) {/if}</li>
-			</div>
+			<AccountProfile {account} />
 			{/each}
 		</ul>
 		<div class="modal-action">

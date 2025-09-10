@@ -1,10 +1,10 @@
 <script>
 	let { pubkey } = $props();
 
-	import { loadUserProfile } from '$lib/store';
+	import { loadUserProfile } from '$lib/store.svelte';
 	import { getProfilePicture } from 'applesauce-core/helpers';
 	import { userJoinedCommunity } from '$lib/shared.svelte';
-	import { communities } from '$lib/shared.svelte';
+	import { communities } from '$lib/store.svelte';
 
 	/**
 	 * User profile state either null or an applesauce profile 
@@ -13,13 +13,12 @@
 
 	loadUserProfile(0, pubkey).subscribe((profile) => {
 		if (profile) {
-			// console.log('Profile loaded:', profile);
 			userProfile = profile;
 		}
 	});
 
 	const joined = $derived.by(() => {
-		return userJoinedCommunity(pubkey, communities);
+		return userJoinedCommunity(pubkey);
 	});
 </script>
 
