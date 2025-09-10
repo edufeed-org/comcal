@@ -17,28 +17,42 @@
 	let userPubkey = $derived(activeUser?.pubkey);
 	let joined = $state(false);
 
-	$inspect(userPubkey);
+	// Store the actual event data, not the subscription/observable
+	let relationshipEvent = $state(
+		/** @type {import('nostr-tools').Event | null | undefined} */ (null)
+	);
 
-	let relationshipSub = $state(null);
-	const relationshipEvent = $derived($relationshipSub);
-	$inspect('test relationship', relationshipEvent);
-
-	// Subscribe to manager.active$ observable and update reactive state
+	// Subscribe to manager.active$ and handle relationship subscription
 	$effect(() => {
 		const subscription = manager.active$.subscribe((user) => {
 			activeUser = user;
-			relationshipSub = eventStore.replaceable(30382, user?.pubkey, communikeyEvent.pubkey);
+
+			// Reset relationship event when user changes
+			relationshipEvent = null;
+
+			if (user?.pubkey) {
+				// Subscribe to the relationship observable and update state
+				const relationshipSubscription = eventStore.replaceable(30382, user.pubkey, communikeyEvent.pubkey)
+					.subscribe(event => {
+						relationshipEvent = event; // Store the actual event data
+					});
+
+				// Store the subscription for cleanup
+				subscription.add(relationshipSubscription);
+			}
 		});
-		return () => subscription.unsubscribe();
+
+		return () => subscription.unsubscribe(); // Cleans up both subscriptions
 	});
 
+	// React to relationship event changes
 	$effect(() => {
 		if (!userPubkey || !communikeyEvent?.pubkey) {
 			joined = false;
 			return;
 		}
+
 		if (relationshipEvent) {
-			$inspect('relationship event', relationshipEvent);
 			const relationship = getTagValue(relationshipEvent, 'n');
 			const community = getTagValue(relationshipEvent, 'd');
 			// Check if this is a follow relationship for this community
@@ -46,21 +60,6 @@
 		} else {
 			joined = false;
 		}
-		// const subscription = eventStore.replaceable(30382, userPubkey, communikeyEvent.pubkey)
-		// 	.subscribe(event => {
-		// 		console.log("relationship event for", userPubkey, "and", communikeyEvent.pubkey, event);
-		// 		if (event) {
-		// 			const relationship = getTagValue(event, "n");
-		// 			const community = getTagValue(event, "d");
-		// 			// Check if this is a follow relationship for this community
-		// 			joined = (community === communikeyEvent.pubkey && relationship === "follow");
-		// 		} else {
-		// 			joined = false;
-		// 		}
-		// 	});
-
-		// // Cleanup subscription when effect re-runs or component unmounts
-		// return () => subscription.unsubscribe();
 	});
 </script>
 
