@@ -1,6 +1,5 @@
-import { AccountManager } from "applesauce-accounts";
-import { registerCommonAccountTypes } from "applesauce-accounts/accounts";
-
+import { AccountManager } from 'applesauce-accounts';
+import { registerCommonAccountTypes } from 'applesauce-accounts/accounts';
 
 /**
  * @typedef {{ name?: string }} AccountMetadata
@@ -12,10 +11,10 @@ registerCommonAccountTypes(manager);
 
 // subscribe to the active account
 manager.active$.subscribe((account) => {
-  if (account) console.log(`${account.id} is now active`);
-  else console.log("no account is active");
+	if (account) console.log(`${account.id} is now active`);
+	else console.log('no account is active');
 
-  // updateUI();
+	// updateUI();
 });
 
-export const accounts = $state([])
+export const accounts = $state([]);

@@ -1,4 +1,3 @@
-
 /**
  * Parse community content type definitions from a Nostr event's tags.
  *
@@ -47,38 +46,38 @@
  * // ]
  */
 export function getCommunityContentTypes(event) {
-  console.log("getCommunityContentTypes", event);
-  const contentTypes = [];
-  let currentContentType = null;
+	console.log('getCommunityContentTypes', event);
+	const contentTypes = [];
+	let currentContentType = null;
 
-  if (!event || !Array.isArray(event.tags)) return contentTypes;
+	if (!event || !Array.isArray(event.tags)) return contentTypes;
 
-  for (const tag of event.tags) {
-    if (!Array.isArray(tag) || tag.length === 0) continue;
-    const key = tag[0];
+	for (const tag of event.tags) {
+		if (!Array.isArray(tag) || tag.length === 0) continue;
+		const key = tag[0];
 
-    if (key === "content") {
-      if (currentContentType) contentTypes.push(currentContentType);
-      currentContentType = {
-        name: tag[1],
-        kinds: [],
-        exclusive: false,
-        roles: [],
-      };
-    } else if (key === "k" && currentContentType) {
-      const kind = parseInt(tag[1], 10);
-      if (!Number.isNaN(kind)) currentContentType.kinds.push(kind);
-    } else if (key === "fee" && currentContentType) {
-      currentContentType.fee = { amount: tag[1], unit: tag[2] || "sat" };
-    } else if (key === "exclusive" && currentContentType) {
-      currentContentType.exclusive = tag[1] === "true";
-    } else if (key === "role" && currentContentType) {
-      currentContentType.roles = tag.slice(1);
-    }
-  }
+		if (key === 'content') {
+			if (currentContentType) contentTypes.push(currentContentType);
+			currentContentType = {
+				name: tag[1],
+				kinds: [],
+				exclusive: false,
+				roles: []
+			};
+		} else if (key === 'k' && currentContentType) {
+			const kind = parseInt(tag[1], 10);
+			if (!Number.isNaN(kind)) currentContentType.kinds.push(kind);
+		} else if (key === 'fee' && currentContentType) {
+			currentContentType.fee = { amount: tag[1], unit: tag[2] || 'sat' };
+		} else if (key === 'exclusive' && currentContentType) {
+			currentContentType.exclusive = tag[1] === 'true';
+		} else if (key === 'role' && currentContentType) {
+			currentContentType.roles = tag.slice(1);
+		}
+	}
 
-  if (currentContentType) contentTypes.push(currentContentType);
-  return contentTypes;
+	if (currentContentType) contentTypes.push(currentContentType);
+	return contentTypes;
 }
 
 // function getCommunityContentTypes(event: NostrEvent) {

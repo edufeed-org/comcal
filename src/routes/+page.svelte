@@ -8,12 +8,10 @@
 
 	onMount(() => {
 		timeline().subscribe();
-		eventStore.timeline({ kinds: [10222] })
-		.subscribe((events) => {
+		eventStore.timeline({ kinds: [10222] }).subscribe((events) => {
 			communities.communities = events;
 		});
 	});
-
 </script>
 
 <svelte:head>

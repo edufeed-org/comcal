@@ -13,7 +13,7 @@
 </script>
 
 <div class="card w-96 bg-base-100 shadow-sm">
-	<div class="ml-auto mr-10">
+	<div class="mr-10 ml-auto">
 		{#if getJoined()}
 			<div class="badge badge-soft badge-success">Joined</div>
 		{:else}

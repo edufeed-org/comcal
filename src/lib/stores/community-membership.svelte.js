@@ -50,8 +50,9 @@ export function useCommunityMembership(communityPubkey) {
 
 		if (activeUser?.pubkey && communityPubkey) {
 			// Subscribe to the relationship observable and update state
-			const relationshipSubscription = eventStore.replaceable(30382, activeUser.pubkey, communityPubkey)
-				.subscribe(event => {
+			const relationshipSubscription = eventStore
+				.replaceable(30382, activeUser.pubkey, communityPubkey)
+				.subscribe((event) => {
 					relationshipEvent = event; // Store the actual event data
 				});
 

@@ -1,5 +1,5 @@
 <script>
-	let {modalId} = $props()
+	let { modalId } = $props();
 
 	import { ExtensionSigner } from 'applesauce-signers';
 	import { signer, userProfile, joinedCommunities } from '$lib/shared.svelte.js';
@@ -10,11 +10,11 @@
 	import { getProfileContent, getProfilePicture } from 'applesauce-core/helpers';
 	import AccountProfile from './AccountProfile.svelte';
 
-	let accounts = $state([])
+	let accounts = $state([]);
 	manager.accounts$.subscribe((account) => {
-		console.log("something in accounts changed", account)
-		accounts = account
-	})
+		console.log('something in accounts changed', account);
+		accounts = account;
+	});
 
 	async function createSigner(selectedSigner) {
 		switch (selectedSigner) {
@@ -27,16 +27,7 @@
 				manager.setActive(account);
 				console.log('Manager:', manager);
 
-				// load user profile
-				// TODO maybe put this in account manager?
-				loadUserProfile(0, pk).subscribe((profile) => {
-					if (profile) {
-						// console.log('Profile loaded:', profile.name);
-						userProfile.profile = profile;
-					}
-				});
-
-				// FIXME this needs to happen somewhere else
+				// // FIXME this needs to happen somewhere else
 				const communities = eventStore.getByFilters({ kinds: [10222] })
 				const relationships = eventStore.getByFilters({ kinds: [30382], '#p': [pk] })
 				console.log("Loaded communities:", communities);
@@ -65,17 +56,17 @@
 	<div class="modal-box">
 		<h1 class="text-lg font-bold">Add an Account</h1>
 		<p class="py-4">Press ESC key or click the button below to close</p>
-		<div class="flex flex-col join">
+		<div class="join flex flex-col">
 			<button onclick={() => createSigner('Extension')} class="btn join-item">Extension</button>
 			<button disabled onclick={() => createSigner('NSEC')} class="btn join-item">NSEC</button>
 			<button disabled onclick={() => createSigner('Bunker')} class="btn join-item">Bunker</button>
 		</div>
-		<h1 class="text-lg font-bold mt-4">Don't have an account yet?</h1>
+		<h1 class="mt-4 text-lg font-bold">Don't have an account yet?</h1>
 		<button class="btn" disabled>Sign Up!</button>
 		<h1>Available Accounts</h1>
 		<ul>
 			{#each accounts as account}
-			<AccountProfile {account} />
+				<AccountProfile {account} />
 			{/each}
 		</ul>
 		<div class="modal-action">

@@ -1,9 +1,12 @@
 <script>
 	import { getProfilePicture } from 'applesauce-core/helpers';
 	import LoginModal from './LoginModal.svelte';
-	import { userProfile } from '$lib/shared.svelte';
+	import { useUserProfile } from '$lib/stores/user-profile.svelte';
 
 	const loginModalRef = 'loginModal';
+
+	// Use the enhanced hook without pubkey - it will automatically use manager.active
+	const getProfile = useUserProfile();
 </script>
 
 <div class="navbar bg-base-100 shadow-sm">
@@ -11,11 +14,11 @@
 		<a href="/" class="btn text-xl btn-ghost">Communikey</a>
 	</div>
 	<div class="flex gap-2">
-		{#if userProfile.profile}
+		{#if getProfile()}
 			<div class="dropdown dropdown-end">
 				<div tabindex="0" role="button" class="btn avatar btn-circle btn-ghost">
 					<div class="w-10 rounded-full">
-						<img alt="Tailwind CSS Navbar component" src={getProfilePicture(userProfile.profile)} />
+						<img alt="Tailwind CSS Navbar component" src={getProfilePicture(getProfile())} />
 					</div>
 				</div>
 				<ul class="dropdown-content menu z-1 mt-3 w-52 menu-sm rounded-box bg-base-100 p-2 shadow">
