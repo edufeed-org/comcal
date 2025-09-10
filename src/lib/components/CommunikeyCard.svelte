@@ -1,45 +1,39 @@
 <script>
 	let { pubkey } = $props();
 
-	import { loadUserProfile } from '$lib/store.svelte';
-	import { getProfilePicture } from 'applesauce-core/helpers';
-	import { userJoinedCommunity } from '$lib/shared.svelte';
-	import { communities } from '$lib/store.svelte';
+	import { getProfilePicture, getProfileContent } from 'applesauce-core/helpers';
+	import { useCommunityMembership } from '$lib/stores/community-membership.svelte.js';
+	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
 
-	/**
-	 * User profile state either null or an applesauce profile 
-	 */
-	let userProfile = $state(null);
+	// Use the reusable user profile hook
+	const getProfile = useUserProfile(pubkey);
 
-	loadUserProfile(0, pubkey).subscribe((profile) => {
-		if (profile) {
-			userProfile = profile;
-		}
-	});
-
-	const joined = $derived.by(() => {
-		return userJoinedCommunity(pubkey);
-	});
+	// Use the reusable community membership hook
+	const getJoined = useCommunityMembership(pubkey);
 </script>
 
 <div class="card w-96 bg-base-100 shadow-sm">
-	<p>
-		Joined: {joined}
-	</p>
+	<div class="ml-auto mr-10">
+		{#if getJoined()}
+			<div class="badge badge-soft badge-success">Joined</div>
+		{:else}
+			<div class="badge badge-soft badge-outline">Not Joined</div>
+		{/if}
+	</div>
 
-	<figure class="px-10 pt-10">
+	<figure class="px-10 pt-4">
 		<img
-			src={getProfilePicture(userProfile) || `https://robohash.org/${pubkey}`}
+			src={getProfilePicture(getProfile()) || `https://robohash.org/${pubkey}`}
 			alt="Shoes"
 			class="rounded-xl"
 		/>
 	</figure>
 	<div class="card-body items-center text-center">
 		<h2 class="card-title">
-			{userProfile?.name}
+			{getProfile()?.name}
 		</h2>
 		<p>
-			{userProfile?.about || 'No bio available'}
+			{getProfile()?.about || 'No bio available'}
 		</p>
 		<div class="card-actions">
 			<a href={pubkey ? `/c/${pubkey}` : '#'} class="btn btn-primary">Visit</a>
