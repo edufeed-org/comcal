@@ -12,8 +12,6 @@ export function useAllCommunities() {
 	// Initialize global subscription only once
 	if (!globalSubscription) {
 		globalSubscription = communikeyTimelineLoader().subscribe((communityEvent) => {
-			console.log("Fetched community:", communityEvent);
-
 			// Check if community already exists to avoid duplicates
 			const exists = globalCommunities.some(c => c.id === communityEvent.id);
 			if (!exists) {

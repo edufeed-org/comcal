@@ -5,11 +5,9 @@
 	/** @type {import('./$types').PageProps} */
 	let { data } = $props();
 
-	import { addressLoader } from '$lib/loaders';
 	import { eventStore } from '$lib/store.svelte';
-	import { getProfileContent, getProfilePicture } from 'applesauce-core/helpers';
 	import { getCommunityContentTypes } from '$lib/helpers';
-	import { ProfileModel, TimelineModel } from 'applesauce-core/models';
+	import Chat from '$lib/components/Chat.svelte';
 
 	let communikeyEvent = $state(null);
 	let profileEvent = $state(null);
@@ -39,4 +37,9 @@
 		profile={profileEvent}
 		communikeyContentTypes={contentTypes}
 	/>
+{/if}
+
+
+{#if contentTypes && contentTypes.map(ct => ct.name).includes("Chat")}
+	<Chat {communikeyEvent} />
 {/if}
