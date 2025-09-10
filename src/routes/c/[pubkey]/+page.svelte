@@ -40,6 +40,6 @@
 {/if}
 
 
-{#if contentTypes && contentTypes.map(ct => ct.name).includes("Chat")}
+<!-- {#if contentTypes && contentTypes.map(ct => ct.name).includes("Chat")} -->
 	<Chat {communikeyEvent} />
-{/if}
+<!-- {/if} -->

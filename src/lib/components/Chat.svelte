@@ -2,7 +2,6 @@
 	import { eventStore, relays } from '$lib/store.svelte';
 	import { manager } from '$lib/accounts.svelte';
 	import { pool } from '$lib/store.svelte';
-	import { createTimelineLoader } from 'applesauce-loaders/loaders';
 	import { loadUserProfile } from '$lib/loaders';
 	import { getProfilePicture } from 'applesauce-core/helpers';
 
@@ -40,34 +39,44 @@
 		if (!communityPubkey) return;
 
 		isLoading = true;
+		let initialLoadComplete = false;
 
-		// Subscribe to kind 9 events with community h-tag
-		const timelineLoader = createTimelineLoader(
-			pool,
-			[...relays, 'wss://zaplab.nostr1.com'],
-			{
-				kinds: [9],
-				'#h': [communityPubkey]
-			},
-			{ eventStore }
-		);
-		const timelineSubscription = timelineLoader().subscribe({
-			next: (event) => {
-				console.log('Received chat event:', event);
-				// Add message to list if not already present
-				const existingIndex = messages.findIndex((m) => m.id === event.id);
-				if (existingIndex === -1) {
-					messages = [...messages, event].sort((a, b) => a.created_at - b.created_at);
+		// Create a persistent subscription that continues after EOSE
+		const subscription = pool
+			.group(relays)
+			.subscription({ kinds: [9], '#h': [communityPubkey] })
+			.subscribe({
+				next: (response) => {
+					if (response === 'EOSE') {
+						console.log('End of stored events - switching to real-time mode');
+						initialLoadComplete = true;
+						isLoading = false;
+					} else if (response && typeof response === 'object' && response.kind === 9) {
+						// This is an actual event
+						console.log('Received chat event:', response);
+
+						// Add to eventStore for persistence
+						eventStore.add(response);
+
+						// Add message to list if not already present
+						const existingIndex = messages.findIndex((m) => m.id === response.id);
+						if (existingIndex === -1) {
+							messages = [...messages, response].sort((a, b) => a.created_at - b.created_at);
+						}
+
+						// If this is the first event after EOSE, mark loading as complete
+						if (initialLoadComplete && isLoading) {
+							isLoading = false;
+						}
+					}
+				},
+				error: (error) => {
+					console.error('Chat subscription error:', error);
+					isLoading = false;
 				}
-				isLoading = false;
-			},
-			error: (error) => {
-				console.error('Chat timeline error:', error);
-				isLoading = false;
-			}
-		});
+			});
 
-		return () => timelineSubscription.unsubscribe();
+		return () => subscription.unsubscribe();
 	});
 
 	// Load profiles for message authors
