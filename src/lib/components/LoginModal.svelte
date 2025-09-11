@@ -2,16 +2,14 @@
 	let { modalId } = $props();
 
 	import { ExtensionSigner } from 'applesauce-signers';
-	import { signer, userProfile } from '$lib/shared.svelte.js';
+	import { signer } from '$lib/shared.svelte.js';
 
 	import { manager } from '$lib/accounts.svelte';
 	import { ExtensionAccount } from 'applesauce-accounts/accounts';
 	import AccountProfile from './AccountProfile.svelte';
+	import { useAccounts } from '$lib/stores/accounts.svelte.js';
 
-	let accounts = $state([]);
-	manager.accounts$.subscribe((account) => {
-		accounts = account;
-	});
+	const getAccounts = useAccounts();
 
 	async function createSigner(selectedSigner) {
 		switch (selectedSigner) {
@@ -19,11 +17,11 @@
 				signer.signer = new ExtensionSigner();
 				const pk = await signer.signer.getPublicKey();
 				const account = new ExtensionAccount(pk, signer.signer);
-				// FIXME don't add duplicate accounts
-				// if (!manager.getAccount(pk)) {
-				// }
-				manager.addAccount(account);
-				manager.setActive(account);
+				
+				if (!manager.getAccountForPubkey(pk)) {
+					manager.addAccount(account);
+					manager.setActive(account);
+				}
 
 				const modal = /** @type {HTMLDialogElement} */ (document.getElementById(modalId));
 				if (modal) modal.close();
@@ -50,7 +48,7 @@
 		<button class="btn" disabled>Sign Up!</button>
 		<h1>Available Accounts</h1>
 		<ul>
-			{#each accounts as account}
+			{#each getAccounts() as account}
 				<AccountProfile {account} />
 			{/each}
 		</ul>
