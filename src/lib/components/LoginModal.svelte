@@ -1,5 +1,5 @@
 <script>
-	let { modalId } = $props();
+	let { modalId, onNSECTransition } = $props();
 
 	import { ExtensionSigner } from 'applesauce-signers';
 	import { signer } from '$lib/shared.svelte.js';
@@ -9,7 +9,14 @@
 	import AccountProfile from './AccountProfile.svelte';
 	import { useAccounts } from '$lib/stores/accounts.svelte.js';
 
+	import LoginWithPrivateKey from './LoginWithPrivateKey.svelte';
+
 	const getAccounts = useAccounts();
+
+	function closeModal() {
+		const modal = /** @type {HTMLDialogElement} */ (document.getElementById(modalId));
+		if (modal) modal.close();
+	}
 
 	async function createSigner(selectedSigner) {
 		switch (selectedSigner) {
@@ -17,15 +24,18 @@
 				signer.signer = new ExtensionSigner();
 				const pk = await signer.signer.getPublicKey();
 				const account = new ExtensionAccount(pk, signer.signer);
-				
+
 				if (!manager.getAccountForPubkey(pk)) {
 					manager.addAccount(account);
 					manager.setActive(account);
 				}
 
-				const modal = /** @type {HTMLDialogElement} */ (document.getElementById(modalId));
-				if (modal) modal.close();
+				closeModal();
+				break;
 			case 'NSEC':
+				if (onNSECTransition) {
+					onNSECTransition();
+				}
 				return null;
 			case 'Bunker':
 				return null;
@@ -41,7 +51,7 @@
 		<p class="py-4">Press ESC key or click the button below to close</p>
 		<div class="join flex flex-col">
 			<button onclick={() => createSigner('Extension')} class="btn join-item">Extension</button>
-			<button disabled onclick={() => createSigner('NSEC')} class="btn join-item">NSEC</button>
+			<button onclick={() => createSigner('NSEC')} class="btn join-item">NSEC</button>
 			<button disabled onclick={() => createSigner('Bunker')} class="btn join-item">Bunker</button>
 		</div>
 		<h1 class="mt-4 text-lg font-bold">Don't have an account yet?</h1>
