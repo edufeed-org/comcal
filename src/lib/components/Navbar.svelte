@@ -1,15 +1,11 @@
 <script>
 	import { getProfilePicture } from 'applesauce-core/helpers';
-	import LoginModal from './LoginModal.svelte';
-	import LoginWithPrivateKey from './LoginWithPrivateKey.svelte';
 	import { useUserProfile } from '$lib/stores/user-profile.svelte';
 	import { manager } from '$lib/accounts.svelte';
+	import { modalStore } from '$lib/stores/modal.svelte.js';
 
-	const loginModalRef = 'loginModal';
-	const privateKeyModalRef = 'privateKeyModal';
-
-	// Modal state management
-	let activeModal = $state('none'); // 'none', 'login', 'privateKey'
+	// Use the modal store for opening modals
+	const modal = modalStore;
 
 	// Use the enhanced hook without pubkey - it will automatically use manager.active
 	const getProfile = useUserProfile();
@@ -31,41 +27,19 @@
 		console.log('Navbar: Profile updated:', getProfile());
 	});
 
-	// Modal transition handlers
+	/**
+	 * Open the login modal using the centralized modal store
+	 * Also closes the dropdown menu if it's open
+	 */
 	function openLoginModal() {
-		activeModal = 'login';
-		const modal = /** @type {HTMLDialogElement} */ (document.getElementById(loginModalRef));
-		if (modal) modal.showModal();
-	}
+		console.log('Navbar: Opening login modal');
+		modal.openModal('login');
 
-	function closeLoginModal() {
-		activeModal = 'none';
-		const modal = /** @type {HTMLDialogElement} */ (document.getElementById(loginModalRef));
-		if (modal) modal.close();
-	}
-
-	function openPrivateKeyModal() {
-		activeModal = 'privateKey';
-		const modal = /** @type {HTMLDialogElement} */ (document.getElementById(privateKeyModalRef));
-		if (modal) modal.showModal();
-	}
-
-	function closePrivateKeyModal() {
-		activeModal = 'none';
-		const modal = /** @type {HTMLDialogElement} */ (document.getElementById(privateKeyModalRef));
-		if (modal) modal.close();
-	}
-
-	// Handle NSEC button click from LoginModal
-	function handleNSECTransition() {
-		closeLoginModal();
-		openPrivateKeyModal();
-	}
-
-	// Handle successful account creation from LoginWithPrivateKey
-	function handleAccountCreated() {
-		closePrivateKeyModal();
-		openLoginModal();
+		// Close the dropdown by removing focus from the dropdown trigger
+		const dropdownTrigger = /** @type {HTMLElement} */ (document.activeElement);
+		if (dropdownTrigger && dropdownTrigger.closest('.dropdown')) {
+			dropdownTrigger.blur();
+		}
 	}
 </script>
 
@@ -100,6 +74,3 @@
 		{/if}
 	</div>
 </div>
-
-<LoginModal modalId={loginModalRef} onNSECTransition={handleNSECTransition} />
-<LoginWithPrivateKey modalId={privateKeyModalRef} onAccountCreated={handleAccountCreated} />
