@@ -4,7 +4,7 @@
 -->
 
 <script>
-	import { getWeekDates, getMonthDates, formatCalendarDate, isToday, isCurrentMonth } from '../../helpers/calendar.js';
+	import { getWeekDates, getMonthDates, formatCalendarDate, isToday, isCurrentMonth, getWeekdayHeaders } from '../../helpers/calendar.js';
 	import CalendarEventCard from './CalendarEventCard.svelte';
 
 	/**
@@ -12,24 +12,17 @@
 	 * @typedef {import('../../types/calendar.js').CalendarViewMode} CalendarViewMode
 	 */
 
-	/** @type {Date} */
-	export let currentDate;
-	
-	/** @type {CalendarViewMode} */
-	export let viewMode;
-	
-	/** @type {Map<string, CalendarEvent[]>} */
-	export let groupedEvents;
-	
-	/** @type {function(CalendarEvent): void} */
-	export let onEventClick = () => {};
-	
-	/** @type {function(Date): void} */
-	export let onDateClick = () => {};
+	let {
+		currentDate,
+		viewMode,
+		groupedEvents,
+		onEventClick = () => {},
+		onDateClick = () => {}
+	} = $props();
 
 	// Get dates for current view (reactive to prop changes)
-	$: viewDates = getViewDates(currentDate, viewMode);
-	$: weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+	let viewDates = $derived(getViewDates(currentDate, viewMode));
+	let weekdays = $derived(getWeekdayHeaders());
 
 	/**
 	 * Get dates array for current view mode

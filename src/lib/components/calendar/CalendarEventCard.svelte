@@ -10,20 +10,17 @@
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
 	 */
 
-	/** @type {CalendarEvent} */
-	export let event;
-	
-	/** @type {boolean} */
-	export let compact = false;
-	
-	/** @type {function(CalendarEvent): void} */
-	export let onEventClick = () => {};
+	let {
+		event,
+		compact = false,
+		onEventClick = () => {}
+	} = $props();
 
 	// Format event times for display
-	$: startDate = new Date(event.start * 1000);
-	$: endDate = event.end ? new Date(event.end * 1000) : null;
-	$: isAllDay = event.kind === 31922; // Date-based events are all-day
-	$: isMultiDay = endDate && startDate.toDateString() !== endDate.toDateString();
+	let startDate = $derived(new Date(event.start * 1000));
+	let endDate = $derived(event.end ? new Date(event.end * 1000) : null);
+	let isAllDay = $derived(event.kind === 31922); // Date-based events are all-day
+	let isMultiDay = $derived(endDate && startDate.toDateString() !== endDate.toDateString());
 
 	function handleClick() {
 		onEventClick(event);

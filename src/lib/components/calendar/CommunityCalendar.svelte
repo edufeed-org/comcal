@@ -4,7 +4,8 @@
 -->
 
 <script>
-	import { useCalendarEvents } from '$lib/stores/calendar-events.svelte.js';
+	import { useCalendarEvents, useGlobalCalendarEvents } from '$lib/stores/calendar-store.svelte.js';
+	import { manager } from '$lib/accounts.svelte.js';
 	import CalendarNavigation from './CalendarNavigation.svelte';
 	import CalendarGrid from './CalendarGrid.svelte';
 	import CalendarEventModal from './CalendarEventModal.svelte';
@@ -12,21 +13,23 @@
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
 	 * @typedef {import('../../types/calendar.js').CalendarViewMode} CalendarViewMode
+	 * @typedef {'all' | 'communikey' | 'joined-only'} FilterMode
 	 */
 
-	// Props using Svelte 5 runes
-	let { communityPubkey } = $props();
+	let { communityPubkey = '', globalMode = false } = $props();
 
-	// Get calendar store for this community
-	const calendarStore = useCalendarEvents(communityPubkey);
+	// Get appropriate calendar store based on mode
+	const calendarStore = globalMode
+		? useGlobalCalendarEvents()
+		: useCalendarEvents(communityPubkey);
 
 	// Debug: Inspect store changes
-	$inspect(calendarStore.viewState);
-	$inspect(calendarStore.events);
+	// $inspect(calendarStore.viewState);
+	// $inspect(calendarStore.events);
 
 	// Modal state
-	let isEventModalOpen = false;
-	let selectedDateForNewEvent = /** @type {Date | null} */ (null);
+	let isEventModalOpen = $state(false);
+	let selectedDateForNewEvent = $state(/** @type {Date | null} */ (null));
 
 	// Calendar store data (accessed directly for reactivity)
 
@@ -72,8 +75,9 @@
 	 * @param {Date} date
 	 */
 	function handleDateClick(date) {
-		selectedDateForNewEvent = date;
-		isEventModalOpen = true;
+		// Navigate to the clicked date and switch to day mode
+		calendarStore.navigateToDate(date);
+		calendarStore.setViewMode('day');
 	}
 
 	/**
@@ -123,7 +127,9 @@
 	<!-- Calendar Header -->
 	<div class="bg-base-200 border-b border-base-300 px-6 py-4">
 		<div class="flex items-center justify-between">
-			<h2 class="text-xl font-semibold text-base-content">Community Calendar</h2>
+			<h2 class="text-xl font-semibold text-base-content">
+				{globalMode ? 'Global Calendar' : 'Community Calendar'}
+			</h2>
 			<div class="flex items-center gap-3">
 				<button
 					class="btn btn-ghost btn-sm"
@@ -138,23 +144,25 @@
 						stroke="currentColor"
 						viewBox="0 0 24 24"
 					>
-						<path 
-							stroke-linecap="round" 
-							stroke-linejoin="round" 
-							stroke-width="2" 
-							d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
 						/>
 					</svg>
 				</button>
-				<button
-					class="btn btn-primary btn-sm gap-2"
-					onclick={handleCreateEvent}
-				>
-					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-					</svg>
-					Create Event
-				</button>
+				{#if !globalMode && manager.active}
+					<button
+						class="btn btn-primary btn-sm gap-2"
+						onclick={handleCreateEvent}
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+						</svg>
+						Create Event
+					</button>
+				{/if}
 			</div>
 		</div>
 	</div>
@@ -219,16 +227,24 @@
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
 					</svg>
 				</div>
-				<h3 class="text-lg font-medium text-base-content mb-2">No events yet</h3>
+				<h3 class="text-lg font-medium text-base-content mb-2">
+					{globalMode ? 'No calendar events found' : 'No events yet'}
+				</h3>
 				<p class="text-base-content/60 mb-6 max-w-md">
-					This community doesn't have any calendar events yet. Be the first to create one!
+					{#if globalMode}
+						No calendar events found from connected relays. Check back later for new events.
+					{:else}
+						This community doesn't have any calendar events yet. Be the first to create one!
+					{/if}
 				</p>
-				<button
-					class="btn btn-primary"
-					onclick={handleCreateEvent}
-				>
-					Create First Event
-				</button>
+				{#if !globalMode && manager.active}
+					<button
+						class="btn btn-primary"
+						onclick={handleCreateEvent}
+					>
+						Create First Event
+					</button>
+				{/if}
 			</div>
 		{/if}
 	{/if}

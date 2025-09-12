@@ -3,6 +3,8 @@
  * Utilities for date formatting, event management, and calendar operations
  */
 
+import { appConfig } from '../config.js';
+
 /**
  * @typedef {import('../types/calendar.js').CalendarEvent} CalendarEvent
  * @typedef {import('../types/calendar.js').EventFormData} EventFormData
@@ -51,9 +53,12 @@ export function formatCalendarDate(date, format) {
  * @returns {Date[]} Array of 7 dates representing the week
  */
 export function getWeekDates(date) {
+	const weekStartDay = appConfig.calendar.weekStartDay;
 	const startOfWeek = new Date(date);
 	const day = startOfWeek.getDay();
-	const diff = startOfWeek.getDate() - day; // Sunday as start of week
+
+	// Calculate difference to get to the configured start of week
+	const diff = startOfWeek.getDate() - ((day - weekStartDay + 7) % 7);
 	startOfWeek.setDate(diff);
 
 	const weekDates = [];
@@ -71,6 +76,7 @@ export function getWeekDates(date) {
  * @returns {Date[]} Array of dates for calendar grid (42 days)
  */
 export function getMonthDates(date) {
+	const weekStartDay = appConfig.calendar.weekStartDay;
 	const year = date.getFullYear();
 	const month = date.getMonth();
 
@@ -78,9 +84,11 @@ export function getMonthDates(date) {
 	const firstDay = new Date(year, month, 1);
 	const lastDay = new Date(year, month + 1, 0);
 
-	// Start from Sunday of the week containing the first day
+	// Start from the configured start day of the week containing the first day
 	const startDate = new Date(firstDay);
-	startDate.setDate(firstDay.getDate() - firstDay.getDay());
+	const firstDayOfWeek = firstDay.getDay();
+	const diff = (firstDayOfWeek - weekStartDay + 7) % 7;
+	startDate.setDate(firstDay.getDate() - diff);
 
 	// Generate 42 days (6 weeks) for consistent grid
 	const monthDates = [];
@@ -285,13 +293,30 @@ export function getNextWeekday(weekday, fromDate = new Date()) {
 	const date = new Date(fromDate);
 	const currentDay = date.getDay();
 	const daysUntilTarget = (weekday - currentDay + 7) % 7;
-	
+
 	if (daysUntilTarget === 0) {
 		// If it's the same weekday, get next week's occurrence
 		date.setDate(date.getDate() + 7);
 	} else {
 		date.setDate(date.getDate() + daysUntilTarget);
 	}
-	
+
 	return date;
+}
+
+/**
+ * Get weekday headers based on the configured week start day
+ * @returns {string[]} Array of weekday abbreviations starting from configured day
+ */
+export function getWeekdayHeaders() {
+	const weekStartDay = appConfig.calendar.weekStartDay;
+	const fullWeekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+	// Rotate the array to start from the configured day
+	const rotatedWeekdays = [
+		...fullWeekdays.slice(weekStartDay),
+		...fullWeekdays.slice(0, weekStartDay)
+	];
+
+	return rotatedWeekdays;
 }

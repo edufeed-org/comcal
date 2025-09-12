@@ -43,11 +43,17 @@
 	}
 </script>
 
-<div class="navbar bg-base-100 shadow-sm">
+<div class="navbar bg-base-100 shadow-sm ">
 	<div class="flex-1">
 		<a href="/" class="btn text-xl btn-ghost">Communikey</a>
 	</div>
-	<div class="flex gap-2">
+	<div class="flex gap-2 items-center">
+		<a href="/calendar" class="btn btn-ghost btn">
+			<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+			</svg>
+			Calendar
+		</a>
 		{#if activeAccount}
 			<div class="dropdown dropdown-end">
 				<div tabindex="0" role="button" class="btn avatar btn-circle btn-ghost">

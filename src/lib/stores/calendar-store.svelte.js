@@ -1,7 +1,7 @@
 /**
- * Calendar Events Store
- * Reactive store for managing calendar events with applesauce integration
- * Using Svelte 5 runes for proper reactivity
+ * Unified Calendar Store
+ * Single reactive store for managing calendar events with configurable filtering
+ * Supports both global and community-specific calendar views
  */
 
 import { map, catchError } from 'rxjs/operators';
@@ -20,11 +20,11 @@ import { isEventInDateRange, groupEventsByDate } from '../helpers/calendar.js';
  */
 
 /**
- * Create a calendar events store for a specific community
- * @param {string} communityPubkey - Community public key
+ * Create a calendar store with configurable filtering
+ * @param {any} filterConfig - Nostr filter configuration
  * @returns {CalendarStore} Calendar store with reactive state
  */
-export function createCalendarEventsStore(communityPubkey) {
+export function createCalendarStore(filterConfig) {
 	// Single reactive object to maintain proper reactivity
 	let store = $state({
 		events: /** @type {CalendarEvent[]} */ ([]),
@@ -39,10 +39,7 @@ export function createCalendarEventsStore(communityPubkey) {
 		error: /** @type {string | null} */ (null)
 	});
 
-	// Debug: Inspect store changes
-	$inspect(store);
-
-	// Derived state for computed properties
+	// Derived state for computed properties - now properly reactive without manual triggers
 	let currentMonthEvents = $derived(() => {
 		const { currentDate, viewMode } = store.viewState;
 		if (viewMode !== 'month') return store.events || [];
@@ -89,15 +86,51 @@ export function createCalendarEventsStore(communityPubkey) {
 	});
 
 	// Create timeline loader for calendar events
-	const calendarTimelineLoader = createTimelineLoader(
-		pool,
-		relays,
-		{
-			kinds: [31922, 31923], // Date-based and time-based calendar events
-			'#a': [`34550:${communityPubkey}:communikey`] // Target community events
-		},
-		{ eventStore }
-	);
+	let timelineLoader = null;
+	/** @type {import('rxjs').Subscription | null} */
+	let subscription = null;
+
+	// Initialize timeline loader and subscription
+	function initializeLoader() {
+		// Clean up existing subscription
+		if (subscription) {
+			subscription.unsubscribe();
+		}
+
+		// Create timeline loader with provided filter configuration
+		timelineLoader = createTimelineLoader(
+			pool,
+			relays,
+			filterConfig,
+			{ eventStore }
+		);
+
+		subscription = timelineLoader()
+			.pipe(
+				map(/** @param {any} event */ event => convertNDKEventToCalendarEvent(event)),
+				catchError(/** @param {any} error */ error => {
+					console.error('Error loading calendar event:', error);
+					store.error = error.message || 'Failed to load calendar events';
+					return of(null);
+				})
+			)
+			.subscribe(/** @param {CalendarEvent | null} event */ event => {
+				if (event) {
+					// Check if event already exists to avoid duplicates
+					const exists = store.events.some(e => e.id === event.id);
+					if (!exists) {
+						console.log('📅 Calendar Store: Adding new event:', event.title);
+						store.events = [...store.events, event];
+						console.log('📅 Calendar Store: Events count now:', store.events.length);
+					}
+				}
+				store.loading = false;
+				store.error = null;
+			});
+	}
+
+	// Initialize loader on creation
+	initializeLoader();
 
 	// Helper function for getting current view events
 	function getCurrentViewEvents() {
@@ -112,28 +145,6 @@ export function createCalendarEventsStore(communityPubkey) {
 				return store.events || [];
 		}
 	}
-
-	// Subscribe to timeline updates
-	const subscription = calendarTimelineLoader()
-		.pipe(
-			map(/** @param {any} event */ event => convertNDKEventToCalendarEvent(event)),
-			catchError(/** @param {any} error */ error => {
-				console.error('Error loading calendar event:', error);
-				store.error = error.message || 'Failed to load calendar events';
-				return of(null);
-			})
-		)
-		.subscribe(/** @param {CalendarEvent | null} event */ event => {
-			if (event) {
-				// Check if event already exists to avoid duplicates
-				const exists = store.events.some(e => e.id === event.id);
-				if (!exists) {
-					store.events = [...store.events, event];
-				}
-			}
-			store.loading = false;
-			store.error = null;
-		});
 
 	// Return reactive store object
 	return {
@@ -153,17 +164,11 @@ export function createCalendarEventsStore(communityPubkey) {
 		getCurrentViewEvents,
 
 		setViewMode(/** @param {CalendarViewMode} mode */ mode) {
-			console.log('🔄 Store.setViewMode called with:', mode);
-			console.log('📅 Previous viewMode:', store.viewState.viewMode);
 			store.viewState.viewMode = /** @type {CalendarViewMode} */ (mode);
-			console.log('✅ Store.setViewMode completed. New viewMode:', store.viewState.viewMode);
 		},
 
 		setCurrentDate(/** @param {Date} date */ date) {
-			console.log('🔄 Store.setCurrentDate called with:', date);
-			console.log('📅 Previous currentDate:', store.viewState.currentDate);
 			store.viewState.currentDate = new Date(date);
-			console.log('✅ Store.setCurrentDate completed. New currentDate:', store.viewState.currentDate);
 		},
 
 		navigateToDate(/** @param {Date} date */ date) {
@@ -171,7 +176,6 @@ export function createCalendarEventsStore(communityPubkey) {
 		},
 
 		navigateNext() {
-			console.log('🔄 Store.navigateNext called');
 			const { currentDate, viewMode } = store.viewState;
 			const newDate = new Date(currentDate);
 
@@ -188,11 +192,9 @@ export function createCalendarEventsStore(communityPubkey) {
 			}
 
 			this.setCurrentDate(newDate);
-			console.log('✅ Store.navigateNext completed');
 		},
 
 		navigatePrevious() {
-			console.log('🔄 Store.navigatePrevious called');
 			const { currentDate, viewMode } = store.viewState;
 			const newDate = new Date(currentDate);
 
@@ -209,13 +211,10 @@ export function createCalendarEventsStore(communityPubkey) {
 			}
 
 			this.setCurrentDate(newDate);
-			console.log('✅ Store.navigatePrevious completed');
 		},
 
 		navigateToToday() {
-			console.log('🔄 Store.navigateToToday called');
 			this.setCurrentDate(new Date());
-			console.log('✅ Store.navigateToToday completed');
 		},
 
 		selectEvent(/** @param {CalendarEvent} event */ event) {
@@ -244,8 +243,8 @@ export function createCalendarEventsStore(communityPubkey) {
 		refresh() {
 			store.loading = true;
 			store.error = null;
-			// Note: Timeline loader doesn't have a refresh method in this pattern
-			// Events are automatically updated through the subscription
+			store.events = []; // Clear existing events
+			initializeLoader(); // Reinitialize loader
 		},
 
 		// Cleanup subscription
@@ -309,6 +308,10 @@ function convertNDKEventToCalendarEvent(ndkEvent) {
 				case 'g':
 					event.geohash = tag[1] || '';
 					break;
+				case 'h':
+					// Extract community pubkey from h-tag (Communikey targeting)
+					event.communityPubkey = tag[1] || '';
+					break;
 				case 'a':
 					// Extract community pubkey from targeting tag
 					if (tag[1] && tag[1].includes('34550:')) {
@@ -337,9 +340,39 @@ function convertNDKEventToCalendarEvent(ndkEvent) {
 
 /**
  * Global calendar events store instance
+ * @type {CalendarStore | null}
+ */
+let globalCalendarStore = null;
+
+/**
+ * Get or create the global calendar events store
+ * @returns {CalendarStore} Global calendar store instance
+ */
+export function useGlobalCalendarEvents() {
+	if (!globalCalendarStore) {
+		globalCalendarStore = createCalendarStore({
+			kinds: [31922, 31923],
+			limit: 250
+		});
+	}
+	return /** @type {CalendarStore} */ (globalCalendarStore);
+}
+
+/**
+ * Cleanup global calendar store
+ */
+export function cleanupGlobalCalendarStore() {
+	if (globalCalendarStore && typeof globalCalendarStore.destroy === 'function') {
+		globalCalendarStore.destroy();
+	}
+	globalCalendarStore = null;
+}
+
+/**
+ * Community calendar events store instances
  * @type {Map<string, CalendarStore>}
  */
-const calendarStores = new Map();
+const communityCalendarStores = new Map();
 
 /**
  * Get or create a calendar events store for a community
@@ -347,20 +380,24 @@ const calendarStores = new Map();
  * @returns {CalendarStore} Calendar store instance
  */
 export function useCalendarEvents(communityPubkey) {
-	if (!calendarStores.has(communityPubkey)) {
-		calendarStores.set(communityPubkey, createCalendarEventsStore(communityPubkey));
+	if (!communityCalendarStores.has(communityPubkey)) {
+		communityCalendarStores.set(communityPubkey, createCalendarStore({
+			kinds: [31922, 31923],
+			'#h': [communityPubkey],
+			limit: 250
+		}));
 	}
-	return /** @type {CalendarStore} */ (calendarStores.get(communityPubkey));
+	return /** @type {CalendarStore} */ (communityCalendarStores.get(communityPubkey));
 }
 
 /**
- * Cleanup all calendar stores
+ * Cleanup all community calendar stores
  */
-export function cleanupCalendarStores() {
-	calendarStores.forEach(store => {
+export function cleanupCommunityCalendarStores() {
+	communityCalendarStores.forEach(store => {
 		if (store && typeof store.destroy === 'function') {
 			store.destroy();
 		}
 	});
-	calendarStores.clear();
+	communityCalendarStores.clear();
 }
