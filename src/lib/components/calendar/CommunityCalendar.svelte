@@ -5,6 +5,7 @@
 
 <script>
 	import { useCalendarEvents, useGlobalCalendarEvents } from '$lib/stores/calendar-store.svelte.js';
+	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
 	import CalendarNavigation from './CalendarNavigation.svelte';
 	import CalendarGrid from './CalendarGrid.svelte';
@@ -85,10 +86,9 @@
 	 * @param {CalendarEvent} event
 	 */
 	function handleEventClick(event) {
-		// For now, just select the event
-		// In the future, this could open an event details modal
-		calendarStore.selectEvent(event);
-		console.log('Event clicked:', event);
+		// Open the event details modal with the selected event
+		modalStore.openModal('eventDetails', { event });
+		console.log('Event clicked, opening details modal:', event);
 	}
 
 	/**

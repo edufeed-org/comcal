@@ -9,7 +9,8 @@ import { of } from 'rxjs';
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, relays, eventStore } from '$lib/store.svelte';
 import { getCalendarEventTitle, getCalendarEventStart, getCalendarEventEnd } from 'applesauce-core/helpers/calendar-event';
-import { isEventInDateRange, groupEventsByDate } from '../helpers/calendar.js';
+import { isEventInDateRange, groupEventsByDate, getWeekDates } from '../helpers/calendar.js';
+import { appConfig } from '../config.js';
 
 /**
  * @typedef {import('../types/calendar.js').CalendarEvent} CalendarEvent
@@ -44,6 +45,7 @@ export function createCalendarStore(filterConfig) {
 		const { currentDate, viewMode } = store.viewState;
 		if (viewMode !== 'month') return store.events || [];
 
+		// Use consistent local timezone dates for month range
 		const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
 		const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
@@ -56,10 +58,10 @@ export function createCalendarStore(filterConfig) {
 		const { currentDate, viewMode } = store.viewState;
 		if (viewMode !== 'week') return store.events || [];
 
-		const startOfWeek = new Date(currentDate);
-		startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
-		const endOfWeek = new Date(startOfWeek);
-		endOfWeek.setDate(startOfWeek.getDate() + 6);
+		// Use configured week start day for consistent week calculation
+		const weekDates = getWeekDates(currentDate);
+		const startOfWeek = weekDates[0];
+		const endOfWeek = weekDates[weekDates.length - 1];
 
 		return (store.events || []).filter(event =>
 			isEventInDateRange(event, startOfWeek, endOfWeek)
@@ -70,6 +72,7 @@ export function createCalendarStore(filterConfig) {
 		const { currentDate, viewMode } = store.viewState;
 		if (viewMode !== 'day') return store.events || [];
 
+		// Use consistent local timezone dates for day range
 		const startOfDay = new Date(currentDate);
 		startOfDay.setHours(0, 0, 0, 0);
 		const endOfDay = new Date(currentDate);

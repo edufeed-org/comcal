@@ -55,10 +55,23 @@
 
 	/**
 	 * Handle date cell click
+	 * @param {MouseEvent} e
 	 * @param {Date} date
 	 */
-	function handleDateClick(date) {
+	function handleDateClick(e, date) {
+		// Prevent date navigation if clicking on an event
+		if (e.target && /** @type {Element} */ (e.target).closest('.calendar-event-card')) {
+			return;
+		}
 		onDateClick(date);
+	}
+
+	/**
+	 * Handle event click
+	 * @param {CalendarEvent} event
+	 */
+	function handleEventClick(event) {
+		onEventClick(event);
 	}
 
 	/**
@@ -106,7 +119,7 @@
 				class={cellClasses}
 				role="button"
 				tabindex="0"
-				onclick={() => handleDateClick(date)}
+				onclick={(e) => handleDateClick(e, date)}
 				onkeydown={(e) => handleDateKeydown(e, date)}
 			>
 				<!-- Date Number -->
@@ -129,7 +142,7 @@
 							<CalendarEventCard
 								{event}
 								compact={true}
-								onEventClick={onEventClick}
+								onEventClick={handleEventClick}
 							/>
 						{/each}
 						{#if dayEvents.length > 3}
@@ -143,7 +156,7 @@
 							<CalendarEventCard
 								{event}
 								compact={viewMode === 'week'}
-								onEventClick={onEventClick}
+								onEventClick={handleEventClick}
 							/>
 						{/each}
 					{/if}

@@ -22,7 +22,11 @@
 	let isAllDay = $derived(event.kind === 31922); // Date-based events are all-day
 	let isMultiDay = $derived(endDate && startDate.toDateString() !== endDate.toDateString());
 
-	function handleClick() {
+	/**
+	 * @param {Event} e
+	 */
+	function handleClick(e) {
+		e.stopPropagation(); // Prevent event from bubbling up to parent date cell
 		onEventClick(event);
 	}
 
@@ -32,13 +36,13 @@
 	function handleKeydown(e) {
 		if (e.key === 'Enter' || e.key === ' ') {
 			e.preventDefault();
-			handleClick();
+			handleClick(e);
 		}
 	}
 </script>
 
 	<div
-		class="bg-base-100 border border-base-300 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 {compact ? 'p-2 text-sm' : 'p-3'} {isAllDay ? 'border-l-4 border-l-info' : ''} {isMultiDay ? 'border-l-4 border-l-secondary' : ''}"
+		class="calendar-event-card bg-base-100 border border-base-300 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 {compact ? 'p-2 text-sm' : 'p-3'} {isAllDay ? 'border-l-4 border-l-info' : ''} {isMultiDay ? 'border-l-4 border-l-secondary' : ''}"
 		role="button"
 		tabindex="0"
 		onclick={handleClick}

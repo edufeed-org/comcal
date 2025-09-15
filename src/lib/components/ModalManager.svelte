@@ -2,6 +2,7 @@
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import LoginModal from './LoginModal.svelte';
 	import LoginWithPrivateKey from './LoginWithPrivateKey.svelte';
+	import CalendarEventDetailsModal from './calendar/CalendarEventDetailsModal.svelte';
 
 	/**
 	 * ModalManager - Centralized modal rendering component
@@ -98,4 +99,6 @@
 		modalId={privateKeyModalId}
 		onAccountCreated={handleAccountCreated}
 	/>
+{:else if modal.activeModal === 'eventDetails'}
+	<CalendarEventDetailsModal />
 {/if}

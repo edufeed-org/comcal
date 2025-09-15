@@ -111,11 +111,16 @@ export function getMonthDates(date) {
 export function isEventInDateRange(event, start, end) {
 	if (!event || !event.start) return false;
 
-	const eventStart = new Date(event.start * 1000); // Convert from Unix timestamp
+	// Convert Unix timestamp to local timezone date to match calendar grid
+	const eventStart = new Date(event.start * 1000);
 	const eventEnd = event.end ? new Date(event.end * 1000) : eventStart;
 
+	// Create local timezone dates for comparison
+	const localEventStart = new Date(eventStart.getFullYear(), eventStart.getMonth(), eventStart.getDate());
+	const localEventEnd = new Date(eventEnd.getFullYear(), eventEnd.getMonth(), eventEnd.getDate());
+
 	// Check for any overlap between event and date range
-	return eventStart <= end && eventEnd >= start;
+	return localEventStart <= end && localEventEnd >= start;
 }
 
 /**
@@ -129,8 +134,11 @@ export function groupEventsByDate(events) {
 	events.forEach(event => {
 		if (!event.start) return;
 
+		// Convert Unix timestamp to local timezone date to match calendar grid
 		const eventDate = new Date(event.start * 1000);
-		const dateKey = formatCalendarDate(eventDate, 'YYYY-MM-DD');
+		// Create a date string in local timezone to ensure consistent grouping
+		const localDate = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+		const dateKey = formatCalendarDate(localDate, 'YYYY-MM-DD');
 
 		if (!groupedEvents.has(dateKey)) {
 			groupedEvents.set(dateKey, []);
