@@ -3,6 +3,7 @@
 	import LoginModal from './LoginModal.svelte';
 	import LoginWithPrivateKey from './LoginWithPrivateKey.svelte';
 	import CalendarEventDetailsModal from './calendar/CalendarEventDetailsModal.svelte';
+	import CalendarCreationModal from './calendar/CalendarCreationModal.svelte';
 
 	/**
 	 * ModalManager - Centralized modal rendering component
@@ -24,6 +25,7 @@
 	// Generate unique modal IDs for each modal instance
 	const loginModalId = 'global-login-modal';
 	const privateKeyModalId = 'global-private-key-modal';
+	const calendarCreationModalId = 'calendar-creation-modal';
 
 	/**
 	 * Reactive effect to handle modal opening/closing based on store state
@@ -37,6 +39,7 @@
 		if (currentModal === 'none') {
 			const loginModal = /** @type {HTMLDialogElement} */ (document.getElementById(loginModalId));
 			const privateKeyModal = /** @type {HTMLDialogElement} */ (document.getElementById(privateKeyModalId));
+			const calendarCreationModal = /** @type {HTMLDialogElement} */ (document.getElementById(calendarCreationModalId));
 
 			if (loginModal && loginModal.open) {
 				console.log('ModalManager: Closing login modal');
@@ -45,6 +48,10 @@
 			if (privateKeyModal && privateKeyModal.open) {
 				console.log('ModalManager: Closing private key modal');
 				privateKeyModal.close();
+			}
+			if (calendarCreationModal && calendarCreationModal.open) {
+				console.log('ModalManager: Closing calendar creation modal');
+				calendarCreationModal.close();
 			}
 		} else if (currentModal === 'login') {
 			// Open login modal
@@ -59,6 +66,13 @@
 			if (privateKeyModal && !privateKeyModal.open) {
 				console.log('ModalManager: Opening private key modal');
 				privateKeyModal.showModal();
+			}
+		} else if (currentModal === 'createCalendar') {
+			// Open calendar creation modal
+			const calendarCreationModal = /** @type {HTMLDialogElement} */ (document.getElementById(calendarCreationModalId));
+			if (calendarCreationModal && !calendarCreationModal.open) {
+				console.log('ModalManager: Opening calendar creation modal');
+				calendarCreationModal.showModal();
 			}
 		}
 	});
@@ -101,4 +115,6 @@
 	/>
 {:else if modal.activeModal === 'eventDetails'}
 	<CalendarEventDetailsModal />
+{:else if modal.activeModal === 'createCalendar'}
+	<CalendarCreationModal modalId={calendarCreationModalId} />
 {/if}

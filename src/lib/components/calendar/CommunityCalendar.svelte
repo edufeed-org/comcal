@@ -5,11 +5,13 @@
 
 <script>
 	import { useCalendarEvents, useGlobalCalendarEvents } from '$lib/stores/calendar-store.svelte.js';
+	import { useCalendarSelection } from '$lib/stores/calendar-selection.svelte.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
 	import CalendarNavigation from './CalendarNavigation.svelte';
 	import CalendarGrid from './CalendarGrid.svelte';
 	import CalendarEventModal from './CalendarEventModal.svelte';
+	import CalendarDropdown from './CalendarDropdown.svelte';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
@@ -19,14 +21,23 @@
 
 	let { communityPubkey = '', globalMode = false } = $props();
 
+	// Initialize calendar selection store
+	const calendarSelectionStore = useCalendarSelection();
+
 	// Get appropriate calendar store based on mode
+	// For global mode, we need to pass the calendar selection store for reactive filtering
 	const calendarStore = globalMode
-		? useGlobalCalendarEvents()
+		? useGlobalCalendarEvents(calendarSelectionStore)
 		: useCalendarEvents(communityPubkey);
+
+	// Reactive calendar selection state
+	let selectedCalendarId = $derived(calendarSelectionStore.selectedCalendarId);
+	let isGlobalMode = $derived(calendarSelectionStore.isGlobalMode);
 
 	// Debug: Inspect store changes
 	// $inspect(calendarStore.viewState);
 	// $inspect(calendarStore.events);
+	// $inspect(selectedCalendarId);
 
 	// Modal state
 	let isEventModalOpen = $state(false);
@@ -121,15 +132,27 @@
 	function handleRefresh() {
 		calendarStore.refresh();
 	}
+
+	/**
+	 * Handle calendar selection
+	 * @param {string} calendarId
+	 */
+	function handleCalendarSelect(calendarId) {
+		console.log('Calendar selected:', calendarId);
+		calendarSelectionStore.selectCalendar(calendarId);
+		console.log('✅ Calendar selection updated');
+	}
 </script>
 
-<div class="bg-base-100 rounded-lg shadow-sm border border-base-300 overflow-hidden">
+<div class="overflow-hidden rounded-lg border border-base-300 bg-base-100 shadow-sm">
 	<!-- Calendar Header -->
-	<div class="bg-base-200 border-b border-base-300 px-6 py-4">
+	<div class="border-b border-base-300 bg-base-200 px-6 py-4">
 		<div class="flex items-center justify-between">
-			<h2 class="text-xl font-semibold text-base-content">
-				{globalMode ? 'Global Calendar' : 'Community Calendar'}
-			</h2>
+			<!-- Calendar Dropdown -->
+			<CalendarDropdown
+				selectedCalendarId={selectedCalendarId}
+				onCalendarSelect={handleCalendarSelect}
+			/>
 			<div class="flex items-center gap-3">
 				<button
 					class="btn btn-ghost btn-sm"
@@ -138,7 +161,7 @@
 					aria-label="Refresh calendar"
 				>
 					<svg
-						class="w-5 h-5"
+						class="h-5 w-5"
 						class:animate-spin={calendarStore.loading}
 						fill="none"
 						stroke="currentColor"
@@ -153,12 +176,14 @@
 					</svg>
 				</button>
 				{#if !globalMode && manager.active}
-					<button
-						class="btn btn-primary btn-sm gap-2"
-						onclick={handleCreateEvent}
-					>
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+					<button class="btn gap-2 btn-sm btn-primary" onclick={handleCreateEvent}>
+						<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+							/>
 						</svg>
 						Create Event
 					</button>
@@ -169,19 +194,29 @@
 
 	<!-- Error Display -->
 	{#if calendarStore.error}
-		<div class="alert alert-error border-b border-error/20 px-6 py-3 rounded-none">
+		<div class="alert rounded-none border-b alert-error border-error/20 px-6 py-3">
 			<div class="flex items-center gap-3">
-				<svg class="w-5 h-5 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+				<svg class="h-5 w-5 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+					/>
 				</svg>
 				<span class="flex-1 text-sm">{calendarStore.error}</span>
 				<button
 					class="btn btn-ghost btn-xs"
-					onclick={() => calendarStore.error = null}
+					onclick={() => (calendarStore.error = null)}
 					aria-label="Dismiss error"
 				>
-					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						/>
 					</svg>
 				</button>
 			</div>
@@ -202,9 +237,14 @@
 	{#if calendarStore.loading && calendarStore.events.length === 0}
 		<div class="flex flex-col items-center justify-center py-16">
 			<div class="mb-4">
-				<svg class="animate-spin w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24">
-					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-					<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+				<svg class="h-8 w-8 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"
+					></circle>
+					<path
+						class="opacity-75"
+						fill="currentColor"
+						d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+					></path>
 				</svg>
 			</div>
 			<p class="text-base-content/60">Loading calendar events...</p>
@@ -221,16 +261,21 @@
 
 		<!-- Empty State -->
 		{#if calendarStore.events.length === 0 && !calendarStore.loading}
-			<div class="flex flex-col items-center justify-center py-16 px-6 text-center">
+			<div class="flex flex-col items-center justify-center px-6 py-16 text-center">
 				<div class="mb-4 text-base-content/30">
-					<svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+					<svg class="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="1"
+							d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+						/>
 					</svg>
 				</div>
-				<h3 class="text-lg font-medium text-base-content mb-2">
+				<h3 class="mb-2 text-lg font-medium text-base-content">
 					{globalMode ? 'No calendar events found' : 'No events yet'}
 				</h3>
-				<p class="text-base-content/60 mb-6 max-w-md">
+				<p class="mb-6 max-w-md text-base-content/60">
 					{#if globalMode}
 						No calendar events found from connected relays. Check back later for new events.
 					{:else}
@@ -238,19 +283,14 @@
 					{/if}
 				</p>
 				{#if !globalMode && manager.active}
-					<button
-						class="btn btn-primary"
-						onclick={handleCreateEvent}
-					>
-						Create First Event
-					</button>
+					<button class="btn btn-primary" onclick={handleCreateEvent}> Create First Event </button>
 				{/if}
 			</div>
 		{/if}
 	{/if}
 
 	<!-- Event Creation Modal -->
-	<CalendarEventModal 
+	<CalendarEventModal
 		isOpen={isEventModalOpen}
 		{communityPubkey}
 		selectedDate={selectedDateForNewEvent}

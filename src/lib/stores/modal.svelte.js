@@ -1,5 +1,5 @@
 /**
- * @typedef {'none' | 'login' | 'privateKey' | 'settings' | 'profile' | 'eventDetails'} ModalType
+ * @typedef {'none' | 'login' | 'privateKey' | 'settings' | 'profile' | 'eventDetails' | 'createCalendar'} ModalType
  */
 
 /**

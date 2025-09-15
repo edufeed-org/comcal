@@ -35,6 +35,7 @@
  * @property {string} [geohash] - Optional geohash for location
  * @property {string} communityPubkey - Target community public key
  * @property {number} createdAt - Creation timestamp
+ * @property {string} [dTag] - Optional d-tag identifier for NIP-52 events
  */
 
 /**
@@ -102,6 +103,7 @@
  * @property {function(string, Partial<CalendarEvent>): Promise<void>} updateEvent - Update event
  * @property {function(string): Promise<void>} deleteEvent - Delete event
  * @property {function(string, string): Promise<void>} createTargetedPublication - Create targeted publication
+ * @property {function(string, string=): Promise<string>} createCalendar - Create new calendar
  * @property {function(string): Promise<CalendarEvent[]>} loadEvents - Load community events
  */
 

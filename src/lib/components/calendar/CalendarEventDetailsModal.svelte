@@ -6,6 +6,8 @@
 <script>
 	import { formatCalendarDate } from '../../helpers/calendar.js';
 	import { modalStore } from '../../stores/modal.svelte.js';
+	import { useCalendarManagement, registerCalendarEventsRefreshCallback } from '../../stores/calendar-management-store.svelte.js';
+	import { manager } from '../../accounts.svelte.js';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
@@ -13,6 +15,26 @@
 
 	// Get modal store
 	const modal = modalStore;
+
+	// Reactive user state
+	let activeUser = $state(manager.active);
+	$effect(() => {
+		const subscription = manager.active$.subscribe((user) => {
+			activeUser = user;
+		});
+		return () => subscription.unsubscribe();
+	});
+
+	// Get calendar management store for authenticated user
+	let calendarManagement = $derived(
+		activeUser ? useCalendarManagement(activeUser.pubkey) : null
+	);
+
+	// Add to calendar state
+	let selectedCalendarIds = $state(/** @type {string[]} */ ([]));
+	let isAddingToCalendar = $state(false);
+	let addToCalendarError = $state('');
+	let addToCalendarSuccess = $state(false);
 
 	// Generate unique modal ID
 	const modalId = 'event-details-modal';
@@ -24,6 +46,17 @@
 
 		if (currentModal === 'eventDetails' && dialog && !dialog.open) {
 			console.log('CalendarEventDetailsModal: Opening event details modal');
+			// Register refresh callback to update calendar display when events are added
+			if (activeUser) {
+				// Import the calendar store dynamically to avoid circular dependencies
+				import('../../stores/calendar-store.svelte.js').then(({ useGlobalCalendarEvents }) => {
+					const calendarStore = useGlobalCalendarEvents();
+					registerCalendarEventsRefreshCallback(() => {
+						console.log('📅 Modal: Refreshing calendar events after calendar update');
+						calendarStore.refresh();
+					});
+				});
+			}
 			dialog.showModal();
 		} else if (currentModal !== 'eventDetails' && dialog && dialog.open) {
 			console.log('CalendarEventDetailsModal: Closing event details modal');
@@ -32,7 +65,7 @@
 	});
 
 	// Get event from modal props
-	let event = $derived(modal.modalProps && modal.modalProps.event ? modal.modalProps.event : null);
+	let event = $derived(modal.modalProps && /** @type {any} */ (modal.modalProps).event ? /** @type {any} */ (modal.modalProps).event : null);
 
 	// Format event data for display
 	let startDate = $derived(event ? new Date(event.start * 1000) : null);
@@ -40,12 +73,7 @@
 	let isAllDay = $derived(event ? event.kind === 31922 : false);
 	let isMultiDay = $derived(event && endDate && startDate ? startDate.toDateString() !== endDate.toDateString() : false);
 
-	/**
-	 * Handle modal close
-	 */
-	function handleClose() {
-		modal.closeModal();
-	}
+
 
 	/**
 	 * Handle backdrop click
@@ -80,6 +108,98 @@
 				console.error('Failed to copy event ID:', err);
 			}
 		}
+	}
+
+	/**
+	 * Handle adding event to selected calendars
+	 */
+	async function handleAddToCalendar() {
+		if (selectedCalendarIds.length === 0 || !calendarManagement || !event) {
+			return;
+		}
+
+		isAddingToCalendar = true;
+		addToCalendarError = '';
+		addToCalendarSuccess = false;
+
+		try {
+			// Check if event already has a dTag, if not generate one
+			const eventWithDTag = {
+				...event,
+				dTag: event.dTag || `event-${event.id.slice(0, 8)}`
+			};
+
+			// Add event to each selected calendar
+			const results = await Promise.allSettled(
+				selectedCalendarIds.map(calendarId =>
+					calendarManagement.addEventToCalendar(calendarId, eventWithDTag)
+				)
+			);
+
+			// Check results
+			const successful = results.filter(result =>
+				result.status === 'fulfilled' && result.value === true
+			).length;
+
+			if (successful > 0) {
+				addToCalendarSuccess = true;
+				selectedCalendarIds = []; // Reset selection
+				console.log(`Event successfully added to ${successful}/${selectedCalendarIds.length} calendars`);
+			} else {
+				addToCalendarError = 'Failed to add event to any calendar';
+			}
+		} catch (error) {
+			console.error('Error adding event to calendars:', error);
+			addToCalendarError = error instanceof Error ? error.message : 'Failed to add event to calendars';
+		} finally {
+			isAddingToCalendar = false;
+		}
+	}
+
+	/**
+	 * Toggle calendar selection
+	 * @param {string} calendarId
+	 */
+	function toggleCalendarSelection(calendarId) {
+		if (selectedCalendarIds.includes(calendarId)) {
+			selectedCalendarIds = selectedCalendarIds.filter(id => id !== calendarId);
+		} else {
+			selectedCalendarIds = [...selectedCalendarIds, calendarId];
+		}
+	}
+
+	/**
+	 * Select all calendars
+	 */
+	function selectAllCalendars() {
+		if (calendarManagement) {
+			selectedCalendarIds = calendarManagement.calendars.map(calendar => calendar.id);
+		}
+	}
+
+	/**
+	 * Deselect all calendars
+	 */
+	function deselectAllCalendars() {
+		selectedCalendarIds = [];
+	}
+
+	/**
+	 * Reset add to calendar state when modal closes
+	 */
+	function resetAddToCalendarState() {
+		selectedCalendarIds = [];
+		isAddingToCalendar = false;
+		addToCalendarError = '';
+		addToCalendarSuccess = false;
+	}
+
+	/**
+	 * Handle modal close with state reset
+	 */
+	function handleClose() {
+		resetAddToCalendarState();
+		modal.closeModal();
 	}
 </script>
 
@@ -144,25 +264,27 @@
 							<span class="text-base-content font-medium">All Day Event</span>
 						</div>
 						<div class="text-base-content/70 ml-7">
-							{isMultiDay && endDate
+							{isMultiDay && endDate && startDate
 								? `${formatCalendarDate(startDate, 'long')} - ${formatCalendarDate(endDate, 'long')}`
-								: formatCalendarDate(startDate, 'long')
+								: startDate ? formatCalendarDate(startDate, 'long') : ''
 							}
 						</div>
 					{:else}
 						<div class="space-y-2">
-							<div class="flex items-center gap-2">
-								<svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-								</svg>
-								<span class="text-base-content font-medium">Start:</span>
-								<span class="text-base-content/80">
-									{formatCalendarDate(startDate, 'long')} at {formatCalendarDate(startDate, 'time')}
-									{#if event.startTimezone}
-										<span class="text-xs text-base-content/60">({event.startTimezone})</span>
-									{/if}
-								</span>
-							</div>
+							{#if startDate}
+								<div class="flex items-center gap-2">
+									<svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+									</svg>
+									<span class="text-base-content font-medium">Start:</span>
+									<span class="text-base-content/80">
+										{formatCalendarDate(startDate, 'long')} at {formatCalendarDate(startDate, 'time')}
+										{#if event.startTimezone}
+											<span class="text-xs text-base-content/60">({event.startTimezone})</span>
+										{/if}
+									</span>
+								</div>
+							{/if}
 							{#if endDate}
 								<div class="flex items-center gap-2">
 									<svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -238,6 +360,109 @@
 							<span class="badge badge-outline badge-lg">#{tag}</span>
 						{/each}
 					</div>
+				</div>
+			{/if}
+
+			<!-- Add to Calendar Section (only for authenticated users) -->
+			{#if activeUser && calendarManagement}
+				<div class="border-t border-base-300 pt-4 mb-4">
+					<h3 class="text-lg font-semibold text-base-content mb-3">Add to Calendar</h3>
+
+					<!-- Calendar Selection -->
+					<div class="mb-3">
+						<div class="flex items-center justify-between mb-2">
+							<label class="block text-sm font-medium text-base-content">
+								Select Calendars
+							</label>
+							{#if calendarManagement.calendars.length > 1}
+								<div class="flex gap-2">
+									<button
+										class="btn btn-xs btn-ghost"
+										onclick={selectAllCalendars}
+										disabled={selectedCalendarIds.length === calendarManagement.calendars.length}
+									>
+										Select All
+									</button>
+									<button
+										class="btn btn-xs btn-ghost"
+										onclick={deselectAllCalendars}
+										disabled={selectedCalendarIds.length === 0}
+									>
+										Deselect All
+									</button>
+								</div>
+							{/if}
+						</div>
+
+						<!-- Calendar Checkboxes -->
+						<div class="max-h-40 overflow-y-auto border border-base-300 rounded-lg p-3">
+							{#each calendarManagement.calendars as calendar}
+								<label class="flex items-center gap-3 cursor-pointer hover:bg-base-200 p-2 rounded">
+									<input
+										type="checkbox"
+										class="checkbox checkbox-primary"
+										checked={selectedCalendarIds.includes(calendar.id)}
+										onchange={() => toggleCalendarSelection(calendar.id)}
+									/>
+									<span class="text-sm font-medium">{calendar.title}</span>
+									{#if calendar.description}
+										<span class="text-xs text-base-content/60 truncate">{calendar.description}</span>
+									{/if}
+								</label>
+							{/each}
+							{#if calendarManagement.calendars.length === 0}
+								<div class="text-center py-4 text-base-content/60">
+									No calendars available
+								</div>
+							{/if}
+						</div>
+
+						<!-- Selected Calendars Summary -->
+						{#if selectedCalendarIds.length > 0}
+							<div class="mt-2 text-sm text-base-content/70">
+								{selectedCalendarIds.length} calendar{selectedCalendarIds.length > 1 ? 's' : ''} selected
+							</div>
+						{/if}
+					</div>
+
+					<!-- Add to Calendar Button -->
+					<div class="flex items-center gap-3">
+						<button
+							class="btn btn-primary"
+							disabled={selectedCalendarIds.length === 0 || isAddingToCalendar}
+							onclick={handleAddToCalendar}
+						>
+							{#if isAddingToCalendar}
+								<span class="loading loading-spinner loading-sm"></span>
+								Adding to {selectedCalendarIds.length} calendar{selectedCalendarIds.length > 1 ? 's' : ''}...
+							{:else}
+								<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+								</svg>
+								Add to {selectedCalendarIds.length || 'Selected'} Calendar{selectedCalendarIds.length !== 1 ? 's' : ''}
+							{/if}
+						</button>
+					</div>
+
+					<!-- Success Message -->
+					{#if addToCalendarSuccess}
+						<div class="alert alert-success mt-3">
+							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+							</svg>
+							<span>Event successfully added to calendar!</span>
+						</div>
+					{/if}
+
+					<!-- Error Message -->
+					{#if addToCalendarError}
+						<div class="alert alert-error mt-3">
+							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+							</svg>
+							<span>{addToCalendarError}</span>
+						</div>
+					{/if}
 				</div>
 			{/if}
 

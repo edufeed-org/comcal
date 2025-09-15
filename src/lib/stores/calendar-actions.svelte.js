@@ -78,21 +78,21 @@ export function createCalendarActions(communityPubkey) {
 				// Add locations
 				if (eventData.locations) {
 					eventData.locations.forEach(location => {
-						tags.push(['location', location]);
+						if (location) tags.push(['location', location]);
 					});
 				}
 
 				// Add hashtags
 				if (eventData.hashtags) {
 					eventData.hashtags.forEach(hashtag => {
-						tags.push(['t', hashtag]);
+						if (hashtag) tags.push(['t', hashtag]);
 					});
 				}
 
 				// Add references
 				if (eventData.references) {
 					eventData.references.forEach(reference => {
-						tags.push(['e', reference]);
+						if (reference) tags.push(['e', reference]);
 					});
 				}
 
@@ -218,6 +218,55 @@ export function createCalendarActions(communityPubkey) {
 				console.error('Error creating targeted publication:', error);
 				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 				throw new Error(`Failed to create targeted publication: ${errorMessage}`);
+			}
+		},
+
+		/**
+		 * Create a new calendar
+		 * @param {string} title - Calendar title
+		 * @param {string} [description=''] - Calendar description
+		 * @returns {Promise<string>} Created calendar event ID
+		 */
+		async createCalendar(title, description = '') {
+			// Validate inputs
+			if (!title.trim()) {
+				throw new Error('Calendar title is required');
+			}
+
+			// Get current account from manager
+			const currentAccount = manager.active;
+			if (!currentAccount) {
+				throw new Error('No account selected. Please log in to create calendars.');
+			}
+
+			try {
+				// Generate unique d-tag for the calendar
+				const dTag = `calendar-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+				// Create the calendar event using EventFactory (NIP-52 kind 31924)
+				const eventFactory = new EventFactory();
+
+				// Build calendar event template
+				const eventTemplate = await eventFactory.build({
+					kind: 31924,
+					content: description,
+					tags: [
+						['d', dTag],
+						['title', title.trim()]
+					]
+				});
+
+				// Sign and publish the calendar event
+				const calendarEvent = await currentAccount.signEvent(eventTemplate);
+				await pool.publish(relays, calendarEvent);
+
+				console.log('📅 Calendar created successfully:', calendarEvent.id);
+				return calendarEvent.id;
+
+			} catch (error) {
+				console.error('Error creating calendar:', error);
+				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+				throw new Error(`Failed to create calendar: ${errorMessage}`);
 			}
 		},
 
