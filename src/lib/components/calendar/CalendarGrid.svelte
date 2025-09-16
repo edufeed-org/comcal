@@ -4,7 +4,7 @@
 -->
 
 <script>
-	import { getWeekDates, getMonthDates, formatCalendarDate, isToday, isCurrentMonth, getWeekdayHeaders } from '../../helpers/calendar.js';
+	import { getWeekDates, getMonthDates, formatCalendarDate, isToday, isCurrentMonth, getWeekdayHeaders, createDateKey } from '../../helpers/calendar.js';
 	import CalendarEventCard from './CalendarEventCard.svelte';
 
 	/**
@@ -49,13 +49,36 @@
 	 * @returns {CalendarEvent[]}
 	 */
 	function getEventsForDate(date) {
-		const dateKey = formatCalendarDate(date, 'YYYY-MM-DD');
-		return groupedEvents.get(dateKey) || [];
+		// Use UTC-based date key to match how events are grouped
+		// This ensures consistent date key generation between calendar grid and event grouping
+		const dateKey = createDateKey(date); // UTC-based YYYY-MM-DD format
+
+		const eventsMap = typeof groupedEvents === 'function' ? groupedEvents() : groupedEvents;
+		const eventsForDate = eventsMap.get(dateKey) || [];
+
+		// Debug logging to trace date key matching
+		console.log('📅 CalendarGrid: Looking for events on date:', {
+			localDate: date.toDateString(),
+			utcDateKey: dateKey,
+			eventsMapKeys: Array.from(eventsMap.keys()),
+			eventsFound: eventsForDate.length
+		});
+
+		return eventsForDate;
+	}
+
+	/**
+	 * Get RSVP count for an event
+	 * @param {CalendarEvent} event
+	 * @returns {number}
+	 */
+	function getRsvpCount(event) {
+		return event.rsvpCount || (event.rsvps ? event.rsvps.length : 0);
 	}
 
 	/**
 	 * Handle date cell click
-	 * @param {MouseEvent} e
+	 * @param {MouseEvent | KeyboardEvent} e
 	 * @param {Date} date
 	 */
 	function handleDateClick(e, date) {
@@ -82,7 +105,7 @@
 	function handleDateKeydown(e, date) {
 		if (e.key === 'Enter' || e.key === ' ') {
 			e.preventDefault();
-			handleDateClick(date);
+			handleDateClick(e, date);
 		}
 	}
 </script>

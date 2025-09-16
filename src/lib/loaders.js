@@ -14,6 +14,28 @@ export const communikeyTimelineLoader = createTimelineLoader(
 	},
 	{ eventStore });
 
+// Calendar event loaders following the same pattern
+export const calendarTimelineLoader = createTimelineLoader(
+	pool,
+	relays,
+	{
+		kinds: [31922, 31923], // NIP-52 calendar events
+		limit: 250
+	},
+	{ eventStore }
+);
+
+export const communityCalendarTimelineLoader = (communityPubkey) => createTimelineLoader(
+	pool,
+	relays,
+	{
+		kinds: [31922, 31923],
+		'#h': [communityPubkey], // Community targeting
+		limit: 250
+	},
+	{ eventStore }
+);
+
 eventStore.addressableLoader = addressLoader;
 eventStore.replaceableLoader = addressLoader;
 export const profileLoader = createAddressLoader(pool, {

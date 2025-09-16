@@ -53,19 +53,12 @@ class CalendarSelectionStore {
 	 * @param {string} calendarId - Calendar ID to select (empty string for global)
 	 */
 	selectCalendar(calendarId) {
-		console.log('📅 Calendar Selection: Selecting calendar:', calendarId);
-
 		this.state.selectedCalendarId = calendarId;
 		this.state.isGlobalMode = calendarId === '';
 
 		// Emit changes to subscribers
 		this.selection$.next(calendarId);
 		this.state$.next(this.state);
-
-		console.log('✅ Calendar Selection: Updated state:', {
-			selectedCalendarId: calendarId,
-			isGlobalMode: this.state.isGlobalMode
-		});
 	}
 
 	/**

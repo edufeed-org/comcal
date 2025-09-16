@@ -102,25 +102,29 @@ export function getMonthDates(date) {
 }
 
 /**
- * Check if an event falls within a date range
+ * Check if an event falls within a date range using UTC comparisons
  * @param {CalendarEvent} event - Calendar event to check
- * @param {Date} start - Start of date range
- * @param {Date} end - End of date range
+ * @param {Date} start - Start of date range (should be UTC date)
+ * @param {Date} end - End of date range (should be UTC date)
  * @returns {boolean} True if event overlaps with date range
  */
 export function isEventInDateRange(event, start, end) {
 	if (!event || !event.start) return false;
 
-	// Convert Unix timestamp to local timezone date to match calendar grid
-	const eventStart = new Date(event.start * 1000);
-	const eventEnd = event.end ? new Date(event.end * 1000) : eventStart;
+	// Convert UNIX timestamps to UTC dates for comparison
+	// event.start and event.end are now UNIX timestamps (seconds)
+	const eventStartDateUTC = new Date(event.start * 1000);
+	const eventEndDateUTC = event.end
+		? new Date(event.end * 1000)  // Exclusive end date
+		: eventStartDateUTC;          // Same day if no end
 
-	// Create local timezone dates for comparison
-	const localEventStart = new Date(eventStart.getFullYear(), eventStart.getMonth(), eventStart.getDate());
-	const localEventEnd = new Date(eventEnd.getFullYear(), eventEnd.getMonth(), eventEnd.getDate());
+	// Ensure range dates are also UTC dates
+	const startUTC = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
+	const endUTC = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()));
 
-	// Check for any overlap between event and date range
-	return localEventStart <= end && localEventEnd >= start;
+	// Check for overlap: eventStart < rangeEnd AND eventEnd > rangeStart
+	// Note: NIP-52 end date is exclusive, so we use > instead of >=
+	return eventStartDateUTC < endUTC && eventEndDateUTC > startUTC;
 }
 
 /**
@@ -134,11 +138,10 @@ export function groupEventsByDate(events) {
 	events.forEach(event => {
 		if (!event.start) return;
 
-		// Convert Unix timestamp to local timezone date to match calendar grid
+		// Convert UNIX timestamp to UTC date and create consistent date key
+		// event.start is now a UNIX timestamp (seconds)
 		const eventDate = new Date(event.start * 1000);
-		// Create a date string in local timezone to ensure consistent grouping
-		const localDate = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
-		const dateKey = formatCalendarDate(localDate, 'YYYY-MM-DD');
+		const dateKey = createDateKey(eventDate); // Use consistent UTC-based key generation
 
 		if (!groupedEvents.has(dateKey)) {
 			groupedEvents.set(dateKey, []);
@@ -146,7 +149,7 @@ export function groupEventsByDate(events) {
 		groupedEvents.get(dateKey).push(event);
 	});
 
-	// Sort events within each date by start time
+	// Sort events within each date by start timestamp
 	groupedEvents.forEach(dayEvents => {
 		dayEvents.sort(
 			/** @param {CalendarEvent} a @param {CalendarEvent} b */
@@ -310,6 +313,17 @@ export function getNextWeekday(weekday, fromDate = new Date()) {
 	}
 
 	return date;
+}
+
+/**
+ * Create a UTC-based date key for consistent event grouping and lookup
+ * @param {Date} date - Local date object
+ * @returns {string} UTC date key in YYYY-MM-DD format
+ */
+export function createDateKey(date) {
+	// Convert local date to UTC date for consistent key generation
+	const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+	return utcDate.toISOString().split('T')[0];
 }
 
 /**

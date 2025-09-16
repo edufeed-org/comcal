@@ -17,6 +17,7 @@
 	} = $props();
 
 	// Format event times for display
+	// event.start and event.end are now UNIX timestamps (seconds) from applesauce helpers
 	let startDate = $derived(new Date(event.start * 1000));
 	let endDate = $derived(event.end ? new Date(event.end * 1000) : null);
 	let isAllDay = $derived(event.kind === 31922); // Date-based events are all-day
@@ -107,6 +108,16 @@
 			{#if event.hashtags.length > 3}
 				<span class="text-xs text-base-content/40">+{event.hashtags.length - 3}</span>
 			{/if}
+		</div>
+	{/if}
+
+	<!-- RSVP Count -->
+	{#if (event.rsvpCount || (event.rsvps && event.rsvps.length > 0)) && !compact}
+		<div class="flex items-center gap-1 mt-2">
+			<span class="text-xs">👥</span>
+			<span class="text-sm text-base-content/70">
+				{event.rsvpCount || event.rsvps.length} RSVP{(event.rsvpCount || event.rsvps.length) !== 1 ? 's' : ''}
+			</span>
 		</div>
 	{/if}
 </div>

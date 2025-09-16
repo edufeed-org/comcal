@@ -1,515 +1,417 @@
 /**
- * Unified Calendar Store
- * Single reactive store for managing calendar events with configurable filtering
- * Supports both global and community-specific calendar views
- * Follows established reactivity patterns using $state and $effect
+ * Reactive Calendar Store
+ * Follows the established Svelte 5 + RxJS patterns from user-profile.svelte.js and all-communities.svelte.js
+ * Implements the timeline observable pattern from the React applesauce example
  */
 
-import { map, catchError } from 'rxjs/operators';
-import { of } from 'rxjs';
-import { createTimelineLoader } from 'applesauce-loaders/loaders';
-import { pool, relays, eventStore } from '$lib/store.svelte';
 import { getCalendarEventTitle, getCalendarEventStart, getCalendarEventEnd } from 'applesauce-core/helpers/calendar-event';
 import { isEventInDateRange, groupEventsByDate, getWeekDates } from '../helpers/calendar.js';
 import { appConfig } from '../config.js';
-import { manager } from '../accounts.svelte.js';
+import { manager } from '$lib/accounts.svelte';
+import { createTimelineLoader } from 'applesauce-loaders/loaders';
+import { pool, relays, eventStore } from '$lib/store.svelte';
 import { useCalendarManagement } from './calendar-management-store.svelte.js';
+import { addressLoader } from '$lib/loaders.js';
+import { merge, EMPTY } from 'rxjs';
 
 /**
  * @typedef {import('../types/calendar.js').CalendarEvent} CalendarEvent
  * @typedef {import('../types/calendar.js').CalendarViewState} CalendarViewState
- * @typedef {import('../types/calendar.js').CalendarStore} CalendarStore
  * @typedef {import('../types/calendar.js').CalendarViewMode} CalendarViewMode
  * @typedef {import('../types/calendar.js').EventType} EventType
  */
+/** @typedef {{ kind: number, pubkey: string, identifier: string }} AddressPointer */
 
 /**
- * Create a calendar store with configurable filtering
- * @param {any} filterConfig - Nostr filter configuration
- * @param {string} [calendarId] - Optional calendar ID to filter by
- * @param {any} [calendarSelectionStore] - Optional calendar selection store for reactive filtering
- * @returns {CalendarStore} Calendar store with reactive state
+ * Helper function to create global calendar timeline loader
+ * @returns {Function} Timeline loader function
  */
-export function createCalendarStore(filterConfig, calendarId = '', calendarSelectionStore = null) {
-	// Current calendar filter state - reactive to selection store if provided
-	let currentCalendarId = $state(calendarId);
-	let previousCalendarId = $state(calendarId); // Track previous selection for smart clearing
+function createGlobalCalendarLoader() {
+	return createTimelineLoader(
+		pool,
+		relays,
+		{
+			kinds: [31922, 31923], // NIP-52 calendar events
+			limit: 250
+		},
+		{ eventStore }
+	);
+}
 
-	// Subscribe to calendar selection store for reactive filtering
-	let selectionSubscription = null;
-	if (calendarSelectionStore) {
-		// Initialize with current selection
-		currentCalendarId = calendarSelectionStore.selectedCalendarId;
-		previousCalendarId = calendarSelectionStore.selectedCalendarId;
+/**
+ * Helper function to create user-specific calendar timeline loader
+ * @param {string} userPubkey - User's public key
+ * @returns {Function} Timeline loader function
+ */
+function createUserCalendarLoader(userPubkey) {
+	return createTimelineLoader(
+		pool,
+		relays,
+		{
+			kinds: [31922, 31923],
+			authors: [userPubkey],
+			limit: 250
+		},
+		{ eventStore }
+	);
+}
 
-		selectionSubscription = calendarSelectionStore.getSelectionObservable().subscribe((selectedId) => {
-			console.log('📅 Calendar Store: Selection changed from', previousCalendarId, 'to:', selectedId);
+/**
+ * Helper function to create specific calendar timeline loader
+ * Uses Applesauce Address Loader to fetch addressable events by coordinates (kind:pubkey:d)
+ * @param {string[]} eventReferences - Array of event references (a-tags) in "kind:pubkey:d" format
+ * @returns {Function} Loader function returning an Observable of events
+ */
+function createSpecificCalendarLoader(eventReferences) {
+	// Parse "kind:pubkey:d" strings into AddressPointer objects
+	/** @type {AddressPointer[]} */
+	const pointers = (eventReferences || [])
+		.map((ref) => {
+			const [kindStr, pubkey, identifier] = (ref || '').split(':');
+			const kind = Number(kindStr);
+			if (!kind || !pubkey || !identifier) return null;
+			return { kind, pubkey, identifier };
+		})
+		.filter((p) => !!p);
 
-			// Update previous before current to track transition
-			previousCalendarId = currentCalendarId;
-			currentCalendarId = selectedId;
-
-			// When selection changes, refresh the event loading strategy
-			refreshEventLoading();
-		});
-	}
-	// Single reactive object to maintain proper reactivity
-	let store = $state({
-		events: /** @type {CalendarEvent[]} */ ([]),
-		viewState: /** @type {CalendarViewState} */ ({
-			currentDate: new Date(),
-			viewMode: /** @type {CalendarViewMode} */ ('month'),
-			selectedEvent: undefined,
-			isCreating: false,
-			eventType: /** @type {EventType} */ ('date')
-		}),
-		loading: false,
-		error: /** @type {string | null} */ (null)
-	});
-
-	// Helper function to filter events by calendar
-	function filterEventsByCalendar(events, filterCriteria = currentCalendarId) {
-		if (!filterCriteria || filterCriteria === '') {
-			// No calendar filter - return all events (Global Calendar)
-			return events;
+	// Return an observable factory that merges address loader streams
+	return () => {
+		if (pointers.length === 0) {
+			console.warn('📅 Calendar Store: No valid event address pointers for selected calendar');
+			return EMPTY;
 		}
+		const streams = pointers.map((pointer) => addressLoader(pointer));
+		return merge(...streams);
+	};
+}
 
-		const activeUser = manager.active;
-		if (!activeUser) {
-			// If no user is logged in, fall back to global view
-			return events;
-		}
+/**
+ * Create a reactive calendar store with timeline loading
+ * @param {any} [calendarSelectionStore] - Optional calendar selection store for reactive filtering
+ * @returns {Object} Calendar store with reactive getter functions
+ */
+export function createCalendarStore(calendarSelectionStore = null) {
+	// Reactive state following established patterns
+	let events = $state(/** @type {CalendarEvent[]} */ ([]));
+	let viewState = $state(/** @type {CalendarViewState} */ ({
+		currentDate: new Date(),
+		viewMode: /** @type {CalendarViewMode} */ ('month'),
+		selectedEvent: undefined,
+		isCreating: false,
+		eventType: /** @type {EventType} */ ('date')
+	}));
+	let loading = $state(false);
+	let error = $state(/** @type {string | null} */ (null));
 
-		// Check if filterCriteria is the active user's pubkey (My Events)
-		if (filterCriteria === activeUser.pubkey) {
-			console.log('📅 Calendar Store: Filtering for My Events (user pubkey):', filterCriteria);
-			return events.filter(event => event.pubkey === activeUser.pubkey);
-		}
+	// Reactive state for calendar selection
+	let selectedCalendarId = $state('');
+	let isGlobalMode = $state(true);
 
-		// Otherwise, treat as calendar ID - strict calendar filtering
-		const calendarManagement = useCalendarManagement(activeUser.pubkey);
-		const selectedCalendar = calendarManagement.calendars.find(cal => cal.id === filterCriteria);
+	// Reactive state for active user
+	let activeUser = $state(manager.active);
 
-		if (!selectedCalendar) {
-			// Calendar not loaded yet or not found - return empty array
-			// The reactive system will re-run this filter when calendar data loads
-			console.log('📅 Calendar Store: Calendar not loaded yet or not found:', filterCriteria, 'calendars loaded:', calendarManagement.calendars.length);
-			return [];
-		}
+	// Computed state for current view events
+	let currentMonthEvents = $state(/** @type {any[]} */ ([]));
+	let currentWeekEvents = $state(/** @type {any[]} */ ([]));
+	let currentDayEvents = $state(/** @type {any[]} */ ([]));
+	let groupedEvents = $state(/** @type {Map<string, any[]>} */ (new Map()));
 
-		// Ensure calendar events are loaded before filtering
-		loadCalendarEventsIfNeeded(selectedCalendar);
-
-		// Filter events that are explicitly referenced in the selected calendar
-		const filteredEvents = events.filter((event) => {
-			// Check if this event is referenced in the calendar's eventReferences
-			const eventReference = `${event.kind}:${event.pubkey}:${event.dTag || ''}`;
-			const isInCalendar = selectedCalendar.eventReferences.includes(eventReference);
-
-			console.log('📅 Calendar Store: Event', event.title, 'in calendar?', isInCalendar, 'reference:', eventReference);
-			return isInCalendar;
-		});
-
-		console.log('📅 Calendar Store: Filtered', filteredEvents.length, 'events for calendar:', selectedCalendar.title);
-		return filteredEvents;
-	}
-
-	// Helper function to load calendar events if they're not already loaded
-	function loadCalendarEventsIfNeeded(selectedCalendar) {
-		// Parse a-tag references to create filters for missing events
-		const eventFilters = parseCalendarEventReferences(selectedCalendar.eventReferences);
-
-		if (eventFilters.length === 0) {
-			return; // No specific events to load
-		}
-
-		// Check which events are already loaded
-		/** @type {string[]} */
-		const missingEventIds = [];
-		/** @type {Array<{kind: number, author: string, dTag: string}>} */
-		const missingFilters = [];
-
-		eventFilters.forEach(/** @param {{kind: number, author: string, dTag: string}} filter */ filter => {
-			const existingEvents = store.events.filter(/** @param {CalendarEvent} event */ event =>
-				event.kind === filter.kind &&
-				event.pubkey === filter.author &&
-				event.dTag === filter.dTag
-			);
-
-			if (existingEvents.length === 0) {
-				// Event not loaded yet, add to missing list
-				missingEventIds.push(`${filter.kind}:${filter.author}:${filter.dTag}`);
-				missingFilters.push(filter);
-			}
-		});
-
-		if (missingFilters.length > 0) {
-			console.log('📅 Calendar Store: Loading missing calendar events:', missingEventIds);
-			loadSpecificEvents(missingFilters);
-		}
-	}
-
-	// Parse calendar a-tag references into filter objects
-	function parseCalendarEventReferences(eventReferences) {
-		/** @type {Array<{kind: number, author: string, dTag: string}>} */
-		const filters = [];
-
-		eventReferences.forEach(/** @param {string} ref */ ref => {
-			// Parse a-tag format: "kind:pubkey:d-tag"
-			const parts = ref.split(':');
-			if (parts.length >= 3) {
-				const kind = parseInt(parts[0]);
-				const pubkey = parts[1];
-				const dTag = parts.slice(2).join(':'); // Handle d-tags that might contain colons
-
-				if (kind === 31922 || kind === 31923) {
-					filters.push({
-						kind,
-						author: pubkey,
-						dTag
-					});
-				}
-			}
-		});
-
-		return filters;
-	}
-
-	// Load specific events using targeted filters
-	function loadSpecificEvents(eventFilters /** @type {Array<{kind: number, author: string, dTag: string}>} */) {
-		// Group filters by kind for efficient querying
-		/** @type {Record<number, {kinds: number[], authors: string[], '#d': string[]}>} */
-		const filtersByKind = {};
-		eventFilters.forEach(/** @param {{kind: number, author: string, dTag: string}} filter */ filter => {
-			if (!filtersByKind[filter.kind]) {
-				filtersByKind[filter.kind] = {
-					kinds: [filter.kind],
-					authors: [],
-					'#d': []
-				};
-			}
-			filtersByKind[filter.kind].authors.push(filter.author);
-			filtersByKind[filter.kind]['#d'].push(filter.dTag);
-		});
-
-		// Create timeline loaders for each kind
-		Object.values(filtersByKind).forEach(/** @param {{kinds: number[], authors: string[], '#d': string[]}} filter */ filter => {
-			const timelineLoader = createTimelineLoader(
-				pool,
-				relays,
-				filter,
-				{ eventStore }
-			);
-
-			const subscription = timelineLoader()
-				.pipe(
-					map(/** @param {any} event */ event => convertNDKEventToCalendarEvent(event)),
-					catchError(/** @param {any} error */ error => {
-						console.error('Error loading specific calendar event:', error);
-						return of(null);
-					})
-				)
-				.subscribe(/** @param {CalendarEvent | null} event */ event => {
-					if (event) {
-						// Check if event already exists to avoid duplicates
-						const exists = store.events.some(e => e.id === event.id);
-						if (!exists) {
-							console.log('📅 Calendar Store: Adding calendar-specific event:', event.title);
-							store.events = [...store.events, event];
-						}
-					}
-				});
-
-			// Clean up subscription after a short delay
-			setTimeout(() => subscription.unsubscribe(), 10000);
-		});
-	}
-
-	// Derived state for computed properties - now properly reactive without manual triggers
-	let currentMonthEvents = $derived(() => {
-		const { currentDate, viewMode } = store.viewState;
-		if (viewMode !== 'month') return filterEventsByCalendar(store.events || []);
-
-		// Use consistent local timezone dates for month range
-		const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-		const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-
-		return filterEventsByCalendar(store.events || []).filter((event /** @type {CalendarEvent} */) =>
-			isEventInDateRange(event, startOfMonth, endOfMonth)
-		);
-	});
-
-	let currentWeekEvents = $derived(() => {
-		const { currentDate, viewMode } = store.viewState;
-		if (viewMode !== 'week') return filterEventsByCalendar(store.events || []);
-
-		// Use configured week start day for consistent week calculation
-		const weekDates = getWeekDates(currentDate);
-		const startOfWeek = weekDates[0];
-		const endOfWeek = weekDates[weekDates.length - 1];
-
-		return filterEventsByCalendar(store.events || []).filter((event /** @type {CalendarEvent} */) =>
-			isEventInDateRange(event, startOfWeek, endOfWeek)
-		);
-	});
-
-	let currentDayEvents = $derived(() => {
-		const { currentDate, viewMode } = store.viewState;
-		if (viewMode !== 'day') return filterEventsByCalendar(store.events || []);
-
-		// Use consistent local timezone dates for day range
-		const startOfDay = new Date(currentDate);
-		startOfDay.setHours(0, 0, 0, 0);
-		const endOfDay = new Date(currentDate);
-		endOfDay.setHours(23, 59, 59, 999);
-
-		return filterEventsByCalendar(store.events || []).filter((event /** @type {CalendarEvent} */) =>
-			isEventInDateRange(event, startOfDay, endOfDay)
-		);
-	});
-
-	let groupedEvents = $derived(() => {
-		const currentEvents = getCurrentViewEvents();
-		return groupEventsByDate(currentEvents || []);
-	});
-
-	// Create timeline loader for calendar events
-	let timelineLoader = null;
+	// Timeline subscription management
 	/** @type {import('rxjs').Subscription | null} */
-	let subscription = null;
+	let currentSubscription = null;
 
-	// Initialize timeline loader and subscription
-	function initializeLoader() {
-		// Clean up existing subscription
-		if (subscription) {
-			subscription.unsubscribe();
-		}
+	// Initialize reactive state from calendar selection store
+	if (calendarSelectionStore) {
+		selectedCalendarId = calendarSelectionStore.selectedCalendarId;
+		isGlobalMode = calendarSelectionStore.isGlobalMode;
 
-		// Create timeline loader with provided filter configuration
-		timelineLoader = createTimelineLoader(
-			pool,
-			relays,
-			filterConfig,
-			{ eventStore }
-		);
+		// Subscribe to calendar selection changes
+		const selectionSubscription = calendarSelectionStore.getSelectionObservable().subscribe(/** @param {string} calendarId */ (calendarId) => {
+			selectedCalendarId = calendarId;
+			isGlobalMode = calendarId === '';
+		});
 
-		subscription = timelineLoader()
-			.pipe(
-				map(/** @param {any} event */ event => convertNDKEventToCalendarEvent(event)),
-				catchError(/** @param {any} error */ error => {
-					console.error('Error loading calendar event:', error);
-					store.error = error.message || 'Failed to load calendar events';
-					return of(null);
-				})
-			)
-				.subscribe(/** @param {CalendarEvent | null} event */ event => {
-					if (event) {
-						// Check if event already exists to avoid duplicates
-						const exists = store.events.some(/** @param {CalendarEvent} e */ e => e.id === event.id);
-						if (!exists) {
-							console.log('📅 Calendar Store: Adding new event:', event.title);
-							store.events = [...store.events, event];
-							// console.log('📅 Calendar Store: Events count now:', store.events.length);
-						}
-					}
-					store.loading = false;
-					store.error = null;
-				});
+		// Cleanup function will be returned from $effect
+		$effect(() => {
+			return () => selectionSubscription.unsubscribe();
+		});
 	}
 
-	// Initialize loader based on current selection
-	if (calendarSelectionStore && calendarSelectionStore.selectedCalendarId) {
-		// Pre-selected calendar - load specific events immediately
-		console.log('📅 Calendar Store: Initializing with pre-selected calendar:', calendarSelectionStore.selectedCalendarId);
-		refreshEventLoading();
-	} else {
-		// No selection - load global events
-		console.log('📅 Calendar Store: Initializing with global calendar view');
-		initializeLoader();
-	}
+	// Subscribe to manager.active$ for reactive user updates
+	$effect(() => {
+		const userSubscription = manager.active$.subscribe((user) => {
+			activeUser = user;
+		});
+		return () => userSubscription.unsubscribe();
+	});
 
-	// Function to refresh event loading strategy based on current selection
-	function refreshEventLoading() {
-		console.log('📅 Calendar Store: Refreshing event loading for selection:', currentCalendarId);
+	// Helper function to get appropriate timeline loader based on calendar selection
+	function getTimelineLoader() {
+		if (isGlobalMode) {
+			// Global calendar - all events
+			console.log('📅 Calendar Store: Using global calendar loader');
+			return createGlobalCalendarLoader();
+		} else if (activeUser && selectedCalendarId === activeUser.pubkey) {
+			// My Events - all events created by the user
+			console.log('📅 Calendar Store: Using user events loader for:', activeUser.pubkey);
+			return createUserCalendarLoader(activeUser.pubkey);
+		} else if (activeUser && selectedCalendarId) {
+			// Specific calendar - get event references from calendar management store
+			console.log('📅 Calendar Store: Looking for specific calendar:', selectedCalendarId);
 
-		// Smart event clearing based on transition type
-		const shouldClearEvents = determineIfShouldClearEvents(previousCalendarId, currentCalendarId);
+			// Get calendar management store for the active user
+			const calendarManagementStore = useCalendarManagement(activeUser.pubkey);
 
-		if (shouldClearEvents) {
-			console.log('📅 Calendar Store: Clearing events for transition from', previousCalendarId, 'to', currentCalendarId);
-			store.events = [];
-		} else {
-			console.log('📅 Calendar Store: Keeping existing events for transition from', previousCalendarId, 'to', currentCalendarId);
-		}
+			// Find the selected calendar
+			const selectedCalendar = calendarManagementStore.calendars.find(cal => cal.id === selectedCalendarId);
 
-		// DON'T set loading=true - let UI show immediately
-		store.error = null;
-
-		// Clean up existing subscription
-		if (subscription) {
-			subscription.unsubscribe();
-		}
-
-		// Determine loading strategy based on current selection
-		if (!currentCalendarId || currentCalendarId === '') {
-			// Global view - load all events
-			console.log('📅 Calendar Store: Loading global events');
-			initializeLoader();
-		} else {
-			// Specific calendar selected - load only that calendar's events
-			const activeUser = manager.active;
-			if (activeUser) {
-				const calendarManagement = useCalendarManagement(activeUser.pubkey);
-				const selectedCalendar = calendarManagement.calendars.find(cal => cal.id === currentCalendarId);
-
-				if (selectedCalendar && selectedCalendar.eventReferences.length > 0) {
-					console.log('📅 Calendar Store: Loading events for calendar:', selectedCalendar.title);
-					loadCalendarSpecificEvents(selectedCalendar);
+			if (selectedCalendar) {
+				if (selectedCalendar.eventReferences && selectedCalendar.eventReferences.length > 0) {
+					console.log('📅 Calendar Store: Found calendar with event references:', selectedCalendar.eventReferences);
+					return createSpecificCalendarLoader(selectedCalendar.eventReferences);
 				} else {
-					console.log('📅 Calendar Store: Calendar not found or empty, keeping existing events');
-					// Don't set loading=false here - let existing events remain visible
+					console.log('📅 Calendar Store: Found calendar but no event references, showing empty calendar');
+					return createSpecificCalendarLoader([]); // Show empty calendar instead of global
 				}
 			} else {
-				console.log('📅 Calendar Store: No active user, keeping existing events');
-				// Don't set loading=false here - let existing events remain visible
+				console.log('📅 Calendar Store: Calendar not found, using global');
+				return createGlobalCalendarLoader(); // Only fall back to global when calendar not found
 			}
+		} else {
+			// Fallback to global if no active user
+			console.log('📅 Calendar Store: No active user, using global loader');
+			return createGlobalCalendarLoader();
 		}
 	}
 
-	// Helper function to determine if events should be cleared based on transition
-	function determineIfShouldClearEvents(fromCalendarId, toCalendarId) {
-		// No previous selection - don't clear (initial load)
-		if (!fromCalendarId && fromCalendarId !== '') {
-			return false;
-		}
+/** @param {any} event */
+// Helper function to convert NDK event to CalendarEvent format
+function convertToCalendarEvent(event) {
+		// Use applesauce helper functions as the single source of truth for date parsing
+		// These handle both NIP-52 date formats (ISO strings and UNIX timestamps) consistently
+		const startTimestamp = getCalendarEventStart(event);
+		const endTimestamp = getCalendarEventEnd(event);
 
-		// From global to specific calendar - clear events
-		if ((!fromCalendarId || fromCalendarId === '') && toCalendarId && toCalendarId !== '') {
-			return true;
-		}
+		// Ensure we have valid timestamps - fallback to current time if missing
+		const validStartTimestamp = startTimestamp || Math.floor(Date.now() / 1000);
+		// Extract d-tag identifier for addressable reference building and management ops
+		const dTag = Array.isArray(event.tags)
+			? (event.tags.find(/** @param {any[]} t */ (t) => t && t[0] === 'd')?.[1] || undefined)
+			: undefined;
 
-		// From specific calendar to global - keep events (add global to existing)
-		if (fromCalendarId && fromCalendarId !== '' && (!toCalendarId || toCalendarId === '')) {
-			return false;
-		}
-
-		// From specific calendar A to specific calendar B - clear events
-		if (fromCalendarId && fromCalendarId !== '' && toCalendarId && toCalendarId !== '' && fromCalendarId !== toCalendarId) {
-			return true;
-		}
-
-		// Same calendar or invalid transition - don't clear
-		return false;
-	}
-
-	// Function to load events for a specific calendar
-	function loadCalendarSpecificEvents(selectedCalendar) {
-		const eventFilters = parseCalendarEventReferences(selectedCalendar.eventReferences);
-
-		if (eventFilters.length === 0) {
-			// Don't set loading=false here - let UI remain reactive
-			return;
-		}
-
-		console.log('📅 Calendar Store: Loading', eventFilters.length, 'specific events for calendar:', selectedCalendar.title);
-
-		// Group filters by kind for efficient querying
-		/** @type {Record<number, {kinds: number[], authors: string[], '#d': string[]}>} */
-		const filtersByKind = {};
-		eventFilters.forEach(/** @param {{kind: number, author: string, dTag: string}} filter */ filter => {
-			if (!filtersByKind[filter.kind]) {
-				filtersByKind[filter.kind] = {
-					kinds: [filter.kind],
-					authors: [],
-					'#d': []
-				};
-			}
-			filtersByKind[filter.kind].authors.push(filter.author);
-			filtersByKind[filter.kind]['#d'].push(filter.dTag);
+		console.log('📅 Calendar Store: Converting event using applesauce helpers:', {
+			eventId: event.id,
+			kind: event.kind,
+			startTimestamp: validStartTimestamp,
+			endTimestamp: endTimestamp,
+			title: getCalendarEventTitle(event)
 		});
 
-		// Create subscriptions for each kind
-		const subscriptions = Object.values(filtersByKind).map(/** @param {{kinds: number[], authors: string[], '#d': string[]}} filter */ filter => {
-			const timelineLoader = createTimelineLoader(
-				pool,
-				relays,
-				filter,
-				{ eventStore }
-			);
+		return {
+			id: event.id,
+			pubkey: event.pubkey,
+			kind: /** @type {import('../types/calendar.js').CalendarEventKind} */ (event.kind),
+			title: getCalendarEventTitle(event) || 'Untitled Event',
+			summary: event.content || '',
+			image: '',
+			// Use applesauce helpers for consistent UNIX timestamp handling
+			start: validStartTimestamp,
+			end: endTimestamp,
+			startTimezone: undefined,
+			endTimezone: undefined,
+			locations: [],
+			participants: [],
+			hashtags: [],
+			references: [],
+			geohash: undefined,
+			communityPubkey: '',
+			createdAt: event.created_at,
+			dTag,
+			originalEvent: event
+		};
+	}
 
-			return timelineLoader()
-				.pipe(
-					map(/** @param {any} event */ event => convertNDKEventToCalendarEvent(event)),
-					catchError(/** @param {any} error */ error => {
-						console.error('Error loading calendar-specific event:', error);
-						return of(null);
-					})
-				)
-				.subscribe(/** @param {CalendarEvent | null} event */ event => {
-					if (event) {
-						// Check if event already exists to avoid duplicates
-						const exists = store.events.some(e => e.id === event.id);
-						if (!exists) {
-							console.log('📅 Calendar Store: Added calendar event:', event.title);
-							store.events = [...store.events, event];
-						}
-					}
-					// Don't set loading=false here - let UI remain reactive
-					store.error = null;
-				});
+	// Main effect for loading calendar events using TimelineLoader
+	// This effect depends on calendar selection state to trigger loader recreation
+	$effect(() => {
+		// Explicitly depend on calendar selection state to ensure reactivity
+		const currentSelection = selectedCalendarId;
+		const currentGlobalMode = isGlobalMode;
+		const currentActiveUser = activeUser;
+
+		console.log('Calendar store effect triggered:', {
+			selectedCalendarId: currentSelection,
+			isGlobalMode: currentGlobalMode,
+			activeUser: currentActiveUser?.pubkey
 		});
 
-		// Clean up subscriptions after loading
-		setTimeout(() => {
-			subscriptions.forEach(sub => sub.unsubscribe());
-		}, 15000); // Longer timeout for calendar-specific loading
-	}
+		// Cleanup previous subscription
+		if (currentSubscription) {
+			currentSubscription.unsubscribe();
+			currentSubscription = null;
+		}
+
+		// Clear existing events when switching loaders
+		events = [];
+		loading = true;
+		error = null;
+
+		// Get appropriate timeline loader
+		const timelineLoader = getTimelineLoader();
+
+		// Subscribe directly to timeline loader (following all-communities.svelte.js pattern)
+		currentSubscription = timelineLoader().subscribe({
+			next: /** @param {any} event */ (event) => {
+				console.log('Received calendar event from TimelineLoader:', event.id);
+
+				// Convert to our CalendarEvent format
+				const calendarEvent = convertToCalendarEvent(event);
+
+				// Add to events array with deduplication
+				const existingIndex = events.findIndex((e) => e.id === calendarEvent.id);
+				if (existingIndex === -1) {
+					events = [...events, calendarEvent].sort((a, b) => a.createdAt - b.createdAt);
+				}
+
+				// Mark loading as complete after first event
+				if (loading) {
+					loading = false;
+				}
+			},
+			error: /** @param {any} err */ (err) => {
+				console.error('TimelineLoader error:', err);
+				error = 'Failed to load calendar events';
+				loading = false;
+			},
+			complete: () => {
+				console.log('TimelineLoader subscription complete');
+				loading = false;
+			}
+		});
+
+		// Return cleanup function
+		return () => {
+			if (currentSubscription) {
+				currentSubscription.unsubscribe();
+				currentSubscription = null;
+			}
+		};
+	});
+
+	// Effect to update computed view events when events or view state changes
+	$effect(() => {
+		const { currentDate, viewMode } = viewState;
+		const filteredEvents = events; // Use loaded events
+
+		// Update current view events based on view mode
+		switch (viewMode) {
+			case 'month':
+				// Create UTC date range for the month view with padding
+				const startOfMonth = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), 1));
+				const endOfMonth = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth() + 1, 0));
+				// Add padding days for better UX
+				startOfMonth.setUTCDate(startOfMonth.getUTCDate() - 7);
+				endOfMonth.setUTCDate(endOfMonth.getUTCDate() + 7);
+				currentMonthEvents = filteredEvents.filter((event) =>
+					isEventInDateRange(event, startOfMonth, endOfMonth)
+				);
+				break;
+
+			case 'week':
+				// Use configured week start day for consistent week calculation
+				const weekDates = getWeekDates(currentDate);
+				// Convert to UTC dates for consistent comparison
+				const startOfWeek = new Date(Date.UTC(
+					weekDates[0].getFullYear(),
+					weekDates[0].getMonth(),
+					weekDates[0].getDate()
+				));
+				const endOfWeek = new Date(Date.UTC(
+					weekDates[weekDates.length - 1].getFullYear(),
+					weekDates[weekDates.length - 1].getMonth(),
+					weekDates[weekDates.length - 1].getDate() + 1 // End of last day
+				));
+				// Add padding days
+				startOfWeek.setUTCDate(startOfWeek.getUTCDate() - 3);
+				endOfWeek.setUTCDate(endOfWeek.getUTCDate() + 3);
+				currentWeekEvents = filteredEvents.filter((event) =>
+					isEventInDateRange(event, startOfWeek, endOfWeek)
+				);
+				break;
+
+			case 'day':
+				// Create UTC date range for the selected day
+				// dayStart: beginning of the selected day
+				// dayEnd: beginning of the next day (exclusive upper bound)
+				const dayStart = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()));
+				const dayEnd = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 1));
+
+				currentDayEvents = filteredEvents.filter((event) =>
+					isEventInDateRange(event, dayStart, dayEnd)
+				);
+				break;
+		}
+	});
+
+	// Effect to update grouped events when current view events change
+	$effect(() => {
+		const currentEvents = getCurrentViewEvents();
+		groupedEvents = groupEventsByDate(currentEvents || []);
+	});
 
 	// Helper function for getting current view events
 	function getCurrentViewEvents() {
-		switch (store.viewState.viewMode) {
+		switch (viewState.viewMode) {
 			case 'month':
-				return currentMonthEvents();
+				return currentMonthEvents;
 			case 'week':
-				return currentWeekEvents();
+				return currentWeekEvents;
 			case 'day':
-				return currentDayEvents();
+				return currentDayEvents;
 			default:
-				return store.events || [];
+				return events || [];
 		}
 	}
 
-	// Return reactive store object
+	// Return reactive store object following established patterns
 	return {
-		// Reactive state (directly accessible)
-		get events() { return store.events; },
-		get viewState() { return store.viewState; },
-		get loading() { return store.loading; },
-		get error() { return store.error; },
+		// Reactive getter functions (following established pattern)
+		events: () => events,
+		viewState: () => viewState,
+		loading: () => loading,
+		error: () => error,
+		currentMonthEvents: () => currentMonthEvents,
+		currentWeekEvents: () => currentWeekEvents,
+		currentDayEvents: () => currentDayEvents,
+		groupedEvents: () => groupedEvents,
 
-		// Computed properties (reactive through $derived) - getters that call derived functions
-		get currentMonthEvents() { return currentMonthEvents(); },
-		get currentWeekEvents() { return currentWeekEvents(); },
-		get currentDayEvents() { return currentDayEvents(); },
-		get groupedEvents() { return groupedEvents(); },
-
-		// Methods
+		// Methods for actions
 		getCurrentViewEvents,
 
-		setViewMode(/** @param {CalendarViewMode} mode */ mode) {
-			store.viewState.viewMode = /** @type {CalendarViewMode} */ (mode);
+		/** @param {CalendarViewMode} mode */
+		setViewMode(mode) {
+			const previousMode = viewState.viewMode;
+			viewState.viewMode = /** @type {CalendarViewMode} */ (mode);
+
+			// When switching TO day view, ensure loading is false since we're just filtering
+			if (previousMode !== mode && mode === 'day') {
+				loading = false;
+				error = null;
+			}
 		},
 
-		setCurrentDate(/** @param {Date} date */ date) {
-			store.viewState.currentDate = new Date(date);
+		/** @param {Date} date */
+		setCurrentDate(date) {
+			viewState.currentDate = new Date(date);
 		},
 
-		navigateToDate(/** @param {Date} date */ date) {
-			this.setCurrentDate(date);
+		/** @param {Date} date */
+		navigateToDate(date) {
+			viewState.currentDate = new Date(date);
 		},
 
 		navigateNext() {
-			const { currentDate, viewMode } = store.viewState;
+			const { currentDate, viewMode } = viewState;
 			const newDate = new Date(currentDate);
 
 			switch (viewMode) {
@@ -524,11 +426,11 @@ export function createCalendarStore(filterConfig, calendarId = '', calendarSelec
 					break;
 			}
 
-			this.setCurrentDate(newDate);
+			viewState.currentDate = newDate;
 		},
 
 		navigatePrevious() {
-			const { currentDate, viewMode } = store.viewState;
+			const { currentDate, viewMode } = viewState;
 			const newDate = new Date(currentDate);
 
 			switch (viewMode) {
@@ -543,157 +445,71 @@ export function createCalendarStore(filterConfig, calendarId = '', calendarSelec
 					break;
 			}
 
-			this.setCurrentDate(newDate);
+			viewState.currentDate = newDate;
 		},
 
 		navigateToToday() {
-			this.setCurrentDate(new Date());
+			const newDate = new Date();
+			viewState.currentDate = newDate;
 		},
 
-		selectEvent(/** @param {CalendarEvent} event */ event) {
-			store.viewState.selectedEvent = event;
+		/** @param {any} event */
+		selectEvent(event) {
+			viewState.selectedEvent = event;
 		},
 
 		clearSelection() {
-			store.viewState.selectedEvent = undefined;
+			viewState.selectedEvent = undefined;
 		},
 
 		startCreating(/** @param {EventType} eventType */ eventType = 'date') {
-			store.viewState.isCreating = true;
-			store.viewState.eventType = /** @type {EventType} */ (eventType);
+			viewState.isCreating = true;
+			viewState.eventType = /** @type {EventType} */ (eventType);
 		},
 
 		stopCreating() {
-			store.viewState.isCreating = false;
-			store.viewState.selectedEvent = undefined;
+			viewState.isCreating = false;
+			viewState.selectedEvent = undefined;
 		},
 
-		setEventType(/** @param {EventType} eventType */ eventType) {
-			store.viewState.eventType = /** @type {EventType} */ (eventType);
+		/** @param {EventType} eventType */
+		setEventType(eventType /** @type {EventType} */) {
+			viewState.eventType = /** @type {EventType} */ (eventType);
 		},
 
 		// Refresh events from the timeline
 		refresh() {
-			store.loading = true;
-			store.error = null;
-			store.events = []; // Clear existing events
-			initializeLoader(); // Reinitialize loader
+			// Reset loading state - the $effect will handle reloading
+			loading = false;
+			error = null;
 		},
 
 		// Cleanup subscription
 		destroy() {
-			if (subscription) {
-				subscription.unsubscribe();
+			if (currentSubscription) {
+				currentSubscription.unsubscribe();
+				currentSubscription = null;
 			}
 		}
 	};
 }
 
 /**
- * Convert NDK event to CalendarEvent object
- * @param {any} ndkEvent - NDK event
- * @returns {CalendarEvent} Calendar event object
- */
-function convertNDKEventToCalendarEvent(ndkEvent) {
-	/** @type {CalendarEvent} */
-	const event = {
-		id: ndkEvent.id || '',
-		pubkey: ndkEvent.pubkey || '',
-		kind: ndkEvent.kind,
-		title: getCalendarEventTitle(ndkEvent) || 'Untitled Event',
-		summary: ndkEvent.content || '',
-		image: '',
-		start: getCalendarEventStart(ndkEvent) || 0,
-		end: getCalendarEventEnd(ndkEvent),
-		startTimezone: '',
-		endTimezone: '',
-		locations: [],
-		participants: [],
-		hashtags: [],
-		references: [],
-		geohash: '',
-		communityPubkey: '',
-		createdAt: ndkEvent.created_at || 0
-	};
-
-	// Extract additional data from tags
-	if (ndkEvent.tags) {
-		ndkEvent.tags.forEach(/** @param {any[]} tag */ tag => {
-			switch (tag[0]) {
-				case 'd':
-					// Extract d-tag for NIP-52 event identification
-					event.dTag = tag[1] || '';
-					break;
-				case 'image':
-					event.image = tag[1] || '';
-					break;
-				case 'location':
-					if (tag[1]) event.locations.push(tag[1]);
-					break;
-				case 'start_tz':
-					event.startTimezone = tag[1] || '';
-					break;
-				case 'end_tz':
-					event.endTimezone = tag[1] || '';
-					break;
-				case 't':
-					if (tag[1]) event.hashtags.push(tag[1]);
-					break;
-				case 'e':
-					if (tag[1]) event.references.push(tag[1]);
-					break;
-				case 'g':
-					event.geohash = tag[1] || '';
-					break;
-				case 'h':
-					// Extract community pubkey from h-tag (Communikey targeting)
-					event.communityPubkey = tag[1] || '';
-					break;
-				case 'a':
-					// Extract community pubkey from targeting tag
-					if (tag[1] && tag[1].includes('34550:')) {
-						const parts = tag[1].split(':');
-						if (parts.length >= 2) {
-							event.communityPubkey = parts[1];
-						}
-					}
-					break;
-				case 'p':
-					// Add participants
-					if (tag[1]) {
-						event.participants.push({
-							pubkey: tag[1],
-							relay: tag[2],
-							role: tag[3]
-						});
-					}
-					break;
-			}
-		});
-	}
-
-	return event;
-}
-
-/**
  * Global calendar events store instance
- * @type {CalendarStore | null}
  */
+/** @type {any} */
 let globalCalendarStore = null;
 
 /**
  * Get or create the global calendar events store
  * @param {any} [calendarSelectionStore] - Optional calendar selection store for reactive filtering
- * @returns {CalendarStore} Global calendar store instance
+ * @returns {Object} Global calendar store instance
  */
 export function useGlobalCalendarEvents(calendarSelectionStore = null) {
 	if (!globalCalendarStore) {
-		globalCalendarStore = createCalendarStore({
-			kinds: [31922, 31923],
-			limit: 250
-		}, '', calendarSelectionStore);
+		globalCalendarStore = createCalendarStore(calendarSelectionStore);
 	}
-	return /** @type {CalendarStore} */ (globalCalendarStore);
+	return globalCalendarStore;
 }
 
 /**
@@ -708,24 +524,19 @@ export function cleanupGlobalCalendarStore() {
 
 /**
  * Community calendar events store instances
- * @type {Map<string, CalendarStore>}
  */
 const communityCalendarStores = new Map();
 
 /**
  * Get or create a calendar events store for a community
  * @param {string} communityPubkey - Community public key
- * @returns {CalendarStore} Calendar store instance
+ * @returns {Object} Calendar store instance
  */
 export function useCalendarEvents(communityPubkey) {
 	if (!communityCalendarStores.has(communityPubkey)) {
-		communityCalendarStores.set(communityPubkey, createCalendarStore({
-			kinds: [31922, 31923],
-			'#h': [communityPubkey],
-			limit: 250
-		}));
+		communityCalendarStores.set(communityPubkey, createCalendarStore());
 	}
-	return /** @type {CalendarStore} */ (communityCalendarStores.get(communityPubkey));
+	return communityCalendarStores.get(communityPubkey);
 }
 
 /**

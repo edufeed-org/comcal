@@ -53,10 +53,12 @@ export function createCalendarActions(communityPubkey) {
 				// Add calendar-specific tags
 				tags.push(['title', eventData.title]);
 				if (eventData.start) {
+					// eventData.start is already a UNIX timestamp (number) from convertFormDataToEvent
 					tags.push(['start', eventData.start.toString()]);
 				}
-				
+
 				if (eventData.end) {
+					// eventData.end is already a UNIX timestamp (number) from convertFormDataToEvent
 					tags.push(['end', eventData.end.toString()]);
 				}
 

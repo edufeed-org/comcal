@@ -17,6 +17,14 @@
  */
 
 /**
+ * @typedef {Object} CalendarEventRSVP
+ * @property {string} id - RSVP event ID
+ * @property {string} pubkey - RSVP creator's public key
+ * @property {number} created_at - RSVP creation timestamp
+ * @property {string} [content] - Optional RSVP message
+ */
+
+/**
  * @typedef {Object} CalendarEvent
  * @property {string} id - Unique event identifier
  * @property {string} pubkey - Creator's public key
@@ -24,8 +32,8 @@
  * @property {string} title - Event title
  * @property {string} [summary] - Optional event description
  * @property {string} [image] - Optional event image URL
- * @property {number} start - Start time as Unix timestamp
- * @property {number} [end] - Optional end time as Unix timestamp
+ * @property {number} start - Start time as Unix timestamp (seconds) - ALWAYS UNIX TIMESTAMP
+ * @property {number} [end] - Optional end time as Unix timestamp (seconds) - ALWAYS UNIX TIMESTAMP
  * @property {string} [startTimezone] - Start timezone (IANA format)
  * @property {string} [endTimezone] - End timezone (IANA format)
  * @property {string[]} locations - Array of location strings
@@ -34,8 +42,11 @@
  * @property {string[]} references - Referenced event IDs
  * @property {string} [geohash] - Optional geohash for location
  * @property {string} communityPubkey - Target community public key
- * @property {number} createdAt - Creation timestamp
+ * @property {number} createdAt - Creation timestamp (Unix timestamp)
  * @property {string} [dTag] - Optional d-tag identifier for NIP-52 events
+ * @property {any} [originalEvent] - Optional original applesauce event for model operations
+ * @property {CalendarEventRSVP[]} [rsvps] - Optional RSVP events for this calendar event
+ * @property {number} [rsvpCount] - Optional count of RSVPs
  */
 
 /**

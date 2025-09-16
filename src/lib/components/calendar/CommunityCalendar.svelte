@@ -8,6 +8,8 @@
 	import { useCalendarSelection } from '$lib/stores/calendar-selection.svelte.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
+	import { eventStore } from '$lib/store.svelte';
+	import { CalendarEventRSVPsModel } from 'applesauce-core/models';
 	import CalendarNavigation from './CalendarNavigation.svelte';
 	import CalendarGrid from './CalendarGrid.svelte';
 	import CalendarEventModal from './CalendarEventModal.svelte';
@@ -34,6 +36,51 @@
 	let selectedCalendarId = $derived(calendarSelectionStore.selectedCalendarId);
 	let isGlobalMode = $derived(calendarSelectionStore.isGlobalMode);
 
+	// RSVP data management - reactive Map to store RSVP data for events
+	let eventRSVPs = $state(new Map());
+
+	// Load RSVPs for calendar events using established pattern
+	$effect(() => {
+		// Get all events from the calendar store
+		const events = calendarStore.events() || [];
+
+		// Find events that don't have RSVP data loaded yet
+		const eventsNeedingRSVPs = events.filter(event =>
+			event.id && !eventRSVPs.has(event.id)
+		);
+
+		// Load RSVPs for new events
+		eventsNeedingRSVPs.forEach(event => {
+			if (event.id && event.originalEvent) {
+				// Use the established pattern with eventStore.model for RSVP loading
+				const rsvpsObservable = eventStore.model(CalendarEventRSVPsModel, event.originalEvent);
+				const subscription = rsvpsObservable.subscribe(rsvps => {
+					if (rsvps) {
+						// Store RSVP data in our reactive Map
+						eventRSVPs.set(event.id, {
+							rsvps,
+							rsvpCount: rsvps.length
+						});
+						// Trigger reactivity update
+						eventRSVPs = new Map(eventRSVPs);
+					}
+				});
+
+				// Store subscription for cleanup
+				eventRSVPs.set(event.id, { loading: true, subscription });
+				eventRSVPs = new Map(eventRSVPs);
+			}
+		});
+	});
+
+	// Helper function to get RSVP data for an event
+	/**
+	 * @param {string} eventId
+	 */
+	function getEventRSVPData(eventId) {
+		return eventRSVPs.get(eventId);
+	}
+
 	// Debug: Inspect store changes
 	// $inspect(calendarStore.viewState);
 	// $inspect(calendarStore.events);
@@ -43,33 +90,27 @@
 	let isEventModalOpen = $state(false);
 	let selectedDateForNewEvent = $state(/** @type {Date | null} */ (null));
 
-	// Calendar store data (accessed directly for reactivity)
+	// Calendar store data (accessed via getter functions for reactivity)
 
 	/**
 	 * Handle navigation to previous period
 	 */
 	function handlePrevious() {
-		console.log('🔄 handlePrevious called');
 		calendarStore.navigatePrevious();
-		console.log('✅ navigatePrevious completed');
 	}
 
 	/**
 	 * Handle navigation to next period
 	 */
 	function handleNext() {
-		console.log('🔄 handleNext called');
 		calendarStore.navigateNext();
-		console.log('✅ navigateNext completed');
 	}
 
 	/**
 	 * Handle navigation to today
 	 */
 	function handleToday() {
-		console.log('🔄 handleToday called');
 		calendarStore.navigateToToday();
-		console.log('✅ navigateToToday completed');
 	}
 
 	/**
@@ -77,9 +118,7 @@
 	 * @param {CalendarViewMode} newViewMode
 	 */
 	function handleViewModeChange(newViewMode) {
-		console.log('🔄 handleViewModeChange called with:', newViewMode);
 		calendarStore.setViewMode(newViewMode);
-		console.log('✅ setViewMode completed');
 	}
 
 	/**
@@ -106,7 +145,7 @@
 	 * Handle create event button click
 	 */
 	function handleCreateEvent() {
-		selectedDateForNewEvent = calendarStore.viewState.currentDate;
+		selectedDateForNewEvent = calendarStore.viewState().currentDate;
 		isEventModalOpen = true;
 	}
 
@@ -138,9 +177,7 @@
 	 * @param {string} calendarId
 	 */
 	function handleCalendarSelect(calendarId) {
-		console.log('Calendar selected:', calendarId);
 		calendarSelectionStore.selectCalendar(calendarId);
-		console.log('✅ Calendar selection updated');
 	}
 </script>
 
@@ -157,7 +194,7 @@
 				<button
 					class="btn btn-ghost btn-sm"
 					onclick={handleRefresh}
-					disabled={calendarStore.loading}
+					disabled={calendarStore.loading()}
 					aria-label="Refresh calendar"
 				>
 					<svg
@@ -193,7 +230,7 @@
 	</div>
 
 	<!-- Error Display -->
-	{#if calendarStore.error}
+	{#if calendarStore.error()}
 		<div class="alert rounded-none border-b alert-error border-error/20 px-6 py-3">
 			<div class="flex items-center gap-3">
 				<svg class="h-5 w-5 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -204,7 +241,7 @@
 						d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 					/>
 				</svg>
-				<span class="flex-1 text-sm">{calendarStore.error}</span>
+				<span class="flex-1 text-sm">{calendarStore.error()}</span>
 				<button
 					class="btn btn-ghost btn-xs"
 					onclick={() => (calendarStore.error = null)}
@@ -225,8 +262,8 @@
 
 	<!-- Calendar Navigation -->
 	<CalendarNavigation
-		currentDate={calendarStore.viewState.currentDate}
-		viewMode={calendarStore.viewState.viewMode}
+		currentDate={calendarStore.viewState().currentDate}
+		viewMode={calendarStore.viewState().viewMode}
 		onPrevious={handlePrevious}
 		onNext={handleNext}
 		onToday={handleToday}
@@ -235,15 +272,15 @@
 
 	<!-- Always show Calendar Grid immediately -->
 	<CalendarGrid
-		currentDate={calendarStore.viewState.currentDate}
-		viewMode={calendarStore.viewState.viewMode}
-		groupedEvents={calendarStore.groupedEvents}
+		currentDate={calendarStore.viewState().currentDate}
+		viewMode={calendarStore.viewState().viewMode}
+		groupedEvents={calendarStore.groupedEvents()}
 		onEventClick={handleEventClick}
 		onDateClick={handleDateClick}
 	/>
 
 	<!-- Show loading indicator only for initial load when no events exist -->
-	{#if calendarStore.loading && calendarStore.events.length === 0}
+	{#if calendarStore.loading() && calendarStore.events().length === 0}
 		<div class="flex flex-col items-center justify-center py-16">
 			<div class="mb-4">
 				<svg class="h-8 w-8 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
@@ -261,7 +298,7 @@
 	{/if}
 
 	<!-- Empty State - only show when no events and not loading -->
-	{#if calendarStore.events.length === 0 && !calendarStore.loading}
+	{#if calendarStore.events().length === 0 && !calendarStore.loading()}
 		<div class="flex flex-col items-center justify-center px-6 py-16 text-center">
 			<div class="mb-4 text-base-content/30">
 				<svg class="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
