@@ -12,7 +12,7 @@
 	import { CalendarEventRSVPsModel } from 'applesauce-core/models';
 	import { createTimelineLoader } from 'applesauce-loaders/loaders';
 	import { addressLoader } from '$lib/loaders.js';
-	import { getCalendarEventTitle, getCalendarEventStart, getCalendarEventEnd } from 'applesauce-core/helpers/calendar-event';
+	import { getCalendarEventTitle, getCalendarEventStart, getCalendarEventEnd, getCalendarEventImage } from 'applesauce-core/helpers/calendar-event';
 	import { isEventInDateRange, groupEventsByDate, getWeekDates } from '$lib/helpers/calendar.js';
 	import { merge, EMPTY } from 'rxjs';
 	import CalendarNavigation from './CalendarNavigation.svelte';
@@ -131,7 +131,7 @@
 			kind: /** @type {import('../../types/calendar.js').CalendarEventKind} */ (event.kind),
 			title: getCalendarEventTitle(event) || 'Untitled Event',
 			summary: event.content || '',
-			image: '',
+			image: getCalendarEventImage(event) || '',
 			start: validStartTimestamp,
 			end: endTimestamp,
 			startTimezone: undefined,
@@ -611,7 +611,7 @@
 		onViewModeChange={handleViewModeChange}
 	/>
 
-	<!-- Always show Calendar Grid immediately -->
+	<!-- Always show Calendar Grid immediately - no blocking loading state -->
 	<CalendarGrid
 		currentDate={viewState.currentDate}
 		viewMode={viewState.viewMode}
@@ -620,21 +620,10 @@
 		onDateClick={handleDateClick}
 	/>
 
-	<!-- Show loading indicator only for initial load when no events exist -->
+	<!-- Show subtle loading indicator in header when initially loading -->
 	{#if loading && events.length === 0}
-		<div class="flex flex-col items-center justify-center py-16">
-			<div class="mb-4">
-				<svg class="h-8 w-8 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
-					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"
-					></circle>
-					<path
-						class="opacity-75"
-						fill="currentColor"
-						d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-					></path>
-				</svg>
-			</div>
-			<p class="text-base-content/60">Loading calendar events...</p>
+		<div class="text-sm text-base-content/60 px-6 py-2 text-center">
+			Loading calendar events...
 		</div>
 	{/if}
 
