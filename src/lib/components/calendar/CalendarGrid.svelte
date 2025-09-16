@@ -57,12 +57,12 @@
 		const eventsForDate = eventsMap.get(dateKey) || [];
 
 		// Debug logging to trace date key matching
-		console.log('📅 CalendarGrid: Looking for events on date:', {
-			localDate: date.toDateString(),
-			utcDateKey: dateKey,
-			eventsMapKeys: Array.from(eventsMap.keys()),
-			eventsFound: eventsForDate.length
-		});
+		// console.log('📅 CalendarGrid: Looking for events on date:', {
+		// 	localDate: date.toDateString(),
+		// 	utcDateKey: dateKey,
+		// 	eventsMapKeys: Array.from(eventsMap.keys()),
+		// 	eventsFound: eventsForDate.length
+		// });
 
 		return eventsForDate;
 	}

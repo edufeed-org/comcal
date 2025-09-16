@@ -117,13 +117,13 @@
 			? (event.tags.find((t) => t && t[0] === 'd')?.[1] || undefined)
 			: undefined;
 
-		console.log('📅 CommunityCalendar: Converting event using applesauce helpers:', {
-			eventId: event.id,
-			kind: event.kind,
-			startTimestamp: validStartTimestamp,
-			endTimestamp: endTimestamp,
-			title: getCalendarEventTitle(event)
-		});
+		// console.log('📅 CommunityCalendar: Converting event using applesauce helpers:', {
+		// 	eventId: event.id,
+		// 	kind: event.kind,
+		// 	startTimestamp: validStartTimestamp,
+		// 	endTimestamp: endTimestamp,
+		// 	title: getCalendarEventTitle(event)
+		// });
 
 		return {
 			id: event.id,
@@ -219,7 +219,7 @@
 		// Subscribe to the timeline loader
 		currentSubscription = timelineLoader().subscribe({
 			next: /** @param {any} event */ (event) => {
-				console.log('📅 CommunityCalendar: Received calendar event:', event.id);
+				// console.log('📅 CommunityCalendar: Received calendar event:', event.id);
 
 				// Convert to our CalendarEvent format
 				const calendarEvent = convertToCalendarEvent(event);
