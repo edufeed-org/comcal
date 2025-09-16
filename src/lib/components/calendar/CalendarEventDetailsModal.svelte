@@ -32,9 +32,37 @@
 
 	// Add to calendar state
 	let selectedCalendarIds = $state(/** @type {string[]} */ ([]));
-	let isAddingToCalendar = $state(false);
-	let addToCalendarError = $state('');
-	let addToCalendarSuccess = $state(false);
+	let isProcessingChanges = $state(false);
+	let calendarChangesError = $state('');
+	let calendarChangesSuccess = $state(false);
+
+	// Helper function to generate event reference for NIP-52
+	/**
+	 * @param {any} event
+	 * @returns {string | null}
+	 */
+	function getEventReference(event) {
+		if (!event || !event.kind || !event.pubkey || !event.dTag) {
+			return null;
+		}
+		return `${event.kind}:${event.pubkey}:${event.dTag}`;
+	}
+
+	// Check which calendars already contain this event
+	let calendarsContainingEvent = $derived(() => {
+		if (!calendarManagement || !event) {
+			return new Set();
+		}
+		const eventRef = getEventReference(event);
+		if (!eventRef) {
+			return new Set();
+		}
+		return new Set(
+			calendarManagement.calendars
+				.filter(calendar => calendar.eventReferences.includes(eventRef))
+				.map(calendar => calendar.id)
+		);
+	});
 
 	// Generate unique modal ID
 	const modalId = 'event-details-modal';
@@ -111,16 +139,16 @@
 	}
 
 	/**
-	 * Handle adding event to selected calendars
+	 * Handle applying calendar changes (add/remove events)
 	 */
-	async function handleAddToCalendar() {
+	async function handleApplyCalendarChanges() {
 		if (selectedCalendarIds.length === 0 || !calendarManagement || !event) {
 			return;
 		}
 
-		isAddingToCalendar = true;
-		addToCalendarError = '';
-		addToCalendarSuccess = false;
+		isProcessingChanges = true;
+		calendarChangesError = '';
+		calendarChangesSuccess = false;
 
 		try {
 			// Check if event already has a dTag, if not generate one
@@ -129,11 +157,19 @@
 				dTag: event.dTag || `event-${event.id.slice(0, 8)}`
 			};
 
-			// Add event to each selected calendar
+			// Process each selected calendar
 			const results = await Promise.allSettled(
-				selectedCalendarIds.map(calendarId =>
-					calendarManagement.addEventToCalendar(calendarId, eventWithDTag)
-				)
+				selectedCalendarIds.map(async (calendarId) => {
+					const isAlreadyInCalendar = calendarsContainingEvent().has(calendarId);
+
+					if (isAlreadyInCalendar) {
+						// Remove event from calendar
+						return await calendarManagement.removeEventFromCalendar(calendarId, eventWithDTag);
+					} else {
+						// Add event to calendar
+						return await calendarManagement.addEventToCalendar(calendarId, eventWithDTag);
+					}
+				})
 			);
 
 			// Check results
@@ -142,17 +178,17 @@
 			).length;
 
 			if (successful > 0) {
-				addToCalendarSuccess = true;
+				calendarChangesSuccess = true;
 				selectedCalendarIds = []; // Reset selection
-				console.log(`Event successfully added to ${successful}/${selectedCalendarIds.length} calendars`);
+				console.log(`Calendar changes applied successfully to ${successful}/${selectedCalendarIds.length} calendars`);
 			} else {
-				addToCalendarError = 'Failed to add event to any calendar';
+				calendarChangesError = 'Failed to apply changes to any calendar';
 			}
 		} catch (error) {
-			console.error('Error adding event to calendars:', error);
-			addToCalendarError = error instanceof Error ? error.message : 'Failed to add event to calendars';
+			console.error('Error applying calendar changes:', error);
+			calendarChangesError = error instanceof Error ? error.message : 'Failed to apply calendar changes';
 		} finally {
-			isAddingToCalendar = false;
+			isProcessingChanges = false;
 		}
 	}
 
@@ -169,11 +205,14 @@
 	}
 
 	/**
-	 * Select all calendars
+	 * Select all calendars that don't already contain the event
 	 */
 	function selectAllCalendars() {
 		if (calendarManagement) {
-			selectedCalendarIds = calendarManagement.calendars.map(calendar => calendar.id);
+			const availableCalendars = calendarManagement.calendars
+				.filter(calendar => !calendarsContainingEvent().has(calendar.id))
+				.map(calendar => calendar.id);
+			selectedCalendarIds = availableCalendars;
 		}
 	}
 
@@ -185,20 +224,20 @@
 	}
 
 	/**
-	 * Reset add to calendar state when modal closes
+	 * Reset calendar changes state when modal closes
 	 */
-	function resetAddToCalendarState() {
+	function resetCalendarChangesState() {
 		selectedCalendarIds = [];
-		isAddingToCalendar = false;
-		addToCalendarError = '';
-		addToCalendarSuccess = false;
+		isProcessingChanges = false;
+		calendarChangesError = '';
+		calendarChangesSuccess = false;
 	}
 
 	/**
 	 * Handle modal close with state reset
 	 */
 	function handleClose() {
-		resetAddToCalendarState();
+		resetCalendarChangesState();
 		modal.closeModal();
 	}
 </script>
@@ -366,7 +405,7 @@
 			<!-- Add to Calendar Section (only for authenticated users) -->
 			{#if activeUser && calendarManagement}
 				<div class="border-t border-base-300 pt-4 mb-4">
-					<h3 class="text-lg font-semibold text-base-content mb-3">Add to Calendar</h3>
+					<h3 class="text-lg font-semibold text-base-content mb-3">Manage Calendar Events</h3>
 
 					<!-- Calendar Selection -->
 					<div class="mb-3">
@@ -397,16 +436,25 @@
 						<!-- Calendar Checkboxes -->
 						<div class="max-h-40 overflow-y-auto border border-base-300 rounded-lg p-3">
 							{#each calendarManagement.calendars as calendar}
+								{@const isAlreadyInCalendar = calendarsContainingEvent().has(calendar.id)}
+								{@const isSelected = selectedCalendarIds.includes(calendar.id)}
 								<label class="flex items-center gap-3 cursor-pointer hover:bg-base-200 p-2 rounded">
 									<input
 										type="checkbox"
 										class="checkbox checkbox-primary"
-										checked={selectedCalendarIds.includes(calendar.id)}
+										checked={isSelected || isAlreadyInCalendar}
 										onchange={() => toggleCalendarSelection(calendar.id)}
 									/>
 									<span class="text-sm font-medium">{calendar.title}</span>
 									{#if calendar.description}
 										<span class="text-xs text-base-content/60 truncate">{calendar.description}</span>
+									{/if}
+									{#if isAlreadyInCalendar && !isSelected}
+										<span class="text-xs text-success font-medium">(Added - click to remove)</span>
+									{:else if isAlreadyInCalendar && isSelected}
+										<span class="text-xs text-warning font-medium">(Will be removed)</span>
+									{:else if isSelected}
+										<span class="text-xs text-info font-medium">(Will be added)</span>
 									{/if}
 								</label>
 							{/each}
@@ -425,42 +473,42 @@
 						{/if}
 					</div>
 
-					<!-- Add to Calendar Button -->
+					<!-- Apply Changes Button -->
 					<div class="flex items-center gap-3">
 						<button
 							class="btn btn-primary"
-							disabled={selectedCalendarIds.length === 0 || isAddingToCalendar}
-							onclick={handleAddToCalendar}
+							disabled={selectedCalendarIds.length === 0 || isProcessingChanges}
+							onclick={handleApplyCalendarChanges}
 						>
-							{#if isAddingToCalendar}
+							{#if isProcessingChanges}
 								<span class="loading loading-spinner loading-sm"></span>
-								Adding to {selectedCalendarIds.length} calendar{selectedCalendarIds.length > 1 ? 's' : ''}...
+								Applying changes to {selectedCalendarIds.length} calendar{selectedCalendarIds.length > 1 ? 's' : ''}...
 							{:else}
 								<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
 								</svg>
-								Add to {selectedCalendarIds.length || 'Selected'} Calendar{selectedCalendarIds.length !== 1 ? 's' : ''}
+								Apply Changes to {selectedCalendarIds.length || 'Selected'} Calendar{selectedCalendarIds.length !== 1 ? 's' : ''}
 							{/if}
 						</button>
 					</div>
 
 					<!-- Success Message -->
-					{#if addToCalendarSuccess}
+					{#if calendarChangesSuccess}
 						<div class="alert alert-success mt-3">
 							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
 							</svg>
-							<span>Event successfully added to calendar!</span>
+							<span>Calendar changes applied successfully!</span>
 						</div>
 					{/if}
 
 					<!-- Error Message -->
-					{#if addToCalendarError}
+					{#if calendarChangesError}
 						<div class="alert alert-error mt-3">
 							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 							</svg>
-							<span>{addToCalendarError}</span>
+							<span>{calendarChangesError}</span>
 						</div>
 					{/if}
 				</div>

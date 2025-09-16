@@ -32,6 +32,7 @@ import { manager } from '../accounts.svelte.js';
  * @property {() => Promise<void>} refresh - Refresh calendars
  * @property {(title: string, description?: string) => Promise<Calendar | null>} createCalendar - Create new calendar
  * @property {(calendarId: string, event: any) => Promise<boolean>} addEventToCalendar - Add event to calendar
+ * @property {(calendarId: string, event: any) => Promise<boolean>} removeEventFromCalendar - Remove event from calendar
  * @property {() => void} destroy - Cleanup subscriptions
  */
 
@@ -260,6 +261,109 @@ export function createCalendarManagementStore(userPubkey) {
 		}
 	}
 
+	/**
+	 * Remove an event from a calendar following NIP-52 specification
+	 * @param {string} calendarId - Calendar ID to remove the event from
+	 * @param {any} event - Calendar event to remove (must have id, pubkey, kind, and dTag)
+	 * @returns {Promise<boolean>} Success status
+	 */
+	async function removeEventFromCalendar(calendarId, event) {
+		try {
+			// Find the calendar to update
+			const calendar = store.calendars.find(c => c.id === calendarId);
+			if (!calendar) {
+				throw new Error('Calendar not found');
+			}
+
+			// Validate event has required properties
+			if (!event.id || !event.pubkey || !event.kind || !event.dTag) {
+				throw new Error('Invalid event data: missing required properties');
+			}
+
+			// Check if event is in the calendar
+			const eventReference = `${event.kind}:${event.pubkey}:${event.dTag}`;
+			if (!calendar.eventReferences.includes(eventReference)) {
+				console.log('📅 Calendar Management: Event not in calendar');
+				return true; // Already removed
+			}
+
+			// Create new calendar event with updated event references (remove the event)
+			const updatedEventReferences = calendar.eventReferences.filter(ref => ref !== eventReference);
+
+			// Build tags for the updated calendar
+			const tags = [
+				['d', calendar.dTag],
+				['title', calendar.title]
+			];
+
+			// Add all remaining event references as 'a' tags
+			updatedEventReferences.forEach(ref => {
+				tags.push(['a', ref]);
+			});
+
+			// Get current account for signing
+			const currentAccount = manager.active;
+			if (!currentAccount) {
+				throw new Error('No account selected. Please log in to remove events from calendars.');
+			}
+
+			// Create the updated calendar event using EventFactory
+			const eventFactory = new EventFactory();
+			const eventTemplate = await eventFactory.build({
+				kind: 31924,
+				content: calendar.description,
+				tags: tags
+			});
+
+			// Sign the event
+			const signedEvent = await currentAccount.signEvent(eventTemplate);
+
+			// Publish to multiple relays
+			const responses = await pool.publish(relays, signedEvent);
+
+			// Check if at least one relay accepted the event
+			const hasSuccess = responses.some(response => response.ok);
+
+			if (hasSuccess) {
+				// Add to event store for local caching
+				eventStore.add(signedEvent);
+
+				// Update the calendar in the store with the new event ID and references
+				const updatedCalendar = {
+					...calendar,
+					id: signedEvent.id,
+					eventReferences: updatedEventReferences,
+					createdAt: signedEvent.created_at
+				};
+
+				// Update the calendar in the store
+				store.calendars = store.calendars.map(c =>
+					c.id === calendarId ? updatedCalendar : c
+				);
+
+				// Trigger refresh of calendar events display
+				if (calendarEventsRefreshCallback) {
+					console.log('📅 Calendar Management: Triggering calendar events refresh');
+					calendarEventsRefreshCallback();
+				}
+
+				console.log('📅 Calendar Management: Successfully removed event from calendar:', calendar.title);
+				console.log('📅 Calendar Management: Published to relays:', responses.filter(r => r.ok).map(r => r.from));
+				return true;
+			} else {
+				// Log failed responses for debugging
+				const failedResponses = responses.filter(r => !r.ok);
+				console.error('📅 Calendar Management: Failed to publish to any relay:', failedResponses);
+				throw new Error('Failed to publish calendar update to any relay');
+			}
+
+		} catch (error) {
+			console.error('Error removing event from calendar:', error);
+			store.error = error instanceof Error ? error.message : 'Failed to remove event from calendar';
+			return false;
+		}
+	}
+
 	// Cleanup subscription
 	function destroy() {
 		if (subscription) {
@@ -278,6 +382,7 @@ export function createCalendarManagementStore(userPubkey) {
 		refresh,
 		createCalendar,
 		addEventToCalendar,
+		removeEventFromCalendar,
 		destroy
 	};
 }
