@@ -37,9 +37,15 @@ export function createCalendarStore(filterConfig, calendarId = '', calendarSelec
 	// Subscribe to calendar selection store for reactive filtering
 	let selectionSubscription = null;
 	if (calendarSelectionStore) {
+		// Initialize with current selection
+		currentCalendarId = calendarSelectionStore.selectedCalendarId;
+
 		selectionSubscription = calendarSelectionStore.getSelectionObservable().subscribe((selectedId) => {
 			console.log('📅 Calendar Store: Selection changed to:', selectedId);
 			currentCalendarId = selectedId;
+
+			// When selection changes, refresh the event loading strategy
+			refreshEventLoading();
 		});
 	}
 	// Single reactive object to maintain proper reactivity
@@ -80,8 +86,9 @@ export function createCalendarStore(filterConfig, calendarId = '', calendarSelec
 		const selectedCalendar = calendarManagement.calendars.find(cal => cal.id === filterCriteria);
 
 		if (!selectedCalendar) {
-			// Calendar not found, return empty array
-			console.warn('📅 Calendar Store: Selected calendar not found:', filterCriteria);
+			// Calendar not loaded yet or not found - return empty array
+			// The reactive system will re-run this filter when calendar data loads
+			console.log('📅 Calendar Store: Calendar not loaded yet or not found:', filterCriteria, 'calendars loaded:', calendarManagement.calendars.length);
 			return [];
 		}
 
@@ -89,14 +96,17 @@ export function createCalendarStore(filterConfig, calendarId = '', calendarSelec
 		loadCalendarEventsIfNeeded(selectedCalendar);
 
 		// Filter events that are explicitly referenced in the selected calendar
-		return events.filter((event) => {
+		const filteredEvents = events.filter((event) => {
 			// Check if this event is referenced in the calendar's eventReferences
 			const eventReference = `${event.kind}:${event.pubkey}:${event.dTag || ''}`;
 			const isInCalendar = selectedCalendar.eventReferences.includes(eventReference);
 
-			// console.log('📅 Calendar Store: Event', event.title, 'in calendar?', isInCalendar, 'reference:', eventReference);
+			console.log('📅 Calendar Store: Event', event.title, 'in calendar?', isInCalendar, 'reference:', eventReference);
 			return isInCalendar;
 		});
+
+		console.log('📅 Calendar Store: Filtered', filteredEvents.length, 'events for calendar:', selectedCalendar.title);
+		return filteredEvents;
 	}
 
 	// Helper function to load calendar events if they're not already loaded
@@ -302,8 +312,119 @@ export function createCalendarStore(filterConfig, calendarId = '', calendarSelec
 				});
 	}
 
-	// Initialize loader on creation
-	initializeLoader();
+	// Initialize loader based on current selection
+	if (calendarSelectionStore && calendarSelectionStore.selectedCalendarId) {
+		// Pre-selected calendar - load specific events immediately
+		console.log('📅 Calendar Store: Initializing with pre-selected calendar:', calendarSelectionStore.selectedCalendarId);
+		refreshEventLoading();
+	} else {
+		// No selection - load global events
+		console.log('📅 Calendar Store: Initializing with global calendar view');
+		initializeLoader();
+	}
+
+	// Function to refresh event loading strategy based on current selection
+	function refreshEventLoading() {
+		console.log('📅 Calendar Store: Refreshing event loading for selection:', currentCalendarId);
+
+		// Clear existing events
+		store.events = [];
+		store.loading = true;
+		store.error = null;
+
+		// Clean up existing subscription
+		if (subscription) {
+			subscription.unsubscribe();
+		}
+
+		// Determine loading strategy based on current selection
+		if (!currentCalendarId || currentCalendarId === '') {
+			// Global view - load all events
+			console.log('📅 Calendar Store: Loading global events');
+			initializeLoader();
+		} else {
+			// Specific calendar selected - load only that calendar's events
+			const activeUser = manager.active;
+			if (activeUser) {
+				const calendarManagement = useCalendarManagement(activeUser.pubkey);
+				const selectedCalendar = calendarManagement.calendars.find(cal => cal.id === currentCalendarId);
+
+				if (selectedCalendar && selectedCalendar.eventReferences.length > 0) {
+					console.log('📅 Calendar Store: Loading events for calendar:', selectedCalendar.title);
+					loadCalendarSpecificEvents(selectedCalendar);
+				} else {
+					console.log('📅 Calendar Store: Calendar not found or empty, showing no events');
+					store.loading = false;
+				}
+			} else {
+				console.log('📅 Calendar Store: No active user, showing no events');
+				store.loading = false;
+			}
+		}
+	}
+
+	// Function to load events for a specific calendar
+	function loadCalendarSpecificEvents(selectedCalendar) {
+		const eventFilters = parseCalendarEventReferences(selectedCalendar.eventReferences);
+
+		if (eventFilters.length === 0) {
+			store.loading = false;
+			return;
+		}
+
+		console.log('📅 Calendar Store: Loading', eventFilters.length, 'specific events for calendar:', selectedCalendar.title);
+
+		// Group filters by kind for efficient querying
+		/** @type {Record<number, {kinds: number[], authors: string[], '#d': string[]}>} */
+		const filtersByKind = {};
+		eventFilters.forEach(/** @param {{kind: number, author: string, dTag: string}} filter */ filter => {
+			if (!filtersByKind[filter.kind]) {
+				filtersByKind[filter.kind] = {
+					kinds: [filter.kind],
+					authors: [],
+					'#d': []
+				};
+			}
+			filtersByKind[filter.kind].authors.push(filter.author);
+			filtersByKind[filter.kind]['#d'].push(filter.dTag);
+		});
+
+		// Create subscriptions for each kind
+		const subscriptions = Object.values(filtersByKind).map(/** @param {{kinds: number[], authors: string[], '#d': string[]}} filter */ filter => {
+			const timelineLoader = createTimelineLoader(
+				pool,
+				relays,
+				filter,
+				{ eventStore }
+			);
+
+			return timelineLoader()
+				.pipe(
+					map(/** @param {any} event */ event => convertNDKEventToCalendarEvent(event)),
+					catchError(/** @param {any} error */ error => {
+						console.error('Error loading calendar-specific event:', error);
+						return of(null);
+					})
+				)
+				.subscribe(/** @param {CalendarEvent | null} event */ event => {
+					if (event) {
+						// Check if event already exists to avoid duplicates
+						const exists = store.events.some(e => e.id === event.id);
+						if (!exists) {
+							console.log('📅 Calendar Store: Added calendar event:', event.title);
+							store.events = [...store.events, event];
+						}
+					}
+					store.loading = false;
+					store.error = null;
+				});
+		});
+
+		// Clean up subscriptions after loading
+		setTimeout(() => {
+			subscriptions.forEach(sub => sub.unsubscribe());
+		}, 15000); // Longer timeout for calendar-specific loading
+	}
 
 	// Helper function for getting current view events
 	function getCurrentViewEvents() {

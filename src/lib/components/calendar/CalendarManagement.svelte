@@ -1,9 +1,11 @@
 <script>
 	import { useCalendarManagement } from '$lib/stores/calendar-management-store.svelte.js';
+	import { useCalendarSelection } from '$lib/stores/calendar-selection.svelte.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
 	import { EventFactory } from 'applesauce-factory';
 	import { pool, relays, eventStore } from '$lib/store.svelte';
+	import { goto } from '$app/navigation';
 
 	// Create local reactive state for active user
 	let activeUser = $state(manager.active);
@@ -223,6 +225,16 @@
 			await calendarManagement.refresh();
 		}
 	}
+
+	/**
+	 * View a calendar by navigating to the calendar route with the selected calendar
+	 * @param {string} calendarId
+	 */
+	function viewCalendar(calendarId) {
+		const calendarSelection = useCalendarSelection();
+		calendarSelection.selectCalendar(calendarId);
+		goto('/calendar');
+	}
 </script>
 
 <svelte:head>
@@ -440,6 +452,31 @@
 									<ul
 										class="dropdown-content menu z-[1] w-48 rounded-box border border-base-300 bg-base-100 p-2 shadow-lg"
 									>
+										<li>
+											<a
+												href="#"
+												onclick={(e) => {
+													e.preventDefault();
+													viewCalendar(calendar.id);
+												}}
+											>
+												<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														stroke-width="2"
+														d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+													/>
+													<path
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														stroke-width="2"
+														d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+													/>
+												</svg>
+												View Calendar
+											</a>
+										</li>
 										<li>
 											<a
 												href="#"
