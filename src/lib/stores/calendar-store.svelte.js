@@ -33,15 +33,20 @@ import { useCalendarManagement } from './calendar-management-store.svelte.js';
 export function createCalendarStore(filterConfig, calendarId = '', calendarSelectionStore = null) {
 	// Current calendar filter state - reactive to selection store if provided
 	let currentCalendarId = $state(calendarId);
+	let previousCalendarId = $state(calendarId); // Track previous selection for smart clearing
 
 	// Subscribe to calendar selection store for reactive filtering
 	let selectionSubscription = null;
 	if (calendarSelectionStore) {
 		// Initialize with current selection
 		currentCalendarId = calendarSelectionStore.selectedCalendarId;
+		previousCalendarId = calendarSelectionStore.selectedCalendarId;
 
 		selectionSubscription = calendarSelectionStore.getSelectionObservable().subscribe((selectedId) => {
-			console.log('📅 Calendar Store: Selection changed to:', selectedId);
+			console.log('📅 Calendar Store: Selection changed from', previousCalendarId, 'to:', selectedId);
+
+			// Update previous before current to track transition
+			previousCalendarId = currentCalendarId;
 			currentCalendarId = selectedId;
 
 			// When selection changes, refresh the event loading strategy
@@ -327,9 +332,17 @@ export function createCalendarStore(filterConfig, calendarId = '', calendarSelec
 	function refreshEventLoading() {
 		console.log('📅 Calendar Store: Refreshing event loading for selection:', currentCalendarId);
 
-		// DON'T clear existing events or set loading=true - let UI show immediately
-		// store.events = []; // REMOVED - keep existing events visible
-		// store.loading = true; // REMOVED - don't block UI
+		// Smart event clearing based on transition type
+		const shouldClearEvents = determineIfShouldClearEvents(previousCalendarId, currentCalendarId);
+
+		if (shouldClearEvents) {
+			console.log('📅 Calendar Store: Clearing events for transition from', previousCalendarId, 'to', currentCalendarId);
+			store.events = [];
+		} else {
+			console.log('📅 Calendar Store: Keeping existing events for transition from', previousCalendarId, 'to', currentCalendarId);
+		}
+
+		// DON'T set loading=true - let UI show immediately
 		store.error = null;
 
 		// Clean up existing subscription
@@ -361,6 +374,32 @@ export function createCalendarStore(filterConfig, calendarId = '', calendarSelec
 				// Don't set loading=false here - let existing events remain visible
 			}
 		}
+	}
+
+	// Helper function to determine if events should be cleared based on transition
+	function determineIfShouldClearEvents(fromCalendarId, toCalendarId) {
+		// No previous selection - don't clear (initial load)
+		if (!fromCalendarId && fromCalendarId !== '') {
+			return false;
+		}
+
+		// From global to specific calendar - clear events
+		if ((!fromCalendarId || fromCalendarId === '') && toCalendarId && toCalendarId !== '') {
+			return true;
+		}
+
+		// From specific calendar to global - keep events (add global to existing)
+		if (fromCalendarId && fromCalendarId !== '' && (!toCalendarId || toCalendarId === '')) {
+			return false;
+		}
+
+		// From specific calendar A to specific calendar B - clear events
+		if (fromCalendarId && fromCalendarId !== '' && toCalendarId && toCalendarId !== '' && fromCalendarId !== toCalendarId) {
+			return true;
+		}
+
+		// Same calendar or invalid transition - don't clear
+		return false;
 	}
 
 	// Function to load events for a specific calendar
