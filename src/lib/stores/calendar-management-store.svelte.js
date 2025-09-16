@@ -4,7 +4,7 @@
  */
 
 import { map, catchError } from 'rxjs/operators';
-import { of } from 'rxjs';
+import { of, BehaviorSubject } from 'rxjs';
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, relays, eventStore } from '$lib/store.svelte';
 import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
@@ -29,6 +29,7 @@ import { manager } from '../accounts.svelte.js';
  * @property {Calendar[]} calendars - Array of user's calendars
  * @property {boolean} loading - Loading state
  * @property {string | null} error - Error message
+ * @property {import('rxjs').Observable<boolean>} loading$ - Observable loading state for reactive dependencies
  * @property {() => Promise<void>} refresh - Refresh calendars
  * @property {(title: string, description?: string) => Promise<Calendar | null>} createCalendar - Create new calendar
  * @property {(calendarId: string, event: any) => Promise<boolean>} addEventToCalendar - Add event to calendar
@@ -49,6 +50,9 @@ export function createCalendarManagementStore(userPubkey) {
 		error: /** @type {string | null} */ (null)
 	});
 
+	// Observable loading state for reactive dependencies
+	let loadingSubject = new BehaviorSubject(false);
+
 	// Create timeline loader for calendar events
 	let timelineLoader = null;
 	/** @type {import('rxjs').Subscription | null} */
@@ -60,6 +64,10 @@ export function createCalendarManagementStore(userPubkey) {
 		if (subscription) {
 			subscription.unsubscribe();
 		}
+
+		// Set loading state and emit to observable
+		store.loading = true;
+		loadingSubject.next(true);
 
 		// Create timeline loader with filter for user's calendars (kind 31924)
 		timelineLoader = createTimelineLoader(
@@ -79,6 +87,8 @@ export function createCalendarManagementStore(userPubkey) {
 				catchError(/** @param {any} error */ error => {
 					console.error('Error loading calendar:', error);
 					store.error = error.message || 'Failed to load calendars';
+					store.loading = false;
+					loadingSubject.next(false);
 					return of(null);
 				})
 			)
@@ -93,6 +103,7 @@ export function createCalendarManagementStore(userPubkey) {
 					}
 				}
 				store.loading = false;
+				loadingSubject.next(false);
 				store.error = null;
 			});
 	}
@@ -105,6 +116,7 @@ export function createCalendarManagementStore(userPubkey) {
 	 */
 	async function refresh() {
 		store.loading = true;
+		loadingSubject.next(true);
 		store.error = null;
 		store.calendars = []; // Clear existing calendars
 		initializeLoader(); // Reinitialize loader
@@ -377,6 +389,7 @@ export function createCalendarManagementStore(userPubkey) {
 		get calendars() { return store.calendars; },
 		get loading() { return store.loading; },
 		get error() { return store.error; },
+		get loading$() { return loadingSubject.asObservable(); },
 
 		// Methods
 		refresh,

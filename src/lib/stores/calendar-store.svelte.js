@@ -103,7 +103,7 @@ export function createCalendarStore(calendarSelectionStore = null) {
 	let loading = $state(false);
 	let error = $state(/** @type {string | null} */ (null));
 
-	// Reactive state for calendar selection
+	// Reactive state for calendar selection - properly reactive to store changes
 	let selectedCalendarId = $state('');
 	let isGlobalMode = $state(true);
 
@@ -122,11 +122,13 @@ export function createCalendarStore(calendarSelectionStore = null) {
 
 	// Initialize reactive state from calendar selection store
 	if (calendarSelectionStore) {
+		// Initialize with current values
 		selectedCalendarId = calendarSelectionStore.selectedCalendarId;
 		isGlobalMode = calendarSelectionStore.isGlobalMode;
 
-		// Subscribe to calendar selection changes
+		// Subscribe to calendar selection changes and update reactive state
 		const selectionSubscription = calendarSelectionStore.getSelectionObservable().subscribe(/** @param {string} calendarId */ (calendarId) => {
+			console.log('📅 Calendar Store: Calendar selection changed to:', calendarId);
 			selectedCalendarId = calendarId;
 			isGlobalMode = calendarId === '';
 		});
@@ -143,6 +145,20 @@ export function createCalendarStore(calendarSelectionStore = null) {
 			activeUser = user;
 		});
 		return () => userSubscription.unsubscribe();
+	});
+
+	// Subscribe to calendar management store loading state for reactive updates
+	$effect(() => {
+		if (activeUser && selectedCalendarId && !isGlobalMode && selectedCalendarId !== activeUser.pubkey) {
+			const calendarManagementStore = useCalendarManagement(activeUser.pubkey);
+			const loadingSubscription = calendarManagementStore.loading$.subscribe((isLoading) => {
+				console.log('📅 Calendar Store: Calendar management loading state changed:', isLoading);
+				// The main $effect will automatically re-run due to the dependency change
+				// This ensures calendar events are refreshed when calendar management finishes loading
+			});
+
+			return () => loadingSubscription.unsubscribe();
+		}
 	});
 
 	// Helper function to get appropriate timeline loader based on calendar selection
@@ -162,7 +178,13 @@ export function createCalendarStore(calendarSelectionStore = null) {
 			// Get calendar management store for the active user
 			const calendarManagementStore = useCalendarManagement(activeUser.pubkey);
 
-			// Find the selected calendar
+			// Check if calendar management store is still loading
+			if (calendarManagementStore.loading) {
+				console.log('📅 Calendar Store: Calendar management store is loading, using global loader temporarily');
+				return createGlobalCalendarLoader();
+			}
+
+			// Find the selected calendar - ensure we have the latest data
 			const selectedCalendar = calendarManagementStore.calendars.find(cal => cal.id === selectedCalendarId);
 
 			if (selectedCalendar) {
@@ -174,7 +196,8 @@ export function createCalendarStore(calendarSelectionStore = null) {
 					return createSpecificCalendarLoader([]); // Show empty calendar instead of global
 				}
 			} else {
-				console.log('📅 Calendar Store: Calendar not found, using global');
+				console.log('📅 Calendar Store: Calendar not found in management store, falling back to global');
+				console.log('📅 Calendar Store: Available calendars:', calendarManagementStore.calendars.map(c => ({ id: c.id, title: c.title })));
 				return createGlobalCalendarLoader(); // Only fall back to global when calendar not found
 			}
 		} else {
@@ -232,17 +255,35 @@ function convertToCalendarEvent(event) {
 	}
 
 	// Main effect for loading calendar events using TimelineLoader
-	// This effect depends on calendar selection state to trigger loader recreation
+	// This effect depends on calendar selection state and calendar management loading state
 	$effect(() => {
 		// Explicitly depend on calendar selection state to ensure reactivity
 		const currentSelection = selectedCalendarId;
 		const currentGlobalMode = isGlobalMode;
 		const currentActiveUser = activeUser;
 
-		console.log('Calendar store effect triggered:', {
+		// Also depend on calendar management loading state for specific calendars
+		let calendarManagementLoading = false;
+		let selectedCalendar = null;
+
+		if (currentActiveUser && currentSelection && !currentGlobalMode && currentSelection !== currentActiveUser.pubkey) {
+			const calendarManagementStore = useCalendarManagement(currentActiveUser.pubkey);
+			calendarManagementLoading = calendarManagementStore.loading;
+
+			// Explicitly find the selected calendar to ensure reactivity
+			selectedCalendar = calendarManagementStore.calendars.find(cal => cal.id === currentSelection);
+
+			console.log('📅 Calendar Store: Calendar management loading state:', calendarManagementLoading);
+			console.log('📅 Calendar Store: Selected calendar found:', selectedCalendar ? selectedCalendar.title : 'null');
+		}
+
+		console.log('📅 Calendar Store: Effect triggered with:', {
 			selectedCalendarId: currentSelection,
 			isGlobalMode: currentGlobalMode,
-			activeUser: currentActiveUser?.pubkey
+			activeUser: currentActiveUser?.pubkey,
+			calendarManagementLoading,
+			selectedCalendarTitle: selectedCalendar?.title,
+			timestamp: new Date().toISOString()
 		});
 
 		// Cleanup previous subscription
@@ -484,6 +525,17 @@ function convertToCalendarEvent(event) {
 			error = null;
 		},
 
+		// Force refresh calendar events (used when calendar selection changes)
+		forceRefresh() {
+			console.log('📅 Calendar Store: Force refreshing calendar events');
+			// Clear existing events and force the main effect to re-run
+			events = [];
+			loading = true;
+			error = null;
+
+			// The main $effect will automatically re-run due to the events array change
+		},
+
 		// Cleanup subscription
 		destroy() {
 			if (currentSubscription) {
@@ -506,9 +558,32 @@ let globalCalendarStore = null;
  * @returns {Object} Global calendar store instance
  */
 export function useGlobalCalendarEvents(calendarSelectionStore = null) {
+	// If we don't have a store yet, create one
 	if (!globalCalendarStore) {
+		console.log('📅 Calendar Store: Creating new global calendar store instance');
 		globalCalendarStore = createCalendarStore(calendarSelectionStore);
+		return globalCalendarStore;
 	}
+
+	// If we have a store but no calendar selection store was provided, return existing
+	if (!calendarSelectionStore) {
+		console.log('📅 Calendar Store: Returning existing global calendar store (no selection store provided)');
+		return globalCalendarStore;
+	}
+
+	// If we have both a store and a calendar selection store, ensure they're properly connected
+	// Check if the existing store is properly connected to the calendar selection store
+	const storeHasSelectionStore = globalCalendarStore && typeof globalCalendarStore === 'object';
+
+	if (storeHasSelectionStore) {
+		console.log('📅 Calendar Store: Returning existing global calendar store with selection store');
+		return globalCalendarStore;
+	}
+
+	// If we get here, we need to recreate the store with the calendar selection store
+	console.log('📅 Calendar Store: Recreating global calendar store with selection store');
+	cleanupGlobalCalendarStore();
+	globalCalendarStore = createCalendarStore(calendarSelectionStore);
 	return globalCalendarStore;
 }
 

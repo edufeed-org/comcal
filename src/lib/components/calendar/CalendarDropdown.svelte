@@ -1,15 +1,19 @@
 <script>
 	import { useCalendarManagement } from '$lib/stores/calendar-management-store.svelte.js';
+	import { useCalendarSelection } from '$lib/stores/calendar-selection.svelte.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
 
 	/**
 	 * @typedef {Object} Props
-	 * @property {string} [selectedCalendarId] - Currently selected calendar ID
+	 * @property {string} [selectedCalendarId] - Currently selected calendar ID (for backward compatibility)
 	 * @property {(calendarId: string) => void} [onCalendarSelect] - Callback when calendar is selected
 	 */
 
 	let { selectedCalendarId = $bindable(''), onCalendarSelect = () => {} } = $props();
+
+	// Initialize calendar selection store
+	const calendarSelectionStore = useCalendarSelection();
 
 	// Create local reactive state for active user to follow store patterns
 	let activeUser = $state(manager.active);
@@ -25,10 +29,14 @@
 	// Reactive calendar management store that updates when login state changes
 	let calendarManagement = $derived(activeUser ? useCalendarManagement(activeUser.pubkey) : null);
 
+	// Get selected calendar ID from global store, fallback to prop for backward compatibility
+	let globalSelectedCalendarId = $derived(calendarSelectionStore.selectedCalendarId);
+	let effectiveSelectedCalendarId = $derived(globalSelectedCalendarId || selectedCalendarId);
+
 	// Reactive state for selected calendar
 	let selectedCalendar = $derived.by(() => {
-		if (!calendarManagement || !selectedCalendarId) return null;
-		return calendarManagement.calendars.find((cal) => cal.id === selectedCalendarId) || null;
+		if (!calendarManagement || !effectiveSelectedCalendarId) return null;
+		return calendarManagement.calendars.find((cal) => cal.id === effectiveSelectedCalendarId) || null;
 	});
 
 	// Reactive display name that handles all states properly
@@ -44,17 +52,17 @@
 		}
 
 		// No calendar selected - show Global Calendar
-		if (!selectedCalendarId) {
+		if (!effectiveSelectedCalendarId) {
 			return 'Global Calendar';
 		}
 
 		// My Events selected
-		if (selectedCalendarId === activeUser.pubkey) {
+		if (activeUser && effectiveSelectedCalendarId === activeUser.pubkey) {
 			return 'My Events';
 		}
 
 		// Calendar selected - show its title
-		const cal = calendarManagement.calendars.find((cal) => cal.id === selectedCalendarId);
+		const cal = calendarManagement.calendars.find((cal) => cal.id === effectiveSelectedCalendarId);
 		return cal ? cal.title : 'Select Calendar';
 	});
 
@@ -63,6 +71,13 @@
 	 * @param {string} calendarId
 	 */
 	function handleCalendarSelect(calendarId) {
+		// Update global calendar selection store
+		calendarSelectionStore.selectCalendar(calendarId);
+
+		// Also update the prop binding for backward compatibility
+		selectedCalendarId = calendarId;
+
+		// Call the callback if provided
 		onCalendarSelect(calendarId);
 	}
 
@@ -112,7 +127,7 @@
 						<a
 							href="#"
 							class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-base-200"
-							class:active={!selectedCalendarId}
+							class:active={!effectiveSelectedCalendarId}
 							onclick={(e) => {
 								e.preventDefault();
 								handleCalendarSelect('');
@@ -136,7 +151,7 @@
 								<div class="text-sm font-medium">Global Calendar</div>
 								<div class="text-xs text-base-content/60">All community events</div>
 							</div>
-							{#if !selectedCalendarId}
+							{#if !effectiveSelectedCalendarId}
 								<svg
 									class="h-4 w-4 text-primary"
 									fill="none"
@@ -163,7 +178,7 @@
 							<a
 								href="#"
 								class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-base-200"
-								class:active={selectedCalendarId === activeUser.pubkey}
+								class:active={effectiveSelectedCalendarId === activeUser.pubkey}
 								onclick={(e) => {
 									e.preventDefault();
 									handleCalendarSelect(activeUser.pubkey);
@@ -187,7 +202,7 @@
 									<div class="text-sm font-medium">My Events</div>
 									<div class="text-xs text-base-content/60">Events I created</div>
 								</div>
-								{#if selectedCalendarId === activeUser.pubkey}
+								{#if effectiveSelectedCalendarId === activeUser.pubkey}
 									<svg
 										class="h-4 w-4 text-primary"
 										fill="none"
@@ -218,7 +233,7 @@
 									<a
 										href="#"
 										class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-base-200"
-										class:active={selectedCalendarId === calendar.id}
+										class:active={effectiveSelectedCalendarId === calendar.id}
 										onclick={(e) => {
 											e.preventDefault();
 											handleCalendarSelect(calendar.id);
@@ -246,7 +261,7 @@
 												</div>
 											{/if}
 										</div>
-										{#if selectedCalendarId === calendar.id}
+										{#if effectiveSelectedCalendarId === calendar.id}
 											<svg
 												class="h-4 w-4 text-primary"
 												fill="none"
