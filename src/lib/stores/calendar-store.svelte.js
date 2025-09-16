@@ -7,7 +7,7 @@
 import { getCalendarEventTitle, getCalendarEventStart, getCalendarEventEnd } from 'applesauce-core/helpers/calendar-event';
 import { isEventInDateRange, groupEventsByDate, getWeekDates } from '../helpers/calendar.js';
 import { appConfig } from '../config.js';
-import { manager } from '$lib/accounts.svelte';
+import { useActiveUser } from './accounts.svelte.js';
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, relays, eventStore } from '$lib/store.svelte';
 import { useCalendarManagement } from './calendar-management-store.svelte.js';
@@ -107,8 +107,8 @@ export function createCalendarStore(calendarSelectionStore = null) {
 	let selectedCalendarId = $state('');
 	let isGlobalMode = $state(true);
 
-	// Reactive state for active user
-	let activeUser = $state(manager.active);
+	// Reactive state for active user using the new hook
+	const getActiveUser = useActiveUser();
 
 	// Computed state for current view events
 	let currentMonthEvents = $state(/** @type {any[]} */ ([]));
@@ -139,16 +139,11 @@ export function createCalendarStore(calendarSelectionStore = null) {
 		});
 	}
 
-	// Subscribe to manager.active$ for reactive user updates
-	$effect(() => {
-		const userSubscription = manager.active$.subscribe((user) => {
-			activeUser = user;
-		});
-		return () => userSubscription.unsubscribe();
-	});
+
 
 	// Subscribe to calendar management store loading state for reactive updates
 	$effect(() => {
+		const activeUser = getActiveUser();
 		if (activeUser && selectedCalendarId && !isGlobalMode && selectedCalendarId !== activeUser.pubkey) {
 			const calendarManagementStore = useCalendarManagement(activeUser.pubkey);
 			const loadingSubscription = calendarManagementStore.loading$.subscribe((isLoading) => {
@@ -163,6 +158,7 @@ export function createCalendarStore(calendarSelectionStore = null) {
 
 	// Helper function to get appropriate timeline loader based on calendar selection
 	function getTimelineLoader() {
+		const activeUser = getActiveUser();
 		if (isGlobalMode) {
 			// Global calendar - all events
 			console.log('📅 Calendar Store: Using global calendar loader');
@@ -208,7 +204,6 @@ export function createCalendarStore(calendarSelectionStore = null) {
 	}
 
 /** @param {any} event */
-// Helper function to convert NDK event to CalendarEvent format
 function convertToCalendarEvent(event) {
 		// Use applesauce helper functions as the single source of truth for date parsing
 		// These handle both NIP-52 date formats (ISO strings and UNIX timestamps) consistently
@@ -260,7 +255,7 @@ function convertToCalendarEvent(event) {
 		// Explicitly depend on calendar selection state to ensure reactivity
 		const currentSelection = selectedCalendarId;
 		const currentGlobalMode = isGlobalMode;
-		const currentActiveUser = activeUser;
+		const currentActiveUser = getActiveUser();
 
 		// Also depend on calendar management loading state for specific calendars
 		let calendarManagementLoading = false;

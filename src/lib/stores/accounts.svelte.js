@@ -16,3 +16,20 @@ export function useAccounts() {
 
 	return () => accounts;
 }
+
+/**
+ * Custom hook for loading and managing active user from AccountManager
+ * @returns {() => any} - Reactive getter function returning active user
+ */
+export function useActiveUser() {
+	let activeUser = $state(manager.active);
+
+	$effect(() => {
+		const subscription = manager.active$.subscribe((user) => {
+			activeUser = user;
+		});
+		return () => subscription.unsubscribe();
+	});
+
+	return () => activeUser;
+}
