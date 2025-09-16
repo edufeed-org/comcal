@@ -327,9 +327,9 @@ export function createCalendarStore(filterConfig, calendarId = '', calendarSelec
 	function refreshEventLoading() {
 		console.log('📅 Calendar Store: Refreshing event loading for selection:', currentCalendarId);
 
-		// Clear existing events
-		store.events = [];
-		store.loading = true;
+		// DON'T clear existing events or set loading=true - let UI show immediately
+		// store.events = []; // REMOVED - keep existing events visible
+		// store.loading = true; // REMOVED - don't block UI
 		store.error = null;
 
 		// Clean up existing subscription
@@ -353,12 +353,12 @@ export function createCalendarStore(filterConfig, calendarId = '', calendarSelec
 					console.log('📅 Calendar Store: Loading events for calendar:', selectedCalendar.title);
 					loadCalendarSpecificEvents(selectedCalendar);
 				} else {
-					console.log('📅 Calendar Store: Calendar not found or empty, showing no events');
-					store.loading = false;
+					console.log('📅 Calendar Store: Calendar not found or empty, keeping existing events');
+					// Don't set loading=false here - let existing events remain visible
 				}
 			} else {
-				console.log('📅 Calendar Store: No active user, showing no events');
-				store.loading = false;
+				console.log('📅 Calendar Store: No active user, keeping existing events');
+				// Don't set loading=false here - let existing events remain visible
 			}
 		}
 	}
@@ -368,7 +368,7 @@ export function createCalendarStore(filterConfig, calendarId = '', calendarSelec
 		const eventFilters = parseCalendarEventReferences(selectedCalendar.eventReferences);
 
 		if (eventFilters.length === 0) {
-			store.loading = false;
+			// Don't set loading=false here - let UI remain reactive
 			return;
 		}
 
@@ -415,7 +415,7 @@ export function createCalendarStore(filterConfig, calendarId = '', calendarSelec
 							store.events = [...store.events, event];
 						}
 					}
-					store.loading = false;
+					// Don't set loading=false here - let UI remain reactive
 					store.error = null;
 				});
 		});

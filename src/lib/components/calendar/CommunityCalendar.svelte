@@ -233,7 +233,16 @@
 		onViewModeChange={handleViewModeChange}
 	/>
 
-	<!-- Loading State -->
+	<!-- Always show Calendar Grid immediately -->
+	<CalendarGrid
+		currentDate={calendarStore.viewState.currentDate}
+		viewMode={calendarStore.viewState.viewMode}
+		groupedEvents={calendarStore.groupedEvents}
+		onEventClick={handleEventClick}
+		onDateClick={handleDateClick}
+	/>
+
+	<!-- Show loading indicator only for initial load when no events exist -->
 	{#if calendarStore.loading && calendarStore.events.length === 0}
 		<div class="flex flex-col items-center justify-center py-16">
 			<div class="mb-4">
@@ -249,44 +258,35 @@
 			</div>
 			<p class="text-base-content/60">Loading calendar events...</p>
 		</div>
-	{:else}
-		<!-- Calendar Grid -->
-		<CalendarGrid
-			currentDate={calendarStore.viewState.currentDate}
-			viewMode={calendarStore.viewState.viewMode}
-			groupedEvents={calendarStore.groupedEvents}
-			onEventClick={handleEventClick}
-			onDateClick={handleDateClick}
-		/>
+	{/if}
 
-		<!-- Empty State -->
-		{#if calendarStore.events.length === 0 && !calendarStore.loading}
-			<div class="flex flex-col items-center justify-center px-6 py-16 text-center">
-				<div class="mb-4 text-base-content/30">
-					<svg class="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="1"
-							d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-						/>
-					</svg>
-				</div>
-				<h3 class="mb-2 text-lg font-medium text-base-content">
-					{globalMode ? 'No calendar events found' : 'No events yet'}
-				</h3>
-				<p class="mb-6 max-w-md text-base-content/60">
-					{#if globalMode}
-						No calendar events found from connected relays. Check back later for new events.
-					{:else}
-						This community doesn't have any calendar events yet. Be the first to create one!
-					{/if}
-				</p>
-				{#if !globalMode && manager.active}
-					<button class="btn btn-primary" onclick={handleCreateEvent}> Create First Event </button>
-				{/if}
+	<!-- Empty State - only show when no events and not loading -->
+	{#if calendarStore.events.length === 0 && !calendarStore.loading}
+		<div class="flex flex-col items-center justify-center px-6 py-16 text-center">
+			<div class="mb-4 text-base-content/30">
+				<svg class="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="1"
+						d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+					/>
+				</svg>
 			</div>
-		{/if}
+			<h3 class="mb-2 text-lg font-medium text-base-content">
+				{globalMode ? 'No calendar events found' : 'No events yet'}
+			</h3>
+			<p class="mb-6 max-w-md text-base-content/60">
+				{#if globalMode}
+					No calendar events found from connected relays. Check back later for new events.
+				{:else}
+					This community doesn't have any calendar events yet. Be the first to create one!
+				{/if}
+			</p>
+			{#if !globalMode && manager.active}
+				<button class="btn btn-primary" onclick={handleCreateEvent}> Create First Event </button>
+			{/if}
+		</div>
 	{/if}
 
 	<!-- Event Creation Modal -->
