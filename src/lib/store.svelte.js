@@ -8,7 +8,6 @@ export const pool = new RelayPool();
 export const relays = [
 	'wss://relay.damus.io',
 	'wss://nos.lol',
-	'wss://relay.snort.social',
 	'wss://theforest.nostr1.com',
 	'wss://relay-rpi.edufeed.org'
 ];

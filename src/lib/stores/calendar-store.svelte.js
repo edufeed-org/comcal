@@ -57,42 +57,45 @@ export function createCalendarStore(filterConfig, calendarId = '', calendarSelec
 	});
 
 	// Helper function to filter events by calendar
-	function filterEventsByCalendar(events) {
-		if (!currentCalendarId || currentCalendarId === '') {
-			// No calendar filter - return all events
+	function filterEventsByCalendar(events, filterCriteria = currentCalendarId) {
+		if (!filterCriteria || filterCriteria === '') {
+			// No calendar filter - return all events (Global Calendar)
 			return events;
 		}
 
-		// For personal calendars, we need to get the calendar object to access its event references
-		// This requires access to the calendar management store
 		const activeUser = manager.active;
 		if (!activeUser) {
 			// If no user is logged in, fall back to global view
 			return events;
 		}
 
+		// Check if filterCriteria is the active user's pubkey (My Events)
+		if (filterCriteria === activeUser.pubkey) {
+			console.log('📅 Calendar Store: Filtering for My Events (user pubkey):', filterCriteria);
+			return events.filter(event => event.pubkey === activeUser.pubkey);
+		}
+
+		// Otherwise, treat as calendar ID - strict calendar filtering
 		const calendarManagement = useCalendarManagement(activeUser.pubkey);
-		const selectedCalendar = calendarManagement.calendars.find(cal => cal.id === currentCalendarId);
+		const selectedCalendar = calendarManagement.calendars.find(cal => cal.id === filterCriteria);
 
 		if (!selectedCalendar) {
 			// Calendar not found, return empty array
-			console.warn('📅 Calendar Store: Selected calendar not found:', currentCalendarId);
+			console.warn('📅 Calendar Store: Selected calendar not found:', filterCriteria);
 			return [];
 		}
 
 		// Ensure calendar events are loaded before filtering
 		loadCalendarEventsIfNeeded(selectedCalendar);
 
-		// Filter events that are referenced in the selected calendar
+		// Filter events that are explicitly referenced in the selected calendar
 		return events.filter((event) => {
 			// Check if this event is referenced in the calendar's eventReferences
 			const eventReference = `${event.kind}:${event.pubkey}:${event.dTag || ''}`;
 			const isInCalendar = selectedCalendar.eventReferences.includes(eventReference);
 
-			// Also include events created by the calendar owner (for events not yet added to calendar)
-			const isCreatedByOwner = event.pubkey === activeUser.pubkey;
-
-			return isInCalendar || isCreatedByOwner;
+			// console.log('📅 Calendar Store: Event', event.title, 'in calendar?', isInCalendar, 'reference:', eventReference);
+			return isInCalendar;
 		});
 	}
 

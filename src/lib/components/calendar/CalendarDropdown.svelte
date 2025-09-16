@@ -50,6 +50,11 @@
 			return 'Global Calendar';
 		}
 
+		// My Events selected
+		if (selectedCalendarId === activeUser.pubkey) {
+			return 'My Events';
+		}
+
 		// Calendar selected - show its title
 		const cal = calendarManagement.calendars.find(cal => cal.id === selectedCalendarId);
 		return cal ? cal.title : 'Select Calendar';
@@ -150,6 +155,58 @@
 							{/if}
 						</a>
 					</li>
+
+					<!-- My Events Option (only if logged in) -->
+					{#if activeUser}
+						<!-- Divider -->
+						<li><hr class="my-1 border-base-300" /></li>
+
+						<li>
+							<a
+								href="#"
+								class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-base-200"
+								class:active={selectedCalendarId === activeUser.pubkey}
+								onclick={(e) => {
+									e.preventDefault();
+									handleCalendarSelect(activeUser.pubkey);
+								}}
+							>
+								<!-- My Events Icon -->
+								<svg
+									class="h-4 w-4 text-primary"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+									/>
+								</svg>
+								<div class="min-w-0 flex-1">
+									<div class="text-sm font-medium">My Events</div>
+									<div class="text-xs text-base-content/60">Events I created</div>
+								</div>
+								{#if selectedCalendarId === activeUser.pubkey}
+									<svg
+										class="h-4 w-4 text-primary"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M5 13l4 4L19 7"
+										/>
+									</svg>
+								{/if}
+							</a>
+						</li>
+					{/if}
 
 					<!-- User calendars (only if logged in) -->
 					{#if activeUser && calendarManagement}
