@@ -1,14 +1,9 @@
 <!--
   SimpleCalendarEventsList Component
-  Simple list view of calendar events using the direct timeline loader approach
+  Simple list view of calendar events that accepts events as props
 -->
 
 <script>
-	import { onDestroy, onMount } from 'svelte';
-	import { TimelineModel } from 'applesauce-core/models';
-	import { createTimelineLoader } from 'applesauce-loaders/loaders';
-	import { pool, relays, eventStore } from '$lib/store.svelte';
-	import { getCalendarEventTitle, getCalendarEventStart, getCalendarEventEnd, getCalendarEventImage } from 'applesauce-core/helpers/calendar-event';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	
 	// Import existing UI components
@@ -19,112 +14,19 @@
 	 */
 
 	// Props
-	let { limit = 50, showLoadMore = true } = $props();
-
-	// Simple reactive state using Svelte 5 runes
-	let events = $state(/** @type {CalendarEvent[]} */ ([]));
-	let loading = $state(false);
-	let error = $state(/** @type {string | null} */ (null));
-
-	// Timeline loader and subscription
-	let subscription = $state();
-	let timelineLoader = $state();
+	let { 
+		events = /** @type {CalendarEvent[]} */ ([]), 
+		loading = false,
+		error = /** @type {string | null} */ (null),
+		showLoadMore = true,
+		onLoadMore = () => {}
+	} = $props();
 
 	/**
-	 * Create calendar timeline loader following the simple pattern
+	 * Handle load more button click
 	 */
-	function createCalendarLoader() {
-		return createTimelineLoader(
-			pool,
-			relays,
-			{ kinds: [31922, 31923], limit },
-			{ eventStore }
-		);
-	}
-
-	/**
-	 * Convert raw event to CalendarEvent format
-	 * @param {any} event
-	 * @returns {CalendarEvent}
-	 */
-	function convertToCalendarEvent(event) {
-		const startTimestamp = getCalendarEventStart(event);
-		const endTimestamp = getCalendarEventEnd(event);
-		const validStartTimestamp = startTimestamp || Math.floor(Date.now() / 1000);
-
-		const dTag = Array.isArray(event.tags)
-			? (event.tags.find((/** @type {any[]} */ t) => t && t[0] === 'd')?.[1] || undefined)
-			: undefined;
-
-		return {
-			id: event.id,
-			pubkey: event.pubkey,
-			kind: /** @type {import('$lib/types/calendar.js').CalendarEventKind} */ (event.kind),
-			title: getCalendarEventTitle(event) || 'Untitled Event',
-			summary: event.content || '',
-			image: getCalendarEventImage(event) || '',
-			start: validStartTimestamp,
-			end: endTimestamp,
-			startTimezone: undefined,
-			endTimezone: undefined,
-			locations: [],
-			participants: [],
-			hashtags: [],
-			references: [],
-			geohash: undefined,
-			communityPubkey: '',
-			createdAt: event.created_at,
-			dTag,
-			originalEvent: event
-		};
-	}
-
-	// Initialize loader
-	timelineLoader = createCalendarLoader();
-
-	// Mount: Subscribe to events using the simple pattern
-	onMount(() => {
-		console.log('📅 SimpleCalendarEventsList: Mounting and subscribing to events');
-		
-		subscription = eventStore
-			.model(TimelineModel, { kinds: [31922, 31923], limit })
-			.subscribe((timeline) => {
-				console.log(`📅 SimpleCalendarEventsList: Timeline updated: ${timeline.length} events`);
-				
-				// Convert raw events to CalendarEvent format
-				const calendarEvents = timeline.map(convertToCalendarEvent);
-				events = calendarEvents;
-				
-				loading = false;
-			});
-	});
-
-	onDestroy(() => {
-		if (subscription) {
-			subscription.unsubscribe();
-		}
-	});
-
-	/**
-	 * Load more events
-	 */
-	function loadMore() {
-		if (loading) return;
-		
-		loading = true;
-		console.log('📅 SimpleCalendarEventsList: Loading more events');
-		
-		timelineLoader().subscribe({
-			complete: () => {
-				loading = false;
-				console.log('📅 SimpleCalendarEventsList: Load more completed');
-			},
-			error: (/** @type {any} */ err) => {
-				console.error('📅 SimpleCalendarEventsList: Load more error:', err);
-				error = 'Failed to load more events';
-				loading = false;
-			}
-		});
+	function handleLoadMore() {
+		onLoadMore();
 	}
 
 	/**
@@ -188,7 +90,7 @@
 		{#if showLoadMore}
 			<button
 				class="btn btn-outline btn-sm"
-				onclick={loadMore}
+				onclick={handleLoadMore}
 				disabled={loading}
 			>
 				{#if loading}

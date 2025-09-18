@@ -9,6 +9,7 @@
 	import { TimelineModel } from 'applesauce-core/models';
 	import { createTimelineLoader } from 'applesauce-loaders/loaders';
 	import { pool, relays, eventStore } from '$lib/store.svelte';
+	import { addressLoader } from '$lib/loaders.js';
 	import { getCalendarEventTitle, getCalendarEventStart, getCalendarEventEnd, getCalendarEventImage } from 'applesauce-core/helpers/calendar-event';
 	import { groupEventsByDate } from '$lib/helpers/calendar.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
@@ -18,6 +19,8 @@
 	import CalendarNavigation from '$lib/components/calendar/CalendarNavigation.svelte';
 	import CalendarGrid from '$lib/components/calendar/CalendarGrid.svelte';
 	import CalendarEventModal from '$lib/components/calendar/CalendarEventModal.svelte';
+	import SimpleCalendarDropdown from './SimpleCalendarDropdown.svelte';
+	import SimpleCalendarEventsList from './SimpleCalendarEventsList.svelte';
 
 	/**
 	 * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
@@ -31,10 +34,16 @@
 	let events = $state(/** @type {CalendarEvent[]} */ ([]));
 	let loading = $state(false);
 	let error = $state(/** @type {string | null} */ (null));
+	
+	// Calendar selection state
+	let selectedCalendarId = $state('');
+	let selectedCalendar = $state(/** @type {any} */ (null));
+	let activeUser = $state(manager.active);
 
 	// Calendar view state
 	let currentDate = $state(new Date());
 	let viewMode = $state(/** @type {CalendarViewMode} */ ('month'));
+	let presentationViewMode = $state(/** @type {'calendar' | 'list' | 'map'} */ ('calendar'));
 	let groupedEvents = $state(/** @type {Map<string, CalendarEvent[]>} */ (new Map()));
 
 	// Modal state
@@ -44,17 +53,23 @@
 	// Timeline loader and subscription
 	let subscription = $state();
 	let timelineLoader = $state();
+	let userSubscription = $state();
+	let addressSubscriptions = $state(/** @type {any[]} */ ([]));
 
 	/**
 	 * Create calendar timeline loader following the simple pattern
+	 * @param {string} [calendarId] - Optional calendar ID to filter events
 	 */
-	function createCalendarLoader() {
-		return createTimelineLoader(
-			pool,
-			relays,
-			{ kinds: [31922, 31923], limit: 100 },
-			{ eventStore }
-		);
+	function createCalendarLoader(calendarId = '') {
+		/** @type {any} */
+		let filter = { kinds: [31922, 31923], limit: 100 };
+		
+		// Filter by author for "My Events"
+		if (calendarId && activeUser && calendarId === activeUser.pubkey) {
+			filter.authors = [activeUser.pubkey];
+		}
+		
+		return createTimelineLoader(pool, relays, filter, { eventStore });
 	}
 
 	/**
@@ -68,7 +83,7 @@
 		const validStartTimestamp = startTimestamp || Math.floor(Date.now() / 1000);
 
 		const dTag = Array.isArray(event.tags)
-			? (event.tags.find((t) => t && t[0] === 'd')?.[1] || undefined)
+			? (event.tags.find((/** @type {any} */ t) => t && t[0] === 'd')?.[1] || undefined)
 			: undefined;
 
 		return {
@@ -94,33 +109,208 @@
 		};
 	}
 
-	// Initialize loader
-	timelineLoader = createCalendarLoader();
+	/**
+	 * Parse address reference string into components
+	 * @param {string} addressRef - Address reference like "31922:pubkey:d-tag"
+	 * @returns {{kind: number, pubkey: string, dTag: string} | null}
+	 */
+	function parseAddressReference(addressRef) {
+		try {
+			const parts = addressRef.split(':');
+			if (parts.length !== 3) return null;
+			
+			const [kindStr, pubkey, dTag] = parts;
+			const kind = parseInt(kindStr, 10);
+			
+			if (isNaN(kind) || !pubkey || !dTag) return null;
+			
+			return { kind, pubkey, dTag };
+		} catch (error) {
+			console.error('📅 SimpleCalendarView: Error parsing address reference:', addressRef, error);
+			return null;
+		}
+	}
 
-	// Mount: Subscribe to events using the simple pattern
+	/**
+	 * Load events for a specific calendar using address loader
+	 * @param {any} calendar - Calendar object with eventReferences
+	 */
+	function loadCalendarSpecificEvents(calendar) {
+		if (!calendar || !calendar.eventReferences || calendar.eventReferences.length === 0) {
+			console.log('📅 SimpleCalendarView: No event references found for calendar:', calendar);
+			events = [];
+			groupedEvents = new Map();
+			loading = false;
+			return;
+		}
+
+		console.log(`📅 SimpleCalendarView: Loading ${calendar.eventReferences.length} specific events for calendar:`, calendar.title);
+		
+		// Clean up existing address subscriptions
+		addressSubscriptions.forEach(sub => sub.unsubscribe());
+		addressSubscriptions = [];
+		
+		/** @type {any[]} */
+		const loadedEvents = [];
+		let completedLoads = 0;
+		const totalLoads = calendar.eventReferences.length;
+
+		// Load each event reference using address loader
+		calendar.eventReferences.forEach((/** @type {string} */ addressRef, /** @type {number} */ index) => {
+			const parsed = parseAddressReference(addressRef);
+			if (!parsed) {
+				console.warn('📅 SimpleCalendarView: Invalid address reference:', addressRef);
+				completedLoads++;
+				if (completedLoads === totalLoads) {
+					finishCalendarEventLoading(loadedEvents);
+				}
+				return;
+			}
+
+			console.log(`📅 SimpleCalendarView: Loading event ${index + 1}/${totalLoads}:`, parsed);
+
+			// Use address loader to fetch the specific event
+			const subscription = addressLoader({
+				kind: parsed.kind,
+				pubkey: parsed.pubkey,
+				identifier: parsed.dTag,
+				relays
+			}).subscribe({
+				next: (event) => {
+					if (event) {
+						console.log(`📅 SimpleCalendarView: Loaded event:`, event.id, getCalendarEventTitle(event));
+						loadedEvents.push(event);
+					}
+				},
+				complete: () => {
+					completedLoads++;
+					console.log(`📅 SimpleCalendarView: Completed loading event ${completedLoads}/${totalLoads}`);
+					
+					if (completedLoads === totalLoads) {
+						finishCalendarEventLoading(loadedEvents);
+					}
+				},
+				error: (/** @type {any} */ err) => {
+					console.error('📅 SimpleCalendarView: Error loading event:', addressRef, err);
+					completedLoads++;
+					
+					if (completedLoads === totalLoads) {
+						finishCalendarEventLoading(loadedEvents);
+					}
+				}
+			});
+
+			addressSubscriptions.push(subscription);
+		});
+	}
+
+	/**
+	 * Finish loading calendar-specific events
+	 * @param {any[]} loadedEvents - Array of loaded events
+	 */
+	function finishCalendarEventLoading(loadedEvents) {
+		console.log(`📅 SimpleCalendarView: Finished loading calendar events: ${loadedEvents.length} events`);
+		
+		// Convert to CalendarEvent format
+		const calendarEvents = loadedEvents.map(convertToCalendarEvent);
+		events = calendarEvents;
+		
+		// Update grouped events for calendar grid
+		groupedEvents = groupEventsByDate(calendarEvents);
+		
+		loading = false;
+	}
+
+	/**
+	 * Load events based on selected calendar
+	 */
+	function loadEvents() {
+		loading = true;
+		error = null;
+		
+		// Clean up existing subscriptions
+		if (subscription) {
+			subscription.unsubscribe();
+		}
+		addressSubscriptions.forEach(sub => sub.unsubscribe());
+		addressSubscriptions = [];
+		
+		// Handle different calendar selection types
+		if (selectedCalendarId && activeUser && selectedCalendarId !== activeUser.pubkey && selectedCalendar) {
+			// Custom calendar selected - load specific events using address loader
+			console.log('📅 SimpleCalendarView: Loading calendar-specific events for:', selectedCalendar.title);
+			loadCalendarSpecificEvents(selectedCalendar);
+			return;
+		}
+		
+		// Global calendar or "My Events" - use timeline loader
+		console.log('📅 SimpleCalendarView: Loading events via timeline loader');
+		
+		// Create timeline loader based on selected calendar
+		timelineLoader = createCalendarLoader(selectedCalendarId);
+		
+		// Build filter for timeline model
+		/** @type {any} */
+		let filter = { kinds: [31922, 31923], limit: 100 };
+		
+		// Filter by author for "My Events"
+		if (selectedCalendarId && activeUser && selectedCalendarId === activeUser.pubkey) {
+			filter.authors = [activeUser.pubkey];
+		}
+		
+		// Execute timeline loader to fetch from relays
+		timelineLoader().subscribe({
+			complete: () => {
+				console.log('📅 SimpleCalendarView: Timeline loader completed, subscribing to event store');
+				
+				// Subscribe to event store to get the loaded events
+				subscription = eventStore
+					.model(TimelineModel, filter)
+					.subscribe((timeline) => {
+						console.log(`📅 SimpleCalendarView: Timeline updated: ${timeline.length} events`);
+						
+						// Convert raw events to CalendarEvent format
+						const calendarEvents = timeline.map(convertToCalendarEvent);
+						events = calendarEvents;
+						
+						// Update grouped events for calendar grid
+						groupedEvents = groupEventsByDate(calendarEvents);
+						
+						loading = false;
+					});
+			},
+			error: (/** @type {any} */ err) => {
+				console.error('📅 SimpleCalendarView: Timeline loader error:', err);
+				error = 'Failed to load events';
+				loading = false;
+			}
+		});
+	}
+
+	// Mount: Subscribe to events and user changes
 	onMount(() => {
 		console.log('📅 SimpleCalendarView: Mounting and subscribing to events');
 		
-		subscription = eventStore
-			.model(TimelineModel, { kinds: [31922, 31923], limit: 100 })
-			.subscribe((timeline) => {
-				console.log(`📅 SimpleCalendarView: Timeline updated: ${timeline.length} events`);
-				
-				// Convert raw events to CalendarEvent format
-				const calendarEvents = timeline.map(convertToCalendarEvent);
-				events = calendarEvents;
-				
-				// Update grouped events for calendar grid
-				groupedEvents = groupEventsByDate(calendarEvents);
-				
-				loading = false;
-			});
+		// Subscribe to user changes
+		userSubscription = manager.active$.subscribe((user) => {
+			activeUser = user;
+			// Reload events when user changes
+			loadEvents();
+		});
+		
+		// Initial load
+		loadEvents();
 	});
 
 	onDestroy(() => {
 		if (subscription) {
 			subscription.unsubscribe();
 		}
+		if (userSubscription) {
+			userSubscription.unsubscribe();
+		}
+		// Clean up address subscriptions
+		addressSubscriptions.forEach(sub => sub.unsubscribe());
 	});
 
 	/**
@@ -137,12 +327,22 @@
 				loading = false;
 				console.log('📅 SimpleCalendarView: Load more completed');
 			},
-			error: (err) => {
+			error: (/** @type {any} */ err) => {
 				console.error('📅 SimpleCalendarView: Load more error:', err);
 				error = 'Failed to load more events';
 				loading = false;
 			}
 		});
+	}
+	
+	/**
+	 * Handle calendar selection from dropdown
+	 * @param {string} calendarId
+	 */
+	function handleCalendarSelect(calendarId) {
+		selectedCalendarId = calendarId;
+		console.log('📅 SimpleCalendarView: Calendar selected:', calendarId);
+		loadEvents();
 	}
 
 	/**
@@ -199,6 +399,15 @@
 	}
 
 	/**
+	 * Handle presentation view mode change
+	 * @param {'calendar' | 'list' | 'map'} newPresentationViewMode
+	 */
+	function handlePresentationViewModeChange(newPresentationViewMode) {
+		presentationViewMode = newPresentationViewMode;
+		console.log('📅 SimpleCalendarView: Presentation view mode changed to:', newPresentationViewMode);
+	}
+
+	/**
 	 * Handle date click in calendar grid
 	 * @param {Date} date
 	 */
@@ -244,17 +453,35 @@
 	 * Handle refresh button click
 	 */
 	function handleRefresh() {
-		loadMore();
+		loadEvents();
 	}
+	
+	// Reactive display title based on selected calendar
+	let displayTitle = $derived.by(() => {
+		if (!selectedCalendarId) {
+			return globalMode ? 'Global Calendar' : 'Community Calendar';
+		}
+		
+		if (activeUser && selectedCalendarId === activeUser.pubkey) {
+			return 'My Events';
+		}
+		
+		// TODO: Get calendar title from calendar data
+		return 'Custom Calendar';
+	});
 </script>
 
 <div class="overflow-hidden rounded-lg border border-base-300 bg-base-100 shadow-sm">
 	<!-- Calendar Header -->
 	<div class="border-b border-base-300 bg-base-200 px-6 py-4">
 		<div class="flex items-center justify-between">
-			<h1 class="text-xl font-semibold text-base-content">
-				{globalMode ? 'Global Calendar' : 'Community Calendar'}
-			</h1>
+			<div class="flex items-center gap-4">
+				<SimpleCalendarDropdown 
+					bind:selectedCalendarId={selectedCalendarId}
+					bind:selectedCalendar={selectedCalendar}
+					onCalendarSelect={handleCalendarSelect}
+				/>
+			</div>
 			<div class="flex items-center gap-3">
 				<button
 					class="btn btn-ghost btn-sm"
@@ -343,20 +570,48 @@
 	<CalendarNavigation
 		{currentDate}
 		{viewMode}
+		{presentationViewMode}
 		onPrevious={handlePrevious}
 		onNext={handleNext}
 		onToday={handleToday}
 		onViewModeChange={handleViewModeChange}
+		onPresentationViewModeChange={handlePresentationViewModeChange}
 	/>
 
-	<!-- Calendar Grid -->
-	<CalendarGrid
-		{currentDate}
-		{viewMode}
-		{groupedEvents}
-		onEventClick={handleEventClick}
-		onDateClick={handleDateClick}
-	/>
+	<!-- Content based on presentation view mode -->
+	{#if presentationViewMode === 'calendar'}
+		<!-- Calendar Grid -->
+		<CalendarGrid
+			{currentDate}
+			{viewMode}
+			{groupedEvents}
+			onEventClick={handleEventClick}
+			onDateClick={handleDateClick}
+		/>
+	{:else if presentationViewMode === 'list'}
+		<!-- List View -->
+		<div class="p-6">
+			<SimpleCalendarEventsList
+				{events}
+				{loading}
+				{error}
+				showLoadMore={true}
+				onLoadMore={loadMore}
+			/>
+		</div>
+	{:else if presentationViewMode === 'map'}
+		<!-- Map View (placeholder for future implementation) -->
+		<div class="flex flex-col items-center justify-center px-6 py-16 text-center">
+			<div class="mb-4 text-base-content/30">
+				<svg class="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+				</svg>
+			</div>
+			<h3 class="mb-2 text-lg font-medium text-base-content">Map View Coming Soon</h3>
+			<p class="text-base-content/60">Map view for calendar events will be available in a future update.</p>
+		</div>
+	{/if}
 
 	<!-- Loading indicator -->
 	{#if loading && events.length === 0}

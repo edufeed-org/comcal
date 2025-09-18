@@ -1,22 +1,10 @@
 <script>
 	import SimpleCalendarView from './SimpleCalendarView.svelte';
-	import SimpleCalendarEventsList from './SimpleCalendarEventsList.svelte';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	
 	// Import modal components for event details
 	import CalendarEventDetailsModal from '$lib/components/calendar/CalendarEventDetailsModal.svelte';
 	import ModalManager from '$lib/components/ModalManager.svelte';
-
-	// View mode state
-	let viewMode = $state('calendar'); // 'calendar' or 'list'
-
-	/**
-	 * Switch between calendar and list view
-	 * @param {string} mode
-	 */
-	function switchView(mode) {
-		viewMode = mode;
-	}
 </script>
 
 <svelte:head>
@@ -30,42 +18,12 @@
 		<h1 class="text-3xl font-bold text-base-content mb-2">Simple Calendar</h1>
 		<p class="text-base-content/60 mb-6">
 			Simplified calendar implementation using the direct timeline loader approach from calendar-simple.
-			This demonstrates the same functionality with much simpler code.
+			This demonstrates the same functionality with much simpler code, now including calendar selection dropdown and integrated view switching.
 		</p>
-		
-		<!-- View Mode Switcher -->
-		<div class="flex gap-2">
-			<button
-				class="btn btn-sm"
-				class:btn-primary={viewMode === 'calendar'}
-				class:btn-outline={viewMode !== 'calendar'}
-				onclick={() => switchView('calendar')}
-			>
-				<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-				</svg>
-				Calendar View
-			</button>
-			<button
-				class="btn btn-sm"
-				class:btn-primary={viewMode === 'list'}
-				class:btn-outline={viewMode !== 'list'}
-				onclick={() => switchView('list')}
-			>
-				<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-				</svg>
-				List View
-			</button>
-		</div>
 	</div>
 
-	<!-- Content based on view mode -->
-	{#if viewMode === 'calendar'}
-		<SimpleCalendarView globalMode={true} />
-	{:else}
-		<SimpleCalendarEventsList limit={50} showLoadMore={true} />
-	{/if}
+	<!-- Calendar Component with integrated view switching -->
+	<SimpleCalendarView globalMode={true} />
 
 	<!-- Comparison Info -->
 	<div class="mt-12 p-6 bg-base-200 rounded-lg">
