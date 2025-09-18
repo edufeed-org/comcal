@@ -63,4 +63,3 @@ export function kind1Loader(pubkey, limit) {
 		{ eventStore },
 	)
 }
-

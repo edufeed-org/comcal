@@ -8,6 +8,16 @@
 	let notes = $state([]);
 	let loading = $state(false);
 
+	function createCalendarLoader(limit = 0, since = 0, until = 0) {
+		const timelineLoader = createTimelineLoader(
+			pool,
+			relays,
+			{ kinds: [31922, 31923], limit: 10 },
+			{ eventStore }
+		);
+		return timelineLoader;
+	}
+
 	const timelineLoader = createTimelineLoader(
 		pool,
 		relays,
@@ -31,9 +41,10 @@
 
 	function loadMore() {
 		loading = true;
+    const loader = createCalendarLoader(1)
 		console.log('loading more');
 		// const since = notes.length ? notes[notes.length - 1].created_at : Math.floor(Date.now() / 1000);
-		timelineLoader().subscribe({
+		loader().subscribe({
 			complete: () => {
 				loading = false;
 			}
