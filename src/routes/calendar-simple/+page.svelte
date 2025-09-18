@@ -17,6 +17,7 @@
 		);
 		return timelineLoader;
 	}
+  const loader = $state(createCalendarLoader())
 
 	const timelineLoader = createTimelineLoader(
 		pool,
@@ -41,7 +42,7 @@
 
 	function loadMore() {
 		loading = true;
-    const loader = createCalendarLoader(1)
+    // if requirements change i could change the loader here
 		console.log('loading more');
 		// const since = notes.length ? notes[notes.length - 1].created_at : Math.floor(Date.now() / 1000);
 		loader().subscribe({
