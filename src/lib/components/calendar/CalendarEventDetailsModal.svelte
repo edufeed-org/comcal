@@ -8,6 +8,7 @@
 	import { modalStore } from '../../stores/modal.svelte.js';
 	import { useCalendarManagement, registerCalendarEventsRefreshCallback } from '../../stores/calendar-management-store.svelte.js';
 	import { manager } from '../../accounts.svelte.js';
+	import EventDebugInfo from './EventDebugInfo.svelte';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
@@ -514,29 +515,8 @@
 				</div>
 			{/if}
 
-			<!-- Event Metadata -->
-			<div class="border-t border-base-300 pt-4">
-				<div class="text-xs text-base-content/50 space-y-1">
-					<div class="flex items-center justify-between">
-						<span>Event ID: {event.id.slice(0, 8)}...{event.id.slice(-4)}</span>
-						<button
-							class="btn btn-xs btn-ghost text-base-content/50 hover:text-base-content"
-							onclick={copyEventId}
-							aria-label="Copy event ID to clipboard"
-							title="Copy event ID"
-						>
-							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-							</svg>
-						</button>
-					</div>
-					<div>Created by: {event.pubkey.slice(0, 8)}...{event.pubkey.slice(-4)}</div>
-					<div>Created: {new Date(event.createdAt * 1000).toLocaleString()}</div>
-					{#if event.geohash}
-						<div>Geohash: {event.geohash}</div>
-					{/if}
-				</div>
-			</div>
+			<!-- Debug Information Component -->
+			<EventDebugInfo {event} />
 
 			<!-- Modal Actions -->
 			<div class="flex justify-end gap-3 pt-6 border-t border-base-300">

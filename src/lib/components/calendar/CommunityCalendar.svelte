@@ -216,11 +216,18 @@
 			timelineLoader = createGlobalCalendarLoader();
 		}
 
-		// Subscribe to the timeline loader
-		currentSubscription = timelineLoader().subscribe({
-			next: /** @param {any} event */ (event) => {
-				// console.log('📅 CommunityCalendar: Received calendar event:', event.id);
+		// Subscribe to the timeline loader with throttling to prevent overwhelming the main thread
+		let eventBuffer = /** @type {any[]} */ ([]);
+		let processingTimeout = /** @type {number | null} */ (null);
 
+		const processEventBuffer = () => {
+			if (eventBuffer.length === 0) return;
+
+			// Process events in smaller batches
+			const batchSize = 10;
+			const batch = eventBuffer.splice(0, batchSize);
+			
+			batch.forEach(event => {
 				// Convert to our CalendarEvent format
 				const calendarEvent = convertToCalendarEvent(event);
 
@@ -229,10 +236,27 @@
 				if (existingIndex === -1) {
 					events = [...events, calendarEvent].sort((a, b) => a.createdAt - b.createdAt);
 				}
+			});
 
-				// Mark loading as complete after first event
-				if (loading) {
-					loading = false;
+			// Mark loading as complete after first batch
+			if (loading && events.length > 0) {
+				loading = false;
+			}
+
+			// Continue processing remaining events
+			if (eventBuffer.length > 0) {
+				processingTimeout = setTimeout(processEventBuffer, 16); // ~60fps
+			}
+		};
+
+		currentSubscription = timelineLoader().subscribe({
+			next: /** @param {any} event */ (event) => {
+				// Buffer events instead of processing immediately
+				eventBuffer.push(event);
+				
+				// Start processing if not already running
+				if (!processingTimeout) {
+					processingTimeout = setTimeout(processEventBuffer, 16);
 				}
 			},
 			error: /** @param {any} err */ (err) => {
