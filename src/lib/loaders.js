@@ -50,3 +50,17 @@ export function loadUserProfile(kind, pubkey) {
 		map((event) => getProfileContent(event))
 	);
 }
+
+export function kind1Loader(pubkey, limit) {
+	return createTimelineLoader(
+		pool,
+		relays,
+		{
+			kinds: [1],
+			authors: [pubkey],
+			limit
+		},
+		{ eventStore },
+	)
+}
+

@@ -54,12 +54,39 @@
 	}
 
 	/**
+	 * Copy created by pubkey to clipboard
+	 */
+	async function copyCreatedBy() {
+		if (event?.pubkey) {
+			await copyToClipboard(event.pubkey, 'Created By Pubkey');
+		}
+	}
+
+	/**
 	 * Copy full JSON to clipboard
 	 */
 	async function copyFullJson() {
 		if (event) {
 			const jsonString = JSON.stringify(event, null, 2);
 			await copyToClipboard(jsonString, 'Event JSON');
+		}
+	}
+
+	/**
+	 * Open event in njump.me
+	 */
+	function openInNjump() {
+		if (event?.id) {
+			window.open(`https://njump.me/${event.id}`, '_blank');
+		}
+	}
+
+	/**
+	 * Navigate to profile page
+	 */
+	function goToProfile() {
+		if (event?.pubkey) {
+			window.location.href = `/p/${event.pubkey}`;
 		}
 	}
 
@@ -144,6 +171,15 @@
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
 								</svg>
 							</button>
+							<button
+								class="btn btn-xs btn-ghost text-base-content/50 hover:text-base-content"
+								onclick={openInNjump}
+								title="Open in njump.me"
+							>
+								<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+								</svg>
+							</button>
 						</div>
 					</div>
 					<div class="flex items-center justify-between bg-base-100 rounded p-2">
@@ -152,7 +188,27 @@
 					</div>
 					<div class="flex items-center justify-between bg-base-100 rounded p-2">
 						<span class="text-base-content/70">Created by:</span>
-						<code class="text-xs font-mono">{event.pubkey.slice(0, 8)}...{event.pubkey.slice(-4)}</code>
+						<div class="flex items-center gap-2">
+							<code class="text-xs font-mono">{event.pubkey.slice(0, 8)}...{event.pubkey.slice(-4)}</code>
+							<button
+								class="btn btn-xs btn-ghost text-base-content/50 hover:text-base-content"
+								onclick={copyCreatedBy}
+								title="Copy full pubkey"
+							>
+								<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+								</svg>
+							</button>
+							<button
+								class="btn btn-xs btn-ghost text-base-content/50 hover:text-base-content"
+								onclick={goToProfile}
+								title="View profile"
+							>
+								<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+								</svg>
+							</button>
+						</div>
 					</div>
 					{#if event.dTag}
 						<div class="flex items-center justify-between bg-base-100 rounded p-2">
@@ -218,15 +274,15 @@
 				</div>
 			{/if}
 
-			<!-- Full Event JSON -->
+			<!-- Component Event Object -->
 			<div>
 				<div class="flex items-center justify-between mb-2">
-					<h4 class="text-sm font-semibold text-base-content">Raw Event JSON</h4>
+					<h4 class="text-sm font-semibold text-base-content">Component Event Object</h4>
 					<div class="flex items-center gap-2">
 						<button
 							class="btn btn-xs btn-ghost"
-							onclick={copyFullJson}
-							title="Copy full JSON"
+							onclick={() => copyToClipboard(JSON.stringify(event, null, 2), 'Component Event Object')}
+							title="Copy component event JSON"
 						>
 							<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -245,6 +301,36 @@
 					<pre class="text-xs font-mono text-base-content/80">{getFormattedJson(event)}</pre>
 				</div>
 			</div>
+
+			<!-- Raw Nostr Event -->
+			{#if (/** @type {any} */ (event)).rawEvent}
+				<div>
+					<div class="flex items-center justify-between mb-2">
+						<h4 class="text-sm font-semibold text-base-content">Raw Nostr Event</h4>
+						<div class="flex items-center gap-2">
+							<button
+								class="btn btn-xs btn-ghost"
+								onclick={() => copyToClipboard(JSON.stringify((/** @type {any} */ (event)).rawEvent, null, 2), 'Raw Nostr Event')}
+								title="Copy raw Nostr event JSON"
+							>
+								<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+								</svg>
+								Copy
+							</button>
+							<button
+								class="btn btn-xs btn-ghost"
+								onclick={toggleJsonExpansion}
+							>
+								{isJsonExpanded ? 'Collapse' : 'Expand'}
+							</button>
+						</div>
+					</div>
+					<div class="bg-base-100 rounded p-2 {isJsonExpanded ? 'max-h-96' : 'max-h-32'} overflow-y-auto transition-all duration-200">
+						<pre class="text-xs font-mono text-base-content/80">{getFormattedJson((/** @type {any} */ (event)).rawEvent)}</pre>
+					</div>
+				</div>
+			{/if}
 		</div>
 	{/if}
 </div>
