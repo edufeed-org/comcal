@@ -4,7 +4,7 @@
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
 	import { EventFactory } from 'applesauce-factory';
-	import { pool, relays, eventStore } from '$lib/store.svelte';
+	import { publishEvent } from '$lib/helpers/publisher.js';
 	import { goto } from '$app/navigation';
 
 	// Create local reactive state for active user
@@ -93,31 +93,20 @@
 			// Sign the event
 			const signedEvent = await activeUser.signEvent(eventTemplate);
 
-			// Publish to multiple relays
-			const responses = await pool.publish(relays, signedEvent);
+			// Publish using the generic publisher utility
+			const publishResult = await publishEvent(signedEvent, {
+				logPrefix: '📅 Calendar Management'
+			});
 
-			// Check if at least one relay accepted the event
-			const hasSuccess = responses.some((response) => response.ok);
-
-			if (hasSuccess) {
-				// Add to event store for local caching - this is our source of truth
-				eventStore.add(signedEvent);
-
+			if (publishResult.success) {
 				// Force refresh to show changes immediately
 				await calendarManagement.refresh();
 
 				console.log('📅 Calendar Management: Successfully updated calendar:', editTitle);
-				console.log(
-					'📅 Calendar Management: Published to relays:',
-					responses.filter((r) => r.ok).map((r) => r.from)
-				);
 
 				// Reset editing state
 				cancelEditing();
 			} else {
-				// Log failed responses for debugging
-				const failedResponses = responses.filter((r) => !r.ok);
-				console.error('📅 Calendar Management: Failed to publish to any relay:', failedResponses);
 				throw new Error('Failed to publish calendar update to any relay');
 			}
 		} catch (error) {
@@ -172,34 +161,20 @@
 			// Sign the deletion event
 			const signedDeletionEvent = await activeUser.signEvent(deletionEventTemplate);
 
-			// Publish deletion request to relays
-			const responses = await pool.publish(relays, signedDeletionEvent);
+			// Publish using the generic publisher utility
+			const publishResult = await publishEvent(signedDeletionEvent, {
+				logPrefix: '📅 Calendar Management'
+			});
 
-			// Check if at least one relay accepted the event
-			const hasSuccess = responses.some((response) => response.ok);
-
-			if (hasSuccess) {
-				// Add deletion event to event store for local caching
-				eventStore.add(signedDeletionEvent);
-
+			if (publishResult.success) {
 				// Force refresh to show changes immediately
 				await calendarManagement.refresh();
 
 				console.log('📅 Calendar Management: Successfully deleted calendar:', calendar.title);
-				console.log(
-					'📅 Calendar Management: Published deletion request to relays:',
-					responses.filter((r) => r.ok).map((r) => r.from)
-				);
 
 				// Reset deletion state
 				cancelDeleting();
 			} else {
-				// Log failed responses for debugging
-				const failedResponses = responses.filter((r) => !r.ok);
-				console.error(
-					'📅 Calendar Management: Failed to publish deletion request to any relay:',
-					failedResponses
-				);
 				throw new Error('Failed to publish calendar deletion request to any relay');
 			}
 		} catch (error) {

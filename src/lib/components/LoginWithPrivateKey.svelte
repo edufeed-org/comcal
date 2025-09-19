@@ -3,6 +3,7 @@
 	import { SimpleSigner } from 'applesauce-signers';
 	import { SimpleAccount } from 'applesauce-accounts/accounts';
 	import { nip19 } from 'nostr-tools';
+	import { modalStore } from '$lib/stores/modal.svelte.js';
 
 	let { modalId, onAccountCreated } = $props();
 
@@ -60,7 +61,7 @@
 			<button class="btn join-item" onclick={handleLoginWithPrivateKey}>Login</button>
 		</div>
 		<h1 class="mt-4 text-lg font-bold">Don't have an account yet?</h1>
-		<button class="btn" disabled>Sign Up!</button>
+		<button class="btn btn-primary" onclick={() => modalStore.openModal('signup')}>Sign Up!</button>
 		
 		<div class="modal-action">
 			<form method="dialog">

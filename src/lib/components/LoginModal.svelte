@@ -8,6 +8,7 @@
 	import { ExtensionAccount } from 'applesauce-accounts/accounts';
 	import AccountProfile from './AccountProfile.svelte';
 	import { useAccounts } from '$lib/stores/accounts.svelte.js';
+	import { modalStore } from '$lib/stores/modal.svelte.js';
 
 	import LoginWithPrivateKey from './LoginWithPrivateKey.svelte';
 
@@ -30,7 +31,7 @@
 					manager.setActive(account);
 				}
 
-				closeModal();
+				modalStore.closeModal();
 				break;
 			case 'NSEC':
 				if (onNSECTransition) {
@@ -55,7 +56,7 @@
 			<button disabled onclick={() => createSigner('Bunker')} class="btn join-item">Bunker</button>
 		</div>
 		<h1 class="mt-4 text-lg font-bold">Don't have an account yet?</h1>
-		<button class="btn" disabled>Sign Up!</button>
+		<button class="btn btn-primary" onclick={() => modalStore.openModal('signup')}>Sign Up!</button>
 		<h1>Available Accounts</h1>
 		<ul>
 			{#each getAccounts() as account}

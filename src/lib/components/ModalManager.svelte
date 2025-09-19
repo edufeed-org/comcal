@@ -2,6 +2,7 @@
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import LoginModal from './LoginModal.svelte';
 	import LoginWithPrivateKey from './LoginWithPrivateKey.svelte';
+	import SignupModal from './SignupModal.svelte';
 	import CalendarEventDetailsModal from './calendar/CalendarEventDetailsModal.svelte';
 	import CalendarCreationModal from './calendar/CalendarCreationModal.svelte';
 
@@ -25,6 +26,7 @@
 	// Generate unique modal IDs for each modal instance
 	const loginModalId = 'global-login-modal';
 	const privateKeyModalId = 'global-private-key-modal';
+	const signupModalId = 'global-signup-modal';
 	const calendarCreationModalId = 'calendar-creation-modal';
 
 	/**
@@ -39,6 +41,7 @@
 		if (currentModal === 'none') {
 			const loginModal = /** @type {HTMLDialogElement} */ (document.getElementById(loginModalId));
 			const privateKeyModal = /** @type {HTMLDialogElement} */ (document.getElementById(privateKeyModalId));
+			const signupModal = /** @type {HTMLDialogElement} */ (document.getElementById(signupModalId));
 			const calendarCreationModal = /** @type {HTMLDialogElement} */ (document.getElementById(calendarCreationModalId));
 
 			if (loginModal && loginModal.open) {
@@ -48,6 +51,10 @@
 			if (privateKeyModal && privateKeyModal.open) {
 				console.log('ModalManager: Closing private key modal');
 				privateKeyModal.close();
+			}
+			if (signupModal && signupModal.open) {
+				console.log('ModalManager: Closing signup modal');
+				signupModal.close();
 			}
 			if (calendarCreationModal && calendarCreationModal.open) {
 				console.log('ModalManager: Closing calendar creation modal');
@@ -66,6 +73,13 @@
 			if (privateKeyModal && !privateKeyModal.open) {
 				console.log('ModalManager: Opening private key modal');
 				privateKeyModal.showModal();
+			}
+		} else if (currentModal === 'signup') {
+			// Open signup modal
+			const signupModal = /** @type {HTMLDialogElement} */ (document.getElementById(signupModalId));
+			if (signupModal && !signupModal.open) {
+				console.log('ModalManager: Opening signup modal');
+				signupModal.showModal();
 			}
 		} else if (currentModal === 'createCalendar') {
 			// Open calendar creation modal
@@ -112,6 +126,10 @@
 	<LoginWithPrivateKey
 		modalId={privateKeyModalId}
 		onAccountCreated={handleAccountCreated}
+	/>
+{:else if modal.activeModal === 'signup'}
+	<SignupModal
+		modalId={signupModalId}
 	/>
 {:else if modal.activeModal === 'eventDetails'}
 	<CalendarEventDetailsModal />
