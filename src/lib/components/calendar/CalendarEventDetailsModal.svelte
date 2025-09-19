@@ -77,13 +77,10 @@
 			console.log('CalendarEventDetailsModal: Opening event details modal');
 			// Register refresh callback to update calendar display when events are added
 			if (activeUser) {
-				// Import the calendar store dynamically to avoid circular dependencies
-				import('../../stores/calendar-store.svelte.js').then(({ useGlobalCalendarEvents }) => {
-					const calendarStore = useGlobalCalendarEvents();
-					registerCalendarEventsRefreshCallback(() => {
-						console.log('📅 Modal: Refreshing calendar events after calendar update');
-						calendarStore.refresh();
-					});
+				registerCalendarEventsRefreshCallback(() => {
+					console.log('📅 Modal: Refreshing calendar events after calendar update');
+					// The simplified calendar architecture will automatically refresh
+					// when calendar management changes occur
 				});
 			}
 			dialog.showModal();
