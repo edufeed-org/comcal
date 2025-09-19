@@ -6,6 +6,7 @@
 <script>
 	import { validateEventForm, getCurrentTimezone } from '../../helpers/calendar.js';
 	import { useCalendarActions } from '../../stores/calendar-actions.svelte.js';
+	import { CloseIcon } from '../icons';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').EventFormData} EventFormData
@@ -187,9 +188,7 @@
 					onclick={handleClose}
 					aria-label="Close modal"
 				>
-					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-					</svg>
+					<CloseIcon class_="w-6 h-6" />
 				</button>
 			</div>
 
@@ -316,9 +315,7 @@
 										onclick={() => removeLocation(index)}
 										aria-label="Remove location"
 									>
-										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-										</svg>
+										<CloseIcon class_="w-4 h-4" />
 									</button>
 								{/if}
 							</div>

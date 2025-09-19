@@ -3,6 +3,7 @@
 	import { useCalendarManagement } from '$lib/stores/calendar-management-store.svelte.js';
 	import { useCalendarActions } from '$lib/stores/calendar-actions.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
+	import { CloseIcon, AlertIcon } from '$lib/components/icons';
 
 	/**
 	 * @typedef {Object} Props
@@ -111,23 +112,14 @@
 				onclick={handleClose}
 				aria-label="Close modal"
 			>
-				<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-				</svg>
+				<CloseIcon class_="h-5 w-5" />
 			</button>
 		</div>
 
 		<!-- Error Display -->
 		{#if error}
 			<div class="alert alert-error mb-4">
-				<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-					/>
-				</svg>
+				<AlertIcon class_="h-5 w-5" />
 				<span class="text-sm">{error}</span>
 			</div>
 		{/if}

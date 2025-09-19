@@ -8,6 +8,7 @@
 	import { modalStore } from '../../stores/modal.svelte.js';
 	import { useCalendarManagement, registerCalendarEventsRefreshCallback } from '../../stores/calendar-management-store.svelte.js';
 	import { manager } from '../../accounts.svelte.js';
+	import { CloseIcon, CalendarIcon, ClockIcon, LocationIcon, PlusIcon, CheckIcon, AlertIcon } from '$lib/components/icons';
 	import EventDebugInfo from './EventDebugInfo.svelte';
 
 	/**
@@ -261,9 +262,7 @@
 					onclick={handleClose}
 					aria-label="Close modal"
 				>
-					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-					</svg>
+					<CloseIcon class_="w-6 h-6" />
 				</button>
 			</div>
 
@@ -295,9 +294,7 @@
 				<div class="bg-base-200 rounded-lg p-4">
 					{#if isAllDay}
 						<div class="flex items-center gap-2 mb-2">
-							<svg class="w-5 h-5 text-info" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-							</svg>
+							<CalendarIcon class_="w-5 h-5 text-info" />
 							<span class="text-base-content font-medium">All Day Event</span>
 						</div>
 						<div class="text-base-content/70 ml-7">
@@ -310,9 +307,7 @@
 						<div class="space-y-2">
 							{#if startDate}
 								<div class="flex items-center gap-2">
-									<svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-									</svg>
+									<ClockIcon class_="w-5 h-5 text-primary" />
 									<span class="text-base-content font-medium">Start:</span>
 									<span class="text-base-content/80">
 										{formatCalendarDate(startDate, 'long')} at {formatCalendarDate(startDate, 'time')}
@@ -324,9 +319,7 @@
 							{/if}
 							{#if endDate}
 								<div class="flex items-center gap-2">
-									<svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-									</svg>
+									<ClockIcon class_="w-5 h-5 text-secondary" />
 									<span class="text-base-content font-medium">End:</span>
 									<span class="text-base-content/80">
 										{formatCalendarDate(endDate, 'long')} at {formatCalendarDate(endDate, 'time')}
@@ -348,10 +341,7 @@
 					<div class="space-y-2">
 						{#each event.locations as location}
 							<div class="flex items-start gap-3 bg-base-200 rounded-lg p-3">
-								<svg class="w-5 h-5 text-base-content/60 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-								</svg>
+								<LocationIcon class_="w-5 h-5 text-base-content/60 mt-0.5" />
 								<span class="text-base-content/80">{location}</span>
 							</div>
 						{/each}
@@ -482,9 +472,7 @@
 								<span class="loading loading-spinner loading-sm"></span>
 								Applying changes to {selectedCalendarIds.length} calendar{selectedCalendarIds.length > 1 ? 's' : ''}...
 							{:else}
-								<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-								</svg>
+								<PlusIcon class_="w-4 h-4 mr-2" />
 								Apply Changes to {selectedCalendarIds.length || 'Selected'} Calendar{selectedCalendarIds.length !== 1 ? 's' : ''}
 							{/if}
 						</button>
@@ -493,9 +481,7 @@
 					<!-- Success Message -->
 					{#if calendarChangesSuccess}
 						<div class="alert alert-success mt-3">
-							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-							</svg>
+							<CheckIcon class_="w-5 h-5" />
 							<span>Calendar changes applied successfully!</span>
 						</div>
 					{/if}
@@ -503,9 +489,7 @@
 					<!-- Error Message -->
 					{#if calendarChangesError}
 						<div class="alert alert-error mt-3">
-							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-							</svg>
+							<AlertIcon class_="w-5 h-5" />
 							<span>{calendarChangesError}</span>
 						</div>
 					{/if}

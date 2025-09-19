@@ -5,6 +5,7 @@
 
 <script>
 	import { modalStore } from '$lib/stores/modal.svelte.js';
+	import { CalendarIcon, ClockIcon, AlertIcon } from '$lib/components/icons';
 	
 	// Import existing UI components
 	import CalendarEventCard from '$lib/components/calendar/CalendarEventCard.svelte';
@@ -106,14 +107,7 @@
 	<!-- Error Display -->
 	{#if error}
 		<div class="alert alert-error">
-			<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-				/>
-			</svg>
+			<AlertIcon class_="h-5 w-5" />
 			<span>{error}</span>
 			<button
 				class="btn btn-ghost btn-xs"
@@ -138,16 +132,12 @@
 								
 								<div class="flex items-center gap-4 text-sm text-base-content/70 mb-2">
 									<div class="flex items-center gap-1">
-										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-										</svg>
+										<CalendarIcon class_="w-4 h-4" />
 										<span>{formatEventDate(event)}</span>
 									</div>
 									
 									<div class="flex items-center gap-1">
-										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-										</svg>
+										<ClockIcon class_="w-4 h-4" />
 										<span>{formatEventTime(event)}</span>
 									</div>
 								</div>
@@ -194,14 +184,7 @@
 		<!-- Empty State -->
 		<div class="text-center py-12">
 			<div class="mb-4 text-base-content/30">
-				<svg class="h-16 w-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="1"
-						d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-					/>
-				</svg>
+				<CalendarIcon class_="h-16 w-16 mx-auto" />
 			</div>
 			<h3 class="text-lg font-medium text-base-content mb-2">No calendar events found</h3>
 			<p class="text-base-content/60">No calendar events found from connected relays.</p>
