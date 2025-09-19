@@ -19,8 +19,8 @@
 	import CalendarNavigation from '$lib/components/calendar/CalendarNavigation.svelte';
 	import CalendarGrid from '$lib/components/calendar/CalendarGrid.svelte';
 	import CalendarEventModal from '$lib/components/calendar/CalendarEventModal.svelte';
-	import SimpleCalendarDropdown from './SimpleCalendarDropdown.svelte';
-	import SimpleCalendarEventsList from './SimpleCalendarEventsList.svelte';
+	import SimpleCalendarDropdown from './CalendarDropdown.svelte';
+	import SimpleCalendarEventsList from './CalendarEventsList.svelte';
 
 	/**
 	 * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent

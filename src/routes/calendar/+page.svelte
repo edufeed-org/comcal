@@ -1,5 +1,5 @@
 <script>
-	import SimpleCalendarView from '$lib/components/calendar/SimpleCalendarView.svelte';
+	import CalendarView from '$lib/components/calendar/CalendarView.svelte';
 </script>
 
 <svelte:head>
@@ -8,5 +8,5 @@
 </svelte:head>
 
 <div class="container mx-auto px-4 py-8">
-	<SimpleCalendarView globalMode={true} />
+	<CalendarView globalMode={true} />
 </div>
