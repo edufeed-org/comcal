@@ -314,28 +314,6 @@
 	});
 
 	/**
-	 * Load more events
-	 */
-	function loadMore() {
-		if (loading) return;
-		
-		loading = true;
-		console.log('📅 SimpleCalendarView: Loading more events');
-		
-		timelineLoader().subscribe({
-			complete: () => {
-				loading = false;
-				console.log('📅 SimpleCalendarView: Load more completed');
-			},
-			error: (/** @type {any} */ err) => {
-				console.error('📅 SimpleCalendarView: Load more error:', err);
-				error = 'Failed to load more events';
-				loading = false;
-			}
-		});
-	}
-	
-	/**
 	 * Handle calendar selection from dropdown
 	 * @param {string} calendarId
 	 */
@@ -445,8 +423,8 @@
 	 * Handle event created successfully
 	 */
 	function handleEventCreated() {
-		// Refresh events by triggering load more
-		loadMore();
+		// Refresh events to show the newly created event
+		handleRefresh();
 	}
 
 	/**
@@ -505,18 +483,6 @@
 					</svg>
 				</button>
 				
-				<button
-					class="btn btn-outline btn-sm"
-					onclick={loadMore}
-					disabled={loading}
-				>
-					{#if loading}
-						<span class="loading loading-spinner loading-sm"></span>
-						Loading...
-					{:else}
-						Load More
-					{/if}
-				</button>
 
 				{#if !globalMode && manager.active}
 					<button class="btn gap-2 btn-sm btn-primary" onclick={handleCreateEvent}>
@@ -595,8 +561,6 @@
 				{events}
 				{loading}
 				{error}
-				showLoadMore={true}
-				onLoadMore={loadMore}
 			/>
 		</div>
 	{:else if presentationViewMode === 'map'}

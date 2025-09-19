@@ -18,17 +18,8 @@
 	let { 
 		events = /** @type {CalendarEvent[]} */ ([]), 
 		loading = false,
-		error = /** @type {string | null} */ (null),
-		showLoadMore = true,
-		onLoadMore = () => {}
+		error = /** @type {string | null} */ (null)
 	} = $props();
-
-	/**
-	 * Handle load more button click
-	 */
-	function handleLoadMore() {
-		onLoadMore();
-	}
 
 	/**
 	 * Handle event click
@@ -88,20 +79,6 @@
 		<h2 class="text-lg font-semibold text-base-content">
 			Calendar Events ({events.length})
 		</h2>
-		{#if showLoadMore}
-			<button
-				class="btn btn-outline btn-sm"
-				onclick={handleLoadMore}
-				disabled={loading}
-			>
-				{#if loading}
-					<span class="loading loading-spinner loading-sm"></span>
-					Loading...
-				{:else}
-					Load More
-				{/if}
-			</button>
-		{/if}
 	</div>
 
 	<!-- Error Display -->
