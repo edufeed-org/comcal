@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { eventStore } from '$lib/store.svelte';
 	import { getProfilePicture, getProfileContent } from 'applesauce-core/helpers';
+	import { fetchProfileData } from '$lib/helpers/profile.js';
 	import NotesTimeline from '$lib/components/notes/NotesTimeline.svelte';
 
 	/** @type {import('./$types').PageProps} */

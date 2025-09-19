@@ -1,4 +1,5 @@
 <script>
+	import { onMount } from 'svelte';
 	import { manager } from '$lib/accounts.svelte';
 	import { SimpleSigner } from 'applesauce-signers';
 	import { SimpleAccount } from 'applesauce-accounts/accounts';
@@ -7,6 +8,7 @@
 	import { appConfig } from '$lib/config.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { publishEvents } from '$lib/helpers/publisher.js';
+	import { fetchProfileData } from '$lib/helpers/profile.js';
 	import CopyIcon from './icons/actions/CopyIcon.svelte';
 	import CheckIcon from './icons/ui/CheckIcon.svelte';
 	import ChevronLeftIcon from './icons/ui/ChevronLeftIcon.svelte';
@@ -40,6 +42,8 @@
 	let uploadingImage = $state(false);
 	let imageFile = $state(null);
 	let errors = $state({});
+	
+	// No complex profile state needed - #await handles everything!
 
 	// Generate keypair when entering step 3
 	$effect(() => {
@@ -245,7 +249,7 @@
 			if (userData.selectedFollows.length > 0) {
 				const contactTags = userData.selectedFollows.map(user => {
 					const decoded = nip19.decode(user.npub);
-					return ['p', decoded.data];
+					return ['p', String(decoded.data)];
 				});
 
 				const contactsEvent = {
@@ -538,28 +542,64 @@
 					</p>
 
 					<div class="space-y-3">
-						{#each appConfig.signup.suggestedUsers as user}
-							<div class="card bg-base-200">
-								<div class="card-body p-4">
-									<div class="flex items-center gap-4">
-										<div class="avatar">
-											<div class="w-12 rounded-full">
-												<img src={user.picture} alt={user.name} />
+						{#each appConfig.signup.suggestedUsers as npub}
+							{#await fetchProfileData(npub)}
+								<!-- Loading state for this profile -->
+								<div class="card bg-base-200">
+									<div class="card-body p-4">
+										<div class="flex items-center gap-4">
+											<div class="avatar">
+												<div class="w-12 h-12 rounded-full bg-gray-300 animate-pulse"></div>
 											</div>
+											<div class="flex-1">
+												<div class="h-4 bg-gray-300 rounded animate-pulse mb-2"></div>
+												<div class="h-3 bg-gray-300 rounded animate-pulse w-2/3"></div>
+											</div>
+											<div class="w-5 h-5 bg-gray-300 rounded animate-pulse"></div>
 										</div>
-										<div class="flex-1">
-											<h3 class="font-semibold">{user.name}</h3>
-											<p class="text-sm opacity-70">{user.about}</p>
-										</div>
-										<input
-											type="checkbox"
-											class="checkbox checkbox-primary"
-											checked={userData.selectedFollows.some(u => u.npub === user.npub)}
-											onchange={() => toggleFollowUser(user)}
-										/>
 									</div>
 								</div>
-							</div>
+							{:then profile}
+								<!-- Profile loaded successfully -->
+								<div class="card bg-base-200">
+									<div class="card-body p-4">
+										<div class="flex items-center gap-4">
+											<div class="avatar">
+												<div class="w-12 rounded-full">
+													<img src={profile.picture} alt={profile.name} />
+												</div>
+											</div>
+											<div class="flex-1">
+												<h3 class="font-semibold">{profile.name}</h3>
+												<p class="text-sm opacity-70">{profile.about}</p>
+											</div>
+											<input
+												type="checkbox"
+												class="checkbox checkbox-primary"
+												checked={userData.selectedFollows.some(u => u.npub === profile.npub)}
+												onchange={() => toggleFollowUser(profile)}
+											/>
+										</div>
+									</div>
+								</div>
+							{:catch error}
+								<!-- Error loading this profile -->
+								<div class="card bg-base-200 opacity-50">
+									<div class="card-body p-4">
+										<div class="flex items-center gap-4">
+											<div class="avatar">
+												<div class="w-12 rounded-full bg-gray-400">
+													<div class="w-full h-full flex items-center justify-center text-white text-xs">?</div>
+												</div>
+											</div>
+											<div class="flex-1">
+												<h3 class="font-semibold text-gray-500">Failed to load profile</h3>
+												<p class="text-sm text-gray-400">Could not fetch profile data</p>
+											</div>
+										</div>
+									</div>
+								</div>
+							{/await}
 						{/each}
 					</div>
 
