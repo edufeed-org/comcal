@@ -12,6 +12,7 @@
 	import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
+	import { CalendarIcon, GlobeIcon, UserIcon, CheckIcon, PlusIcon, SettingsIcon, RefreshIcon, LockIcon } from '$lib/components/icons';
 
 	/**
 	 * @typedef {Object} SimpleCalendar
@@ -240,14 +241,7 @@
 					class:cursor-not-allowed={!activeUser}
 				>
 					<!-- Calendar Icon -->
-					<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-						/>
-					</svg>
+					<CalendarIcon class_="h-5 w-5" />
 					{displayName}
 				</summary>
 				<ul
@@ -265,37 +259,13 @@
 							}}
 						>
 							<!-- Global Calendar Icon -->
-							<svg
-								class="h-4 w-4 text-primary"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"
-								/>
-							</svg>
+							<GlobeIcon class_="h-4 w-4 text-primary" />
 							<div class="min-w-0 flex-1">
 								<div class="text-sm font-medium">Global Calendar</div>
 								<div class="text-xs text-base-content/60">All community events</div>
 							</div>
 							{#if !selectedCalendarId}
-								<svg
-									class="h-4 w-4 text-primary"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M5 13l4 4L19 7"
-									/>
-								</svg>
+								<CheckIcon class_="h-4 w-4 text-primary" />
 							{/if}
 						</a>
 					</li>
@@ -318,37 +288,13 @@
 								}}
 							>
 								<!-- My Events Icon -->
-								<svg
-									class="h-4 w-4 text-primary"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-									/>
-								</svg>
+								<UserIcon class_="h-4 w-4 text-primary" />
 								<div class="min-w-0 flex-1">
 									<div class="text-sm font-medium">My Events</div>
 									<div class="text-xs text-base-content/60">Events I created</div>
 								</div>
 								{#if selectedCalendarId === activeUser.pubkey}
-									<svg
-										class="h-4 w-4 text-primary"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M5 13l4 4L19 7"
-										/>
-									</svg>
+									<CheckIcon class_="h-4 w-4 text-primary" />
 								{/if}
 							</a>
 						</li>
@@ -373,19 +319,7 @@
 										}}
 									>
 										<!-- Calendar Icon -->
-										<svg
-											class="h-4 w-4 text-primary"
-											fill="none"
-											stroke="currentColor"
-											viewBox="0 0 24 24"
-										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-											/>
-										</svg>
+										<CalendarIcon class_="h-4 w-4 text-primary" />
 										<div class="min-w-0 flex-1">
 											<div class="truncate text-sm font-medium">{calendar.title}</div>
 											{#if calendar.description}
@@ -395,19 +329,7 @@
 											{/if}
 										</div>
 										{#if selectedCalendarId === calendar.id}
-											<svg
-												class="h-4 w-4 text-primary"
-												fill="none"
-												stroke="currentColor"
-												viewBox="0 0 24 24"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M5 13l4 4L19 7"
-												/>
-											</svg>
+											<CheckIcon class_="h-4 w-4 text-primary" />
 										{/if}
 									</a>
 								</li>
@@ -416,19 +338,7 @@
 							<!-- No calendars message -->
 							<li>
 								<div class="px-3 py-4 text-center text-base-content/60">
-									<svg
-										class="mx-auto mb-2 h-8 w-8 opacity-50"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-										/>
-									</svg>
+									<CalendarIcon class_="mx-auto mb-2 h-8 w-8 opacity-50" />
 									<p class="text-sm">No calendars found</p>
 									<p class="mt-1 text-xs">Create your first calendar below</p>
 								</div>
@@ -458,14 +368,7 @@
 									handleCreateCalendar();
 								}}
 							>
-								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-									/>
-								</svg>
+								<PlusIcon class_="h-4 w-4" />
 								<span class="font-medium">Create New Calendar</span>
 							</a>
 						</li>
@@ -476,20 +379,7 @@
 								href="/calendar/manage"
 								class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-base-200"
 							>
-								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-									/>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-									/>
-								</svg>
+								<SettingsIcon class_="h-4 w-4" />
 								<span class="font-medium">Manage Calendars</span>
 							</a>
 						</li>
@@ -510,20 +400,7 @@
 										}
 									}}
 								>
-									<svg
-										class="h-4 w-4"
-										class:animate-spin={loading}
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-										/>
-									</svg>
+									<RefreshIcon class_={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
 									<span class="text-sm">Refresh Calendars</span>
 								</a>
 							</li>
@@ -533,19 +410,7 @@
 						<li><hr class="my-1 border-base-300" /></li>
 						<li>
 							<div class="px-3 py-4 text-center text-base-content/60">
-								<svg
-									class="mx-auto mb-2 h-8 w-8 opacity-50"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-									/>
-								</svg>
+								<LockIcon class_="mx-auto mb-2 h-8 w-8 opacity-50" />
 								<p class="text-sm">Log in to manage your calendars</p>
 								<p class="mt-1 text-xs">Create and organize your own calendar events</p>
 							</div>

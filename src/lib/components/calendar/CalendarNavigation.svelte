@@ -5,7 +5,13 @@
 
 <script>
 	import { formatCalendarDate } from '../../helpers/calendar.js';
-	import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, MenuIcon, LocationIcon } from '../icons';
+	import {
+		ChevronLeftIcon,
+		ChevronRightIcon,
+		CalendarIcon,
+		MenuIcon,
+		LocationIcon
+	} from '../icons';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarViewMode} CalendarViewMode
@@ -13,13 +19,13 @@
 	 */
 
 	// Props using Svelte 5 runes
-	let { 
-		currentDate, 
-		viewMode, 
+	let {
+		currentDate,
+		viewMode,
 		presentationViewMode = 'calendar',
-		onPrevious, 
-		onNext, 
-		onToday, 
+		onPrevious,
+		onNext,
+		onToday,
 		onViewModeChange,
 		onPresentationViewModeChange = () => {}
 	} = $props();
@@ -40,9 +46,9 @@
 	function getDisplayDate(date, mode) {
 		switch (mode) {
 			case 'month':
-				return date.toLocaleDateString('en-US', { 
-					year: 'numeric', 
-					month: 'long' 
+				return date.toLocaleDateString('en-US', {
+					year: 'numeric',
+					month: 'long'
 				});
 			case 'week':
 				// Show week range
@@ -50,7 +56,7 @@
 				startOfWeek.setDate(date.getDate() - date.getDay());
 				const endOfWeek = new Date(startOfWeek);
 				endOfWeek.setDate(startOfWeek.getDate() + 6);
-				
+
 				if (startOfWeek.getMonth() === endOfWeek.getMonth()) {
 					return `${formatCalendarDate(startOfWeek, 'short')} - ${endOfWeek.getDate()}, ${endOfWeek.getFullYear()}`;
 				} else {
@@ -111,7 +117,9 @@
 	}
 </script>
 
-<div class="flex items-center justify-between p-4 bg-base-100 border-b border-base-300 flex-wrap gap-4">
+<div
+	class="flex flex-wrap items-center justify-between gap-4 border-b border-base-300 bg-base-100 p-4"
+>
 	<!-- Date Navigation -->
 	<div class="flex items-center gap-4">
 		<button
@@ -122,33 +130,24 @@
 			<ChevronLeftIcon class_="w-5 h-5" />
 		</button>
 
-		<div class="text-lg font-semibold text-base-content min-w-0 whitespace-nowrap">
-			{displayDate}
-		</div>
+		<!-- Today Button -->
+		<button class="btn btn-sm btn-primary" onclick={handleTodayClick}> Today </button>
 
-		<button
-			class="btn btn-outline btn-sm"
-			onclick={handleNextClick}
-			aria-label="Next {viewMode}"
-		>
+		<button class="btn btn-outline btn-sm" onclick={handleNextClick} aria-label="Next {viewMode}">
 			<ChevronRightIcon class_="w-5 h-5" />
 		</button>
+
+		<div class="min-w-0 text-lg font-semibold whitespace-nowrap text-base-content">
+			{displayDate}
+		</div>
 	</div>
 
 	<!-- Center Controls -->
 	<div class="flex items-center gap-4">
-		<!-- Today Button -->
-		<button
-			class="btn btn-primary btn-sm"
-			onclick={handleTodayClick}
-		>
-			Today
-		</button>
-
 		<!-- Presentation View Selector -->
 		<div class="join">
 			<button
-				class="join-item btn btn-sm"
+				class="btn join-item btn-sm"
 				class:btn-outline={presentationViewMode !== 'calendar'}
 				class:btn-primary={presentationViewMode === 'calendar'}
 				onclick={() => handlePresentationViewModeClick('calendar')}
@@ -157,7 +156,7 @@
 				<CalendarIcon class_="w-4 h-4" />
 			</button>
 			<button
-				class="join-item btn btn-sm"
+				class="btn join-item btn-sm"
 				class:btn-outline={presentationViewMode !== 'list'}
 				class:btn-primary={presentationViewMode === 'list'}
 				onclick={() => handlePresentationViewModeClick('list')}
@@ -166,7 +165,7 @@
 				<MenuIcon class_="w-4 h-4" />
 			</button>
 			<button
-				class="join-item btn btn-sm"
+				class="btn join-item btn-sm"
 				class:btn-outline={presentationViewMode !== 'map'}
 				class:btn-primary={presentationViewMode === 'map'}
 				onclick={() => handlePresentationViewModeClick('map')}
@@ -182,7 +181,7 @@
 	{#if presentationViewMode === 'calendar'}
 		<div class="join">
 			<button
-				class="join-item btn btn-sm"
+				class="btn join-item btn-sm"
 				class:btn-outline={viewMode !== 'month'}
 				class:btn-primary={viewMode === 'month'}
 				onclick={() => handleViewModeClick('month')}
@@ -190,7 +189,7 @@
 				Month
 			</button>
 			<button
-				class="join-item btn btn-sm"
+				class="btn join-item btn-sm"
 				class:btn-outline={viewMode !== 'week'}
 				class:btn-primary={viewMode === 'week'}
 				onclick={() => handleViewModeClick('week')}
@@ -198,7 +197,7 @@
 				Week
 			</button>
 			<button
-				class="join-item btn btn-sm"
+				class="btn join-item btn-sm"
 				class:btn-outline={viewMode !== 'day'}
 				class:btn-primary={viewMode === 'day'}
 				onclick={() => handleViewModeClick('day')}
