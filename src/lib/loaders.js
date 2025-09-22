@@ -25,6 +25,17 @@ export const calendarTimelineLoader = createTimelineLoader(
 	{ eventStore }
 );
 
+// Calendar definition loader for personal calendars
+export const calendarDefinitionLoader = createTimelineLoader(
+	pool,
+	relays,
+	{
+		kinds: [31924], // Calendar definitions
+		limit: 100
+	},
+	{ eventStore }
+);
+
 export const communityCalendarTimelineLoader = (communityPubkey) => createTimelineLoader(
 	pool,
 	relays,

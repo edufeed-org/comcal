@@ -1,16 +1,19 @@
 <!--
-  SimpleCalendarDropdown Component
-  Simplified version of CalendarDropdown using direct timeline loader approach
-  Maintains same UI/UX but with simpler data flow
+  CalendarDropdown Component - OPTIMIZED
+  Uses EventStore intelligence directly for maximum performance and simplicity
+  - Direct eventStore.timeline() access instead of complex loader chains
+  - EventStore bootstrap on mount for proper relay connections
+  - Leverages existing loaders from loaders.js for EventStore intelligence
+  - Fixed JavaScript scoping error and simplified data flow
 -->
 
 <script>
 	import { onMount, onDestroy } from 'svelte';
-	import { TimelineModel } from 'applesauce-core/models';
-	import { createTimelineLoader } from 'applesauce-loaders/loaders';
-	import { pool, relays, eventStore } from '$lib/store.svelte';
+	import { eventStore } from '$lib/store.svelte';
+	import { calendarDefinitionLoader } from '$lib/loaders.js';
 	import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
+	import { calendarEventsStore } from '$lib/stores/calendar-events.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
 	import { CalendarIcon, GlobeIcon, UserIcon, CheckIcon, PlusIcon, SettingsIcon, RefreshIcon, LockIcon } from '$lib/components/icons';
 
@@ -35,9 +38,8 @@
 	let error = $state(/** @type {string | null} */ (null));
 	let activeUser = $state(manager.active);
 
-	// Timeline loader and subscription
+	// Simplified subscription management
 	let subscription = $state();
-	let timelineLoader = $state();
 	let userSubscription = $state();
 
 	/**
@@ -59,7 +61,7 @@
 
 		// Extract data from tags
 		if (event.tags) {
-			event.tags.forEach(tag => {
+			event.tags.forEach((/** @type {any} */ tag) => {
 				switch (tag[0]) {
 					case 'd':
 						calendar.dTag = tag[1] || '';
@@ -75,19 +77,7 @@
 	}
 
 	/**
-	 * Create calendar timeline loader
-	 */
-	function createCalendarLoader(userPubkey) {
-		return createTimelineLoader(
-			pool,
-			relays,
-			{ kinds: [31924], authors: [userPubkey], limit: 100 },
-			{ eventStore }
-		);
-	}
-
-	/**
-	 * Load user's calendars
+	 * Load user's calendars using EventStore intelligence - OPTIMIZED!
 	 */
 	function loadUserCalendars() {
 		if (!activeUser) {
@@ -103,56 +93,47 @@
 			subscription.unsubscribe();
 		}
 
-		// Create and execute timeline loader
-		timelineLoader = createCalendarLoader(activeUser.pubkey);
-		
-		console.log(`📅 SimpleCalendarDropdown: Loading calendars for user: ${activeUser.pubkey}`);
+		console.log(`📅 CalendarDropdown: Loading calendars for user: ${activeUser.pubkey}`);
 
-		// Execute the timeline loader to fetch from relays
-		subscription = timelineLoader().subscribe({
-			next: (/** @type {any} */ event) => {
-				console.log(`📅 SimpleCalendarDropdown: Received calendar event:`, event);
-				// Events are automatically added to eventStore by the timeline loader
-			},
-			complete: () => {
-				console.log(`📅 SimpleCalendarDropdown: Timeline loader completed`);
-				// Now subscribe to the event store to get the accumulated results
-				loadCalendarsFromEventStore();
-			},
-			error: (/** @type {any} */ err) => {
-				console.error('📅 SimpleCalendarDropdown: Timeline loader error:', err);
-				error = 'Failed to load calendars';
-				loading = false;
-			}
-		});
-	}
+		// Build filter for calendar events (kind 31924)
+		const filter = { kinds: [31924], authors: [activeUser.pubkey], limit: 100 };
 
-	/**
-	 * Load calendars from event store after timeline loader completes
-	 */
-	function loadCalendarsFromEventStore() {
-		if (!activeUser) return;
-		
-		// Subscribe to event store to get the loaded calendar events
-		const eventStoreSubscription = eventStore
-			.model(TimelineModel, { kinds: [31924], authors: [activeUser.pubkey], limit: 100 })
-			.subscribe((timeline) => {
-				console.log(`📅 SimpleCalendarDropdown: Event store timeline updated: ${timeline.length} calendars`);
+		// Direct EventStore timeline access - leverages existing loader intelligence!
+		subscription = eventStore.timeline(filter).subscribe({
+			next: (/** @type {any[]} */ timeline) => {
+				console.log(`📅 CalendarDropdown: Timeline updated: ${timeline.length} calendars`);
 				
 				// Convert raw events to SimpleCalendar format
 				const simpleCalendars = timeline.map(convertToSimpleCalendar);
 				calendars = simpleCalendars;
 				
 				loading = false;
-				
-				// Clean up this subscription after getting the data
-				eventStoreSubscription.unsubscribe();
-			});
+			},
+			error: (/** @type {any} */ err) => {
+				console.error('📅 CalendarDropdown: Timeline error:', err);
+				error = 'Failed to load calendars';
+				loading = false;
+			}
+		});
 	}
 
-	// Subscribe to user changes
+	// Bootstrap EventStore and subscribe to user changes
 	onMount(() => {
-		console.log('📅 SimpleCalendarDropdown: Mounting');
+		console.log('📅 CalendarDropdown: Mounting and bootstrapping EventStore');
+		
+		// Bootstrap EventStore by executing the calendar timeline loader first
+		// This establishes the relay connections that EventStore needs
+		console.log('📅 CalendarDropdown: Bootstrapping EventStore with calendar loader...');
+		
+		// Execute calendar definition loader to bootstrap EventStore
+		calendarDefinitionLoader().subscribe({
+			complete: () => {
+				console.log('📅 CalendarDropdown: Calendar definition loader bootstrap complete');
+			},
+			error: (/** @type {any} */ err) => {
+				console.warn('📅 CalendarDropdown: Calendar definition loader bootstrap error:', err);
+			}
+		});
 		
 		// Subscribe to manager.active$ for reactive updates
 		userSubscription = manager.active$.subscribe((user) => {
@@ -160,7 +141,7 @@
 			loadUserCalendars();
 		});
 
-		// Initial load
+		// Initial load after bootstrap
 		loadUserCalendars();
 	});
 
@@ -211,8 +192,14 @@
 			selectedCalendar = calendars.find(cal => cal.id === calendarId) || null;
 		}
 		
+		// Update the store with the selection
+		calendarEventsStore.setSelectedCalendar(calendarId, selectedCalendar);
+		
+		// Clear events to trigger reload
+		calendarEventsStore.clearEvents();
+		
 		onCalendarSelect(calendarId);
-		console.log('📅 SimpleCalendarDropdown: Calendar selected:', calendarId, selectedCalendar);
+		console.log('📅 CalendarDropdown: Calendar selected:', calendarId, selectedCalendar);
 	}
 
 	/**
