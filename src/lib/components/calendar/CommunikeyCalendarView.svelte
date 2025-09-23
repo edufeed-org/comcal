@@ -188,8 +188,29 @@
 							});
 						} else {
 							console.log(
-								`📅 CommunikeyCalendarView: Referenced event ${eTag} not found in EventStore and not able to load`
+								`📅 CommunikeyCalendarView: Referenced event ${eTag} not found in EventStore, attempting to load`
 							);
+							// TODO FIX THIS Fallback: try to load the event if not in cache
+							eventLoader({
+								id: eTag,
+								relays: ['wss://relay.damus.io', 'wss://relay-rpi.edufeed.org']
+							}).subscribe({
+								next: (loadedEvent) => {
+									if (loadedEvent) {
+										console.log(
+											`📅 CommunikeyCalendarView: Successfully loaded referenced event ${eTag}`
+										);
+										const calendarEvent = convertToCalendarEvent(loadedEvent);
+										allEvents.push(calendarEvent);
+										events = [...allEvents]; // Update events array
+									}
+								},
+								error: (/** @type {any} */ err) => {
+									const errorMsg = `Failed to load referenced calendar event: ${eTag}`;
+									console.warn(`📅 CommunikeyCalendarView: ${errorMsg}`);
+									resolutionErrors = [...resolutionErrors, errorMsg];
+								}
+							});
 						}
 					} catch (err) {
 						const errorMsg = `Error resolving targeted publication ${pubEvent.id}: ${/** @type {Error} */ (err).message}`;
