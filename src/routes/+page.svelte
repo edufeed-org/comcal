@@ -2,9 +2,13 @@
 	import CommunikeyCard from '$lib/components/CommunikeyCard.svelte';
 	import { useAllCommunities } from '$lib/stores/all-communities.svelte.js';
 	import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte.js';
+	import { modalStore } from '$lib/stores/modal.svelte.js';
+	import { manager } from '$lib/accounts.svelte';
+	import { useActiveUser } from '$lib/stores/accounts.svelte';
 
 	const getAllCommunities = useAllCommunities();
 	const getJoinedCommunities = useJoinedCommunitiesList();
+	const activeUser = useActiveUser()
 </script>
 
 <svelte:head>
@@ -13,8 +17,19 @@
 </svelte:head>
 
 <div class="flex flex-row gap-8">
+	<!-- Sidebar -->
 	<div class="w-1/4">
-		<h2>Joined Communities</h2>
+		<div class="flex justify-between items-center mb-4">
+			<h2>Joined Communities</h2>
+			{#if activeUser()}
+				<button
+					class="btn btn-primary btn-sm"
+					onclick={() => modalStore.openModal('createCommunity')}
+				>
+					New Group
+				</button>
+			{/if}
+		</div>
 		<div class="space-y-2">
 			{#each getJoinedCommunities() as community}
 				<div class="card bg-base-100 shadow-sm p-3">
