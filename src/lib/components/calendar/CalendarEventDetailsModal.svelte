@@ -15,7 +15,7 @@
 	import { eventStore } from '../../store.svelte.js';
 	import { EventFactory } from 'applesauce-factory';
 	import { publishEvent } from '../../helpers/publisher.js';
-	import { getTagValue, getProfileContent } from 'applesauce-core/helpers';
+	import { getTagValue, getProfileContent, getDisplayName } from 'applesauce-core/helpers';
 	import {
 		CloseIcon,
 		CalendarIcon,
@@ -26,6 +26,7 @@
 		AlertIcon
 	} from '$lib/components/icons';
 	import EventDebugInfo from './EventDebugInfo.svelte';
+	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
@@ -846,6 +847,9 @@
 							{@const isAlreadyShared = communitiesWithShares.has(community.pubkey)}
 							{@const isSelected = selectedCommunityIds.includes(community.pubkey)}
 							{@const communityPubKey = getTagValue(community, 'd') || ''}
+							{@const getCommunityProfile = useUserProfile(communityPubKey)}
+							{@const communityProfile = getCommunityProfile()}
+							{console.log('Community Profile:', communityProfile)}
 							<label class="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-base-200">
 								<input
 									type="checkbox"
@@ -854,7 +858,7 @@
 									onchange={() => toggleCommunitySelection(community.pubkey)}
 								/>
 								<span class="text-sm font-medium"
-									>{communityPubKey.slice(0, 8)}...{communityPubKey.slice(-4)}</span
+									>{getDisplayName(communityProfile) || (`${communityPubKey.slice(0, 8)}...${communityPubKey.slice(-4)}`)}</span
 								>
 								{#if isAlreadyShared && !isSelected}
 									<span class="text-xs font-medium text-success">(Shared - click to unshare)</span>
