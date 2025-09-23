@@ -6,6 +6,10 @@ import { mapEventsToStore } from 'applesauce-core';
 import { TimelineModel } from 'applesauce-core/models';
 
 export const addressLoader = createAddressLoader(pool, { eventStore, lookupRelays: relays });
+
+eventStore.addressableLoader = addressLoader;
+eventStore.replaceableLoader = addressLoader;
+
 export const communikeyTimelineLoader = createTimelineLoader(
 	pool,
 	relays,
@@ -58,8 +62,6 @@ export const relationshipTimelineLoader = createTimelineLoader(
 	{ eventStore }
 );
 
-eventStore.addressableLoader = addressLoader;
-eventStore.replaceableLoader = addressLoader;
 export const profileLoader = createAddressLoader(pool, {
 	eventStore,
 	lookupRelays: ['wss://purplepag.es/']

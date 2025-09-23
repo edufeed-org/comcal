@@ -1,8 +1,10 @@
 <script>
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { useActiveUser } from '$lib/stores/accounts.svelte';
-	import { getTagValue } from 'applesauce-core/helpers';
+	import { getDisplayName, getTagValue } from 'applesauce-core/helpers';
 	import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte.js';
+	import { userProfile } from '$lib/shared.svelte';
+	import { useUserProfile } from '$lib/stores/user-profile.svelte';
 
 	const activeUser = useActiveUser();
 	const getJoinedCommunities = useJoinedCommunitiesList(); // gets the getter function
@@ -23,6 +25,9 @@
 
 <div class="space-y-2">
 	{#each joinedCommunities as community}
+		{@const communityPubKey = getTagValue(community, 'd')}
+		{@const getCommunityProfile = useUserProfile(communityPubKey)}
+		{@const communityProfile = getCommunityProfile()}
 		<div class="card bg-base-100 p-3 shadow-sm">
 			<div class="flex items-center gap-2">
 				<div class="avatar">
@@ -32,10 +37,10 @@
 				</div>
 				<div class="min-w-0 flex-1">
 					<p class="truncate text-sm font-medium">
-						{getTagValue(community, 'd')?.slice(0, 8)}...
+						{getDisplayName(communityProfile)}
 					</p>
 				</div>
-				<a href={`/c/${community.pubkey}`} class="btn btn-xs btn-primary">Visit</a>
+				<a href={`/c/${communityPubKey}`} class="btn btn-xs btn-primary">Visit</a>
 			</div>
 		</div>
 	{/each}

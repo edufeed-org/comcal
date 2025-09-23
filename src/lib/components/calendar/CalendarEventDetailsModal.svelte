@@ -276,115 +276,117 @@
 		calendarChangesSuccess = false;
 	}
 
-	// /**
-	//  * Generate consistent d-tag for community sharing events
-	//  * @param {string} eventId
-	//  * @param {string} communityPubkey
-	//  * @returns {string}
-	//  */
-	// function generateShareDTag(eventId, communityPubkey) {
-	// 	return `calendar-share-${eventId}-${communityPubkey}`;
-	// }
+	/**
+	 * Generate consistent d-tag for community sharing events
+	 * @param {string} eventId
+	 * @param {string} communityPubkey
+	 * @returns {string}
+	 */
+	function generateShareDTag(eventId, communityPubkey) {
+		return `calendar-share-${eventId}-${communityPubkey}`;
+	}
 
-	// /**
-	//  * Get community name from profile
-	//  * @param {string} communityPubkey
-	//  * @returns {Promise<string>}
-	//  */
-	// async function getCommunityName(communityPubkey) {
-	// 	try {
-	// 		const profile = await eventStore.profile(communityPubkey);
-	// 		return profile?.name || profile?.display_name || communityPubkey.slice(0, 8);
-	// 	} catch (error) {
-	// 		console.warn(`Failed to get community name for ${communityPubkey}:`, error);
-	// 		return communityPubkey.slice(0, 8);
-	// 	}
-	// }
+	/**
+	 * Get community name from profile
+	 * @param {string} communityPubkey
+	 * @returns {Promise<string>}
+	 */
+	async function getCommunityName(communityPubkey) {
+		try {
+			const getProfile = useUserProfile(communityPubkey);
+			const profile = await getProfile();
+			return profile?.name || profile?.display_name || communityPubkey.slice(0, 8);
+		} catch (error) {
+			console.warn(`Failed to get community name for ${communityPubkey}:`, error);
+			return communityPubkey.slice(0, 8);
+		}
+	}
 
 	// /**
 	//  * Check which communities already have sharing events for this calendar event
 	//  */
-	// async function checkExistingCommunityShares() {
-	// 	if (!activeUser || !event || !joinedCommunities.length) {
-	// 		communitiesWithShares = new Set();
-	// 		return;
-	// 	}
+	async function checkExistingCommunityShares() {
+		if (!activeUser || !event || !joinedCommunities.length) {
+			communitiesWithShares = new Set();
+			return;
+		}
 
-	// 	const shares = new Set();
+		const shares = new Set();
 
-	// 	// Check each joined community for existing share events
-	// 	// TODO turn off for now
-	// 	// for (const community of joinedCommunities) {
-	// 	// 	const dTag = generateShareDTag(event.id, community.pubkey);
-	// 	// 	try {
-	// 	// 		// Use RxJS toPromise() to convert observable to promise
-	// 	// 		const shareEvent = await eventStore.replaceable(30222, activeUser.pubkey, dTag);
-	// 	// 		if (shareEvent) {
-	// 	// 			shares.add(community.pubkey);
-	// 	// 		}
-	// 	// 	} catch (error) {
-	// 	// 		console.warn(`Failed to check share for community ${community.pubkey}:`, error);
-	// 	// 	}
-	// 	// }
+		// Check each joined community for existing share events
+		// TODO turn off for now
+		// for (const community of joinedCommunities) {
+		// 	const dTag = generateShareDTag(event.id, community.pubkey);
+		// 	try {
+		// 		// Use RxJS toPromise() to convert observable to promise
+		// 		const shareEvent = await eventStore.replaceable(30222, activeUser.pubkey, dTag);
+		// 		if (shareEvent) {
+		// 			shares.add(community.pubkey);
+		// 		}
+		// 	} catch (error) {
+		// 		console.warn(`Failed to check share for community ${community.pubkey}:`, error);
+		// 	}
+		// }
 
-	// 	communitiesWithShares = shares;
-	// }
+		communitiesWithShares = shares;
+	}
 
 	// /**
 	//  * Create a community sharing event (kind 30222)
 	//  * @param {string} communityPubkey
 	//  * @returns {Promise<boolean>}
 	//  */
-	// async function createCommunityShare(communityPubkey) {
-	// 	if (!activeUser || !event) {
-	// 		throw new Error('Missing user or event data');
-	// 	}
+	async function createCommunityShare(communityPubkey) {
+		if (!activeUser || !event) {
+			throw new Error('Missing user or event data');
+		}
 
-	// 	// Get community relay from community metadata
-	// 	let communityRelay = '';
-	// 	try {
-	// 		const communityEvent = await eventStore.replaceable(10222, communityPubkey, communityPubkey).toPromise();
-	// 		if (communityEvent) {
-	// 			communityRelay = getTagValue(communityEvent, 'r') || '';
-	// 		}
-	// 	} catch (error) {
-	// 		console.warn(`Failed to get community relay for ${communityPubkey}:`, error);
-	// 	}
+		// Get community relay from community metadata
+		// let communityRelay = '';
+		// try {
+		// 	const communityEvent = await eventStore.replaceable(10222, communityPubkey, communityPubkey).toPromise();
+		// 	if (communityEvent) {
+		// 		communityRelay = getTagValue(communityEvent, 'r') || '';
+		// 	}
+		// } catch (error) {
+		// 	console.warn(`Failed to get community relay for ${communityPubkey}:`, error);
+		// }
 
-	// 	// Create EventFactory for the user
-	// 	const factory = new EventFactory({
-	// 		signer: activeUser.signer
-	// 	});
+		// Create EventFactory for the user
+		const factory = new EventFactory({
+			signer: activeUser.signer
+		});
 
-	// 	// Generate d-tag
-	// 	const dTag = generateShareDTag(event.id, communityPubkey);
+		// Generate d-tag
+		const dTag = generateShareDTag(event.id, communityPubkey);
 
-	// 	// Create the sharing event using proper EventFactory API
-	// 	const shareEvent = await factory.build(
-	// 		{ kind: 30222, tags: [
-	// 			['d', dTag],
-	// 			['e', event.id],
-	// 			['k', event.kind.toString()],
-	// 			['p', communityPubkey],
-	// 			...(communityRelay ? [['r', communityRelay]] : [])
-	// 		] }
-	// 	);
+		// Create the sharing event using proper EventFactory API
+		const shareEvent = await factory.build(
+			{ kind: 30222, tags: [
+				['d', dTag],
+				['e', event.id],
+				['k', event.kind.toString()],
+				['p', communityPubkey],
+				// FIXME add relay back in later
+				// ...(communityRelay ? [['r', communityRelay]] : [])
+			] }
+		);
 
-	// 	// Sign the event
-	// 	const signedEvent = await factory.sign(shareEvent);
+		// Sign the event
+		const signedEvent = await factory.sign(shareEvent);
 
-	// 	// Get user relays from the relays store
-	// 	const { relays: userRelays } = await import('../../store.svelte.js');
-	// 	const communityRelays = communityRelay ? [communityRelay] : [];
-	// 	const allRelays = [...new Set([...userRelays, ...communityRelays])];
+		// Get user relays from the relays store
+		const { relays: userRelays } = await import('../../store.svelte.js');
+		const communityRelays = [] // communityRelay ? [communityRelay] : [];
+		const allRelays = [...new Set([...userRelays, ...communityRelays])];
 
-	// 	const result = await publishEvent(signedEvent, {
-	// 		relays: allRelays,
-	// 		logPrefix: 'CommunityShare'
-	// 	});
+		const result = await publishEvent(signedEvent, {
+			relays: allRelays,
+			logPrefix: 'CommunityShare'
+		});
 
-	// 	return result.success;
-	// }
+		return result.success;
+	}
 
 	// /**
 	//  * Delete a community sharing event
@@ -424,71 +426,71 @@
 	// /**
 	//  * Handle applying community sharing changes
 	//  */
-	// async function handleApplyCommunityShares() {
-	// 	if (selectedCommunityIds.length === 0 || !activeUser || !event) {
-	// 		return;
-	// 	}
+	async function handleApplyCommunityShares() {
+		if (selectedCommunityIds.length === 0 || !activeUser || !event) {
+			return;
+		}
 
-	// 	isProcessingCommunityShares = true;
-	// 	communityShareError = '';
-	// 	communityShareSuccess = '';
-	// 	communityShareResults = { successful: [], failed: [] };
+		isProcessingCommunityShares = true;
+		communityShareError = '';
+		communityShareSuccess = '';
+		communityShareResults = { successful: [], failed: [] };
 
-	// 	try {
-	// 		const results = [];
+		try {
+			const results = [];
 
-	// 		// Process each selected community
-	// 		for (const communityPubkey of selectedCommunityIds) {
-	// 			const isAlreadyShared = communitiesWithShares.has(communityPubkey);
+			// Process each selected community
+			for (const communityPubkey of selectedCommunityIds) {
+				const isAlreadyShared = communitiesWithShares.has(communityPubkey);
 
-	// 			try {
-	// 				let success = false;
-	// 				if (isAlreadyShared) {
-	// 					// Remove share
-	// 					success = await deleteCommunityShare(communityPubkey);
-	// 				} else {
-	// 					// Create share
-	// 					success = await createCommunityShare(communityPubkey);
-	// 				}
+				try {
+					let success = false;
+					if (isAlreadyShared) {
+						// Remove share
+						success = await deleteCommunityShare(communityPubkey);
+					} else {
+						// Create share
+						success = await createCommunityShare(communityPubkey);
+					}
 
-	// 				const communityName = await getCommunityName(communityPubkey);
+					const communityName = await getCommunityName(communityPubkey);
 
-	// 				if (success) {
-	// 					communityShareResults.successful.push(communityName);
-	// 				} else {
-	// 					communityShareResults.failed.push(communityName);
-	// 				}
-	// 			} catch (error) {
-	// 				console.error(`Failed to process community share for ${communityPubkey}:`, error);
-	// 				const communityName = await getCommunityName(communityPubkey);
-	// 				communityShareResults.failed.push(communityName);
-	// 			}
-	// 		}
+					if (success) {
+						communityShareResults.successful.push(communityName);
+					} else {
+						communityShareResults.failed.push(communityName);
+					}
+				} catch (error) {
+					console.error(`Failed to process community share for ${communityPubkey}:`, error);
+					const communityName = await getCommunityName(communityPubkey);
+					communityShareResults.failed.push(communityName);
+				}
+			}
 
-	// 		// Update success message
-	// 		const successfulCount = communityShareResults.successful.length;
-	// 		const failedCount = communityShareResults.failed.length;
+			// Update success message
+			const successfulCount = communityShareResults.successful.length;
+			const failedCount = communityShareResults.failed.length;
 
-	// 		if (successfulCount > 0) {
-	// 			communityShareSuccess = `Successfully shared with ${successfulCount} community${successfulCount > 1 ? 'ies' : ''}`;
-	// 			if (failedCount > 0) {
-	// 				communityShareSuccess += `, failed for ${failedCount}`;
-	// 			}
-	// 		} else if (failedCount > 0) {
-	// 			communityShareError = `Failed to share with ${failedCount} community${failedCount > 1 ? 'ies' : ''}`;
-	// 		}
+			if (successfulCount > 0) {
+				communityShareSuccess = `Successfully shared with ${successfulCount} community${successfulCount > 1 ? 'ies' : ''}`;
+				if (failedCount > 0) {
+					communityShareSuccess += `, failed for ${failedCount}`;
+				}
+			} else if (failedCount > 0) {
+				communityShareError = `Failed to share with ${failedCount} community${failedCount > 1 ? 'ies' : ''}`;
+			}
 
-	// 		// Refresh existing shares and reset selection
-	// 		await checkExistingCommunityShares();
-	// 		selectedCommunityIds = [];
+			// Refresh existing shares and reset selection
+			await checkExistingCommunityShares();
+			selectedCommunityIds = [];
 
-	// 	} catch (error) {
-	// 		console.error('Error applying community shares:', error);
-	// 		communityShareError = error instanceof Error ? error.message : 'Failed to apply community sharing changes';
-	// 	} finally {
-	// 		isProcessingCommunityShares = false;
-	// 	}
-	// }
+		} catch (error) {
+			console.error('Error applying community shares:', error);
+			communityShareError = error instanceof Error ? error.message : 'Failed to apply community sharing changes';
+		} finally {
+			isProcessingCommunityShares = false;
+		}
+	}
 
 	/**
 	 * Toggle community selection
@@ -496,7 +498,7 @@
 	 */
 	function toggleCommunitySelection(communityPubkey) {
 		if (selectedCommunityIds.includes(communityPubkey)) {
-			selectedCommunityIds = selectedCommunityIds.filter(id => id !== communityPubkey);
+			selectedCommunityIds = selectedCommunityIds.filter((id) => id !== communityPubkey);
 		} else {
 			selectedCommunityIds = [...selectedCommunityIds, communityPubkey];
 		}
@@ -844,9 +846,9 @@
 					<!-- Community Checkboxes -->
 					<div class="max-h-40 overflow-y-auto rounded-lg border border-base-300 p-3">
 						{#each joinedCommunities as community}
-							{@const isAlreadyShared = communitiesWithShares.has(community.pubkey)}
-							{@const isSelected = selectedCommunityIds.includes(community.pubkey)}
 							{@const communityPubKey = getTagValue(community, 'd') || ''}
+							{@const isAlreadyShared = communitiesWithShares.has(communityPubKey)}
+							{@const isSelected = selectedCommunityIds.includes(communityPubKey)}
 							{@const getCommunityProfile = useUserProfile(communityPubKey)}
 							{@const communityProfile = getCommunityProfile()}
 							{console.log('Community Profile:', communityProfile)}
@@ -855,10 +857,11 @@
 									type="checkbox"
 									class="checkbox checkbox-secondary"
 									checked={isSelected || isAlreadyShared}
-									onchange={() => toggleCommunitySelection(community.pubkey)}
+									onchange={() => toggleCommunitySelection(communityPubKey)}
 								/>
 								<span class="text-sm font-medium"
-									>{getDisplayName(communityProfile) || (`${communityPubKey.slice(0, 8)}...${communityPubKey.slice(-4)}`)}</span
+									>{getDisplayName(communityProfile) ||
+										`${communityPubKey.slice(0, 8)}...${communityPubKey.slice(-4)}`}</span
 								>
 								{#if isAlreadyShared && !isSelected}
 									<span class="text-xs font-medium text-success">(Shared - click to unshare)</span>
@@ -874,7 +877,49 @@
 								No joined communities available
 							</div>
 						{/if}
+
+						<!-- Selected Communities Summary -->
+						{#if selectedCommunityIds.length > 0}
+							<div class="mt-2 text-sm text-base-content/70">
+								{selectedCommunityIds.length} community{selectedCommunityIds.length > 1 ? 'ies' : ''} selected
+							</div>
+						{/if}
 					</div>
+
+					<!-- Apply Community Shares Button -->
+					<div class="flex items-center gap-3">
+						<button
+							class="btn btn-secondary"
+							disabled={selectedCommunityIds.length === 0 || isProcessingCommunityShares}
+							onclick={handleApplyCommunityShares}
+						>
+							{#if isProcessingCommunityShares}
+								<span class="loading loading-spinner loading-sm"></span>
+								Sharing with {selectedCommunityIds.length} community{selectedCommunityIds.length > 1 ? 'ies' : ''}...
+							{:else}
+								<PlusIcon class_="w-4 h-4 mr-2" />
+								Share with {selectedCommunityIds.length || 'Selected'} Communit{selectedCommunityIds.length !== 1 ? 'ies' : 'y'}
+							{/if}
+						</button>
+					</div>
+
+					<!-- Community Share Success Message -->
+					{#if communityShareSuccess}
+						<div class="alert alert-success mt-3">
+							<CheckIcon class_="w-5 h-5" />
+							<span>{communityShareSuccess}</span>
+						</div>
+					{/if}
+
+					<!-- Community Share Error Message -->
+					{#if communityShareError}
+						<div class="alert alert-error mt-3">
+							<AlertIcon class_="w-5 h-5" />
+							<span>{communityShareError}</span>
+						</div>
+					{/if}
+
+
 				</div>
 			{/if}
 
