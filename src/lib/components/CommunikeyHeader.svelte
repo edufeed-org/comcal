@@ -43,28 +43,36 @@
 	}
 </script>
 
-<div class="flex items-center gap-2">
+<div class="flex items-center gap-3 p-3 bg-base-100 rounded-xl border border-base-200 shadow-sm">
 	<div class="avatar">
-		<div class="mask w-12 mask-hexagon-2">
-			<img src={getProfilePicture(profile)} />
+		<div class="mask w-12 mask-hexagon-2 ring-2 ring-base-300">
+			<img src={getProfilePicture(profile)} alt="Community Profile" class="object-cover" />
 		</div>
 	</div>
 
-	<div class="flex gap-2">
-		<span>{profile.name}</span>
+	<div class="flex gap-3 items-center">
+		<span class="text-base font-semibold text-base-content">{profile.name}</span>
 
-		<div class="flex flex-wrap">
+		<div class="flex flex-wrap gap-2">
 			{#each communikeyContentTypes as contentType}
-				<div class="badge badge-soft badge-primary">{contentType.name}</div>
+				<div class="badge badge-soft badge-primary hover:badge-primary-focus transition-all duration-200 cursor-default px-3 py-1 text-xs font-medium rounded-lg border border-primary/20 hover:border-primary/40 hover:shadow-sm">
+					{contentType.name}
+				</div>
 			{/each}
 		</div>
 	</div>
-	<div class="mr-2 ml-auto">
+	<div class="mr-2 ml-auto flex items-center gap-2">
 		{#if getJoined()}
-			<div class="badge badge-soft badge-success">Joined</div>
+			<div class="badge badge-soft badge-success hover:badge-success-focus transition-all duration-200 cursor-default px-3 py-1 text-xs font-medium rounded-lg border border-success/20 hover:border-success/40 hover:shadow-sm">
+				Joined
+			</div>
 		{:else}
-			<div class="badge badge-soft badge-outline">Not Joined</div>
-			<button onclick={joinCommunity} class="btn btn-primary">Join</button>
+			<div class="badge badge-soft badge-outline hover:badge-outline-focus transition-all duration-200 cursor-default px-3 py-1 text-xs font-medium rounded-lg border border-base-300/50 hover:border-base-300 hover:shadow-sm">
+				Not Joined
+			</div>
+			<button onclick={joinCommunity} class="btn btn-primary hover:btn-primary-focus transition-colors duration-200 px-4 py-2">
+				Join
+			</button>
 		{/if}
 	</div>
 </div>
