@@ -1,9 +1,7 @@
-import { createAddressLoader, createTimelineLoader } from 'applesauce-loaders/loaders';
+import { createAddressLoader, createTimelineLoader, createEventLoader } from 'applesauce-loaders/loaders';
 import { pool, relays, eventStore } from '$lib/store.svelte';
 import { getProfileContent } from 'applesauce-core/helpers';
 import { take, map } from 'rxjs';
-import { mapEventsToStore } from 'applesauce-core';
-import { TimelineModel } from 'applesauce-core/models';
 
 export const addressLoader = createAddressLoader(pool, { eventStore, lookupRelays: relays });
 
@@ -50,6 +48,22 @@ export const communityCalendarTimelineLoader = (communityPubkey) => createTimeli
 	},
 	{ eventStore }
 );
+
+// Targeted Publication Events loader for community calendar events
+export const targetedPublicationTimelineLoader = (communityPubkey) => createTimelineLoader(
+	pool,
+	relays,
+	{
+		kinds: [30222], // Targeted Publication Events
+		'#p': [communityPubkey], // Community targeting
+		'#k': ['31922', '31923'], // Only calendar event kinds
+		limit: 100
+	},
+	{ eventStore }
+);
+
+// Event loader for resolving referenced events from targeted publications
+export const eventLoader = createEventLoader(pool, { eventStore });
 
 // Relationship events loader for community membership tracking
 export const relationshipTimelineLoader = createTimelineLoader(

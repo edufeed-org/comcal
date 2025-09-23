@@ -7,8 +7,17 @@
 <script>
 	import { onMount, onDestroy } from 'svelte';
 	import { eventStore } from '$lib/store.svelte';
-	import { communityCalendarTimelineLoader } from '$lib/loaders.js';
-	import { getCalendarEventTitle, getCalendarEventStart, getCalendarEventEnd, getCalendarEventImage } from 'applesauce-core/helpers/calendar-event';
+	import {
+		communityCalendarTimelineLoader,
+		targetedPublicationTimelineLoader,
+		eventLoader
+	} from '$lib/loaders.js';
+	import {
+		getCalendarEventTitle,
+		getCalendarEventStart,
+		getCalendarEventEnd,
+		getCalendarEventImage
+	} from 'applesauce-core/helpers/calendar-event';
 	import { groupEventsByDate } from '$lib/helpers/calendar.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
@@ -18,6 +27,7 @@
 	import CalendarGrid from '$lib/components/calendar/CalendarGrid.svelte';
 	import CalendarEventsList from './CalendarEventsList.svelte';
 	import CalendarEventModal from '$lib/components/calendar/CalendarEventModal.svelte';
+	import { getTagValue } from 'applesauce-core/helpers';
 
 	/**
 	 * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
@@ -37,6 +47,8 @@
 	let loading = $state(false);
 	let error = $state(/** @type {string | null} */ (null));
 	let subscription = $state();
+	let targetedPublicationSubscription = $state();
+	let resolutionErrors = $state(/** @type {string[]} */ ([]));
 
 	// Modal state
 	let isEventModalOpen = $state(false);
@@ -59,7 +71,7 @@
 		const validStartTimestamp = startTimestamp || Math.floor(Date.now() / 1000);
 
 		const dTag = Array.isArray(event.tags)
-			? (event.tags.find((/** @type {any} */ t) => t && t[0] === 'd')?.[1] || undefined)
+			? event.tags.find((/** @type {any} */ t) => t && t[0] === 'd')?.[1] || undefined
 			: undefined;
 
 		return {
@@ -86,45 +98,119 @@
 	}
 
 	/**
-	 * Load community-specific calendar events using EventStore timeline
+	 * Load community-specific calendar events from both direct events and targeted publications
 	 */
 	function loadCommunityEvents() {
 		console.log('📅 CommunikeyCalendarView: Loading events for community:', communityPubkey);
 
 		loading = true;
 		error = null;
+		resolutionErrors = [];
 
-		// Clean up existing subscription
+		// Clean up existing subscriptions
 		if (subscription) {
 			subscription.unsubscribe();
 			subscription = undefined;
 		}
+		if (targetedPublicationSubscription) {
+			targetedPublicationSubscription.unsubscribe();
+			targetedPublicationSubscription = undefined;
+		}
 
-		// Build filter for community-specific events
-		const filter = {
-			kinds: [31922, 31923], // NIP-52 calendar events
-			'#h': [communityPubkey], // Community-targeted events
-			limit: 100
-		};
-
-		console.log('📅 CommunikeyCalendarView: Using filter:', filter);
+		const allEvents = /** @type {CalendarEvent[]} */ ([]);
 
 		try {
-			// Use EventStore timeline directly (same pattern as CalendarView)
-			subscription = eventStore.timeline(filter).subscribe({
-				next: (/** @type {any[]} */ timeline) => {
-					console.log(`📅 CommunikeyCalendarView: Received ${timeline.length} events for community ${communityPubkey}`);
-					events = timeline.map(convertToCalendarEvent);
-					loading = false;
+			// Subscribe to direct community calendar events (#h tagged)
+			subscription = eventStore
+				.timeline({
+					kinds: [31922, 31923], // NIP-52 calendar events
+					'#h': [communityPubkey], // Community-targeted events
+					limit: 100
+				})
+				.subscribe({
+					next: (/** @type {any[]} */ timeline) => {
+						console.log(
+							`📅 CommunikeyCalendarView: Received ${timeline.length} direct community events`
+						);
+						const directEvents = timeline.map(convertToCalendarEvent);
+						allEvents.push(...directEvents);
+						events = [...allEvents]; // Update events array
+					},
+					error: (/** @type {any} */ err) => {
+						console.error('📅 CommunikeyCalendarView: Error loading direct community events:', err);
+						error = 'Failed to load community calendar events';
+					}
+				});
+
+			// Subscribe to targeted publication events (#p tagged with calendar #k)
+			targetedPublicationSubscription = targetedPublicationTimelineLoader(
+				communityPubkey
+			)().subscribe({
+				next: (/** @type {any} */ pubEvent) => {
+					console.log(
+						`📅 CommunikeyCalendarView: Received targeted publication event:`,
+						pubEvent.id
+					);
+
+					try {
+						// Extract the 'e' tag (referenced event ID)
+						const eTag = getTagValue(pubEvent, 'e');
+						if (!eTag) {
+							console.warn(
+								'📅 CommunikeyCalendarView: Targeted publication missing e tag:',
+								pubEvent.id
+							);
+							return;
+						}
+
+						// Check if the referenced event is already in EventStore
+						const referencedEvent = eventStore.getEvent(eTag);
+						if (referencedEvent) {
+							eventLoader({
+								id: eTag,
+								relays: ['wss://relay.damus.io', 'wss://relay-rpi.edufeed.org']
+							}).subscribe({
+								next: (loadedEvent) => {
+									if (loadedEvent) {
+										console.log(
+											`📅 CommunikeyCalendarView: Successfully loaded referenced event ${eTag}`
+										);
+										const calendarEvent = convertToCalendarEvent(loadedEvent);
+										allEvents.push(calendarEvent);
+										events = [...allEvents]; // Update events array
+									}
+								},
+								error: (/** @type {any} */ err) => {
+									const errorMsg = `Failed to load referenced calendar event: ${eTag}`;
+									console.warn(`📅 CommunikeyCalendarView: ${errorMsg}`);
+									resolutionErrors = [...resolutionErrors, errorMsg];
+								}
+							});
+						} else {
+							console.log(
+								`📅 CommunikeyCalendarView: Referenced event ${eTag} not found in EventStore and not able to load`
+							);
+						}
+					} catch (err) {
+						const errorMsg = `Error resolving targeted publication ${pubEvent.id}: ${/** @type {Error} */ (err).message}`;
+						console.error(`📅 CommunikeyCalendarView: ${errorMsg}`);
+						resolutionErrors = [...resolutionErrors, errorMsg];
+					}
+				},
+				complete: () => {
+					console.log('📅 CommunikeyCalendarView: Finished loading targeted publication events');
+					loading = false; // Mark loading complete after processing all targeted publications
 				},
 				error: (/** @type {any} */ err) => {
-					console.error('📅 CommunikeyCalendarView: Error loading community events:', err);
-					error = 'Failed to load community calendar events';
+					console.error(
+						'📅 CommunikeyCalendarView: Error loading targeted publication events:',
+						err
+					);
 					loading = false;
 				}
 			});
 		} catch (err) {
-			console.error('📅 CommunikeyCalendarView: Error creating timeline subscription:', err);
+			console.error('📅 CommunikeyCalendarView: Error creating subscriptions:', err);
 			error = 'Failed to connect to event stream';
 			loading = false;
 		}
@@ -151,6 +237,9 @@
 	onDestroy(() => {
 		if (subscription) {
 			subscription.unsubscribe();
+		}
+		if (targetedPublicationSubscription) {
+			targetedPublicationSubscription.unsubscribe();
 		}
 	});
 
@@ -213,7 +302,10 @@
 	 */
 	function handlePresentationViewModeChange(newPresentationViewMode) {
 		presentationViewMode = newPresentationViewMode;
-		console.log('📅 CommunikeyCalendarView: Presentation view mode changed to:', newPresentationViewMode);
+		console.log(
+			'📅 CommunikeyCalendarView: Presentation view mode changed to:',
+			newPresentationViewMode
+		);
 	}
 
 	/**
@@ -344,6 +436,56 @@
 		</div>
 	{/if}
 
+	<!-- Resolution Errors Display -->
+	{#if resolutionErrors.length > 0}
+		<div class="alert rounded-none border-b alert-warning border-warning/20 px-6 py-3">
+			<div class="flex items-start gap-3">
+				<svg
+					class="mt-0.5 h-5 w-5 text-warning"
+					fill="none"
+					stroke="currentColor"
+					viewBox="0 0 24 24"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+					/>
+				</svg>
+				<div class="flex-1">
+					<h4 class="mb-1 text-sm font-medium">Some calendar events could not be loaded</h4>
+					<p class="mb-2 text-xs text-base-content/70">
+						{resolutionErrors.length} referenced event{resolutionErrors.length === 1 ? '' : 's'} could
+						not be found or loaded.
+					</p>
+					<details class="text-xs">
+						<summary class="cursor-pointer hover:text-base-content">Show details</summary>
+						<ul class="mt-2 space-y-1">
+							{#each resolutionErrors as errorMsg}
+								<li class="text-base-content/60">• {errorMsg}</li>
+							{/each}
+						</ul>
+					</details>
+				</div>
+				<button
+					class="btn btn-ghost btn-xs"
+					onclick={() => (resolutionErrors = [])}
+					aria-label="Dismiss resolution errors"
+				>
+					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						/>
+					</svg>
+				</button>
+			</div>
+		</div>
+	{/if}
+
 	<!-- Calendar Navigation -->
 	<CalendarNavigation
 		{currentDate}
@@ -369,31 +511,39 @@
 	{:else if presentationViewMode === 'list'}
 		<!-- List View -->
 		<div class="p-6">
-			<CalendarEventsList
-				{events}
-				{loading}
-				{error}
-			/>
+			<CalendarEventsList {events} {loading} {error} />
 		</div>
 	{:else if presentationViewMode === 'map'}
 		<!-- Map View (placeholder for future implementation) -->
 		<div class="flex flex-col items-center justify-center px-6 py-16 text-center">
 			<div class="mb-4 text-base-content/30">
 				<svg class="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+					/>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+					/>
 				</svg>
 			</div>
 			<h3 class="mb-2 text-lg font-medium text-base-content">Map View Coming Soon</h3>
-			<p class="text-base-content/60">Map view for calendar events will be available in a future update.</p>
+			<p class="text-base-content/60">
+				Map view for calendar events will be available in a future update.
+			</p>
 		</div>
 	{/if}
 
 	<!-- Loading indicator -->
 	{#if loading}
-		<div class="px-6 py-3 text-center border-b border-base-300">
+		<div class="border-b border-base-300 px-6 py-3 text-center">
 			<div class="flex items-center justify-center gap-3">
-				<div class="loading loading-spinner loading-sm"></div>
+				<div class="loading loading-sm loading-spinner"></div>
 				<div class="text-sm text-base-content/70">
 					{#if events.length === 0}
 						Loading community calendar events...
@@ -423,9 +573,7 @@
 				This community doesn't have any calendar events yet. Be the first to create one!
 			</p>
 			{#if activeUser}
-				<button class="btn btn-primary" onclick={handleCreateEvent}>
-					Create First Event
-				</button>
+				<button class="btn btn-primary" onclick={handleCreateEvent}> Create First Event </button>
 			{/if}
 		</div>
 	{/if}
@@ -433,7 +581,7 @@
 	<!-- Event Creation Modal -->
 	<CalendarEventModal
 		isOpen={isEventModalOpen}
-		communityPubkey={communityPubkey}
+		{communityPubkey}
 		selectedDate={selectedDateForNewEvent}
 		onClose={handleEventModalClose}
 		onEventCreated={handleEventCreated}
