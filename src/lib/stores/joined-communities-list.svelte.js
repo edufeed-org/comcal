@@ -2,14 +2,16 @@ import { manager } from '$lib/accounts.svelte';
 import { eventStore } from '$lib/store.svelte';
 import { getTagValue } from 'applesauce-core/helpers';
 import { useAllCommunities } from './all-communities.svelte.js';
+import { relationshipTimelineLoader } from '$lib/loaders.js';
 
 /**
  * Custom hook for loading and managing joined communities list
- * @returns {() => Array<import('nostr-tools').Event>} - Reactive getter function returning array of joined community events
+ * Uses EventStore intelligence for efficient reactive updates
+ * @returns {() => Array<import('nostr-tools').Event>} - Function returning reactive derived state with array of joined community events
  */
 export function useJoinedCommunitiesList() {
-	let joinedCommunities = $state([]);
 	let activeUser = $state(manager.active);
+	let relationshipEvents = $state(/** @type {import('nostr-tools').Event[]} */ ([]));
 
 	const getAllCommunities = useAllCommunities();
 
@@ -21,47 +23,76 @@ export function useJoinedCommunitiesList() {
 		return () => subscription.unsubscribe();
 	});
 
-	// Update joined communities when user or communities change
+	// Load relationship events when user changes
 	$effect(() => {
 		if (!activeUser?.pubkey) {
-			joinedCommunities = [];
+			relationshipEvents = [];
 			return;
 		}
 
-		const communities = getAllCommunities();
-		joinedCommunities = []; // Reset first
+		// Bootstrap EventStore with relationship loader (similar to CalendarView pattern)
+		const loaderSubscription = relationshipTimelineLoader().subscribe();
 
-		const subscriptions = [];
+		// Use EventStore timeline for reactive data loading
+		const subscription = eventStore.timeline({
+			kinds: [30382], // Relationship events
+			authors: [activeUser.pubkey],
+			limit: 100
+		}).subscribe({
+			next: (/** @type {import('nostr-tools').Event[]} */ events) => {
+				console.log('📋 JoinedCommunities: Loaded relationship events:', events.length);
+				relationshipEvents = events;
+			},
+			error: (/** @type {any} */ error) => {
+				console.error('📋 JoinedCommunities: Error loading relationship events:', error);
+				relationshipEvents = [];
+			}
+		});
 
-		// For each community, subscribe to relationship events reactively
-		for (const community of communities) {
-			const subscription = eventStore
-				.replaceable(30382, activeUser.pubkey, community.pubkey)
-				.subscribe((relationshipEvent) => {
-					if (relationshipEvent) {
-						const relationship = getTagValue(relationshipEvent, 'n');
-						if (relationship === 'follow') {
-							// Add to joined communities if not already present
-							const exists = joinedCommunities.some(c => c.pubkey === community.pubkey);
-							if (!exists) {
-								joinedCommunities = [...joinedCommunities, community];
-							}
-						} else {
-							// Remove from joined communities if relationship changed
-							joinedCommunities = joinedCommunities.filter(c => c.pubkey !== community.pubkey);
-						}
-					}
-				});
-
-			subscriptions.push(subscription);
-		}
-
-		// Cleanup subscriptions
 		return () => {
-			subscriptions.forEach(sub => sub.unsubscribe());
+			subscription.unsubscribe();
+			loaderSubscription.unsubscribe();
 		};
 	});
 
-	// Return a getter function that provides reactive access to joined communities
+	// Derive joined communities reactively - filter relationship events for 'follow' relationships
+	const joinedCommunities = $derived.by(() => {
+		if (!activeUser?.pubkey || !relationshipEvents.length) {
+			return [];
+		}
+
+		// Filter relationship events to only include 'follow' relationships
+		return relationshipEvents.filter(event => {
+			const relationship = getTagValue(event, 'n');
+			return relationship === 'follow';
+		});
+	});
+
+	// Return a function that provides reactive access to joined communities
 	return () => joinedCommunities;
+}
+
+/**
+ * Custom hook for checking community membership status
+ * @param {string} communityPubkey - The pubkey of the community to check membership for
+ * @returns {() => boolean} - Reactive getter function indicating if current user has joined the community
+ */
+export function useCommunityMembership(communityPubkey) {
+	const getJoinedCommunities = useJoinedCommunitiesList();
+
+	// Derive joined status from current state
+	const joined = $derived.by(() => {
+		if (!communityPubkey) {
+			return false;
+		}
+
+		const joinedCommunities = getJoinedCommunities();
+		return joinedCommunities.some(event => {
+			const community = getTagValue(event, 'd');
+			return community === communityPubkey;
+		});
+	});
+
+	// Return a getter function that provides reactive access to the joined state
+	return () => joined;
 }

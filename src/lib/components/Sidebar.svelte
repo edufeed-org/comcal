@@ -2,51 +2,11 @@
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { useActiveUser } from '$lib/stores/accounts.svelte';
 	import { getTagValue } from 'applesauce-core/helpers';
-	import { relationshipTimelineLoader } from '$lib/loaders';
-	import { eventStore } from '$lib/store.svelte';
+	import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte.js';
 
 	const activeUser = useActiveUser();
-
-	// Use $state instead of trying to manage state inside $derived.by()
-	let joinedCommunities = $state(/** @type {import('nostr-tools').Event[]} */ ([]));
-
-	// Use $effect to handle the async subscription lifecycle
-	$effect(() => {
-		const user = activeUser();
-		console.log("Active user in sidebar: ", user);
-
-		if (!user?.pubkey) {
-			joinedCommunities = [];
-			return;
-		}
-
-		// Bootstrap the loader (this is important for EventStore intelligence)
-		const relationshipSub = relationshipTimelineLoader(user.pubkey).subscribe();
-
-		// Subscribe to the timeline
-		const subscription = eventStore.timeline({
-			kinds: [30382], // Relationship events
-			authors: [user.pubkey],
-			limit: 100
-		}).subscribe({
-			next: (/** @type {import('nostr-tools').Event[]} */ events) => {
-				console.log('📋 JoinedCommunities: Loaded relationship events:', events.length);
-				joinedCommunities = events; // Update the reactive state
-			},
-			error: (/** @type {any} */ error) => {
-				console.error('📋 JoinedCommunities: Error loading relationship events:', error);
-				joinedCommunities = [];
-			}
-		});
-
-		// Cleanup function - this runs when the effect re-runs or component unmounts
-		return () => {
-			subscription.unsubscribe();
-			// relationshipSub.unsubscribe(); // or keep it open?
-		};
-	});
-
-	console.log("Relationships in sidebar: ", joinedCommunities);
+	const getJoinedCommunities = useJoinedCommunitiesList(); // gets the getter function
+	const joinedCommunities = $derived(getJoinedCommunities()); // reactive value
 
 	
 </script>

@@ -47,6 +47,17 @@ export const communityCalendarTimelineLoader = (communityPubkey) => createTimeli
 	{ eventStore }
 );
 
+// Relationship events loader for community membership tracking
+export const relationshipTimelineLoader = createTimelineLoader(
+	pool,
+	relays,
+	{
+		kinds: [30382], // Relationship events
+		limit: 100
+	},
+	{ eventStore }
+);
+
 eventStore.addressableLoader = addressLoader;
 eventStore.replaceableLoader = addressLoader;
 export const profileLoader = createAddressLoader(pool, {

@@ -2,7 +2,7 @@
 	let { pubkey } = $props();
 
 	import { getProfilePicture, getProfileContent } from 'applesauce-core/helpers';
-	import { useCommunityMembership } from '$lib/stores/community-membership.svelte.js';
+	import { useCommunityMembership } from '$lib/stores/joined-communities-list.svelte.js';
 	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
 
 	// Use the reusable user profile hook

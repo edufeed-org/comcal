@@ -1,6 +1,6 @@
 <script>
 	import { getProfilePicture } from 'applesauce-core/helpers';
-	import { useCommunityMembership } from '$lib/stores/community-membership.svelte.js';
+	import { useCommunityMembership } from '$lib/stores/joined-communities-list.svelte.js';
 
 	let { profile, communikeyEvent, communikeyContentTypes } = $props();
 

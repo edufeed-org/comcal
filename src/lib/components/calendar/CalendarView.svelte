@@ -301,7 +301,7 @@
 		
 		// Build filter
 		/** @type {any} */
-		const filter = { kinds: [31922, 31923], limit: 100 };
+		const filter = { kinds: [31922, 31923], limit: 20 };
 		
 		// Clear previous events and missing events for fresh load
 		calendarEventsStore.clearAllEvents();
