@@ -235,3 +235,24 @@ async function checkForDeletionEvents(
     return false; // On error, assume not deleted
   }
 }
+
+/**
+ * Encodes an addressable event into a NIP-19 naddr format
+ * @param {import('nostr-tools').NostrEvent} event
+ */
+export const encodeEventToNaddr = (event) => {
+  try {
+    // Extract d tag for the identifier
+    const dTag = event.tags.find((t) => t[0] === "d")?.[1] || "";
+
+    // TODO: add explicit relays
+    return nip19.naddrEncode({
+      identifier: dTag,
+      pubkey: event.pubkey,
+      kind: event.kind,
+    });
+  } catch (error) {
+    console.error("Error encoding event to naddr:", error);
+    return "";
+  }
+};

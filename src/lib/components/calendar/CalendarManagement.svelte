@@ -1,6 +1,6 @@
 <script>
 	import { useCalendarManagement } from '$lib/stores/calendar-management-store.svelte.js';
-	import { useCalendarSelection } from '$lib/stores/calendar-selection.svelte.js';
+	import { calendarEventsStore } from '$lib/stores/calendar-events.svelte.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
 	import { EventFactory } from 'applesauce-factory';
@@ -206,8 +206,11 @@
 	 * @param {string} calendarId
 	 */
 	function viewCalendar(calendarId) {
-		const calendarSelection = useCalendarSelection();
-		calendarSelection.selectCalendar(calendarId);
+		// Find the calendar object to pass to the store
+		const calendar = calendarManagement?.calendars.find((c) => c.id === calendarId);
+
+		// Update the calendar events store with the selection
+		calendarEventsStore.setSelectedCalendar(calendarId, calendar || null);
 		goto('/calendar');
 	}
 </script>
