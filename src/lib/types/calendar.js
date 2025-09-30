@@ -36,7 +36,7 @@
  * @property {number} [end] - Optional end time as Unix timestamp (seconds) - ALWAYS UNIX TIMESTAMP
  * @property {string} [startTimezone] - Start timezone (IANA format)
  * @property {string} [endTimezone] - End timezone (IANA format)
- * @property {string[]} locations - Array of location strings
+ * @property {string} location - Array of location strings
  * @property {CalendarEventParticipant[]} participants - Event participants
  * @property {string[]} hashtags - Event hashtags
  * @property {string[]} references - Referenced event IDs

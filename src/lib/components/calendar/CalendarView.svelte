@@ -12,7 +12,6 @@
 	import { eventStore } from '$lib/store.svelte';
 	import { calendarTimelineLoader, communityCalendarTimelineLoader } from '$lib/loaders.js';
 	import { getCalendarEventTitle, getCalendarEventStart, getCalendarEventEnd, getCalendarEventImage } from 'applesauce-core/helpers/calendar-event';
-	import { groupEventsByDate } from '$lib/helpers/calendar.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { calendarEventsStore } from '$lib/stores/calendar-events.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
@@ -23,6 +22,7 @@
 	import CalendarEventModal from '$lib/components/calendar/CalendarEventModal.svelte';
 	import SimpleCalendarDropdown from './CalendarDropdown.svelte';
 	import SimpleCalendarEventsList from './CalendarEventsList.svelte';
+	import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
 
 	/**
 	 * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
@@ -60,42 +60,6 @@
 	let userSubscription = $state();
 	let addressSubscriptions = $state(/** @type {any[]} */ ([]));
 
-	/**
-	 * Convert raw event to CalendarEvent format
-	 * @param {any} event
-	 * @returns {CalendarEvent}
-	 */
-	function convertToCalendarEvent(event) {
-		const startTimestamp = getCalendarEventStart(event);
-		const endTimestamp = getCalendarEventEnd(event);
-		const validStartTimestamp = startTimestamp || Math.floor(Date.now() / 1000);
-
-		const dTag = Array.isArray(event.tags)
-			? (event.tags.find((/** @type {any} */ t) => t && t[0] === 'd')?.[1] || undefined)
-			: undefined;
-
-		return {
-			id: event.id,
-			pubkey: event.pubkey,
-			kind: /** @type {import('$lib/types/calendar.js').CalendarEventKind} */ (event.kind),
-			title: getCalendarEventTitle(event) || 'Untitled Event',
-			summary: event.content || '',
-			image: getCalendarEventImage(event) || '',
-			start: validStartTimestamp,
-			end: endTimestamp,
-			startTimezone: undefined,
-			endTimezone: undefined,
-			locations: [],
-			participants: [],
-			hashtags: [],
-			references: [],
-			geohash: undefined,
-			communityPubkey: '',
-			createdAt: event.created_at,
-			dTag,
-			originalEvent: event
-		};
-	}
 
 	/**
 	 * Parse address reference string into components
@@ -181,7 +145,7 @@
 						if (event) {
 							console.log(`📅 CalendarView: Successfully loaded event:`, event.id, getCalendarEventTitle(event));
 							// Add event immediately to UI - progressive loading!
-							const calendarEvent = convertToCalendarEvent(event);
+							const calendarEvent = getCalendarEventMetadata(event);
 							calendarEventsStore.addEvent(calendarEvent);
 						} else {
 							console.log(`📅 CalendarView: No event found for:`, addressRef);
@@ -239,7 +203,7 @@
 				console.log(`📅 CalendarView: Reverse lookup found ${timeline.length} events`);
 				
 				// Convert raw events to CalendarEvent format
-				const calendarEvents = timeline.map(convertToCalendarEvent);
+				const calendarEvents = timeline.map(getCalendarEventMetadata);
 				calendarEventsStore.setEvents(calendarEvents);
 				calendarEventsStore.setLoading(false);
 			},
@@ -323,7 +287,7 @@
 					
 					try {
 						// Convert raw events to CalendarEvent format
-						const calendarEvents = timeline.map(convertToCalendarEvent);
+						const calendarEvents = timeline.map(getCalendarEventMetadata);
 						console.log(`📅 CalendarView: Converted calendar events: ${calendarEvents.length}`, calendarEvents);
 						
 						calendarEventsStore.setEvents(calendarEvents);
