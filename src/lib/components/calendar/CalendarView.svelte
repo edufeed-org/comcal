@@ -1,10 +1,9 @@
 <script>
-	import { onDestroy, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { eventStore } from '$lib/store.svelte';
 	import {
 		addressLoader,
 		calendarTimelineLoader,
-		communityCalendarTimelineLoader
 	} from '$lib/loaders.js';
 	import {
 		getCalendarEventTitle,
@@ -41,6 +40,9 @@
 	let presentationViewMode = $state(/** @type {'calendar' | 'list' | 'map'} */ ('calendar'));
 
 	// Reactive references to store state
+	/**
+	 * @type {import("$lib/types/calendar.js").CalendarEvent[]}
+	 */
 	let events = $state([]);
 	let loading = $derived(calendarEventsStore.loading);
 	let error = $derived(calendarEventsStore.error);

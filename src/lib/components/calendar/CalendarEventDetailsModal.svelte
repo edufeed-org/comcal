@@ -670,11 +670,11 @@
 								<div
 									class="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-content"
 								>
-									{participant.pubkey.slice(0, 2).toUpperCase()}
+									{participant.pubkey?.slice(0, 2).toUpperCase()}
 								</div>
 								<div class="flex-1">
 									<div class="font-medium text-base-content">
-										{participant.pubkey.slice(0, 8)}...{participant.pubkey.slice(-4)}
+										{participant.pubkey?.slice(0, 8)}...{participant.pubkey?.slice(-4)}
 									</div>
 									{#if participant.role}
 										<div class="text-xs text-base-content/60">{participant.role}</div>
@@ -851,7 +851,6 @@
 							{@const isSelected = selectedCommunityIds.includes(communityPubKey)}
 							{@const getCommunityProfile = useUserProfile(communityPubKey)}
 							{@const communityProfile = getCommunityProfile()}
-							{console.log('Community Profile:', communityProfile)}
 							<label class="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-base-200">
 								<input
 									type="checkbox"

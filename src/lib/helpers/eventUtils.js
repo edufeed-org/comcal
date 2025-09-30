@@ -33,7 +33,7 @@ export function getCalendarEventMetadata(event) {
 
   // Validate timestamps
   if (startValue && isNaN(start)) {
-    console.warn('Invalid start timestamp:', startValue, 'for event:', event.id);
+    console.warn('Invalid start timestamp:', startValue, 'for event:', event.id, event);
   }
   if (endValue && isNaN(end)) {
     console.warn('Invalid end timestamp:', endValue, 'for event:', event.id);
