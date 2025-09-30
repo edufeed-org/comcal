@@ -138,9 +138,15 @@ export function groupEventsByDate(events) {
 	events.forEach(event => {
 		if (!event.start) return;
 
+		// Validate that start is a valid number
+		const startTimestamp = typeof event.start === 'number' ? event.start : parseInt(event.start, 10);
+		if (isNaN(startTimestamp)) {
+			console.warn('📅 groupEventsByDate: Invalid event start timestamp:', event.start, 'for event:', event.title || event.id);
+			return;
+		}
+
 		// Convert UNIX timestamp to UTC date and create consistent date key
-		// event.start is now a UNIX timestamp (seconds)
-		const eventDate = new Date(event.start * 1000);
+		const eventDate = new Date(startTimestamp * 1000);
 		const dateKey = createDateKey(eventDate); // Use consistent UTC-based key generation
 
 		if (!groupedEvents.has(dateKey)) {
@@ -225,7 +231,7 @@ export function convertFormDataToEvent(formData, communityPubkey) {
 		summary: formData.summary?.trim() || '',
 		image: formData.image?.trim() || '',
 		communityPubkey,
-		locations: formData.locations.filter(loc => loc.trim()),
+		location: formData.locations.filter(loc => loc.trim()).join(', '),
 		hashtags: [],
 		references: [],
 		participants: []
@@ -321,6 +327,15 @@ export function getNextWeekday(weekday, fromDate = new Date()) {
  * @returns {string} UTC date key in YYYY-MM-DD format
  */
 export function createDateKey(date) {
+	// Validate the date is valid
+	if (!date || isNaN(date.getTime())) {
+		console.warn('📅 createDateKey: Invalid date passed:', date);
+		// Return today's date as fallback
+		const today = new Date();
+		const utcDate = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+		return utcDate.toISOString().split('T')[0];
+	}
+
 	// Convert local date to UTC date for consistent key generation
 	const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
 	return utcDate.toISOString().split('T')[0];

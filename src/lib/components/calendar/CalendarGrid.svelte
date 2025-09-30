@@ -1,10 +1,5 @@
-<!--
-  CalendarGrid Component
-  Displays calendar events in a grid layout for different view modes
--->
-
 <script>
-	import { getWeekDates, getMonthDates, formatCalendarDate, isToday, isCurrentMonth, getWeekdayHeaders, createDateKey } from '../../helpers/calendar.js';
+	import { getWeekDates, getMonthDates, formatCalendarDate, isToday, isCurrentMonth, getWeekdayHeaders, createDateKey, groupEventsByDate } from '../../helpers/calendar.js';
 	import CalendarEventCard from './CalendarEventCard.svelte';
 
 	/**
@@ -15,7 +10,7 @@
 	let {
 		currentDate,
 		viewMode,
-		groupedEvents,
+		events,
 		onEventClick = () => {},
 		onDateClick = () => {}
 	} = $props();
@@ -23,6 +18,7 @@
 	// Get dates for current view (reactive to prop changes)
 	let viewDates = $derived(getViewDates(currentDate, viewMode));
 	let weekdays = $derived(getWeekdayHeaders());
+	let groupedEvents = $derived(groupEventsByDate(events))
 
 	/**
 	 * Get dates array for current view mode
@@ -53,31 +49,13 @@
 		// This ensures consistent date key generation between calendar grid and event grouping
 		const dateKey = createDateKey(date); // UTC-based YYYY-MM-DD format
 
-		const eventsMap = typeof groupedEvents === 'function' ? groupedEvents() : groupedEvents;
+		const eventsMap = groupedEvents;
 		const eventsForDate = eventsMap.get(dateKey) || [];
-
-		// Debug logging to trace date key matching
-		// console.log('📅 CalendarGrid: Looking for events on date:', {
-		// 	localDate: date.toDateString(),
-		// 	utcDateKey: dateKey,
-		// 	eventsMapKeys: Array.from(eventsMap.keys()),
-		// 	eventsFound: eventsForDate.length
-		// });
 
 		return eventsForDate;
 	}
 
 	/**
-	 * Get RSVP count for an event
-	 * @param {CalendarEvent} event
-	 * @returns {number}
-	 */
-	function getRsvpCount(event) {
-		return event.rsvpCount || (event.rsvps ? event.rsvps.length : 0);
-	}
-
-	/**
-	 * Handle date cell click
 	 * @param {MouseEvent | KeyboardEvent} e
 	 * @param {Date} date
 	 */
@@ -90,7 +68,6 @@
 	}
 
 	/**
-	 * Handle event click
 	 * @param {CalendarEvent} event
 	 */
 	function handleEventClick(event) {
@@ -98,7 +75,6 @@
 	}
 
 	/**
-	 * Handle date cell keydown
 	 * @param {KeyboardEvent} e
 	 * @param {Date} date
 	 */

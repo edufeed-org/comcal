@@ -50,7 +50,6 @@ class CalendarEventsStore {
 	 * @param {boolean} isLoading
 	 */
 	setLoading(isLoading) {
-		console.log('📅 CalendarEventsStore: Setting loading:', isLoading);
 		this.loading = isLoading;
 	}
 	

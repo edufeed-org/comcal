@@ -1,4 +1,4 @@
-import { getCalendarEventStart, getCalendarEventEnd, getCalendarTitle, getCalendarEventImage, getTagValue } from 'applesauce-core/helpers';
+import { getCalendarTitle, getCalendarEventImage } from 'applesauce-core/helpers';
 
 /**
  * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
@@ -24,6 +24,21 @@ export function getCalendarEventMetadata(event) {
   const getTagValues = (tagName) => tagMap.get(tagName) || [];
 
 
+  // Convert timestamp strings to numbers with validation
+  const startValue = getTagValue('start');
+  const endValue = getTagValue('end');
+
+  const start = startValue ? parseInt(startValue, 10) : 0;
+  const end = endValue ? parseInt(endValue, 10) : 0;
+
+  // Validate timestamps
+  if (startValue && isNaN(start)) {
+    console.warn('Invalid start timestamp:', startValue, 'for event:', event.id);
+  }
+  if (endValue && isNaN(end)) {
+    console.warn('Invalid end timestamp:', endValue, 'for event:', event.id);
+  }
+
   return {
     id: event.id,
     pubkey: event.pubkey,
@@ -33,8 +48,8 @@ export function getCalendarEventMetadata(event) {
     image: getCalendarEventImage(event) || '',
     startTimezone: getTagValue("start_tzid"),
     endTimezone: getTagValue("end_tzid"),
-    start: getTagValue('start'),
-    end: getTagValue('end'),
+    start,
+    end,
     location: getTagValue('location'),
     participants: getTagValues('p'),
     hashtags: getTagValues('t'),

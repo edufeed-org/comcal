@@ -22,10 +22,11 @@ export const calendarTimelineLoader = createTimelineLoader(
 	relays,
 	{
 		kinds: [31922, 31923], // NIP-52 calendar events
-		limit: 250
+		limit: 40
 	},
 	{ eventStore }
 );
+
 
 // Calendar definition loader for personal calendars
 export const calendarDefinitionLoader = createTimelineLoader(
