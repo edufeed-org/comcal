@@ -11,6 +11,7 @@
 	let {
 		currentDate,
 		viewMode,
+		events,
 		onEventClick = () => {},
 		onDateClick = () => {}
 	} = $props();
@@ -20,7 +21,7 @@
 	let weekdays = $derived(getWeekdayHeaders());
 
 	let groupedEvents = $derived.by(() => {
-		const grouped = groupEventsByDate(cEvents.events)
+		const grouped = groupEventsByDate(events)
 		return grouped
 		
 	})

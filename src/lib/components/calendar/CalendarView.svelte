@@ -70,7 +70,7 @@
 		}
 
 		loading.loading = true
-		cEvents.events = [];
+		events = [];
 		calendar.eventReferences.forEach(
 			(/** @type {string} */ addressRef, /** @type {number} */ index) => {
 				const parsed = parseAddressReference(addressRef);
@@ -94,7 +94,7 @@
 									getCalendarEventTitle(event)
 								);
 								const calendarEvent = getCalendarEventMetadata(event);
-								cEvents.events.push(calendarEvent);
+								events.push(calendarEvent);
 							} else {
 								console.log(`📅 CalendarView: No event found for:`, addressRef);
 							}
@@ -152,16 +152,14 @@
 				next: (/** @type {any[]} */ timeline) => {
 					try {
 						const mapped = timeline.map(getCalendarEventMetadata);
-						cEvents.events = mapped
+						events = mapped
 					} catch (conversionError) {
 						console.error('📅 CalendarView: Error converting events:', conversionError);
 						calendarStore.setError('Failed to process events');
 					}
 				},
 				complete: () => {
-					calendarStore.setLoading(false);
 					console.log('loading complete');
-
 					loading.loading = false;
 				},
 				error: (/** @type {any} */ err) => {
@@ -201,15 +199,12 @@
 	// Effect to handle calendar loading based on props and state
 	$effect(() => {
 		if (calendar) {
-			// Calendar provided from route - takes priority
 			console.log('📅 CalendarView: Loading provided calendar:', calendar.title);
 			loadCalendarSpecificEvents(calendar);
 		} else if (selectedCalendar) {
-			// Calendar selected from dropdown
 			console.log('📅 CalendarView: Loading selected calendar:', selectedCalendar.title);
 			loadCalendarSpecificEvents(selectedCalendar);
 		} else {
-			// Default: load global events
 			console.log('📅 CalendarView: Loading global events');
 			loadEvents();
 		}
@@ -401,6 +396,7 @@
 		<CalendarGrid
 			{currentDate}
 			{viewMode}
+			{events}
 			onEventClick={handleEventClick}
 			onDateClick={handleDateClick}
 		/>

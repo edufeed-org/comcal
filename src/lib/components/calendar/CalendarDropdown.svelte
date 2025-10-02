@@ -17,7 +17,6 @@
 	} from '$lib/components/icons';
 	import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
 	import { TimelineModel } from 'applesauce-core/models';
-	import { naddrEncode } from 'nostr-tools/nip19';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils';
 
 	/**
