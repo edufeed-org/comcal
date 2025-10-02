@@ -3,7 +3,7 @@
 	import { eventStore } from '$lib/store.svelte';
 	import { calendarLoader } from '$lib/loaders';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
-	import { calendarStore, cEvents } from '$lib/stores/calendar-events.svelte.js';
+	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
 	import {
 		CalendarIcon,

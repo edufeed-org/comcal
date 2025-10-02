@@ -1,85 +1,89 @@
 <script>
-	import { getCalendarEventMetadata } from "$lib/helpers/eventUtils";
-	import { encodeEventToNaddr } from "$lib/helpers/nostrUtils";
-	import { showToast } from "$lib/helpers/toast.js";
-	import { CalendarIcon } from "../icons";
-	import LinkIcon from "../icons/ui/LinkIcon.svelte";
+	import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
+	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils';
+	import { showToast } from '$lib/helpers/toast.js';
+	import { CalendarIcon } from '../icons';
+	import LinkIcon from '../icons/ui/LinkIcon.svelte';
+	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
 
-  let { calendarEvent } = $props();
+	let selectedCalendar = $derived(calendarStore.selectedCalendar);
 
-  // Generate webcal URL for calendar subscription
-  const generateWebcalUrl = () => {
-    const baseUrl = window.location.origin;
-    const calendarNaddr = encodeEventToNaddr(calendarEvent);
-    return `webcal://${baseUrl.replace(/^https?:\/\//, "")}/api/calendar/${calendarNaddr}/ics`;
-  };
+	let { calendarEvent } = $props();
 
-  // Generate ICS download URL
-  const generateIcsUrl = () => {
-    const baseUrl = window.location.origin;
-    const calendarId = calendarEvent.id;
-    return `${baseUrl}/api/calendar/${calendarId}/ics`;
-  };
+	// Generate webcal URL for calendar subscription
+	const generateWebcalUrl = () => {
+		const baseUrl = window.location.origin;
+		const calendarNaddr = encodeEventToNaddr(selectedCalendar);
+		return `webcal://${baseUrl.replace(/^https?:\/\//, '')}/api/calendar/${calendarNaddr}/ics`;
+	};
 
-  const handleCopyWebcalLink = async () => {
-    try {
-      const webcalUrl = generateWebcalUrl();
-      await navigator.clipboard.writeText(webcalUrl);
-      showToast("calendar.link.copied", "success");
-    } catch (error) {
-      console.error("Error copying webcal link:", error);
-      showToast("calendar.link.error", "error");
-    }
-  };
+	// Generate ICS download URL
+	const generateIcsUrl = () => {
+		const baseUrl = window.location.origin;
+		const calendarId = calendarEvent.id;
+		return `${baseUrl}/api/calendar/${calendarId}/ics`;
+	};
 
-  const handleSubscribeToCalendar = () => {
-    try {
-      const webcalUrl = generateWebcalUrl();
-      window.open(webcalUrl, "_blank");
-      showToast("calendar subscription added", "success");
-    } catch (error) {
-      console.error("Error opening webcal link:", error);
-      showToast("calendar link error", "error");
-    }
-  };
+	const handleCopyWebcalLink = async () => {
+		try {
+			const webcalUrl = generateWebcalUrl();
+			await navigator.clipboard.writeText(webcalUrl);
+			showToast('calendar.link.copied', 'success');
+		} catch (error) {
+			console.error('Error copying webcal link:', error);
+			showToast('calendar.link.error', 'error');
+		}
+	};
 
-  const handleDownloadIcs = () => {
-    try {
-      const icsUrl = generateIcsUrl();
-      const link = document.createElement("a");
-      link.href = icsUrl;
-      link.download = `${getCalendarEventMetadata(calendarEvent).title || "calendar"}.ics`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      showToast("calendar download success", "success");
-    } catch (error) {
-      console.error("Error downloading ICS:", error);
-      showToast("calendar link error", "error");
-    }
-  };
+	const handleSubscribeToCalendar = () => {
+		try {
+			const webcalUrl = generateWebcalUrl();
+			window.open(webcalUrl, '_blank');
+			showToast('calendar subscription added', 'success');
+		} catch (error) {
+			console.error('Error opening webcal link:', error);
+			showToast('calendar link error', 'error');
+		}
+	};
 
-  const actions = [
-    {
-      icon: "📅",
-      name: "Subscribe to Calendar",
-      tooltip: "Auto-updates with new events",
-      onClick: handleSubscribeToCalendar,
-    },
-    {
-      icon: "⬇️",
-      name: "Download Calendar",
-      tooltip: "One-time ics download",
-      onClick: handleDownloadIcs,
-    },
-    {
-      icon: "🔗",
-      name: "Copy Webcal Link",
-      tooltip: "Copy subscription link",
-      onClick: handleCopyWebcalLink,
-    },
-  ];
+	const handleDownloadIcs = () => {
+		try {
+			const icsUrl = generateIcsUrl();
+			const link = document.createElement('a');
+			link.href = icsUrl;
+			link.download = `${getCalendarEventMetadata(calendarEvent).title || 'calendar'}.ics`;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			showToast('calendar download success', 'success');
+		} catch (error) {
+			console.error('Error downloading ICS:', error);
+			showToast('calendar link error', 'error');
+		}
+	};
+
+	const actions = [
+		{
+			icon: '📅',
+			name: 'Subscribe to Calendar',
+			tooltip: 'Auto-updates with new events',
+			onClick: handleSubscribeToCalendar
+		},
+		{
+			icon: '⬇️',
+			name: 'Download Calendar',
+			tooltip: 'One-time ics download',
+			onClick: handleDownloadIcs
+		},
+		{
+			icon: '🔗',
+			name: 'Copy Webcal Link',
+			tooltip: 'Copy subscription link',
+			onClick: handleCopyWebcalLink
+		}
+	];
 </script>
+
 <div class="z-10">
 	<div class="dropdown dropdown-end dropdown-bottom">
 		<div tabindex="0" role="button" class="btn btn-circle btn-primary">

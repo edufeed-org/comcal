@@ -6,6 +6,7 @@
 <script>
 	import { formatCalendarDate } from '../../helpers/calendar.js';
 	import AddToCalendarButton from './AddToCalendarButton.svelte';
+
 	import {
 		ChevronLeftIcon,
 		ChevronRightIcon,
@@ -118,9 +119,7 @@
 	}
 </script>
 
-<div
-	class="flex items-center justify-between gap-4 border-b border-base-300 bg-base-100 p-4"
->
+<div class="flex items-center justify-between gap-4 border-b border-base-300 bg-base-100 p-4">
 	<!-- Date Navigation -->
 	<div class="flex items-center gap-4">
 		<button
