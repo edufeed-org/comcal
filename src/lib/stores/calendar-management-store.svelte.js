@@ -8,7 +8,6 @@ import { of, BehaviorSubject } from 'rxjs';
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, relays, eventStore } from '$lib/store.svelte';
 import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
-import { appConfig } from '../config.js';
 import { EventFactory } from 'applesauce-factory';
 import { manager } from '../accounts.svelte.js';
 

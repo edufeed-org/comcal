@@ -29,7 +29,7 @@ export const calendarTimelineLoader = createTimelineLoader(
 
 
 // Calendar definition loader for personal calendars
-export const calendarDefinitionLoader = createTimelineLoader(
+export const calendarLoader = createTimelineLoader(
 	pool,
 	relays,
 	{

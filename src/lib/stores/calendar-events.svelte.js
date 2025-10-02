@@ -10,7 +10,7 @@ import { groupEventsByDate } from '$lib/helpers/calendar.js';
  * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
  */
 
-class CalendarEventsStore {
+class CalendarStore {
 	// Reactive state using Svelte 5 runes
 	events = $state(/** @type {CalendarEvent[]} */ ([]));
 	loading = $state(false);
@@ -148,10 +148,10 @@ class CalendarEventsStore {
 }
 
 // Export singleton instance
-export const calendarEventsStore = new CalendarEventsStore();
+export const calendarStore = new CalendarStore();
 
 // Export for debugging in development
 if (typeof window !== 'undefined') {
 	// @ts-ignore
-	window.calendarEventsStore = calendarEventsStore;
+	window.calendarEventsStore = calendarStore;
 }

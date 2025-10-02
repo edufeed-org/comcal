@@ -1,18 +1,10 @@
 <script>
 	import { onMount } from 'svelte';
 	import { eventStore } from '$lib/store.svelte';
-	import {
-		addressLoader,
-		calendarTimelineLoader,
-	} from '$lib/loaders.js';
-	import {
-		getCalendarEventTitle,
-		getCalendarEventStart,
-		getCalendarEventEnd,
-		getCalendarEventImage
-	} from 'applesauce-core/helpers/calendar-event';
+	import { addressLoader, calendarTimelineLoader } from '$lib/loaders.js';
+	import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
-	import { calendarEventsStore } from '$lib/stores/calendar-events.svelte.js';
+	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
 
 	// Import existing UI components
@@ -44,13 +36,13 @@
 	 * @type {import("$lib/types/calendar.js").CalendarEvent[]}
 	 */
 	let events = $state([]);
-	let loading = $derived(calendarEventsStore.loading);
-	let error = $derived(calendarEventsStore.error);
-	let selectedCalendarId = $derived(calendarEventsStore.selectedCalendarId);
-	let selectedCalendar = $derived(calendarEventsStore.selectedCalendar);
-	let missingEvents = $derived(calendarEventsStore.missingEvents);
-	let hasMissingEvents = $derived(calendarEventsStore.hasMissingEvents);
-	let missingEventsCount = $derived(calendarEventsStore.missingEventsCount);
+	let loading = $derived(calendarStore.loading);
+	let error = $derived(calendarStore.error);
+	let selectedCalendarId = $derived(calendarStore.selectedCalendarId);
+	let selectedCalendar = $derived(calendarStore.selectedCalendar);
+	let missingEvents = $derived(calendarStore.missingEvents);
+	let hasMissingEvents = $derived(calendarStore.hasMissingEvents);
+	let missingEventsCount = $derived(calendarStore.missingEventsCount);
 
 	// Modal state
 	let isEventModalOpen = $state(false);
@@ -101,14 +93,14 @@
 			return;
 		}
 
-		calendarEventsStore.setLoading(true);
+		calendarStore.setLoading(true);
 
 		calendar.eventReferences.forEach(
 			(/** @type {string} */ addressRef, /** @type {number} */ index) => {
 				const parsed = parseAddressReference(addressRef);
 				if (!parsed) {
 					console.warn('📅 CalendarView: Invalid address reference:', addressRef);
-					calendarEventsStore.addMissingEvent(addressRef, 'Invalid address format');
+					calendarStore.addMissingEvent(addressRef, 'Invalid address format');
 					return;
 				}
 
@@ -122,7 +114,6 @@
 						kind: parsed.kind,
 						pubkey: parsed.pubkey,
 						identifier: parsed.dTag
-						// relays: ['wss://relay.example.com']
 					}).subscribe({
 						next: (/** @type {any} */ event) => {
 							if (event) {
@@ -136,7 +127,7 @@
 								events.push(calendarEvent);
 							} else {
 								console.log(`📅 CalendarView: No event found for:`, addressRef);
-								calendarEventsStore.addMissingEvent(addressRef, 'Event not found');
+								calendarStore.addMissingEvent(addressRef, 'Event not found');
 							}
 						},
 						error: (/** @type {any} */ err) => {
@@ -145,7 +136,7 @@
 								err && typeof err === 'object' && 'message' in err
 									? String(err.message)
 									: 'Failed to load';
-							calendarEventsStore.addMissingEvent(addressRef, errorMessage);
+							calendarStore.addMissingEvent(addressRef, errorMessage);
 						}
 						// NOTE: No complete() handler needed - each event is independent!
 					});
@@ -155,15 +146,15 @@
 						err && typeof err === 'object' && 'message' in err
 							? String(err.message)
 							: 'Subscription failed';
-					calendarEventsStore.addMissingEvent(addressRef, errorMessage);
+					calendarStore.addMissingEvent(addressRef, errorMessage);
 				}
 			}
 		);
 	}
 
 	function loadEvents() {
-		calendarEventsStore.setLoading(true);
-		calendarEventsStore.setError(null);
+		calendarStore.setLoading(true);
+		calendarStore.setError(null);
 
 		if (selectedCalendar) {
 			console.log('📅 CalendarView: Loading calendar-specific events for:', selectedCalendar.title);
@@ -198,20 +189,20 @@
 						events = timeline.map(getCalendarEventMetadata);
 					} catch (conversionError) {
 						console.error('📅 CalendarView: Error converting events:', conversionError);
-						calendarEventsStore.setError('Failed to process events');
+						calendarStore.setError('Failed to process events');
 					}
 				},
 				complete: () => {
-					calendarEventsStore.setLoading(true);
+					calendarStore.setLoading(true);
 				},
 				error: (/** @type {any} */ err) => {
 					console.error('📅 CalendarView: Timeline error:', err);
-					calendarEventsStore.setError('Failed to load events from relays');
+					calendarStore.setError('Failed to load events from relays');
 				}
 			});
 		} catch (subscriptionError) {
 			console.error('📅 CalendarView: Error creating timeline subscription:', subscriptionError);
-			calendarEventsStore.setError('Failed to connect to event stream');
+			calendarStore.setError('Failed to connect to event stream');
 		}
 	}
 
