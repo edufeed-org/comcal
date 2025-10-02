@@ -32,19 +32,30 @@
 	 * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
 	 */
 
-	// Props
-	let {
-		selectedCalendarId = $bindable(''),
-		selectedCalendar = $bindable(null),
-		onCalendarSelect = () => {}
-	} = $props();
-
-	// Simple reactive state using Svelte 5 runes
 	let calendars = $state(/** @type {CalendarEvent[]} */ ([]));
 	let loading = $state(false);
 	let error = $state(/** @type {string | null} */ (null));
-	let activeUser = $derived(manager.active$);
-	let displayName = $state("")
+	let activeUser = $state(manager.active);
+	let selectedCalendarId = $derived(calendarStore.selectedCalendarId);
+	let selectedCalendar = $derived(calendarStore.selectedCalendar);
+
+	let displayName = $derived.by(() => {
+		if (!activeUser) {
+			return 'Log in to manage your calendars';
+		}
+
+		if (!selectedCalendarId) {
+			return 'Global Calendar';
+		}
+
+		if (manager.active && selectedCalendarId === manager.active.pubkey) {
+			return 'My Events';
+		}
+
+		// Calendar selected - show its title
+		const cal = calendars.find((cal) => cal.id === selectedCalendarId);
+		return cal ? cal.title : 'Select Calendar';
+	});
 
 	onMount(() => {
 		calendarLoader().subscribe();
@@ -52,12 +63,13 @@
 	});
 
 	manager.active$.subscribe({
-		next: () => {
-			console.log("user changed")
-			loadUserCalendars()
-			displayName = setDisplayName()
+		next: (account) => {
+			console.log('user changed');
+			activeUser = account;
+			loadUserCalendars();
+			// displayName = setDisplayName()
 		}
-	})
+	});
 
 	function loadUserCalendars() {
 		if (!manager.active) {
@@ -87,24 +99,6 @@
 		});
 	}
 
-	function setDisplayName() {
-		if (!manager.active) {
-			return 'Log in to manage your calendars';
-		}
-
-		if (!selectedCalendarId) {
-			return 'Global Calendar';
-		}
-
-		if (manager.active && selectedCalendarId === manager.active.pubkey) {
-			return 'My Events';
-		}
-
-		// Calendar selected - show its title
-		const cal = calendars.find((cal) => cal.id === selectedCalendarId);
-		return cal ? cal.title : 'Select Calendar';
-	}
-
 	/**
 	 * @param {string} calendarId
 	 */
@@ -121,7 +115,7 @@
 
 		onCalendarSelect(calendarId);
 		console.log('📅 CalendarDropdown: Calendar selected:', calendarId, selectedCalendar);
-		displayName = setDisplayName()
+		// displayName = setDisplayName()
 	}
 
 	/**

@@ -11,7 +11,7 @@
 	import CalendarNavigation from '$lib/components/calendar/CalendarNavigation.svelte';
 	import CalendarGrid from '$lib/components/calendar/CalendarGrid.svelte';
 	import CalendarEventModal from '$lib/components/calendar/CalendarEventModal.svelte';
-	import SimpleCalendarDropdown from './CalendarDropdown.svelte';
+	import CalendarDropdown from './CalendarDropdown.svelte';
 	import SimpleCalendarEventsList from './CalendarEventsList.svelte';
 	import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
 
@@ -319,11 +319,7 @@
 	<div class="border-b border-base-300 bg-base-200 px-6 py-4">
 		<div class="flex items-center justify-between">
 			<div class="flex items-center gap-4">
-				<SimpleCalendarDropdown
-					bind:selectedCalendarId
-					bind:selectedCalendar
-					onCalendarSelect={handleCalendarSelect}
-				/>
+				<CalendarDropdown />
 			</div>
 			<div class="flex items-center gap-3">
 				<button

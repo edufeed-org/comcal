@@ -86,65 +86,6 @@ class CalendarStore {
 		this.missingEvents = [];
 	}
 	
-	/**
-	 * Add a single event (useful for real-time updates)
-	 * @param {CalendarEvent} event
-	 */
-	addEvent(event) {
-		console.log('📅 CalendarEventsStore: Adding event:', event.title);
-		this.events = [...this.events, event];
-	}
-	
-	/**
-	 * Remove an event by ID
-	 * @param {string} eventId
-	 */
-	removeEvent(eventId) {
-		console.log('📅 CalendarEventsStore: Removing event:', eventId);
-		this.events = this.events.filter(event => event.id !== eventId);
-	}
-	
-	/**
-	 * Update an existing event
-	 * @param {string} eventId
-	 * @param {Partial<CalendarEvent>} updates
-	 */
-	updateEvent(eventId, updates) {
-		console.log('📅 CalendarEventsStore: Updating event:', eventId, updates);
-		this.events = this.events.map(event => 
-			event.id === eventId ? { ...event, ...updates } : event
-		);
-	}
-	
-	/**
-	 * Add a missing event reference
-	 * @param {string} addressRef - The event reference that failed to load
-	 * @param {string} [reason] - Optional reason for failure
-	 */
-	addMissingEvent(addressRef, reason) {
-		console.log('📅 CalendarEventsStore: Adding missing event:', addressRef, reason);
-		// Avoid duplicates
-		if (!this.missingEvents.find(missing => missing.addressRef === addressRef)) {
-			this.missingEvents = [...this.missingEvents, { addressRef, reason }];
-		}
-	}
-	
-	/**
-	 * Clear missing events
-	 */
-	clearMissingEvents() {
-		console.log('📅 CalendarEventsStore: Clearing missing events');
-		this.missingEvents = [];
-	}
-	
-	/**
-	 * Clear all events and missing events (for calendar switching)
-	 */
-	clearAllEvents() {
-		console.log('📅 CalendarEventsStore: Clearing all events and missing events');
-		this.events = [];
-		this.missingEvents = [];
-	}
 }
 
 // Export singleton instance
