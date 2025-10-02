@@ -54,7 +54,6 @@
 	let calendarSubscription = $state();
 
 	/**
-	 * Load events for a specific calendar using individual event fetching - NO TIMEOUT!
 	 * @param {any} calendar - Calendar object with eventReferences
 	 */
 	function loadCalendarSpecificEvents(calendar) {
@@ -80,44 +79,19 @@
 					parsed
 				);
 
-				try {
-					addressLoader({
-						kind: parsed.kind,
-						pubkey: parsed.pubkey,
-						identifier: parsed.dTag
-					}).subscribe({
-						next: (/** @type {any} */ event) => {
-							if (event) {
-								console.log(
-									`📅 CalendarView: Successfully loaded event:`,
-									event.id,
-									getCalendarEventTitle(event)
-								);
-								const calendarEvent = getCalendarEventMetadata(event);
-								events.push(calendarEvent);
-							} else {
-								console.log(`📅 CalendarView: No event found for:`, addressRef);
-							}
-						},
-						complete: () => {
-							console.log('complete');
-							loading.loading = false;
-						},
-						error: (/** @type {any} */ err) => {
-							console.error('📅 CalendarView: Error loading event:', addressRef, err);
-							const errorMessage =
-								err && typeof err === 'object' && 'message' in err
-									? String(err.message)
-									: 'Failed to load';
-						}
-					});
-				} catch (err) {
-					console.error('📅 CalendarView: Error creating subscription for:', addressRef, err);
-					const errorMessage =
-						err && typeof err === 'object' && 'message' in err
-							? String(err.message)
-							: 'Subscription failed';
-				}
+				eventStore.addressableLoader({
+					kind: parsed.kind,
+					pubkey: parsed.pubkey,
+					identifier: parsed.dTag
+				}).subscribe((event) => {
+					console.log(
+						`📅 CalendarView: Successfully loaded event:`,
+						event.id,
+						getCalendarEventTitle(event)
+					);
+					const calendarEvent = getCalendarEventMetadata(event);
+					events.push(calendarEvent);
+				});
 			}
 		);
 	}
@@ -126,8 +100,8 @@
 		const filter = { kinds: [31922, 31923], limit: 20 };
 		eventStore.model(TimelineModel, filter).subscribe((timeline) => {
 			const mapped = timeline.map(getCalendarEventMetadata);
-					events = mapped;
-		})
+			events = mapped;
+		});
 	}
 
 	onMount(() => {
