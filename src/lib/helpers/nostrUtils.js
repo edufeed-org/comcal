@@ -239,18 +239,27 @@ async function checkForDeletionEvents(
 /**
  * Encodes an addressable event into a NIP-19 naddr format
  * @param {import('nostr-tools').NostrEvent} event
+ * @param {string[]} [relays] - Optional array of relay URLs to include in the naddr
  */
-export const encodeEventToNaddr = (event) => {
+export const encodeEventToNaddr = (event, relays = []) => {
   try {
     // Extract d tag for the identifier
     const dTag = event.tags.find((t) => t[0] === "d")?.[1] || "";
 
-    // TODO: add explicit relays
-    return nip19.naddrEncode({
+    // Build naddr data with optional relays
+    /** @type {{ identifier: string; pubkey: string; kind: number; relays?: string[] }} */
+    const naddrData = {
       identifier: dTag,
       pubkey: event.pubkey,
       kind: event.kind,
-    });
+    };
+
+    // Add relays if provided
+    if (relays && relays.length > 0) {
+      naddrData.relays = relays;
+    }
+
+    return nip19.naddrEncode(naddrData);
   } catch (error) {
     console.error("Error encoding event to naddr:", error);
     return "";

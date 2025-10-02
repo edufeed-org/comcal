@@ -10,7 +10,7 @@ import { getCalendarTitle, getCalendarEventImage } from 'applesauce-core/helpers
  * @returns {CalendarEvent}
  */
 export function getCalendarEventMetadata(event) {
- 
+
   const tagMap = new Map();
   event.tags.forEach((tag) => {
     const [key, ...values] = tag;
@@ -54,10 +54,33 @@ export function getCalendarEventMetadata(event) {
     participants: getTagValues('p'),
     hashtags: getTagValues('t'),
     references: getTagValues('r'),
+    eventReferences: getTagValues('a'),
     geohash: getTagValue('g'),
     communityPubkey: '',
     createdAt: event.created_at,
     dTag: getTagValue('d'),
     originalEvent: event
   };
+}
+
+/**
+   * Parse address reference string into components
+   * @param {string} addressRef - Address reference like "31922:pubkey:d-tag"
+   * @returns {{kind: number, pubkey: string, dTag: string} | null}
+   */
+export function parseAddressReference(addressRef) {
+  try {
+    const parts = addressRef.split(':');
+    if (parts.length !== 3) return null;
+
+    const [kindStr, pubkey, dTag] = parts;
+    const kind = parseInt(kindStr, 10);
+
+    if (isNaN(kind) || !pubkey || !dTag) return null;
+
+    return { kind, pubkey, dTag };
+  } catch (error) {
+    console.error('📅 SimpleCalendarView: Error parsing address reference:', addressRef, error);
+    return null;
+  }
 }

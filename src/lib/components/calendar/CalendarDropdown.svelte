@@ -3,7 +3,7 @@
 	import { eventStore } from '$lib/store.svelte';
 	import { calendarLoader } from '$lib/loaders';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
-	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
+	import { calendarStore, cEvents } from '$lib/stores/calendar-events.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
 	import {
 		CalendarIcon,
@@ -16,6 +16,7 @@
 		LockIcon
 	} from '$lib/components/icons';
 	import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
+	import { TimelineModel } from 'applesauce-core/models';
 
 	/**
 	 * @typedef {Object} Calendar
@@ -36,15 +37,20 @@
 	let loading = $state(false);
 	let error = $state(/** @type {string | null} */ (null));
 	let activeUser = $state(manager.active);
-	let selectedCalendarId = $derived(calendarStore.selectedCalendarId);
-	let selectedCalendar = $derived(calendarStore.selectedCalendar);
+	let selectedCalendar = $state(calendarStore.selectedCalendar);
+	let selectedCalendarId = $derived(selectedCalendar?.id || '');
+
+	// subs
+	let calendarSubscription = $state();
 
 	let displayName = $derived.by(() => {
+		console.log("setting display name")
+		$inspect(selectedCalendar)
 		if (!activeUser) {
 			return 'Log in to manage your calendars';
 		}
 
-		if (!selectedCalendarId) {
+		if (!selectedCalendar) {
 			return 'Global Calendar';
 		}
 
@@ -53,13 +59,22 @@
 		}
 
 		// Calendar selected - show its title
-		const cal = calendars.find((cal) => cal.id === selectedCalendarId);
+		const cal = selectedCalendar;
 		return cal ? cal.title : 'Select Calendar';
 	});
 
 	onMount(() => {
 		calendarLoader().subscribe();
 		loadUserCalendars();
+
+		calendarSubscription = calendarStore.selectedCalendar$.subscribe((calendar) => {
+			console.log('📅 CalendarDropdown: selectedCalendar changed to:', calendar?.id);
+			selectedCalendar = calendar;
+		});
+
+		return () => {
+			calendarSubscription?.unsubscribe();
+		};
 	});
 
 	manager.active$.subscribe({
@@ -67,7 +82,6 @@
 			console.log('user changed');
 			activeUser = account;
 			loadUserCalendars();
-			// displayName = setDisplayName()
 		}
 	});
 
@@ -84,7 +98,7 @@
 
 		const filter = { kinds: [31924], authors: [manager.active.pubkey], limit: 100 };
 
-		eventStore.timeline(filter).subscribe({
+		eventStore.model(TimelineModel, filter).subscribe({
 			next: (/** @type {any[]} */ timeline) => {
 				console.log(`📅 CalendarDropdown: Timeline updated: ${timeline.length} calendars`);
 
@@ -103,31 +117,27 @@
 	 * @param {string} calendarId
 	 */
 	function handleCalendarSelect(calendarId) {
-		selectedCalendarId = calendarId;
+		let calendar = null;
+		console.log("emptying calendar after select")
+		cEvents.events = []
 
 		if (calendarId === '' || (manager.active && calendarId === manager.active.pubkey)) {
-			selectedCalendar = null;
+			// Global calendar or "My Events" - no specific calendar object
+			calendar = null;
 		} else {
-			selectedCalendar = calendars.find((cal) => cal.id === calendarId) || null;
+			// Find the specific calendar by ID
+			calendar = calendars.find((cal) => cal.id === calendarId) || null;
 		}
 
-		calendarStore.setSelectedCalendar(calendarId, selectedCalendar);
+		calendarStore.setSelectedCalendar(calendar);
 
-		onCalendarSelect(calendarId);
-		console.log('📅 CalendarDropdown: Calendar selected:', calendarId, selectedCalendar);
-		// displayName = setDisplayName()
+		console.log('📅 CalendarDropdown: Calendar selected:', calendar?.id || calendarId, calendar);
 	}
 
-	/**
-	 * Handle create new calendar
-	 */
 	function handleCreateCalendar() {
 		modalStore.openModal('createCalendar');
 	}
 
-	/**
-	 * Handle refresh calendars
-	 */
 	async function handleRefresh() {
 		loadUserCalendars();
 	}
@@ -172,9 +182,7 @@
 						</a>
 					</li>
 
-					<!-- My Events Option (only if logged in) -->
 					{#if activeUser}
-						<!-- Divider -->
 						<hr class="my-1 border-base-300" />
 
 						<li>
@@ -189,7 +197,6 @@
 									}
 								}}
 							>
-								<!-- My Events Icon -->
 								<UserIcon class_="h-4 w-4 text-primary" />
 								<div class="min-w-0 flex-1">
 									<div class="text-sm font-medium">My Events</div>
@@ -202,12 +209,9 @@
 						</li>
 					{/if}
 
-					<!-- User calendars (only if logged in) -->
 					{#if activeUser}
-						<!-- Divider -->
 						<hr class="my-1 border-base-300" />
 
-						<!-- Calendar List -->
 						{#if calendars.length > 0}
 							{#each calendars as calendar (calendar.id)}
 								<li>
@@ -220,7 +224,6 @@
 											handleCalendarSelect(calendar.id);
 										}}
 									>
-										<!-- Calendar Icon -->
 										<CalendarIcon class_="h-4 w-4 text-primary" />
 										<div class="min-w-0 flex-1">
 											<div class="truncate text-sm font-medium">{calendar.title}</div>
@@ -257,7 +260,6 @@
 							</li>
 						{/if}
 
-						<!-- Divider -->
 						<hr class="my-1 border-base-300" />
 
 						<!-- Create New Calendar -->

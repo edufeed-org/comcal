@@ -40,6 +40,7 @@
  * @property {CalendarEventParticipant[]} participants - Event participants
  * @property {string[]} hashtags - Event hashtags
  * @property {string[]} references - Referenced event IDs
+ * @property {string[]} eventReferences - Referenced calendar event IDs
  * @property {string} [geohash] - Optional geohash for location
  * @property {string} communityPubkey - Target community public key
  * @property {number} createdAt - Creation timestamp (Unix timestamp)
@@ -119,4 +120,4 @@
  */
 
 // Export empty object to make this a module
-export {};
+export { };

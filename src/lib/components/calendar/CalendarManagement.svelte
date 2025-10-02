@@ -1,10 +1,12 @@
 <script>
 	import { useCalendarManagement } from '$lib/stores/calendar-management-store.svelte.js';
-	import { calendarEventsStore } from '$lib/stores/calendar-events.svelte.js';
+	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
 	import { EventFactory } from 'applesauce-factory';
 	import { publishEvent } from '$lib/helpers/publisher.js';
+	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
+	import { showToast } from '$lib/helpers/toast.js';
 	import { goto } from '$app/navigation';
 
 	// Create local reactive state for active user
@@ -210,8 +212,47 @@
 		const calendar = calendarManagement?.calendars.find((c) => c.id === calendarId);
 
 		// Update the calendar events store with the selection
-		calendarEventsStore.setSelectedCalendar(calendarId, calendar || null);
+		calendarStore.setSelectedCalendar(calendar);
 		goto('/calendar');
+	}
+
+	/**
+	 * Copy calendar naddr to clipboard
+	 * @param {string} calendarId
+	 */
+	async function copyCalendarNaddr(calendarId) {
+		const calendar = calendarManagement?.calendars.find((c) => c.id === calendarId);
+		if (!calendar) return;
+
+		try {
+			// Create a minimal event object with the calendar data
+			// @ts-ignore - We only need kind, pubkey, and d tag for encoding
+			const calendarEvent = {
+				kind: 31924,
+				pubkey: calendar.pubkey,
+				tags: [['d', calendar.dTag]],
+				content: '',
+				created_at: 0,
+				id: '',
+				sig: ''
+			};
+
+			// Encode to naddr (without relays for now)
+			const naddr = encodeEventToNaddr(calendarEvent);
+
+			if (!naddr) {
+				throw new Error('Failed to encode calendar naddr');
+			}
+
+			// Copy to clipboard
+			await navigator.clipboard.writeText(naddr);
+
+			// Show success toast
+			showToast('Calendar link copied to clipboard!', 'success');
+		} catch (error) {
+			console.error('Error copying calendar naddr:', error);
+			showToast('Failed to copy calendar link', 'error');
+		}
 	}
 </script>
 
@@ -453,6 +494,25 @@
 													/>
 												</svg>
 												View Calendar
+											</a>
+										</li>
+										<li>
+											<a
+												href="#"
+												onclick={(e) => {
+													e.preventDefault();
+													copyCalendarNaddr(calendar.id);
+												}}
+											>
+												<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														stroke-width="2"
+														d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+													/>
+												</svg>
+												Copy Calendar Link
 											</a>
 										</li>
 										<li>

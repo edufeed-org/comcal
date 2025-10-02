@@ -1,22 +1,33 @@
 /**
- * Calendar Events Store - Svelte 5 Runes
+ * Calendar Events Store - Svelte 5 Runes + RxJS Observables
  * Centralized reactive state management for calendar events
  * Provides better reactivity and component communication
  */
 
+import { BehaviorSubject } from 'rxjs';
 import { groupEventsByDate } from '$lib/helpers/calendar.js';
+
+
+export let loading = $state({
+	loading: false
+})
+
+export let cEvents = $state({
+	events: []
+})
 
 /**
  * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
  */
 
 class CalendarStore {
+	// RxJS observable for selected calendar (single source of truth)
+	selectedCalendar$ = new BehaviorSubject(/** @type {any} */ (null));
+	
 	// Reactive state using Svelte 5 runes
 	events = $state(/** @type {CalendarEvent[]} */ ([]));
 	loading = $state(false);
 	error = $state(/** @type {string | null} */ (null));
-	selectedCalendarId = $state('');
-	selectedCalendar = $state(/** @type {any} */ (null));
 	missingEvents = $state(/** @type {Array<{addressRef: string, reason?: string}>} */ ([]));
 	
 	// Derived reactive state
@@ -25,6 +36,16 @@ class CalendarStore {
 	hasEvents = $derived(this.events.length > 0);
 	hasMissingEvents = $derived(this.missingEvents.length > 0);
 	missingEventsCount = $derived(this.missingEvents.length);
+	
+	// Getters for current observable values (for convenience)
+	get selectedCalendar() {
+		return this.selectedCalendar$.value;
+	}
+	
+	// Derived getter - ID is extracted from calendar object
+	get selectedCalendarId() {
+		return this.selectedCalendar$.value?.id || '';
+	}
 	
 	// Actions for updating state
 	
@@ -64,13 +85,11 @@ class CalendarStore {
 	
 	/**
 	 * Set selected calendar
-	 * @param {string} calendarId
-	 * @param {any} calendar
+	 * @param {any} calendar - Calendar object with id property
 	 */
-	setSelectedCalendar(calendarId, calendar) {
-		console.log('📅 CalendarEventsStore: Setting selected calendar:', calendarId, calendar?.title);
-		this.selectedCalendarId = calendarId;
-		this.selectedCalendar = calendar;
+	setSelectedCalendar(calendar) {
+		console.log('📅 CalendarEventsStore: Setting selected calendar:', calendar?.id, calendar?.title);
+		this.selectedCalendar$.next(calendar);
 	}
 	
 	/**
@@ -81,8 +100,7 @@ class CalendarStore {
 		this.events = [];
 		this.loading = false;
 		this.error = null;
-		this.selectedCalendarId = '';
-		this.selectedCalendar = null;
+		this.selectedCalendar$.next(null);
 		this.missingEvents = [];
 	}
 	

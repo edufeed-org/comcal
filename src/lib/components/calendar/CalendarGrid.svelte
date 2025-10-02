@@ -1,6 +1,7 @@
 <script>
 	import { getWeekDates, getMonthDates, formatCalendarDate, isToday, isCurrentMonth, getWeekdayHeaders, createDateKey, groupEventsByDate } from '../../helpers/calendar.js';
 	import CalendarEventCard from './CalendarEventCard.svelte';
+	import { cEvents } from '$lib/stores/calendar-events.svelte.js';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
@@ -10,7 +11,6 @@
 	let {
 		currentDate,
 		viewMode,
-		events,
 		onEventClick = () => {},
 		onDateClick = () => {}
 	} = $props();
@@ -18,7 +18,14 @@
 	// Get dates for current view (reactive to prop changes)
 	let viewDates = $derived(getViewDates(currentDate, viewMode));
 	let weekdays = $derived(getWeekdayHeaders());
-	let groupedEvents = $derived(groupEventsByDate(events))
+
+	let groupedEvents = $derived.by(() => {
+		console.log("cEvents changed!")
+		const grouped = groupEventsByDate(cEvents.events)
+		console.log("grouped Events")
+		return grouped
+		
+	})
 
 	/**
 	 * Get dates array for current view mode
@@ -97,7 +104,6 @@
 			{/each}
 		</div>
 	{/if}
-
 	<!-- Calendar Grid -->
 	<div class="grid {viewMode === 'month' ? 'grid-cols-7' : viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-1'} gap-px bg-base-300">
 		{#each viewDates as date}

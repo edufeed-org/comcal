@@ -1,5 +1,3 @@
-import { error } from '@sveltejs/kit';
-import { eventStore } from '$lib/store.svelte';
 import { fetchCalendarEvents, fetchEventById } from '$lib/helpers/nostrUtils';
 import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
 

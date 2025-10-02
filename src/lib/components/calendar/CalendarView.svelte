@@ -4,7 +4,7 @@
 	import { addressLoader, calendarTimelineLoader } from '$lib/loaders.js';
 	import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
-	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
+	import { calendarStore, loading, cEvents } from '$lib/stores/calendar-events.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
 
 	// Import existing UI components
@@ -13,7 +13,8 @@
 	import CalendarEventModal from '$lib/components/calendar/CalendarEventModal.svelte';
 	import CalendarDropdown from './CalendarDropdown.svelte';
 	import SimpleCalendarEventsList from './CalendarEventsList.svelte';
-	import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
+	import { getCalendarEventMetadata, parseAddressReference } from '$lib/helpers/eventUtils';
+	import { TimelineModel } from 'applesauce-core/models';
 
 	/**
 	 * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
@@ -36,10 +37,9 @@
 	 * @type {import("$lib/types/calendar.js").CalendarEvent[]}
 	 */
 	let events = $state([]);
-	let loading = $derived(calendarStore.loading);
+	// let loading = $derived(getLoading());
 	let error = $derived(calendarStore.error);
-	let selectedCalendarId = $derived(calendarStore.selectedCalendarId);
-	let selectedCalendar = $derived(calendarStore.selectedCalendar);
+	let selectedCalendar = $state(calendarStore.selectedCalendar);
 	let missingEvents = $derived(calendarStore.missingEvents);
 	let hasMissingEvents = $derived(calendarStore.hasMissingEvents);
 	let missingEventsCount = $derived(calendarStore.missingEventsCount);
@@ -48,32 +48,10 @@
 	let isEventModalOpen = $state(false);
 	let selectedDateForNewEvent = $state(/** @type {Date | null} */ (null));
 
-	// Simplified subscription management
+	// Subscription management
 	let subscription = $state();
 	let userSubscription = $state();
-	let addressSubscriptions = $state(/** @type {any[]} */ ([]));
-
-	/**
-	 * Parse address reference string into components
-	 * @param {string} addressRef - Address reference like "31922:pubkey:d-tag"
-	 * @returns {{kind: number, pubkey: string, dTag: string} | null}
-	 */
-	function parseAddressReference(addressRef) {
-		try {
-			const parts = addressRef.split(':');
-			if (parts.length !== 3) return null;
-
-			const [kindStr, pubkey, dTag] = parts;
-			const kind = parseInt(kindStr, 10);
-
-			if (isNaN(kind) || !pubkey || !dTag) return null;
-
-			return { kind, pubkey, dTag };
-		} catch (error) {
-			console.error('📅 SimpleCalendarView: Error parsing address reference:', addressRef, error);
-			return null;
-		}
-	}
+	let calendarSubscription = $state();
 
 	/**
 	 * Load events for a specific calendar using individual event fetching - NO TIMEOUT!
@@ -93,22 +71,17 @@
 			return;
 		}
 
-		calendarStore.setLoading(true);
-
+		loading.loading = true
+		cEvents.events = [];
 		calendar.eventReferences.forEach(
 			(/** @type {string} */ addressRef, /** @type {number} */ index) => {
 				const parsed = parseAddressReference(addressRef);
-				if (!parsed) {
-					console.warn('📅 CalendarView: Invalid address reference:', addressRef);
-					calendarStore.addMissingEvent(addressRef, 'Invalid address format');
-					return;
-				}
 
 				console.log(
 					`📅 CalendarView: Loading event ${index + 1}/${calendar.eventReferences.length}:`,
 					parsed
 				);
-				events = [];
+
 				try {
 					addressLoader({
 						kind: parsed.kind,
@@ -122,13 +95,15 @@
 									event.id,
 									getCalendarEventTitle(event)
 								);
-								// Add event immediately to UI - progressive loading!
 								const calendarEvent = getCalendarEventMetadata(event);
-								events.push(calendarEvent);
+								cEvents.events.push(calendarEvent);
 							} else {
 								console.log(`📅 CalendarView: No event found for:`, addressRef);
-								calendarStore.addMissingEvent(addressRef, 'Event not found');
 							}
+						},
+						complete: () => {
+							console.log('complete');
+							loading.loading = false;
 						},
 						error: (/** @type {any} */ err) => {
 							console.error('📅 CalendarView: Error loading event:', addressRef, err);
@@ -136,9 +111,7 @@
 								err && typeof err === 'object' && 'message' in err
 									? String(err.message)
 									: 'Failed to load';
-							calendarStore.addMissingEvent(addressRef, errorMessage);
 						}
-						// NOTE: No complete() handler needed - each event is independent!
 					});
 				} catch (err) {
 					console.error('📅 CalendarView: Error creating subscription for:', addressRef, err);
@@ -146,54 +119,53 @@
 						err && typeof err === 'object' && 'message' in err
 							? String(err.message)
 							: 'Subscription failed';
-					calendarStore.addMissingEvent(addressRef, errorMessage);
 				}
 			}
 		);
 	}
 
 	function loadEvents() {
-		calendarStore.setLoading(true);
-		calendarStore.setError(null);
+		loading.loading = true;
 
 		if (selectedCalendar) {
-			console.log('📅 CalendarView: Loading calendar-specific events for:', selectedCalendar.title);
+			console.log(
+				'📅 CalendarView: Loading calendar-specific events for:',
+				selectedCalendar?.title
+			);
 			loadCalendarSpecificEvents(selectedCalendar);
 			return;
 		}
-
-		// Global calendar or "My Events" - use EventStore timeline directly!
-		console.log('📅 CalendarView: Loading events via EventStore timeline');
-		console.log('📅 CalendarView: Selection state:', {
-			selectedCalendarId,
-			activeUser: activeUser?.pubkey,
-			selectedCalendar
-		});
 
 		// Build filter
 		/** @type {any} */
 		const filter = { kinds: [31922, 31923], limit: 20 };
 
 		// Filter by author for "My Events"
-		if (selectedCalendarId && activeUser && selectedCalendarId === activeUser.pubkey) {
+		if (selectedCalendar && activeUser && selectedCalendar.id === activeUser.pubkey) {
 			filter.authors = [activeUser.pubkey];
 			console.log('📅 CalendarView: Loading "My Events" for user:', activeUser.pubkey);
 		} else {
 			console.log('📅 CalendarView: Loading global calendar events');
 		}
+		const observable = eventStore.model(TimelineModel, filter);
 
 		try {
-			subscription = eventStore.timeline(filter).subscribe({
+			subscription = observable.subscribe({
 				next: (/** @type {any[]} */ timeline) => {
 					try {
-						events = timeline.map(getCalendarEventMetadata);
+						const mapped = timeline.map(getCalendarEventMetadata);
+						cEvents.events = mapped
+						// console.log(timeline)
 					} catch (conversionError) {
 						console.error('📅 CalendarView: Error converting events:', conversionError);
 						calendarStore.setError('Failed to process events');
 					}
 				},
 				complete: () => {
-					calendarStore.setLoading(true);
+					calendarStore.setLoading(false);
+					console.log('loading complete');
+
+					loading.loading = false;
 				},
 				error: (/** @type {any} */ err) => {
 					console.error('📅 CalendarView: Timeline error:', err);
@@ -208,21 +180,28 @@
 
 	onMount(() => {
 		calendarTimelineLoader().subscribe();
+		loadEvents();
 		userSubscription = manager.active$.subscribe((user) => {
 			activeUser = user;
-			// Reload events when user changes
-			loadEvents();
+			// loadEvents();
 		});
-	});
 
-	/**
-	 * @param {string} calendarId
-	 */
-	function handleCalendarSelect(calendarId) {
-		selectedCalendarId = calendarId;
-		console.log('📅 SimpleCalendarView: Calendar selected:', calendarId);
-		loadEvents();
-	}
+		// Subscribe to calendar selection changes
+		calendarSubscription = calendarStore.selectedCalendar$.subscribe((calendar) => {
+			selectedCalendar = calendar;
+			console.log('📅 CalendarView: selectedCalendar changed to:', calendar?.id);
+			// Automatically load events when calendar selection changes
+			// loadEvents();
+			loadCalendarSpecificEvents(calendar);
+		});
+
+		// Cleanup subscriptions on unmount
+		return () => {
+			subscription?.unsubscribe();
+			userSubscription?.unsubscribe();
+			calendarSubscription?.unsubscribe();
+		};
+	});
 
 	function handlePrevious() {
 		const newDate = new Date(currentDate);
@@ -325,12 +304,12 @@
 				<button
 					class="btn btn-ghost btn-sm"
 					onclick={handleRefresh}
-					disabled={loading}
+					disabled={loading.loading}
 					aria-label="Refresh calendar"
 				>
 					<svg
 						class="h-5 w-5"
-						class:animate-spin={loading}
+						class:animate-spin={loading.loading}
 						fill="none"
 						stroke="currentColor"
 						viewBox="0 0 24 24"
@@ -410,7 +389,6 @@
 		<CalendarGrid
 			{currentDate}
 			{viewMode}
-			{events}
 			onEventClick={handleEventClick}
 			onDateClick={handleDateClick}
 		/>
