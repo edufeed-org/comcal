@@ -129,14 +129,17 @@
 
 	// Effect to handle calendar loading based on props and state
 	$effect(() => {
-		if (calendar) {
+		if (globalMode) {
+			console.log('📅 CalendarView: Loading global events (globalMode=true)');
+			loadEvents();
+		} else if (calendar) {
 			console.log('📅 CalendarView: Loading provided calendar:', calendar.title);
 			loadCalendarSpecificEvents(calendar);
 		} else if (selectedCalendar) {
 			console.log('📅 CalendarView: Loading selected calendar:', selectedCalendar.title);
 			loadCalendarSpecificEvents(selectedCalendar);
 		} else {
-			console.log('📅 CalendarView: Loading global events');
+			console.log('📅 CalendarView: Loading global events (fallback)');
 			loadEvents();
 		}
 	});
