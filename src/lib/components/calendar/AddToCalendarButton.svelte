@@ -1,26 +1,35 @@
 <script>
+	import { onMount } from 'svelte';
 	import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils';
 	import { showToast } from '$lib/helpers/toast.js';
 	import { CalendarIcon } from '../icons';
-	import LinkIcon from '../icons/ui/LinkIcon.svelte';
 	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
 
-	let selectedCalendar = $derived(calendarStore.selectedCalendar);
+	let selectedCalendar = $state(calendarStore.selectedCalendar);
+	let calendarSubscription = $state();
 
-	let { calendarEvent } = $props();
+	onMount(() => {
+		calendarSubscription = calendarStore.selectedCalendar$.subscribe((cal) => {
+			selectedCalendar = cal;
+		});
+
+		return () => {
+			calendarSubscription?.unsubscribe();
+		};
+	});
 
 	// Generate webcal URL for calendar subscription
 	const generateWebcalUrl = () => {
 		const baseUrl = window.location.origin;
-		const calendarNaddr = encodeEventToNaddr(selectedCalendar);
+		const calendarNaddr = encodeEventToNaddr(selectedCalendar.originalEvent);
 		return `webcal://${baseUrl.replace(/^https?:\/\//, '')}/api/calendar/${calendarNaddr}/ics`;
 	};
 
 	// Generate ICS download URL
 	const generateIcsUrl = () => {
 		const baseUrl = window.location.origin;
-		const calendarId = calendarEvent.id;
+		const calendarId = selectedCalendar.id;
 		return `${baseUrl}/api/calendar/${calendarId}/ics`;
 	};
 
@@ -51,7 +60,7 @@
 			const icsUrl = generateIcsUrl();
 			const link = document.createElement('a');
 			link.href = icsUrl;
-			link.download = `${getCalendarEventMetadata(calendarEvent).title || 'calendar'}.ics`;
+			link.download = `${getCalendarEventMetadata(selectedCalendar).title || 'calendar'}.ics`;
 			document.body.appendChild(link);
 			link.click();
 			document.body.removeChild(link);
