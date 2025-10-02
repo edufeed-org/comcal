@@ -17,6 +17,8 @@
 	} from '$lib/components/icons';
 	import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
 	import { TimelineModel } from 'applesauce-core/models';
+	import { naddrEncode } from 'nostr-tools/nip19';
+	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils';
 
 	/**
 	 * @typedef {Object} Calendar
@@ -158,16 +160,15 @@
 					{displayName}
 				</summary>
 				<ul
-					class="dropdown-content menu z-[1] w-64 rounded-box border border-base-300 bg-base-100 p-2 shadow-lg"
+					class="dropdown-content menu z-[1] rounded-box border border-base-300 bg-base-100 p-2 shadow-lg"
 				>
 					<!-- Global Calendar Option (always available) -->
 					<li>
 						<a
-							href="#"
+							href="/calendar"
 							class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-base-200"
 							class:active={!selectedCalendarId}
 							onclick={(e) => {
-								e.preventDefault();
 								handleCalendarSelect('');
 							}}
 						>
@@ -216,11 +217,10 @@
 							{#each calendars as calendar (calendar.id)}
 								<li>
 									<a
-										href="#"
+										href={`/calendar/${encodeEventToNaddr(calendar.originalEvent)}`}
 										class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-base-200"
 										class:active={selectedCalendarId === calendar.id}
 										onclick={(e) => {
-											e.preventDefault();
 											handleCalendarSelect(calendar.id);
 										}}
 									>

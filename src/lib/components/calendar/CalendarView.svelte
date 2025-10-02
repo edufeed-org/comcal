@@ -58,8 +58,6 @@
 	 * @param {any} calendar - Calendar object with eventReferences
 	 */
 	function loadCalendarSpecificEvents(calendar) {
-		console.log('📅 CalendarView: loadCalendarSpecificEvents called with calendar:', calendar);
-
 		if (!calendar) {
 			console.warn('📅 CalendarView: No calendar provided');
 			return;
@@ -155,7 +153,6 @@
 					try {
 						const mapped = timeline.map(getCalendarEventMetadata);
 						cEvents.events = mapped
-						// console.log(timeline)
 					} catch (conversionError) {
 						console.error('📅 CalendarView: Error converting events:', conversionError);
 						calendarStore.setError('Failed to process events');
