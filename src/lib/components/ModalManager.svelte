@@ -6,6 +6,7 @@
 	import CalendarEventDetailsModal from './calendar/CalendarEventDetailsModal.svelte';
 	import CalendarCreationModal from './calendar/CalendarCreationModal.svelte';
 	import CreateCommunityModal from './CreateCommunityModal.svelte';
+	import WebcalQRCodeModal from './calendar/WebcalQRCodeModal.svelte';
 
 	/**
 	 * ModalManager - Centralized modal rendering component
@@ -151,4 +152,6 @@
 	<CalendarCreationModal modalId={calendarCreationModalId} />
 {:else if modal.activeModal === 'createCommunity'}
 	<CreateCommunityModal modalId={createCommunityModalId} />
+{:else if modal.activeModal === 'webcalQRCode'}
+	<WebcalQRCodeModal />
 {/if}

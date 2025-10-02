@@ -1,10 +1,10 @@
 <script>
 	import { onMount } from 'svelte';
-	import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils';
 	import { showToast } from '$lib/helpers/toast.js';
 	import { CalendarIcon } from '../icons';
 	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
+	import { modalStore } from '$lib/stores/modal.svelte.js';
 
 	let selectedCalendar = $state(calendarStore.selectedCalendar);
 	let calendarSubscription = $state();
@@ -60,7 +60,7 @@
 			const icsUrl = generateIcsUrl();
 			const link = document.createElement('a');
 			link.href = icsUrl;
-			link.download = `${getCalendarEventMetadata(selectedCalendar).title || 'calendar'}.ics`;
+			link.download = `${selectedCalendar?.title || 'calendar'}.ics`;
 			document.body.appendChild(link);
 			link.click();
 			document.body.removeChild(link);
@@ -68,6 +68,17 @@
 		} catch (error) {
 			console.error('Error downloading ICS:', error);
 			showToast('calendar link error', 'error');
+		}
+	};
+
+	const handleShowQRCode = () => {
+		try {
+			const webcalUrl = generateWebcalUrl();
+			const calendarTitle = selectedCalendar?.title || 'Calendar';
+			modalStore.openModal('webcalQRCode', { webcalUrl, calendarTitle });
+		} catch (error) {
+			console.error('Error opening QR code modal:', error);
+			showToast('Failed to open QR code', 'error');
 		}
 	};
 
@@ -89,6 +100,12 @@
 			name: 'Copy Webcal Link',
 			tooltip: 'Copy subscription link',
 			onClick: handleCopyWebcalLink
+		},
+		{
+			icon: '📱',
+			name: 'Show QR Code',
+			tooltip: 'Scan with mobile to subscribe',
+			onClick: handleShowQRCode
 		}
 	];
 </script>
