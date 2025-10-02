@@ -20,9 +20,7 @@
 	let weekdays = $derived(getWeekdayHeaders());
 
 	let groupedEvents = $derived.by(() => {
-		console.log("cEvents changed!")
 		const grouped = groupEventsByDate(cEvents.events)
-		console.log("grouped Events")
 		return grouped
 		
 	})

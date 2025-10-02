@@ -22,7 +22,7 @@
 	 */
 
 	// Props
-	let { communityPubkey = '', globalMode = false } = $props();
+	let { communityPubkey = '', globalMode = false, calendar = null } = $props();
 
 	// Use runes store for reactive state
 	let activeUser = $state(manager.active);
@@ -180,20 +180,18 @@
 
 	onMount(() => {
 		calendarTimelineLoader().subscribe();
-		loadEvents();
+
 		userSubscription = manager.active$.subscribe((user) => {
 			activeUser = user;
-			// loadEvents();
 		});
 
-		// Subscribe to calendar selection changes
-		calendarSubscription = calendarStore.selectedCalendar$.subscribe((calendar) => {
-			selectedCalendar = calendar;
-			console.log('📅 CalendarView: selectedCalendar changed to:', calendar?.id);
-			// Automatically load events when calendar selection changes
-			// loadEvents();
-			loadCalendarSpecificEvents(calendar);
-		});
+		// Subscribe to calendar selection changes (only when no calendar prop provided)
+		if (!calendar) {
+			calendarSubscription = calendarStore.selectedCalendar$.subscribe((cal) => {
+				selectedCalendar = cal;
+				console.log('📅 CalendarView: selectedCalendar changed to:', cal?.id);
+			});
+		}
 
 		// Cleanup subscriptions on unmount
 		return () => {
@@ -201,6 +199,23 @@
 			userSubscription?.unsubscribe();
 			calendarSubscription?.unsubscribe();
 		};
+	});
+
+	// Effect to handle calendar loading based on props and state
+	$effect(() => {
+		if (calendar) {
+			// Calendar provided from route - takes priority
+			console.log('📅 CalendarView: Loading provided calendar:', calendar.title);
+			loadCalendarSpecificEvents(calendar);
+		} else if (selectedCalendar) {
+			// Calendar selected from dropdown
+			console.log('📅 CalendarView: Loading selected calendar:', selectedCalendar.title);
+			loadCalendarSpecificEvents(selectedCalendar);
+		} else {
+			// Default: load global events
+			console.log('📅 CalendarView: Loading global events');
+			loadEvents();
+		}
 	});
 
 	function handlePrevious() {
@@ -323,7 +338,7 @@
 					</svg>
 				</button>
 
-				{#if !globalMode && manager.active}
+				{#if !globalMode && !calendar && manager.active}
 					<button class="btn gap-2 btn-sm btn-primary" onclick={handleCreateEvent}>
 						<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
@@ -395,7 +410,7 @@
 	{:else if presentationViewMode === 'list'}
 		<!-- List View -->
 		<div class="p-6">
-			<SimpleCalendarEventsList {events} {loading} {error} />
+			<SimpleCalendarEventsList {events} loading={loading.loading} {error} />
 		</div>
 	{:else if presentationViewMode === 'map'}
 		<!-- Map View (placeholder for future implementation) -->

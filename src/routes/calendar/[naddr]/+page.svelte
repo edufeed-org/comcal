@@ -5,15 +5,20 @@
 	let { data } = $props();
 </script>
 
-<p>{JSON.stringify(data.event)}</p>
 <svelte:head>
-	<title>Global Calendar - Communikey</title>
+	<title>{data.calendar?.title || 'Calendar'} - Communikey</title>
 	<meta
 		name="description"
-		content="Global calendar showing NIP-52 calendar events from all communities"
+		content="View calendar events"
 	/>
 </svelte:head>
 
 <div class="container mx-auto px-4 py-8">
-	<CalendarView globalMode={true} />
+	{#if data.calendar}
+		<CalendarView calendar={data.calendar} globalMode={false} />
+	{:else}
+		<div class="alert alert-error">
+			<span>Calendar not found</span>
+		</div>
+	{/if}
 </div>
