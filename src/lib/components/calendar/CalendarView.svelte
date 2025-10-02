@@ -69,14 +69,14 @@
 			return;
 		}
 
-		loading.loading = true
+		loading.loading = true;
 		events = [];
 		calendar.eventReferences.forEach(
 			(/** @type {string} */ addressRef, /** @type {number} */ index) => {
 				const parsed = parseAddressReference(addressRef);
 
 				console.log(
-					`📅 CalendarView: Loading event ${index + 1}/${calendar.eventReferences.length}:`,
+					`📅 CalendarView: Attempting to load event ${index + 1}/${calendar.eventReferences.length}:`,
 					parsed
 				);
 
@@ -123,54 +123,11 @@
 	}
 
 	function loadEvents() {
-		loading.loading = true;
-
-		if (selectedCalendar) {
-			console.log(
-				'📅 CalendarView: Loading calendar-specific events for:',
-				selectedCalendar?.title
-			);
-			loadCalendarSpecificEvents(selectedCalendar);
-			return;
-		}
-
-		// Build filter
-		/** @type {any} */
 		const filter = { kinds: [31922, 31923], limit: 20 };
-
-		// Filter by author for "My Events"
-		if (selectedCalendar && activeUser && selectedCalendar.id === activeUser.pubkey) {
-			filter.authors = [activeUser.pubkey];
-			console.log('📅 CalendarView: Loading "My Events" for user:', activeUser.pubkey);
-		} else {
-			console.log('📅 CalendarView: Loading global calendar events');
-		}
-		const observable = eventStore.model(TimelineModel, filter);
-
-		try {
-			subscription = observable.subscribe({
-				next: (/** @type {any[]} */ timeline) => {
-					try {
-						const mapped = timeline.map(getCalendarEventMetadata);
-						events = mapped
-					} catch (conversionError) {
-						console.error('📅 CalendarView: Error converting events:', conversionError);
-						calendarStore.setError('Failed to process events');
-					}
-				},
-				complete: () => {
-					console.log('loading complete');
-					loading.loading = false;
-				},
-				error: (/** @type {any} */ err) => {
-					console.error('📅 CalendarView: Timeline error:', err);
-					calendarStore.setError('Failed to load events from relays');
-				}
-			});
-		} catch (subscriptionError) {
-			console.error('📅 CalendarView: Error creating timeline subscription:', subscriptionError);
-			calendarStore.setError('Failed to connect to event stream');
-		}
+		eventStore.model(TimelineModel, filter).subscribe((timeline) => {
+			const mapped = timeline.map(getCalendarEventMetadata);
+					events = mapped;
+		})
 	}
 
 	onMount(() => {

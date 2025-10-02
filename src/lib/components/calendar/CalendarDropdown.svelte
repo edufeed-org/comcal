@@ -40,13 +40,12 @@
 	let activeUser = $state(manager.active);
 	let selectedCalendar = $state(calendarStore.selectedCalendar);
 	let selectedCalendarId = $derived(selectedCalendar?.id || '');
+	let personalCalendars = $state([])
 
 	// subs
 	let calendarSubscription = $state();
 
 	let displayName = $derived.by(() => {
-		console.log("setting display name")
-		$inspect(selectedCalendar)
 		if (!activeUser) {
 			return 'Log in to manage your calendars';
 		}
@@ -69,7 +68,6 @@
 		loadUserCalendars();
 
 		calendarSubscription = calendarStore.selectedCalendar$.subscribe((calendar) => {
-			console.log('📅 CalendarDropdown: selectedCalendar changed to:', calendar?.id);
 			selectedCalendar = calendar;
 		});
 
@@ -95,23 +93,13 @@
 		loading = true;
 		error = null;
 
-		console.log(`📅 CalendarDropdown: Loading calendars for user: ${manager.active.pubkey}`);
+		const filter = { kinds: [31924], authors: [manager.active.pubkey], limit: 1 };
 
-		const filter = { kinds: [31924], authors: [manager.active.pubkey], limit: 100 };
-
-		eventStore.model(TimelineModel, filter).subscribe({
-			next: (/** @type {any[]} */ timeline) => {
-				console.log(`📅 CalendarDropdown: Timeline updated: ${timeline.length} calendars`);
-
-				calendars = timeline.map(getCalendarEventMetadata);
-				loading = false;
-			},
-			error: (/** @type {any} */ err) => {
-				console.error('📅 CalendarDropdown: Timeline error:', err);
-				error = 'Failed to load calendars';
-				loading = false;
-			}
+		eventStore.model(TimelineModel, filter).subscribe((events) => {
+			personalCalendars = events.map(getCalendarEventMetadata)
 		});
+
+		loading = false;
 	}
 
 	/**
@@ -119,20 +107,12 @@
 	 */
 	function handleCalendarSelect(calendarId) {
 		let calendar = null;
-		console.log("emptying calendar after select")
-		cEvents.events = []
-
 		if (calendarId === '' || (manager.active && calendarId === manager.active.pubkey)) {
-			// Global calendar or "My Events" - no specific calendar object
 			calendar = null;
 		} else {
-			// Find the specific calendar by ID
-			calendar = calendars.find((cal) => cal.id === calendarId) || null;
+			calendar = personalCalendars.find((cal) => cal.id === calendarId) || null;
 		}
-
 		calendarStore.setSelectedCalendar(calendar);
-
-		console.log('📅 CalendarDropdown: Calendar selected:', calendar?.id || calendarId, calendar);
 	}
 
 	function handleCreateCalendar() {
@@ -212,8 +192,8 @@
 					{#if activeUser}
 						<hr class="my-1 border-base-300" />
 
-						{#if calendars.length > 0}
-							{#each calendars as calendar (calendar.id)}
+						{#if personalCalendars.length > 0}
+							{#each personalCalendars as calendar (calendar.id)}
 								<li>
 									<a
 										href={`/calendar/${encodeEventToNaddr(calendar.originalEvent)}`}
