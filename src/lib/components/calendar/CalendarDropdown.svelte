@@ -1,5 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { eventStore } from '$lib/store.svelte';
 	import { calendarLoader } from '$lib/loaders';
 	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
@@ -44,24 +46,15 @@
 	let selectedCalendar = $state(calendarStore.selectedCalendar);
 	let selectedCalendarId = $derived(selectedCalendar?.id || '');
 	let personalCalendars = $state(/** @type {CalendarEvent[]} */ ([]));
+	
+	// Check if we're on the global calendar route (synchronous with navigation)
+	let isOnGlobalRoute = $derived($page.url.pathname === '/calendar');
 
 	// Calendar modal state
 	let isCalendarModalOpen = $state(false);
 
 	// subs
 	let calendarSubscription = $state();
-
-	// Auto-select calendar when personal calendars load and currentCalendar matches
-	$effect(() => {
-		if (currentCalendar && personalCalendars.length > 0 && manager.active) {
-			// Check if current calendar is one of the user's personal calendars
-			const matchingCalendar = personalCalendars.find(cal => cal.id === currentCalendar.id);
-			if (matchingCalendar && selectedCalendarId !== matchingCalendar.id) {
-				console.log('📅 CalendarDropdown: Auto-selecting matching calendar:', matchingCalendar.title);
-				calendarStore.setSelectedCalendar(matchingCalendar);
-			}
-		}
-	});
 
 	let displayName = $derived.by(() => {
 		// If viewing a specific calendar (via currentCalendar prop), show its name
@@ -184,9 +177,11 @@
 						<a
 							href="/calendar"
 							class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-base-200"
-							class:active={!selectedCalendarId && !currentCalendar}
+							class:active={!selectedCalendarId && isOnGlobalRoute}
 							onclick={(e) => {
+								e.preventDefault();
 								handleCalendarSelect('');
+								goto('/calendar');
 							}}
 						>
 							<GlobeIcon class_="h-4 w-4 text-primary" />
@@ -194,7 +189,7 @@
 								<div class="text-sm font-medium">Global Calendar</div>
 								<div class="text-xs text-base-content/60">All community events</div>
 							</div>
-							{#if !selectedCalendarId && !currentCalendar}
+							{#if !selectedCalendarId && isOnGlobalRoute}
 								<CheckIcon class_="h-4 w-4 text-primary" />
 							{/if}
 						</a>
@@ -236,7 +231,7 @@
 									<a
 										href={`/calendar/${encodeEventToNaddr(calendar.originalEvent)}`}
 										class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-base-200"
-										class:active={selectedCalendarId === calendar.id}
+										class:active={currentCalendar?.id === calendar.id && !selectedCalendarId}
 										onclick={(e) => {
 											handleCalendarSelect(calendar.id);
 										}}
@@ -250,7 +245,7 @@
 												</div>
 											{/if}
 										</div>
-										{#if selectedCalendarId === calendar.id}
+										{#if currentCalendar?.id === calendar.id && !selectedCalendarId}
 											<CheckIcon class_="h-4 w-4 text-primary" />
 										{/if}
 									</a>
