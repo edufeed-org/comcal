@@ -6,20 +6,64 @@
 <script>
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { CalendarIcon, ClockIcon, AlertIcon } from '$lib/components/icons';
+	import { getWeekDates, getMonthDates, isEventInDateRange } from '$lib/helpers/calendar.js';
 	
 	// Import existing UI components
 	import CalendarEventCard from '$lib/components/calendar/CalendarEventCard.svelte';
 
 	/**
 	 * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
+	 * @typedef {import('$lib/types/calendar.js').CalendarViewMode} CalendarViewMode
 	 */
 
 	// Props
 	let { 
-		events = /** @type {CalendarEvent[]} */ ([]), 
+		events = /** @type {CalendarEvent[]} */ ([]),
+		viewMode = /** @type {CalendarViewMode} */ ('month'),
+		currentDate = new Date(),
 		loading = false,
 		error = /** @type {string | null} */ (null)
 	} = $props();
+
+	// Filter events based on current view mode and date
+	let filteredEvents = $derived.by(() => {
+		if (!currentDate || !viewMode) return events;
+		
+		// Calculate date range based on view mode
+		let startDate, endDate;
+		
+		switch (viewMode) {
+			case 'day': {
+				// Show events for just this day
+				startDate = new Date(currentDate);
+				startDate.setHours(0, 0, 0, 0);
+				endDate = new Date(currentDate);
+				endDate.setHours(23, 59, 59, 999);
+				break;
+			}
+			case 'week': {
+				// Show events for this week
+				const weekDates = getWeekDates(currentDate);
+				startDate = weekDates[0];
+				endDate = weekDates[weekDates.length - 1];
+				endDate.setHours(23, 59, 59, 999);
+				break;
+			}
+			case 'month': {
+				// Show events for this month
+				const monthDates = getMonthDates(currentDate);
+				startDate = monthDates[0];
+				endDate = monthDates[monthDates.length - 1];
+				endDate.setHours(23, 59, 59, 999);
+				break;
+			}
+			default:
+				return events;
+		}
+		
+		// Filter events that fall within the date range
+		return events.filter(event => isEventInDateRange(event, startDate, endDate));
+	});
 
 	/**
 	 * Handle event click
@@ -77,7 +121,7 @@
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<h2 class="text-lg font-semibold text-base-content">
-			Calendar Events ({events.length})
+			Calendar Events ({filteredEvents.length})
 		</h2>
 	</div>
 
@@ -96,9 +140,9 @@
 	{/if}
 
 	<!-- Events List -->
-	{#if events.length > 0}
+	{#if filteredEvents.length > 0}
 		<div class="grid gap-4">
-			{#each events as event (event.id)}
+			{#each filteredEvents as event (event.id)}
 				<div class="card bg-base-100 border border-base-300 shadow-sm hover:shadow-md transition-shadow">
 					<div class="card-body p-4">
 						<div class="flex items-start justify-between gap-4">
@@ -169,7 +213,7 @@
 	{/if}
 
 	<!-- Loading indicator -->
-	{#if loading && events.length === 0}
+	{#if loading && filteredEvents.length === 0}
 		<div class="text-center py-12">
 			<span class="loading loading-lg loading-spinner text-primary"></span>
 			<p class="mt-4 text-base-content/60">Loading calendar events...</p>

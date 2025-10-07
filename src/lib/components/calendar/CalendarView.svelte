@@ -337,7 +337,13 @@
 	{:else if presentationViewMode === 'list'}
 		<!-- List View -->
 		<div class="p-6">
-			<SimpleCalendarEventsList {events} loading={loading.loading} {error} />
+			<SimpleCalendarEventsList 
+				{events} 
+				{viewMode}
+				{currentDate}
+				loading={loading.loading} 
+				{error} 
+			/>
 		</div>
 	{:else if presentationViewMode === 'map'}
 		<!-- Map View (placeholder for future implementation) -->
