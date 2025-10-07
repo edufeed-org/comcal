@@ -62,7 +62,10 @@
 		}
 		
 		// Filter events that fall within the date range
-		return events.filter(event => isEventInDateRange(event, startDate, endDate));
+		const filtered = events.filter((/** @type {CalendarEvent} */ event) => isEventInDateRange(event, startDate, endDate));
+		
+		// Sort by start date/time (chronological order)
+		return filtered.sort((/** @type {CalendarEvent} */ a, /** @type {CalendarEvent} */ b) => (a.start || 0) - (b.start || 0));
 	});
 
 	/**
