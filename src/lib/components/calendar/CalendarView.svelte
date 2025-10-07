@@ -22,7 +22,7 @@
 	 */
 
 	// Props
-	let { communityPubkey = '', globalMode = false, calendar = null } = $props();
+	let { communityPubkey = '', globalMode = false, calendar = null, authorPubkey = '' } = $props();
 
 	// Use runes store for reactive state
 	let activeUser = $state(manager.active);
@@ -104,6 +104,24 @@
 		});
 	}
 
+	/**
+	 * Load events created by a specific author
+	 * @param {string} pubkey - The author's public key
+	 */
+	function loadEventsByAuthor(pubkey) {
+		console.log('📅 CalendarView: Loading events by author:', pubkey);
+		loading.loading = true;
+		events = [];
+		
+		const filter = { kinds: [31922, 31923], authors: [pubkey], limit: 50 };
+		eventStore.model(TimelineModel, filter).subscribe((timeline) => {
+			console.log('📅 CalendarView: Loaded', timeline.length, 'events by author');
+			const mapped = timeline.map(getCalendarEventMetadata);
+			events = mapped;
+			loading.loading = false;
+		});
+	}
+
 	onMount(() => {
 		calendarTimelineLoader().subscribe();
 
@@ -129,7 +147,10 @@
 
 	// Effect to handle calendar loading based on props and state
 	$effect(() => {
-		if (globalMode) {
+		if (authorPubkey) {
+			console.log('📅 CalendarView: Loading events by author:', authorPubkey);
+			loadEventsByAuthor(authorPubkey);
+		} else if (globalMode) {
 			console.log('📅 CalendarView: Loading global events (globalMode=true)');
 			loadEvents();
 		} else if (calendar) {

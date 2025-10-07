@@ -20,6 +20,7 @@
 	import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
 	import { TimelineModel } from 'applesauce-core/models';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils';
+	import { nip19 } from 'nostr-tools';
 
 	/**
 	 * @typedef {Object} Calendar
@@ -67,6 +68,12 @@
 			return currentCalendar.title || 'Calendar';
 		}
 
+		// Check if we're on the "My Events" route
+		if (manager.active && $page.url.pathname.startsWith('/calendar/author/') && 
+		    $page.url.pathname.includes(nip19.npubEncode(manager.active.pubkey))) {
+			return 'My Events';
+		}
+
 		// Not logged in
 		if (!activeUser) {
 			return 'Log in to manage your calendars';
@@ -77,7 +84,7 @@
 			return 'Global Calendar';
 		}
 
-		// "My Events" filter selected
+		// "My Events" filter selected (legacy)
 		if (manager.active && selectedCalendarId === manager.active.pubkey) {
 			return 'My Events';
 		}
@@ -200,13 +207,13 @@
 
 						<li>
 							<a
-								href="#"
+								href={manager.active ? `/calendar/author/${nip19.npubEncode(manager.active.pubkey)}` : '#'}
 								class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-base-200"
-								class:active={selectedCalendarId === manager.active?.pubkey}
+								class:active={$page.url.pathname.startsWith('/calendar/author/') && manager.active && $page.url.pathname.includes(nip19.npubEncode(manager.active.pubkey))}
 								onclick={(e) => {
-									e.preventDefault();
 									if (manager.active) {
-										handleCalendarSelect(manager.active.pubkey);
+										const npub = nip19.npubEncode(manager.active.pubkey);
+										goto(`/calendar/author/${npub}`);
 									}
 								}}
 							>
@@ -215,7 +222,7 @@
 									<div class="text-sm font-medium">My Events</div>
 									<div class="text-xs text-base-content/60">Events I created</div>
 								</div>
-								{#if selectedCalendarId === manager.active?.pubkey}
+								{#if $page.url.pathname.startsWith('/calendar/author/') && manager.active && $page.url.pathname.includes(nip19.npubEncode(manager.active.pubkey))}
 									<CheckIcon class_="h-4 w-4 text-primary" />
 								{/if}
 							</a>
