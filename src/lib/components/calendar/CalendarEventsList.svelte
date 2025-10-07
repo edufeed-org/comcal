@@ -68,6 +68,22 @@
 		return filtered.sort((/** @type {CalendarEvent} */ a, /** @type {CalendarEvent} */ b) => (a.start || 0) - (b.start || 0));
 	});
 
+	// Current timestamp for comparison
+	let now = $derived(Date.now());
+
+	// Upcoming events (start time is in the future)
+	let upcomingEvents = $derived.by(() => {
+		return filteredEvents.filter((/** @type {CalendarEvent} */ event) => event.start * 1000 >= now);
+		// Already sorted chronologically (earliest first) from filteredEvents
+	});
+
+	// Past events (start time is in the past)
+	let pastEvents = $derived.by(() => {
+		const past = filteredEvents.filter((/** @type {CalendarEvent} */ event) => event.start * 1000 < now);
+		// Sort in reverse chronological order (most recent first)
+		return past.reverse();
+	});
+
 	/**
 	 * Handle event click
 	 * @param {CalendarEvent} event
@@ -142,70 +158,173 @@
 		</div>
 	{/if}
 
-	<!-- Events List -->
-	{#if filteredEvents.length > 0}
-		<div class="grid gap-4">
-			{#each filteredEvents as event (event.id)}
-				<div class="card bg-base-100 border border-base-300 shadow-sm hover:shadow-md transition-shadow">
-					<div class="card-body p-4">
-						<div class="flex items-start justify-between gap-4">
-							<div class="flex-1 min-w-0">
-								<h3 class="card-title text-base font-semibold text-base-content mb-2">
-									{event.title}
-								</h3>
-								
-								<div class="flex items-center gap-4 text-sm text-base-content/70 mb-2">
-									<div class="flex items-center gap-1">
-										<CalendarIcon class_="w-4 h-4" />
-										<span>{formatEventDate(event)}</span>
+	<!-- Upcoming Events Section -->
+	<section class="space-y-4">
+		<div class="flex items-center justify-between">
+			<h3 class="text-lg font-semibold text-base-content">
+				Upcoming Events ({upcomingEvents.length})
+			</h3>
+		</div>
+		
+		{#if upcomingEvents.length > 0}
+			<div class="grid gap-4">
+				{#each upcomingEvents as event (event.id)}
+					<div class="card bg-base-100 border border-base-300 shadow-sm hover:shadow-md transition-shadow">
+						<div class="card-body p-4">
+							<div class="flex items-start justify-between gap-4">
+								<div class="flex-1 min-w-0">
+									<h3 class="card-title text-base font-semibold text-base-content mb-2">
+										{event.title}
+									</h3>
+									
+									<div class="flex items-center gap-4 text-sm text-base-content/70 mb-2">
+										<div class="flex items-center gap-1">
+											<CalendarIcon class_="w-4 h-4" />
+											<span>{formatEventDate(event)}</span>
+										</div>
+										
+										<div class="flex items-center gap-1">
+											<ClockIcon class_="w-4 h-4" />
+											<span>{formatEventTime(event)}</span>
+										</div>
 									</div>
 									
-									<div class="flex items-center gap-1">
-										<ClockIcon class_="w-4 h-4" />
-										<span>{formatEventTime(event)}</span>
+									{#if event.summary}
+										<p class="text-sm text-base-content/80 line-clamp-2 mb-2">
+											{event.summary}
+										</p>
+									{/if}
+									
+									<div class="flex items-center gap-2 text-xs text-base-content/60">
+										<span class="badge badge-outline badge-xs">
+											{event.kind === 31922 ? 'Date Event' : 'Time Event'}
+										</span>
+										<span>Created {new Date(event.createdAt * 1000).toLocaleDateString()}</span>
 									</div>
 								</div>
 								
-								{#if event.summary}
-									<p class="text-sm text-base-content/80 line-clamp-2 mb-2">
-										{event.summary}
-									</p>
+								{#if event.image}
+									<div class="flex-shrink-0">
+										<img 
+											src={event.image} 
+											alt={event.title}
+											class="w-16 h-16 object-cover rounded-lg"
+											loading="lazy"
+										/>
+									</div>
 								{/if}
-								
-								<div class="flex items-center gap-2 text-xs text-base-content/60">
-									<span class="badge badge-outline badge-xs">
-										{event.kind === 31922 ? 'Date Event' : 'Time Event'}
-									</span>
-									<span>Created {new Date(event.createdAt * 1000).toLocaleDateString()}</span>
-								</div>
 							</div>
 							
-							{#if event.image}
-								<div class="flex-shrink-0">
-									<img 
-										src={event.image} 
-										alt={event.title}
-										class="w-16 h-16 object-cover rounded-lg"
-										loading="lazy"
-									/>
-								</div>
-							{/if}
-						</div>
-						
-						<div class="card-actions justify-end mt-3">
-							<button 
-								class="btn btn-primary btn-sm"
-								onclick={() => handleEventClick(event)}
-							>
-								View Details
-							</button>
+							<div class="card-actions justify-end mt-3">
+								<button 
+									class="btn btn-primary btn-sm"
+									onclick={() => handleEventClick(event)}
+								>
+									View Details
+								</button>
+							</div>
 						</div>
 					</div>
+				{/each}
+			</div>
+		{:else if !loading}
+			<!-- Empty State for Upcoming Events -->
+			<div class="text-center py-8">
+				<div class="mb-3 text-base-content/30">
+					<CalendarIcon class_="h-12 w-12 mx-auto" />
 				</div>
-			{/each}
+				<p class="text-base-content/60">No upcoming events scheduled</p>
+			</div>
+		{/if}
+	</section>
+
+	<!-- Divider -->
+	{#if filteredEvents.length > 0}
+		<div class="divider"></div>
+	{/if}
+
+	<!-- Past Events Section -->
+	<section class="space-y-4">
+		<div class="flex items-center justify-between">
+			<h3 class="text-lg font-semibold text-base-content">
+				Past Events ({pastEvents.length})
+			</h3>
 		</div>
-	{:else if !loading}
-		<!-- Empty State -->
+		
+		{#if pastEvents.length > 0}
+			<div class="grid gap-4">
+				{#each pastEvents as event (event.id)}
+					<div class="card bg-base-100 border border-base-300 shadow-sm hover:shadow-md transition-shadow">
+						<div class="card-body p-4">
+							<div class="flex items-start justify-between gap-4">
+								<div class="flex-1 min-w-0">
+									<h3 class="card-title text-base font-semibold text-base-content mb-2">
+										{event.title}
+									</h3>
+									
+									<div class="flex items-center gap-4 text-sm text-base-content/70 mb-2">
+										<div class="flex items-center gap-1">
+											<CalendarIcon class_="w-4 h-4" />
+											<span>{formatEventDate(event)}</span>
+										</div>
+										
+										<div class="flex items-center gap-1">
+											<ClockIcon class_="w-4 h-4" />
+											<span>{formatEventTime(event)}</span>
+										</div>
+									</div>
+									
+									{#if event.summary}
+										<p class="text-sm text-base-content/80 line-clamp-2 mb-2">
+											{event.summary}
+										</p>
+									{/if}
+									
+									<div class="flex items-center gap-2 text-xs text-base-content/60">
+										<span class="badge badge-outline badge-xs">
+											{event.kind === 31922 ? 'Date Event' : 'Time Event'}
+										</span>
+										<span>Created {new Date(event.createdAt * 1000).toLocaleDateString()}</span>
+									</div>
+								</div>
+								
+								{#if event.image}
+									<div class="flex-shrink-0">
+										<img 
+											src={event.image} 
+											alt={event.title}
+											class="w-16 h-16 object-cover rounded-lg"
+											loading="lazy"
+										/>
+									</div>
+								{/if}
+							</div>
+							
+							<div class="card-actions justify-end mt-3">
+								<button 
+									class="btn btn-primary btn-sm"
+									onclick={() => handleEventClick(event)}
+								>
+									View Details
+								</button>
+							</div>
+						</div>
+					</div>
+				{/each}
+			</div>
+		{:else if !loading}
+			<!-- Empty State for Past Events -->
+			<div class="text-center py-8">
+				<div class="mb-3 text-base-content/30">
+					<CalendarIcon class_="h-12 w-12 mx-auto" />
+				</div>
+				<p class="text-base-content/60">No past events found</p>
+			</div>
+		{/if}
+	</section>
+
+	<!-- Global Empty State (when no events at all) -->
+	{#if filteredEvents.length === 0 && !loading}
 		<div class="text-center py-12">
 			<div class="mb-4 text-base-content/30">
 				<CalendarIcon class_="h-16 w-16 mx-auto" />
