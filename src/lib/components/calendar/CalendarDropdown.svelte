@@ -2,9 +2,9 @@
 	import { onMount } from 'svelte';
 	import { eventStore } from '$lib/store.svelte';
 	import { calendarLoader } from '$lib/loaders';
-	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
+	import CalendarCreationModal from './CalendarCreationModal.svelte';
 	import {
 		CalendarIcon,
 		GlobeIcon,
@@ -43,7 +43,10 @@
 	let activeUser = $state(manager.active);
 	let selectedCalendar = $state(calendarStore.selectedCalendar);
 	let selectedCalendarId = $derived(selectedCalendar?.id || '');
-	let personalCalendars = $state([])
+	let personalCalendars = $state(/** @type {CalendarEvent[]} */ ([]));
+
+	// Calendar modal state
+	let isCalendarModalOpen = $state(false);
 
 	// subs
 	let calendarSubscription = $state();
@@ -144,7 +147,16 @@
 	}
 
 	function handleCreateCalendar() {
-		modalStore.openModal('createCalendar');
+		isCalendarModalOpen = true;
+	}
+
+	function handleCalendarModalClose() {
+		isCalendarModalOpen = false;
+	}
+
+	function handleCalendarCreated() {
+		// Refresh calendar list after creation
+		loadUserCalendars();
 	}
 
 	async function handleRefresh() {
@@ -337,3 +349,10 @@
 		</li>
 	</ul>
 </div>
+
+<!-- Calendar Creation Modal -->
+<CalendarCreationModal
+	isOpen={isCalendarModalOpen}
+	onClose={handleCalendarModalClose}
+	onCalendarCreated={handleCalendarCreated}
+/>

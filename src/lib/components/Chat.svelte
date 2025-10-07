@@ -294,23 +294,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	/* Custom scrollbar for chat container */
-	.overflow-y-auto::-webkit-scrollbar {
-		width: 6px;
-	}
-
-	.overflow-y-auto::-webkit-scrollbar-track {
-		background: transparent;
-	}
-
-	.overflow-y-auto::-webkit-scrollbar-thumb {
-		background: hsl(var(--bc) / 0.3);
-		border-radius: 3px;
-	}
-
-	.overflow-y-auto::-webkit-scrollbar-thumb:hover {
-		background: hsl(var(--bc) / 0.5);
-	}
-</style>

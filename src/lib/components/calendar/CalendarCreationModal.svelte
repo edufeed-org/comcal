@@ -7,10 +7,12 @@
 
 	/**
 	 * @typedef {Object} Props
-	 * @property {string} [modalId] - Unique ID for the modal dialog
+	 * @property {boolean} isOpen - Whether the modal is open
+	 * @property {() => void} onClose - Callback when modal closes
+	 * @property {() => void} [onCalendarCreated] - Optional callback when calendar is created
 	 */
 
-	let { modalId = 'calendar-creation-modal' } = $props();
+	let { isOpen = false, onClose, onCalendarCreated } = $props();
 
 	// Form state
 	let title = $state('');
@@ -56,6 +58,11 @@
 					await calendarManagement.refresh();
 				}
 
+				// Call optional success callback
+				if (onCalendarCreated) {
+					onCalendarCreated();
+				}
+
 				handleClose();
 			} else {
 				error = 'Failed to create calendar';
@@ -78,8 +85,8 @@
 		error = '';
 		isSubmitting = false;
 
-		// Close modal
-		modalStore.closeModal();
+		// Call close callback
+		onClose();
 	}
 
 	/**
@@ -94,16 +101,16 @@
 	}
 </script>
 
-<!-- svelte-ignore a11y-click-events-have-key-events -->
-<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-<dialog
-	id={modalId}
-	class="modal"
-	onclick={(e) => {
-		if (e.target === e.currentTarget) handleClose();
-	}}
->
-	<div class="modal-box max-w-md">
+{#if isOpen}
+	<!-- svelte-ignore a11y-click-events-have-key-events -->
+	<!-- svelte-ignore a11y-no-static-element-interactions -->
+	<div
+		class="modal modal-open"
+		onclick={(e) => {
+			if (e.target === e.currentTarget) handleClose();
+		}}
+	>
+		<div class="modal-box max-w-md">
 		<!-- Modal Header -->
 		<div class="flex items-center justify-between mb-6">
 			<h3 class="text-lg font-bold text-base-content">Create New Calendar</h3>
@@ -182,5 +189,6 @@
 				</button>
 			</div>
 		</form>
+		</div>
 	</div>
-</dialog>
+{/if}

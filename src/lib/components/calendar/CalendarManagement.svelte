@@ -1,8 +1,8 @@
 <script>
 	import { useCalendarManagement } from '$lib/stores/calendar-management-store.svelte.js';
 	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
-	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
+	import CalendarCreationModal from '$lib/components/calendar/CalendarCreationModal.svelte';
 	import { EventFactory } from 'applesauce-factory';
 	import { publishEvent } from '$lib/helpers/publisher.js';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
@@ -34,6 +34,9 @@
 	let deletingCalendarId = $state(/** @type {string | null} */ (null));
 	let isDeleting = $state(false);
 	let deleteError = $state(/** @type {string | null} */ (null));
+
+	// Calendar modal state
+	let isCalendarModalOpen = $state(false);
 
 	/**
 	 * Start editing a calendar
@@ -191,7 +194,24 @@
 	 * Handle create new calendar
 	 */
 	function handleCreateCalendar() {
-		modalStore.openModal('createCalendar');
+		isCalendarModalOpen = true;
+	}
+
+	/**
+	 * Handle calendar modal close
+	 */
+	function handleCalendarModalClose() {
+		isCalendarModalOpen = false;
+	}
+
+	/**
+	 * Handle calendar created
+	 */
+	function handleCalendarCreated() {
+		// Refresh calendar list after creation
+		if (calendarManagement) {
+			calendarManagement.refresh();
+		}
 	}
 
 	/**
@@ -637,10 +657,17 @@
 											</button>
 										</div>
 									</div>
-								</div>
-							</div>
-						{/if}
-					</div>
+			</div>
+		</div>
+	{/if}
+</div>
+
+<!-- Calendar Creation Modal -->
+<CalendarCreationModal
+	isOpen={isCalendarModalOpen}
+	onClose={handleCalendarModalClose}
+	onCalendarCreated={handleCalendarCreated}
+/>
 				</div>
 			{/each}
 		</div>

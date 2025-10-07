@@ -4,7 +4,6 @@
 	import LoginWithPrivateKey from './LoginWithPrivateKey.svelte';
 	import SignupModal from './SignupModal.svelte';
 	import CalendarEventDetailsModal from './calendar/CalendarEventDetailsModal.svelte';
-	import CalendarCreationModal from './calendar/CalendarCreationModal.svelte';
 	import CreateCommunityModal from './CreateCommunityModal.svelte';
 	import WebcalQRCodeModal from './calendar/WebcalQRCodeModal.svelte';
 
@@ -29,7 +28,6 @@
 	const loginModalId = 'global-login-modal';
 	const privateKeyModalId = 'global-private-key-modal';
 	const signupModalId = 'global-signup-modal';
-	const calendarCreationModalId = 'calendar-creation-modal';
 	const createCommunityModalId = 'create-community-modal';
 
 	/**
@@ -45,7 +43,6 @@
 			const loginModal = /** @type {HTMLDialogElement} */ (document.getElementById(loginModalId));
 			const privateKeyModal = /** @type {HTMLDialogElement} */ (document.getElementById(privateKeyModalId));
 			const signupModal = /** @type {HTMLDialogElement} */ (document.getElementById(signupModalId));
-			const calendarCreationModal = /** @type {HTMLDialogElement} */ (document.getElementById(calendarCreationModalId));
 			const createCommunityModal = /** @type {HTMLDialogElement} */ (document.getElementById(createCommunityModalId));
 
 			if (loginModal && loginModal.open) {
@@ -59,10 +56,6 @@
 			if (signupModal && signupModal.open) {
 				console.log('ModalManager: Closing signup modal');
 				signupModal.close();
-			}
-			if (calendarCreationModal && calendarCreationModal.open) {
-				console.log('ModalManager: Closing calendar creation modal');
-				calendarCreationModal.close();
 			}
 			if (createCommunityModal && createCommunityModal.open) {
 				console.log('ModalManager: Closing create community modal');
@@ -88,13 +81,6 @@
 			if (signupModal && !signupModal.open) {
 				console.log('ModalManager: Opening signup modal');
 				signupModal.showModal();
-			}
-		} else if (currentModal === 'createCalendar') {
-			// Open calendar creation modal
-			const calendarCreationModal = /** @type {HTMLDialogElement} */ (document.getElementById(calendarCreationModalId));
-			if (calendarCreationModal && !calendarCreationModal.open) {
-				console.log('ModalManager: Opening calendar creation modal');
-				calendarCreationModal.showModal();
 			}
 		} else if (currentModal === 'createCommunity') {
 			// Open create community modal
@@ -148,8 +134,6 @@
 	/>
 {:else if modal.activeModal === 'eventDetails'}
 	<CalendarEventDetailsModal />
-{:else if modal.activeModal === 'createCalendar'}
-	<CalendarCreationModal modalId={calendarCreationModalId} />
 {:else if modal.activeModal === 'createCommunity'}
 	<CreateCommunityModal modalId={createCommunityModalId} />
 {:else if modal.activeModal === 'webcalQRCode'}
