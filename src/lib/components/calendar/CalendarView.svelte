@@ -239,7 +239,7 @@
 	<div class="border-b border-base-300 bg-base-200 px-6 py-4">
 		<div class="flex items-center justify-between">
 			<div class="flex items-center gap-4">
-				<CalendarDropdown />
+				<CalendarDropdown currentCalendar={calendar} />
 			</div>
 			<div class="flex items-center gap-3">
 				<button

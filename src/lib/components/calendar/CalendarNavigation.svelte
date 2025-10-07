@@ -177,37 +177,32 @@
 		</div>
 	</div>
 
-	<!-- Calendar View Mode Selector (only show for calendar presentation) -->
-	{#if presentationViewMode === 'calendar'}
-		<div class="join">
-			<button
-				class="btn join-item btn-sm"
-				class:btn-outline={viewMode !== 'month'}
-				class:btn-primary={viewMode === 'month'}
-				onclick={() => handleViewModeClick('month')}
-			>
-				Month
-			</button>
-			<button
-				class="btn join-item btn-sm"
-				class:btn-outline={viewMode !== 'week'}
-				class:btn-primary={viewMode === 'week'}
-				onclick={() => handleViewModeClick('week')}
-			>
-				Week
-			</button>
-			<button
-				class="btn join-item btn-sm"
-				class:btn-outline={viewMode !== 'day'}
-				class:btn-primary={viewMode === 'day'}
-				onclick={() => handleViewModeClick('day')}
-			>
-				Day
-			</button>
-		</div>
-	{:else}
-		<!-- Placeholder to maintain layout -->
-		<div></div>
-	{/if}
+	<!-- Calendar View Mode Selector -->
+	<div class="join">
+		<button
+			class="btn join-item btn-sm"
+			class:btn-outline={viewMode !== 'month'}
+			class:btn-primary={viewMode === 'month'}
+			onclick={() => handleViewModeClick('month')}
+		>
+			Month
+		</button>
+		<button
+			class="btn join-item btn-sm"
+			class:btn-outline={viewMode !== 'week'}
+			class:btn-primary={viewMode === 'week'}
+			onclick={() => handleViewModeClick('week')}
+		>
+			Week
+		</button>
+		<button
+			class="btn join-item btn-sm"
+			class:btn-outline={viewMode !== 'day'}
+			class:btn-primary={viewMode === 'day'}
+			onclick={() => handleViewModeClick('day')}
+		>
+			Day
+		</button>
+	</div>
 	<AddToCalendarButton />
 </div>

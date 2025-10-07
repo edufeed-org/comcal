@@ -34,6 +34,9 @@
 	 * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
 	 */
 
+	// Props
+	let { currentCalendar = null } = $props();
+
 	let calendars = $state(/** @type {CalendarEvent[]} */ ([]));
 	let loading = $state(false);
 	let error = $state(/** @type {string | null} */ (null));
@@ -45,20 +48,45 @@
 	// subs
 	let calendarSubscription = $state();
 
+	// Auto-select calendar when personal calendars load and currentCalendar matches
+	$effect(() => {
+		if (currentCalendar && personalCalendars.length > 0 && manager.active) {
+			// Check if current calendar is one of the user's personal calendars
+			const matchingCalendar = personalCalendars.find(cal => cal.id === currentCalendar.id);
+			if (matchingCalendar && selectedCalendarId !== matchingCalendar.id) {
+				console.log('📅 CalendarDropdown: Auto-selecting matching calendar:', matchingCalendar.title);
+				calendarStore.setSelectedCalendar(matchingCalendar);
+			}
+		}
+	});
+
 	let displayName = $derived.by(() => {
+		// If viewing a specific calendar (via currentCalendar prop), show its name
+		if (currentCalendar) {
+			// Check if it's the user's own calendar
+			if (manager.active && currentCalendar.pubkey === manager.active.pubkey) {
+				return currentCalendar.title || 'My Calendar';
+			}
+			// External calendar
+			return currentCalendar.title || 'Calendar';
+		}
+
+		// Not logged in
 		if (!activeUser) {
 			return 'Log in to manage your calendars';
 		}
 
+		// No calendar selected - show global
 		if (!selectedCalendar) {
 			return 'Global Calendar';
 		}
 
+		// "My Events" filter selected
 		if (manager.active && selectedCalendarId === manager.active.pubkey) {
 			return 'My Events';
 		}
 
-		// Calendar selected - show its title
+		// Personal calendar selected - show its title
 		const cal = selectedCalendar;
 		return cal ? cal.title : 'Select Calendar';
 	});
@@ -124,20 +152,18 @@
 	}
 </script>
 
-<!-- Always show dropdown with different content based on login state -->
+<!-- Show dropdown only when logged in, otherwise show static title -->
 <div class="flex-none">
 	<ul class="menu menu-horizontal px-1">
 		<li>
-			<details class="dropdown">
-				<summary
-					class="btn gap-2 text-xl font-semibold text-base-content btn-ghost"
-					class:opacity-50={!activeUser}
-					class:cursor-not-allowed={!activeUser}
-				>
-					<!-- Calendar Icon -->
-					<CalendarIcon class_="h-5 w-5" />
-					{displayName}
-				</summary>
+			{#if activeUser}
+				<!-- Logged in: Show interactive dropdown -->
+				<details class="dropdown">
+					<summary class="btn gap-2 text-xl font-semibold text-base-content btn-ghost">
+						<!-- Calendar Icon -->
+						<CalendarIcon class_="h-5 w-5" />
+						{displayName}
+					</summary>
 				<ul
 					class="dropdown-content menu z-[1] rounded-box border border-base-300 bg-base-100 p-2 shadow-lg"
 				>
@@ -146,7 +172,7 @@
 						<a
 							href="/calendar"
 							class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-base-200"
-							class:active={!selectedCalendarId}
+							class:active={!selectedCalendarId && !currentCalendar}
 							onclick={(e) => {
 								handleCalendarSelect('');
 							}}
@@ -156,7 +182,7 @@
 								<div class="text-sm font-medium">Global Calendar</div>
 								<div class="text-xs text-base-content/60">All community events</div>
 							</div>
-							{#if !selectedCalendarId}
+							{#if !selectedCalendarId && !currentCalendar}
 								<CheckIcon class_="h-4 w-4 text-primary" />
 							{/if}
 						</a>
@@ -299,8 +325,15 @@
 							</div>
 						</li>
 					{/if}
-				</ul>
-			</details>
+					</ul>
+				</details>
+			{:else}
+				<!-- Not logged in: Show static title (no dropdown) -->
+				<div class="flex gap-2 px-4 py-2 text-xl font-semibold text-base-content">
+					<CalendarIcon class_="h-5 w-5" />
+					<span>{displayName}</span>
+				</div>
+			{/if}
 		</li>
 	</ul>
 </div>
