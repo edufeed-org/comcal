@@ -6,6 +6,11 @@
 <script>
 	import { validateEventForm, getCurrentTimezone } from '../../helpers/calendar.js';
 	import { useCalendarActions } from '../../stores/calendar-actions.svelte.js';
+	import { useCalendarManagement } from '../../stores/calendar-management-store.svelte.js';
+	import { useJoinedCommunitiesList } from '../../stores/joined-communities-list.svelte.js';
+	import { manager } from '../../accounts.svelte.js';
+	import CalendarSelector from './CalendarSelector.svelte';
+	import CommunitySelector from './CommunitySelector.svelte';
 	import { CloseIcon } from '../icons';
 
 	/**
@@ -13,20 +18,13 @@
 	 * @typedef {import('../../types/calendar.js').EventType} EventType
 	 */
 
-	/** @type {boolean} */
-	export let isOpen = false;
-	
-	/** @type {string} */
-	export let communityPubkey;
-	
-	/** @type {Date | null} */
-	export let selectedDate = null;
-	
-	/** @type {function(): void} */
-	export let onClose = () => {};
-	
-	/** @type {function(): void} */
-	export let onEventCreated = () => {};
+	let {
+		isOpen = false,
+		communityPubkey,
+		selectedDate = null,
+		onClose = () => {},
+		onEventCreated = () => {}
+	} = $props();
 
 	// Get calendar actions
 	const calendarActions = useCalendarActions(communityPubkey);
@@ -52,10 +50,32 @@
 	let isSubmitting = false;
 	let submitError = '';
 
+	// Reactive user state
+	let activeUser = $state(manager.active);
+	$effect(() => {
+		const subscription = manager.active$.subscribe((user) => {
+			activeUser = user;
+		});
+		return () => subscription.unsubscribe();
+	});
+
+	// Get calendar management and joined communities for authenticated user
+	let calendarManagement = $derived(activeUser ? useCalendarManagement(activeUser.pubkey) : null);
+	const getJoinedCommunities = useJoinedCommunitiesList();
+	const joinedCommunities = $derived(getJoinedCommunities());
+
+	// Calendar and community selection state
+	let selectedCalendarIds = $state(/** @type {string[]} */ ([]));
+	let selectedCommunityIds = $state(/** @type {string[]} */ ([]));
+
 	// Initialize form when modal opens
-	$: if (isOpen) {
-		initializeForm();
-	}
+	$effect(() => {
+		if (isOpen) {
+			initializeForm();
+			selectedCalendarIds = [];
+			selectedCommunityIds = [];
+		}
+	});
 
 	/**
 	 * Initialize form with default values
@@ -128,7 +148,30 @@
 		submitError = '';
 
 		try {
-			await calendarActions.createEvent(formData, communityPubkey);
+			// Create the calendar event
+			const createdEvent = /** @type {any} */ (await calendarActions.createEvent(formData, communityPubkey));
+			
+			// Only proceed with calendar/community operations if event was created successfully
+			if (createdEvent && createdEvent.id) {
+				// Add event to selected calendars (event already has dTag from createEvent)
+				if (calendarManagement && selectedCalendarIds.length > 0) {
+					await Promise.all(
+						selectedCalendarIds.map(calendarId =>
+							calendarManagement.addEventToCalendar(calendarId, createdEvent)
+						)
+					);
+				}
+				
+				// Share event with selected communities
+				if (selectedCommunityIds.length > 0) {
+					await Promise.all(
+						selectedCommunityIds.map(communityPubkey =>
+							calendarActions.createTargetedPublication(createdEvent.id, communityPubkey)
+						)
+					);
+				}
+			}
+			
 			onEventCreated();
 			handleClose();
 		} catch (error) {
@@ -341,6 +384,33 @@
 							placeholder="https://example.com/image.jpg"
 						/>
 					</div>
+
+					<!-- Calendar Selection (Optional) -->
+					{#if activeUser && calendarManagement && calendarManagement.calendars.length > 0}
+						<div class="mb-4 border-t border-base-300 pt-4">
+							<h3 class="mb-2 text-sm font-semibold text-base-content">Add to My Calendars (Optional)</h3>
+							<CalendarSelector 
+								calendars={calendarManagement.calendars}
+								bind:selectedCalendarIds={selectedCalendarIds}
+								title="Select Calendars"
+								showSelectAll={true}
+							/>
+						</div>
+					{/if}
+
+					<!-- Community Selection (Optional) -->
+					{#if activeUser && joinedCommunities.length > 0}
+						<div class="mb-4 border-t border-base-300 pt-4">
+							<h3 class="mb-2 text-sm font-semibold text-base-content">Share with Communities (Optional)</h3>
+							<CommunitySelector 
+								communities={joinedCommunities}
+								bind:selectedCommunityIds={selectedCommunityIds}
+								communitiesWithShares={new Set()}
+								title="Select Communities"
+								showSelectAll={true}
+							/>
+						</div>
+					{/if}
 
 					<!-- Validation Errors -->
 					{#if validationErrors.length > 0}

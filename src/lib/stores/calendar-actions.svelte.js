@@ -7,6 +7,7 @@ import { EventFactory } from 'applesauce-factory';
 import { pool, relays } from '$lib/store.svelte';
 import { manager } from '$lib/accounts.svelte';
 import { validateEventForm, convertFormDataToEvent, createEventTargetingTags } from '../helpers/calendar.js';
+import { calendarStore } from './calendar-events.svelte.js';
 
 /**
  * @typedef {import('../types/calendar.js').CalendarEvent} CalendarEvent
@@ -25,7 +26,7 @@ export function createCalendarActions(communityPubkey) {
 		 * Create a new calendar event
 		 * @param {EventFormData} formData - Event form data
 		 * @param {string} targetCommunityPubkey - Target community public key
-		 * @returns {Promise<void>}
+		 * @returns {Promise<any>}
 		 */
 		async createEvent(formData, targetCommunityPubkey) {
 			// Validate form data
@@ -44,11 +45,17 @@ export function createCalendarActions(communityPubkey) {
 			const eventData = convertFormDataToEvent(formData, targetCommunityPubkey);
 
 			try {
+				// Generate unique d-tag for the calendar event
+				const dTag = `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+				
 				// Create the calendar event using EventFactory
 				const eventFactory = new EventFactory();
 				
 				// Build event template with tags
 				const tags = [];
+				
+				// Add d-tag for addressable/replaceable event
+				tags.push(['d', dTag]);
 				
 				// Add calendar-specific tags
 				tags.push(['title', eventData.title]);
@@ -77,11 +84,9 @@ export function createCalendarActions(communityPubkey) {
 					tags.push(['image', eventData.image]);
 				}
 
-				// Add locations
-				if (eventData.locations) {
-					eventData.locations.forEach(location => {
-						if (location) tags.push(['location', location]);
-					});
+				// Add location
+				if (eventData.location) {
+					tags.push(['location', eventData.location]);
 				}
 
 				// Add hashtags
@@ -113,8 +118,19 @@ export function createCalendarActions(communityPubkey) {
 				const calendarEvent = await currentAccount.signEvent(eventTemplate);
 				await pool.publish(relays, calendarEvent);
 
-				// Create targeting event to associate with community
-				await this.createTargetedPublication(calendarEvent.id, targetCommunityPubkey);
+				// Add dTag property to the event object for calendar management
+				const eventWithDTag = {
+					...calendarEvent,
+					dTag: dTag
+				};
+
+				// Add the created event to the calendar store for immediate UI update
+				// Type assertion since the event object will be enriched by the calendar loader
+				calendarStore.setEvents([...calendarStore.events, /** @type {any} */ (eventWithDTag)]);
+				console.log('📅 Calendar Actions: Added created event to store');
+
+				// Return the created event so caller can handle sharing/adding to calendars
+				return eventWithDTag;
 
 			} catch (error) {
 				console.error('Error creating calendar event:', error);
