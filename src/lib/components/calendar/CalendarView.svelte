@@ -172,6 +172,16 @@
 	 * Load events from EventStore using TimelineModel (default approach)
 	 */
 	function loadEventsFromEventStore() {
+		// Clear events array first
+		events = [];
+		
+		// Unsubscribe from relay subscription if it exists (prevents interference)
+		if (relaySubscription) {
+			console.log('📅 CalendarView: Stopping relay subscription for default loading');
+			relaySubscription.unsubscribe();
+			relaySubscription = null;
+		}
+		
 		// Restart background loader if not running (for default/unfiltered behavior)
 		if (!backgroundLoaderSubscription) {
 			console.log('📅 CalendarView: Restarting background loader');
@@ -239,6 +249,14 @@
 		} else {
 			// Default: use EventStore model
 			console.log('📅 CalendarView: Loading author events from EventStore');
+			
+			// Unsubscribe from relay subscription if it exists (prevents interference)
+			if (relaySubscription) {
+				console.log('📅 CalendarView: Stopping relay subscription for author EventStore loading');
+				relaySubscription.unsubscribe();
+				relaySubscription = null;
+			}
+			
 			const filter = { kinds: [31922, 31923], authors: [pubkey], limit: 50 };
 			
 			eventStore.model(TimelineModel, filter).subscribe((timeline) => {
