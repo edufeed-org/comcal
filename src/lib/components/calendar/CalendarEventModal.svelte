@@ -174,6 +174,7 @@
 		onclick={handleBackdropClick}
 		onkeydown={handleKeydown}
 		role="dialog"
+		tabindex="-1"
 		aria-modal="true"
 		aria-labelledby="modal-title"
 	>
@@ -196,8 +197,8 @@
 			<form onsubmit={handleSubmit}>
 				<!-- Event Type Selector -->
 				<div class="mb-4">
-					<label class="block text-sm font-medium text-base-content mb-1">Event Type</label>
-					<div class="flex bg-base-200 rounded-lg p-1">
+					<span class="block text-sm font-medium text-base-content mb-1">Event Type</span>
+					<div class="flex bg-base-200 rounded-lg p-1" role="group" aria-label="Event Type">
 						<button
 							type="button"
 							class="flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 {formData.eventType === 'date' ? 'bg-base-100 text-primary shadow-sm' : 'text-base-content/60 hover:text-base-content hover:bg-base-300'}"
@@ -299,8 +300,8 @@
 
 					<!-- Locations -->
 					<div class="mb-4">
-						<label class="block text-sm font-medium text-base-content mb-1">Locations</label>
-						{#each formData.locations as location, index}
+						<span class="block text-sm font-medium text-base-content mb-1">Locations</span>
+						{#each formData.locations as _, index}
 							<div class="flex gap-2 mb-2">
 								<input
 									type="text"

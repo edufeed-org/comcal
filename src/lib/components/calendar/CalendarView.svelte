@@ -73,11 +73,32 @@
 			return;
 		}
 
+		// Unsubscribe from existing subscriptions to prevent event duplication
+		if (relaySubscription) {
+			console.log('📅 CalendarView: Stopping relay subscription for calendar-specific loading');
+			relaySubscription.unsubscribe();
+			relaySubscription = null;
+		}
+		if (backgroundLoaderSubscription) {
+			console.log('📅 CalendarView: Stopping background loader for calendar-specific loading');
+			backgroundLoaderSubscription.unsubscribe();
+			backgroundLoaderSubscription = null;
+		}
+
 		loading.loading = true;
 		events = [];
+		
+		// Use Map to deduplicate events by ID
+		const eventMap = new Map();
+		
 		calendar.eventReferences.forEach(
 			(/** @type {string} */ addressRef, /** @type {number} */ index) => {
 				const parsed = parseAddressReference(addressRef);
+
+				if (!parsed) {
+					console.warn('📅 CalendarView: Invalid address reference:', addressRef);
+					return;
+				}
 
 				console.log(
 					`📅 CalendarView: Attempting to load event ${index + 1}/${calendar.eventReferences.length}:`,
@@ -95,7 +116,16 @@
 						getCalendarEventTitle(event)
 					);
 					const calendarEvent = getCalendarEventMetadata(event);
-					events.push(calendarEvent);
+					
+					// Deduplicate by event ID
+					if (!eventMap.has(calendarEvent.id)) {
+						eventMap.set(calendarEvent.id, calendarEvent);
+						// Update events array reactively
+						events = Array.from(eventMap.values());
+						console.log(`📅 CalendarView: Added unique event, total: ${events.length}`);
+					} else {
+						console.log(`📅 CalendarView: Skipped duplicate event:`, calendarEvent.id);
+					}
 				});
 			}
 		);
