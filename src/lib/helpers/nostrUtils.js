@@ -28,7 +28,7 @@ export const fetchEventById = async (
             pubkey: data.pubkey,
             identifier: data.identifier
           });
-          const event = await firstValueFrom(event$);
+          const event = await firstValueFrom(event$, { defaultValue: null });
           return event || null;
         } else {
           throw new Error("Invalid naddr format");
@@ -44,7 +44,7 @@ export const fetchEventById = async (
         if (decoded.type === "note") {
           // Use eventLoader for event IDs
           const event$ = eventLoader({ id: decoded.data });
-          const event = await firstValueFrom(event$);
+          const event = await firstValueFrom(event$, { defaultValue: null });
           return event || null;
         } else {
           throw new Error("Invalid note format");
@@ -57,7 +57,7 @@ export const fetchEventById = async (
       // Assume it's a raw event ID - use eventLoader
       try {
         const event$ = eventLoader({ id: identifier });
-        const event = await firstValueFrom(event$);
+        const event = await firstValueFrom(event$, { defaultValue: null });
         return event || null;
       } catch (error) {
         console.error("Error fetching event by ID:", error);
@@ -110,7 +110,7 @@ export const fetchCalendarEvents = async (
         pubkey: pubkey,
         identifier: dTag
       });
-      const event = await firstValueFrom(event$);
+      const event = await firstValueFrom(event$, { defaultValue: null });
 
       if (!event) return null;
 
