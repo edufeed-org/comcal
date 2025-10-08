@@ -27,6 +27,27 @@ export const calendarTimelineLoader = createTimelineLoader(
 	{ eventStore }
 );
 
+/**
+ * Create a timeline loader for calendar events with custom relay filtering
+ * @param {string[]} customRelays - Array of relay URLs to query. If empty, uses default relays.
+ * @param {Object} additionalFilters - Additional filter parameters (e.g., authors, limit)
+ * @returns {Function} Timeline loader function that returns an Observable
+ */
+export const createRelayFilteredCalendarLoader = (customRelays = [], additionalFilters = {}) => {
+	const relaysToUse = customRelays.length > 0 ? customRelays : relays;
+	
+	return createTimelineLoader(
+		pool,
+		relaysToUse,
+		{
+			kinds: [31922, 31923], // NIP-52 calendar events
+			limit: 50,
+			...additionalFilters
+		},
+		{ eventStore }
+	);
+};
+
 
 // Calendar definition loader for personal calendars
 export const calendarLoader = createTimelineLoader(

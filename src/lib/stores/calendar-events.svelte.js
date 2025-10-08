@@ -29,6 +29,7 @@ class CalendarStore {
 	loading = $state(false);
 	error = $state(/** @type {string | null} */ (null));
 	missingEvents = $state(/** @type {Array<{addressRef: string, reason?: string}>} */ ([]));
+	selectedRelays = $state(/** @type {string[]} */ ([]));
 	
 	// Derived reactive state
 	groupedEvents = $derived(groupEventsByDate(this.events));
@@ -93,6 +94,43 @@ class CalendarStore {
 	}
 	
 	/**
+	 * Set selected relays for filtering
+	 * @param {string[]} relays - Array of relay URLs
+	 */
+	setSelectedRelays(relays) {
+		console.log('📅 CalendarEventsStore: Setting selected relays:', relays);
+		this.selectedRelays = relays;
+	}
+	
+	/**
+	 * Clear selected relays (revert to default)
+	 */
+	clearSelectedRelays() {
+		console.log('📅 CalendarEventsStore: Clearing selected relays');
+		this.selectedRelays = [];
+	}
+	
+	/**
+	 * Add a relay to the selected relays list
+	 * @param {string} relay - Relay URL to add
+	 */
+	addRelay(relay) {
+		if (!this.selectedRelays.includes(relay)) {
+			console.log('📅 CalendarEventsStore: Adding relay:', relay);
+			this.selectedRelays = [...this.selectedRelays, relay];
+		}
+	}
+	
+	/**
+	 * Remove a relay from the selected relays list
+	 * @param {string} relay - Relay URL to remove
+	 */
+	removeRelay(relay) {
+		console.log('📅 CalendarEventsStore: Removing relay:', relay);
+		this.selectedRelays = this.selectedRelays.filter(r => r !== relay);
+	}
+	
+	/**
 	 * Reset all state
 	 */
 	reset() {
@@ -102,6 +140,7 @@ class CalendarStore {
 		this.error = null;
 		this.selectedCalendar$.next(null);
 		this.missingEvents = [];
+		this.selectedRelays = [];
 	}
 	
 }

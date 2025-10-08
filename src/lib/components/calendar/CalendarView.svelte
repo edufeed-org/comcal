@@ -1,17 +1,21 @@
 <script>
 	import { onMount } from 'svelte';
-	import { eventStore } from '$lib/store.svelte';
+	import { eventStore, pool, relays } from '$lib/store.svelte';
 	import { addressLoader, calendarTimelineLoader } from '$lib/loaders.js';
 	import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { calendarStore, loading, cEvents } from '$lib/stores/calendar-events.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
+	import { onlyEvents } from 'applesauce-relay/operators';
+	import { mapEventsToStore, mapEventsToTimeline } from 'applesauce-core/observable';
+	import { map } from 'rxjs';
 
 	// Import existing UI components
 	import CalendarNavigation from '$lib/components/calendar/CalendarNavigation.svelte';
 	import CalendarGrid from '$lib/components/calendar/CalendarGrid.svelte';
 	import CalendarEventModal from '$lib/components/calendar/CalendarEventModal.svelte';
 	import CalendarDropdown from './CalendarDropdown.svelte';
+	import RelaySelector from './RelaySelector.svelte';
 	import SimpleCalendarEventsList from './CalendarEventsList.svelte';
 	import { getCalendarEventMetadata, parseAddressReference } from '$lib/helpers/eventUtils';
 	import { TimelineModel } from 'applesauce-core/models';
@@ -49,9 +53,10 @@
 	let selectedDateForNewEvent = $state(/** @type {Date | null} */ (null));
 
 	// Subscription management
-	let subscription = $state();
+	let relaySubscription = $state();
 	let userSubscription = $state();
 	let calendarSubscription = $state();
+	let backgroundLoaderSubscription = $state();
 
 	/**
 	 * @param {any} calendar - Calendar object with eventReferences
@@ -96,34 +101,158 @@
 		);
 	}
 
-	function loadEvents() {
-		const filter = { kinds: [31922, 31923], limit: 20 };
-		eventStore.model(TimelineModel, filter).subscribe((timeline) => {
-			const mapped = timeline.map(getCalendarEventMetadata);
-			events = mapped;
-		});
-	}
-
 	/**
-	 * Load events created by a specific author
-	 * @param {string} pubkey - The author's public key
+	 * Load events - either from specific relays or using default loader
+	 * @param {string[]} [relays] - Optional relay URLs to use (if not provided, reads from store)
 	 */
-	function loadEventsByAuthor(pubkey) {
-		console.log('📅 CalendarView: Loading events by author:', pubkey);
+	function loadEvents(relays) {
+		// Use provided relays or fall back to store value
+		const selectedRelays = relays !== undefined ? relays : calendarStore.selectedRelays;
+		
 		loading.loading = true;
+		
+		// If relay filtering is active, use pool.subscription with specific relays
+		if (selectedRelays.length > 0) {
+			console.log('📅 CalendarView: Loading events from selected relays:', selectedRelays);
+			loadEventsFromRelays(selectedRelays);
+		} else {
+			// Default behavior: use EventStore model (original working approach)
+			console.log('📅 CalendarView: Loading events using default loaders');
+			loadEventsFromEventStore();
+		}
+	}
+	
+	/**
+	 * Load events from specific relays using pool.subscription
+	 * @param {string[]} relayUrls
+	 */
+	function loadEventsFromRelays(relayUrls) {
 		events = [];
 		
-		const filter = { kinds: [31922, 31923], authors: [pubkey], limit: 50 };
+		// Stop background loader to prevent interference with filtered results
+		if (backgroundLoaderSubscription) {
+			console.log('📅 CalendarView: Stopping background loader for relay filtering');
+			backgroundLoaderSubscription.unsubscribe();
+			backgroundLoaderSubscription = null;
+		}
+		
+		// Unsubscribe from previous relay subscription if exists
+		if (relaySubscription) {
+			relaySubscription.unsubscribe();
+		}
+		
+		// Subscribe to specific relays using pool.subscription()
+		// Using the applesauce pattern with mapEventsToTimeline for proper reactivity
+		relaySubscription = pool
+			.subscription(relayUrls, {
+				kinds: [31922, 31923],
+				limit: 50
+			})
+			.pipe(
+				onlyEvents(), // Filter out EOSE messages
+				mapEventsToStore(eventStore), // Add to EventStore
+				mapEventsToTimeline(), // Collect events into timeline array
+				map((timeline) => [...timeline]) // Duplicate array for Svelte reactivity
+			)
+			.subscribe({
+				next: (timeline) => {
+					console.log('📅 CalendarView: Received timeline with', timeline.length, 'events');
+					// Assign entire timeline at once - triggers Svelte reactivity
+					events = timeline.map(getCalendarEventMetadata);
+					loading.loading = false;
+				},
+				error: (err) => {
+					console.error('📅 CalendarView: Relay subscription error:', err);
+					loading.loading = false;
+				}
+			});
+	}
+	
+	/**
+	 * Load events from EventStore using TimelineModel (default approach)
+	 */
+	function loadEventsFromEventStore() {
+		// Restart background loader if not running (for default/unfiltered behavior)
+		if (!backgroundLoaderSubscription) {
+			console.log('📅 CalendarView: Restarting background loader');
+			backgroundLoaderSubscription = calendarTimelineLoader().subscribe();
+		}
+		
+		const filter = { kinds: [31922, 31923], limit: 50 };
+		
 		eventStore.model(TimelineModel, filter).subscribe((timeline) => {
-			console.log('📅 CalendarView: Loaded', timeline.length, 'events by author');
+			console.log('📅 CalendarView: Loaded', timeline.length, 'events from EventStore');
 			const mapped = timeline.map(getCalendarEventMetadata);
 			events = mapped;
 			loading.loading = false;
 		});
 	}
 
+	/**
+	 * Load events created by a specific author
+	 * @param {string} pubkey - The author's public key
+	 * @param {string[]} [relays] - Optional relay URLs to use (if not provided, reads from store)
+	 */
+	function loadEventsByAuthor(pubkey, relays) {
+		console.log('📅 CalendarView: Loading events by author:', pubkey);
+		loading.loading = true;
+		events = [];
+		
+		// Use provided relays or fall back to store value
+		const selectedRelays = relays !== undefined ? relays : calendarStore.selectedRelays;
+		
+		// If relay filtering is active, use selected relays
+		if (selectedRelays.length > 0) {
+			console.log('📅 CalendarView: Loading author events from selected relays:', selectedRelays);
+			
+			// Unsubscribe from previous subscription if exists
+			if (relaySubscription) {
+				relaySubscription.unsubscribe();
+			}
+			
+			// Subscribe to specific relays with author filter
+			// Using the applesauce pattern with mapEventsToTimeline for proper reactivity
+			relaySubscription = pool
+				.subscription(selectedRelays, {
+					kinds: [31922, 31923],
+					authors: [pubkey],
+					limit: 50
+				})
+				.pipe(
+					onlyEvents(),
+					mapEventsToStore(eventStore),
+					mapEventsToTimeline(), // Collect events into timeline array
+					map((timeline) => [...timeline]) // Duplicate array for Svelte reactivity
+				)
+				.subscribe({
+					next: (timeline) => {
+						console.log('📅 CalendarView: Received timeline with', timeline.length, 'events by author');
+						// Assign entire timeline at once - triggers Svelte reactivity
+						events = timeline.map(getCalendarEventMetadata);
+						loading.loading = false;
+					},
+					error: (err) => {
+						console.error('📅 CalendarView: Relay subscription error:', err);
+						loading.loading = false;
+					}
+				});
+		} else {
+			// Default: use EventStore model
+			console.log('📅 CalendarView: Loading author events from EventStore');
+			const filter = { kinds: [31922, 31923], authors: [pubkey], limit: 50 };
+			
+			eventStore.model(TimelineModel, filter).subscribe((timeline) => {
+				console.log('📅 CalendarView: Loaded', timeline.length, 'events by author from EventStore');
+				const mapped = timeline.map(getCalendarEventMetadata);
+				events = mapped;
+				loading.loading = false;
+			});
+		}
+	}
+
 	onMount(() => {
-		calendarTimelineLoader().subscribe();
+		// Start the default calendar timeline loader (store subscription for later control)
+		backgroundLoaderSubscription = calendarTimelineLoader().subscribe();
 
 		userSubscription = manager.active$.subscribe((user) => {
 			activeUser = user;
@@ -136,33 +265,30 @@
 				console.log('📅 CalendarView: selectedCalendar changed to:', cal?.id);
 			});
 		}
+		
+		// Load events on mount based on initial state
+		// This only runs once on mount, not reactively
+		if (authorPubkey) {
+			console.log('📅 CalendarView: Initial load - events by author:', authorPubkey);
+			loadEventsByAuthor(authorPubkey);
+		} else if (globalMode) {
+			console.log('📅 CalendarView: Initial load - global events');
+			loadEventsFromEventStore(); // Use default approach on initial load
+		} else if (calendar) {
+			console.log('📅 CalendarView: Initial load - calendar:', calendar.title);
+			loadCalendarSpecificEvents(calendar);
+		} else {
+			console.log('📅 CalendarView: Initial load - global events (fallback)');
+			loadEventsFromEventStore(); // Use default approach
+		}
 
 		// Cleanup subscriptions on unmount
 		return () => {
-			subscription?.unsubscribe();
+			relaySubscription?.unsubscribe();
 			userSubscription?.unsubscribe();
 			calendarSubscription?.unsubscribe();
+			backgroundLoaderSubscription?.unsubscribe();
 		};
-	});
-
-	// Effect to handle calendar loading based on props and state
-	$effect(() => {
-		if (authorPubkey) {
-			console.log('📅 CalendarView: Loading events by author:', authorPubkey);
-			loadEventsByAuthor(authorPubkey);
-		} else if (globalMode) {
-			console.log('📅 CalendarView: Loading global events (globalMode=true)');
-			loadEvents();
-		} else if (calendar) {
-			console.log('📅 CalendarView: Loading provided calendar:', calendar.title);
-			loadCalendarSpecificEvents(calendar);
-		} else if (selectedCalendar) {
-			console.log('📅 CalendarView: Loading selected calendar:', selectedCalendar.title);
-			loadCalendarSpecificEvents(selectedCalendar);
-		} else {
-			console.log('📅 CalendarView: Loading global events (fallback)');
-			loadEvents();
-		}
 	});
 
 	function handlePrevious() {
@@ -250,8 +376,29 @@
 		handleRefresh();
 	}
 
-	function handleRefresh() {
-		loadEvents();
+	/**
+	 * Refresh calendar events
+	 * @param {string[]} [relays] - Optional relay URLs to use for filtering
+	 */
+	function handleRefresh(relays) {
+		// Reload with current filters, passing relays if provided
+		if (authorPubkey) {
+			loadEventsByAuthor(authorPubkey, relays);
+		} else if (globalMode || !calendar) {
+			loadEvents(relays);
+		} else if (calendar) {
+			loadCalendarSpecificEvents(calendar);
+		}
+	}
+
+	/**
+	 * Handle relay filter changes
+	 * @param {string[]} relays
+	 */
+	function handleRelayFilterChange(relays) {
+		console.log('📅 CalendarView: Relay filters changed:', relays);
+		// Trigger a refresh with the new relay filters, passing them directly
+		handleRefresh(relays);
 	}
 </script>
 
@@ -265,7 +412,7 @@
 			<div class="flex items-center gap-3">
 				<button
 					class="btn btn-ghost btn-sm"
-					onclick={handleRefresh}
+					onclick={() => handleRefresh()}
 					disabled={loading.loading}
 					aria-label="Refresh calendar"
 				>
@@ -332,6 +479,9 @@
 			</div>
 		</div>
 	{/if}
+
+	<!-- Relay Selector -->
+	<RelaySelector onApplyFilters={handleRelayFilterChange} />
 
 	<!-- Calendar Navigation -->
 	<CalendarNavigation

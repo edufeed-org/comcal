@@ -8,6 +8,16 @@ export const appConfig = {
 		// Week start day: 0 = Sunday, 1 = Monday, 2 = Tuesday, etc.
 		weekStartDay: 1, // Default to Monday
 
+		// Default relays for calendar filtering
+		defaultRelays: [
+			'wss://relay-rpi.edufeed.org',
+			'wss://relay.damus.io',
+			'wss://nos.lol',
+			'wss://relay.nostr.band',
+			'wss://nostr.wine',
+			'wss://relay.snort.social'
+		],
+
 		// Future configuration options can be added here:
 		// timeFormat: '24h', // '12h' or '24h'
 		// defaultView: 'month', // 'month', 'week', or 'day'
