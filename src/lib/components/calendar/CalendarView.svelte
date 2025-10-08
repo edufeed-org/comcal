@@ -16,6 +16,7 @@
 	import CalendarEventModal from '$lib/components/calendar/CalendarEventModal.svelte';
 	import CalendarDropdown from './CalendarDropdown.svelte';
 	import RelaySelector from './RelaySelector.svelte';
+	import TagSelector from './TagSelector.svelte';
 	import SimpleCalendarEventsList from './CalendarEventsList.svelte';
 	import { getCalendarEventMetadata, parseAddressReference } from '$lib/helpers/eventUtils';
 	import { TimelineModel } from 'applesauce-core/models';
@@ -477,6 +478,39 @@
 		// Trigger a refresh with the new relay filters, passing them directly
 		handleRefresh(relays);
 	}
+
+	/**
+	 * Handle tag filter changes
+	 * @param {string[]} tags
+	 */
+	function handleTagFilterChange(tags) {
+		console.log('🏷️ CalendarView: Tag filters changed:', tags);
+		// Tag filtering is client-side, so no refresh needed
+		// The displayedEvents derived state will automatically update
+	}
+
+	// Client-side tag filtering with OR logic
+	// Events are filtered AFTER loading, showing events with ANY selected tag
+	let displayedEvents = $derived.by(() => {
+		const selectedTags = calendarStore.selectedTags;
+		
+		// If no tags selected, show all events
+		if (selectedTags.length === 0) {
+			return events;
+		}
+		
+		// Filter events: show events that have AT LEAST ONE selected tag (OR logic)
+		const filtered = events.filter(event => {
+			// Normalize event hashtags to lowercase for case-insensitive matching
+			const normalizedHashtags = (event.hashtags || []).map(tag => tag.toLowerCase().trim());
+			
+			// Check if event has any of the selected tags
+			return selectedTags.some(tag => normalizedHashtags.includes(tag));
+		});
+		
+		console.log(`🏷️ CalendarView: Filtered ${filtered.length}/${events.length} events by tags:`, selectedTags);
+		return filtered;
+	});
 </script>
 
 <div class="overflow-hidden rounded-lg border border-base-300 bg-base-100 shadow-sm">
@@ -560,6 +594,9 @@
 	<!-- Relay Selector -->
 	<RelaySelector onApplyFilters={handleRelayFilterChange} />
 
+	<!-- Tag Selector -->
+	<TagSelector {events} onTagFilterChange={handleTagFilterChange} />
+
 	<!-- Calendar Navigation -->
 	<CalendarNavigation
 		{currentDate}
@@ -578,7 +615,7 @@
 		<CalendarGrid
 			{currentDate}
 			{viewMode}
-			{events}
+			events={displayedEvents}
 			onEventClick={handleEventClick}
 			onDateClick={handleDateClick}
 		/>
@@ -586,7 +623,7 @@
 		<!-- List View -->
 		<div class="p-6">
 			<SimpleCalendarEventsList 
-				{events} 
+				events={displayedEvents}
 				{viewMode}
 				{currentDate}
 				loading={loading.loading} 

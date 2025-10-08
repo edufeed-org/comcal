@@ -30,6 +30,7 @@ class CalendarStore {
 	error = $state(/** @type {string | null} */ (null));
 	missingEvents = $state(/** @type {Array<{addressRef: string, reason?: string}>} */ ([]));
 	selectedRelays = $state(/** @type {string[]} */ ([]));
+	selectedTags = $state(/** @type {string[]} */ ([]));
 	
 	// Derived reactive state
 	groupedEvents = $derived(groupEventsByDate(this.events));
@@ -131,6 +132,43 @@ class CalendarStore {
 	}
 	
 	/**
+	 * Set selected tags for filtering
+	 * @param {string[]} tags - Array of tag strings
+	 */
+	setSelectedTags(tags) {
+		console.log('📅 CalendarEventsStore: Setting selected tags:', tags);
+		this.selectedTags = tags;
+	}
+	
+	/**
+	 * Clear selected tags (revert to showing all)
+	 */
+	clearSelectedTags() {
+		console.log('📅 CalendarEventsStore: Clearing selected tags');
+		this.selectedTags = [];
+	}
+	
+	/**
+	 * Add a tag to the selected tags list
+	 * @param {string} tag - Tag to add
+	 */
+	addTag(tag) {
+		if (!this.selectedTags.includes(tag)) {
+			console.log('📅 CalendarEventsStore: Adding tag:', tag);
+			this.selectedTags = [...this.selectedTags, tag];
+		}
+	}
+	
+	/**
+	 * Remove a tag from the selected tags list
+	 * @param {string} tag - Tag to remove
+	 */
+	removeTag(tag) {
+		console.log('📅 CalendarEventsStore: Removing tag:', tag);
+		this.selectedTags = this.selectedTags.filter(t => t !== tag);
+	}
+	
+	/**
 	 * Reset all state
 	 */
 	reset() {
@@ -141,6 +179,7 @@ class CalendarStore {
 		this.selectedCalendar$.next(null);
 		this.missingEvents = [];
 		this.selectedRelays = [];
+		this.selectedTags = [];
 	}
 	
 }
