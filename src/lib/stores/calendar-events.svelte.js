@@ -32,6 +32,8 @@ class CalendarStore {
 	selectedRelays = $state(/** @type {string[]} */ ([]));
 	selectedTags = $state(/** @type {string[]} */ ([]));
 	searchQuery = $state('');
+	followLists = $state(/** @type {Array<{id: string, name: string, type: 'nip02' | 'nip51', description?: string, pubkeys: string[], count: number}>} */ ([]));
+	selectedFollowListIds = $state(/** @type {string[]} */ ([]));
 	
 	// Derived reactive state
 	groupedEvents = $derived(groupEventsByDate(this.events));
@@ -187,6 +189,67 @@ class CalendarStore {
 	}
 	
 	/**
+	 * Set follow lists
+	 * @param {Array<{id: string, name: string, type: 'nip02' | 'nip51', description?: string, pubkeys: string[], count: number}>} lists - Array of follow lists
+	 */
+	setFollowLists(lists) {
+		console.log('👥 CalendarEventsStore: Setting follow lists:', lists.length);
+		this.followLists = lists;
+	}
+	
+	/**
+	 * Clear follow lists
+	 */
+	clearFollowLists() {
+		console.log('👥 CalendarEventsStore: Clearing follow lists');
+		this.followLists = [];
+	}
+	
+	/**
+	 * Set selected follow list IDs for filtering
+	 * @param {string[]} listIds - Array of follow list IDs
+	 */
+	setSelectedFollowListIds(listIds) {
+		console.log('👥 CalendarEventsStore: Setting selected follow list IDs:', listIds);
+		this.selectedFollowListIds = listIds;
+	}
+	
+	/**
+	 * Clear selected follow list IDs (revert to showing all)
+	 */
+	clearSelectedFollowListIds() {
+		console.log('👥 CalendarEventsStore: Clearing selected follow list IDs');
+		this.selectedFollowListIds = [];
+	}
+	
+	/**
+	 * Get unique author pubkeys from selected follow lists
+	 * @returns {string[]} Array of unique author pubkeys
+	 */
+	getSelectedAuthors() {
+		if (this.selectedFollowListIds.length === 0) {
+			return [];
+		}
+		
+		const selectedLists = this.followLists.filter(list => 
+			this.selectedFollowListIds.includes(list.id)
+		);
+		
+		// Collect all pubkeys and deduplicate
+		const pubkeysSet = new Set();
+		selectedLists.forEach(list => {
+			list.pubkeys.forEach(pubkey => pubkeysSet.add(pubkey));
+		});
+		
+		const uniquePubkeys = Array.from(pubkeysSet);
+		console.log(
+			`👥 CalendarEventsStore: Got ${uniquePubkeys.length} unique authors from ${selectedLists.length} follow lists`
+		);
+		
+		return uniquePubkeys;
+	}
+	
+	/**
 	 * Reset all state
 	 */
 	reset() {
@@ -199,6 +262,8 @@ class CalendarStore {
 		this.selectedRelays = [];
 		this.selectedTags = [];
 		this.searchQuery = '';
+		this.followLists = [];
+		this.selectedFollowListIds = [];
 	}
 	
 }

@@ -16,11 +16,13 @@
 	import CalendarEventModal from '$lib/components/calendar/CalendarEventModal.svelte';
 	import CalendarDropdown from './CalendarDropdown.svelte';
 	import RelaySelector from './RelaySelector.svelte';
+	import FollowListSelector from './FollowListSelector.svelte';
 	import SearchInput from './SearchInput.svelte';
 	import TagSelector from './TagSelector.svelte';
 	import SimpleCalendarEventsList from './CalendarEventsList.svelte';
 	import { getCalendarEventMetadata, parseAddressReference } from '$lib/helpers/eventUtils';
 	import { TimelineModel } from 'applesauce-core/models';
+	import { appConfig } from '$lib/config.js';
 
 	/**
 	 * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
@@ -140,13 +142,16 @@
 	function loadEvents(relays) {
 		// Use provided relays or fall back to store value
 		const selectedRelays = relays !== undefined ? relays : calendarStore.selectedRelays;
+		const selectedAuthors = calendarStore.getSelectedAuthors();
 		
 		loading.loading = true;
 		
-		// If relay filtering is active, use pool.subscription with specific relays
-		if (selectedRelays.length > 0) {
-			console.log('📅 CalendarView: Loading events from selected relays:', selectedRelays);
-			loadEventsFromRelays(selectedRelays);
+		// If relay filtering OR author filtering is active, use pool.subscription
+		if (selectedRelays.length > 0 || selectedAuthors.length > 0) {
+			console.log('📅 CalendarView: Loading events with filters');
+			// Use default relays from config if no specific relays selected
+			const relaysToUse = selectedRelays.length > 0 ? selectedRelays : appConfig.calendar.defaultRelays;
+			loadEventsFromRelays(relaysToUse, selectedAuthors);
 		} else {
 			// Default behavior: use EventStore model (original working approach)
 			console.log('📅 CalendarView: Loading events using default loaders');
@@ -157,8 +162,9 @@
 	/**
 	 * Load events from specific relays using pool.subscription
 	 * @param {string[]} relayUrls
+	 * @param {string[]} [authors] - Optional array of author pubkeys to filter by
 	 */
-	function loadEventsFromRelays(relayUrls) {
+	function loadEventsFromRelays(relayUrls, authors) {
 		events = [];
 		
 		// Stop background loader to prevent interference with filtered results
@@ -173,13 +179,22 @@
 			relaySubscription.unsubscribe();
 		}
 		
+		// Build the filter object
+		const filter = {
+			kinds: [31922, 31923],
+			limit: 50
+		};
+		
+		// Add authors filter if provided
+		if (authors && authors.length > 0) {
+			filter.authors = authors;
+			console.log(`📅 CalendarView: Filtering by ${authors.length} authors from follow lists`);
+		}
+		
 		// Subscribe to specific relays using pool.subscription()
 		// Using the applesauce pattern with mapEventsToTimeline for proper reactivity
 		relaySubscription = pool
-			.subscription(relayUrls, {
-				kinds: [31922, 31923],
-				limit: 50
-			})
+			.subscription(relayUrls, filter)
 			.pipe(
 				onlyEvents(), // Filter out EOSE messages
 				mapEventsToStore(eventStore), // Add to EventStore
@@ -509,6 +524,16 @@
 		// The displayedEvents derived state will automatically update
 	}
 
+	/**
+	 * Handle follow list filter changes
+	 * @param {string[]} listIds
+	 */
+	function handleFollowListFilterChange(listIds) {
+		console.log('👥 CalendarView: Follow list filters changed:', listIds);
+		// Trigger a refresh with the new author filters
+		handleRefresh();
+	}
+
 	// Client-side filtering with tag buttons (OR logic) + text search (AND logic)
 	// Events are filtered AFTER loading
 	let displayedEvents = $derived.by(() => {
@@ -630,6 +655,9 @@
 
 	<!-- Relay Selector -->
 	<RelaySelector onApplyFilters={handleRelayFilterChange} />
+
+	<!-- Follow List Selector -->
+	<FollowListSelector onApplyFilters={handleFollowListFilterChange} />
 
 	<!-- Search Input -->
 	<SearchInput onSearchQueryChange={handleSearchQueryChange} />
