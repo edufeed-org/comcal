@@ -238,9 +238,11 @@
 									<a
 										href={`/calendar/${encodeEventToNaddr(calendar.originalEvent)}`}
 										class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-base-200"
-										class:active={currentCalendar?.id === calendar.id && !selectedCalendarId}
+										class:active={currentCalendar?.id === calendar.id}
 										onclick={(e) => {
+											e.preventDefault();
 											handleCalendarSelect(calendar.id);
+											goto(`/calendar/${encodeEventToNaddr(calendar.originalEvent)}`);
 										}}
 									>
 										<CalendarIcon class_="h-4 w-4 text-primary" />
@@ -252,7 +254,7 @@
 												</div>
 											{/if}
 										</div>
-										{#if currentCalendar?.id === calendar.id && !selectedCalendarId}
+										{#if currentCalendar?.id === calendar.id}
 											<CheckIcon class_="h-4 w-4 text-primary" />
 										{/if}
 									</a>

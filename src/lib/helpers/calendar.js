@@ -82,7 +82,6 @@ export function getMonthDates(date) {
 
 	// First day of the month
 	const firstDay = new Date(year, month, 1);
-	const lastDay = new Date(year, month + 1, 0);
 
 	// Start from the configured start day of the week containing the first day
 	const startDate = new Date(firstDay);
@@ -133,6 +132,12 @@ export function isEventInDateRange(event, start, end) {
  * @returns {Map<string, CalendarEvent[]>} Map of date strings to event arrays
  */
 export function groupEventsByDate(events) {
+	// Defensive check for undefined/null or invalid input
+	if (!events || !Array.isArray(events)) {
+		console.warn('📅 groupEventsByDate: Invalid events array:', events);
+		return new Map();
+	}
+
 	const groupedEvents = new Map();
 
 	events.forEach(event => {

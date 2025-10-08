@@ -309,6 +309,15 @@
 		};
 	});
 
+	// React to calendar prop changes - enables automatic event reloading when switching calendars
+	$effect(() => {
+		// Only react when in calendar mode (not author or global mode)
+		if (calendar && !authorPubkey && !globalMode) {
+			console.log('📅 CalendarView: Calendar prop changed, reloading events:', calendar.title);
+			loadCalendarSpecificEvents(calendar);
+		}
+	});
+
 	function handlePrevious() {
 		const newDate = new Date(currentDate);
 		switch (viewMode) {

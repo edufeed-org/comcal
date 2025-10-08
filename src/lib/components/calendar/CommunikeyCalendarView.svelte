@@ -57,9 +57,6 @@
 	// Reactive references to store state
 	let activeUser = $state(manager.active);
 
-	// Derived state
-	let groupedEvents = $derived(groupEventsByDate(events));
-
 	/**
 	 * Convert raw event to CalendarEvent format
 	 * @param {any} event
@@ -525,7 +522,7 @@
 		<CalendarGrid
 			{currentDate}
 			{viewMode}
-			{groupedEvents}
+			{events}
 			onEventClick={handleEventClick}
 			onDateClick={handleDateClick}
 		/>
