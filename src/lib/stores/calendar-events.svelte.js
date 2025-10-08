@@ -31,6 +31,7 @@ class CalendarStore {
 	missingEvents = $state(/** @type {Array<{addressRef: string, reason?: string}>} */ ([]));
 	selectedRelays = $state(/** @type {string[]} */ ([]));
 	selectedTags = $state(/** @type {string[]} */ ([]));
+	searchQuery = $state('');
 	
 	// Derived reactive state
 	groupedEvents = $derived(groupEventsByDate(this.events));
@@ -169,6 +170,23 @@ class CalendarStore {
 	}
 	
 	/**
+	 * Set search query for text filtering
+	 * @param {string} query - Search query string
+	 */
+	setSearchQuery(query) {
+		console.log('📅 CalendarEventsStore: Setting search query:', query);
+		this.searchQuery = query;
+	}
+	
+	/**
+	 * Clear search query
+	 */
+	clearSearchQuery() {
+		console.log('📅 CalendarEventsStore: Clearing search query');
+		this.searchQuery = '';
+	}
+	
+	/**
 	 * Reset all state
 	 */
 	reset() {
@@ -180,6 +198,7 @@ class CalendarStore {
 		this.missingEvents = [];
 		this.selectedRelays = [];
 		this.selectedTags = [];
+		this.searchQuery = '';
 	}
 	
 }

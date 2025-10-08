@@ -16,6 +16,7 @@
 	import CalendarEventModal from '$lib/components/calendar/CalendarEventModal.svelte';
 	import CalendarDropdown from './CalendarDropdown.svelte';
 	import RelaySelector from './RelaySelector.svelte';
+	import SearchInput from './SearchInput.svelte';
 	import TagSelector from './TagSelector.svelte';
 	import SimpleCalendarEventsList from './CalendarEventsList.svelte';
 	import { getCalendarEventMetadata, parseAddressReference } from '$lib/helpers/eventUtils';
@@ -498,26 +499,53 @@
 		// The displayedEvents derived state will automatically update
 	}
 
-	// Client-side tag filtering with OR logic
-	// Events are filtered AFTER loading, showing events with ANY selected tag
+	/**
+	 * Handle search query changes
+	 * @param {string} query
+	 */
+	function handleSearchQueryChange(query) {
+		console.log('🔍 CalendarView: Search query changed:', query);
+		// Search filtering is client-side, so no refresh needed
+		// The displayedEvents derived state will automatically update
+	}
+
+	// Client-side filtering with tag buttons (OR logic) + text search (AND logic)
+	// Events are filtered AFTER loading
 	let displayedEvents = $derived.by(() => {
+		let filtered = events;
 		const selectedTags = calendarStore.selectedTags;
+		const searchQuery = calendarStore.searchQuery;
 		
-		// If no tags selected, show all events
-		if (selectedTags.length === 0) {
-			return events;
+		// Step 1: Apply tag filtering (OR logic)
+		if (selectedTags.length > 0) {
+			filtered = filtered.filter(event => {
+				// Normalize event hashtags to lowercase for case-insensitive matching
+				const normalizedHashtags = (event.hashtags || []).map(tag => tag.toLowerCase().trim());
+				
+				// Check if event has any of the selected tags
+				return selectedTags.some(tag => normalizedHashtags.includes(tag));
+			});
+			console.log(`🏷️ CalendarView: Filtered ${filtered.length}/${events.length} events by tags:`, selectedTags);
 		}
 		
-		// Filter events: show events that have AT LEAST ONE selected tag (OR logic)
-		const filtered = events.filter(event => {
-			// Normalize event hashtags to lowercase for case-insensitive matching
-			const normalizedHashtags = (event.hashtags || []).map(tag => tag.toLowerCase().trim());
-			
-			// Check if event has any of the selected tags
-			return selectedTags.some(tag => normalizedHashtags.includes(tag));
-		});
+		// Step 2: Apply text search (AND logic with tags)
+		const query = searchQuery.trim();
+		if (query) {
+			const lowerQuery = query.toLowerCase();
+			filtered = filtered.filter(event => {
+				// Search in title
+				const titleMatch = event.title?.toLowerCase().includes(lowerQuery);
+				
+				// Search in tags
+				const tagMatch = event.hashtags?.some(tag => 
+					tag.toLowerCase().includes(lowerQuery)
+				);
+				
+				return titleMatch || tagMatch;
+			});
+			console.log(`🔍 CalendarView: Filtered ${filtered.length} events by search query: "${query}"`);
+		}
 		
-		console.log(`🏷️ CalendarView: Filtered ${filtered.length}/${events.length} events by tags:`, selectedTags);
 		return filtered;
 	});
 </script>
@@ -602,6 +630,9 @@
 
 	<!-- Relay Selector -->
 	<RelaySelector onApplyFilters={handleRelayFilterChange} />
+
+	<!-- Search Input -->
+	<SearchInput onSearchQueryChange={handleSearchQueryChange} />
 
 	<!-- Tag Selector -->
 	<TagSelector {events} onTagFilterChange={handleTagFilterChange} />
