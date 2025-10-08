@@ -417,11 +417,20 @@
 	 */
 	function handlePresentationViewModeChange(newPresentationViewMode) {
 		presentationViewMode = newPresentationViewMode;
+		
+		// If switching to calendar view and viewMode is 'all', switch to 'month'
+		// since 'all' is only available in list view
+		if (newPresentationViewMode === 'calendar' && viewMode === 'all') {
+			viewMode = 'month';
+			console.log('📅 CalendarView: Switched from "all" to "month" for calendar view');
+		}
+		
 		console.log(
 			'📅 SimpleCalendarView: Presentation view mode changed to:',
 			newPresentationViewMode
 		);
 	}
+
 
 	/**
 	 * @param {Date} date
@@ -621,15 +630,13 @@
 		/>
 	{:else if presentationViewMode === 'list'}
 		<!-- List View -->
-		<div class="p-6">
-			<SimpleCalendarEventsList 
-				events={displayedEvents}
-				{viewMode}
-				{currentDate}
-				loading={loading.loading} 
-				{error} 
-			/>
-		</div>
+		<SimpleCalendarEventsList 
+			events={displayedEvents}
+			{viewMode}
+			{currentDate}
+			loading={loading.loading} 
+			{error}
+		/>
 	{:else if presentationViewMode === 'map'}
 		<!-- Map View (placeholder for future implementation) -->
 		<div class="flex flex-col items-center justify-center px-6 py-16 text-center">

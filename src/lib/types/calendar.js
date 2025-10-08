@@ -51,7 +51,7 @@
  */
 
 /**
- * @typedef {'week' | 'month' | 'day'} CalendarViewMode
+ * @typedef {'all' | 'month' | 'week' | 'day'} CalendarViewMode
  */
 
 /**

@@ -47,6 +47,8 @@
 	 */
 	function getDisplayDate(date, mode) {
 		switch (mode) {
+			case 'all':
+				return 'All Events';
 			case 'month':
 				return date.toLocaleDateString('en-US', {
 					year: 'numeric',
@@ -179,6 +181,16 @@
 
 	<!-- Calendar View Mode Selector -->
 	<div class="join">
+		{#if presentationViewMode === 'list'}
+			<button
+				class="btn join-item btn-sm"
+				class:btn-outline={viewMode !== 'all'}
+				class:btn-primary={viewMode === 'all'}
+				onclick={() => handleViewModeClick('all')}
+			>
+				All
+			</button>
+		{/if}
 		<button
 			class="btn join-item btn-sm"
 			class:btn-outline={viewMode !== 'month'}

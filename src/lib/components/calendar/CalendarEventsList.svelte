@@ -27,9 +27,15 @@
 
 	// Filter events based on current view mode and date
 	let filteredEvents = $derived.by(() => {
-		if (!currentDate || !viewMode) return events;
+		// If viewMode is 'all', return all events sorted
+		if (viewMode === 'all') {
+			// Sort by start date/time (chronological order) - create copy before sorting
+			return [...events].sort((/** @type {CalendarEvent} */ a, /** @type {CalendarEvent} */ b) => (a.start || 0) - (b.start || 0));
+		}
 		
-		// Calculate date range based on view mode
+		if (!currentDate) return events;
+		
+		// Calculate date range based on viewMode
 		let startDate, endDate;
 		
 		switch (viewMode) {
@@ -64,7 +70,7 @@
 		// Filter events that fall within the date range
 		const filtered = events.filter((/** @type {CalendarEvent} */ event) => isEventInDateRange(event, startDate, endDate));
 		
-		// Sort by start date/time (chronological order)
+		// Sort by start date/time (chronological order) - filtered array is already a new array from .filter()
 		return filtered.sort((/** @type {CalendarEvent} */ a, /** @type {CalendarEvent} */ b) => (a.start || 0) - (b.start || 0));
 	});
 
