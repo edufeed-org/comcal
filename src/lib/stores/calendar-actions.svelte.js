@@ -8,6 +8,7 @@ import { pool, relays } from '$lib/store.svelte';
 import { manager } from '$lib/accounts.svelte';
 import { validateEventForm, convertFormDataToEvent, createEventTargetingTags } from '../helpers/calendar.js';
 import { calendarStore } from './calendar-events.svelte.js';
+import { getCalendarEventMetadata } from '../helpers/eventUtils.js';
 
 /**
  * @typedef {import('../types/calendar.js').CalendarEvent} CalendarEvent
@@ -124,10 +125,12 @@ export function createCalendarActions(communityPubkey) {
 					dTag: dTag
 				};
 
-				// Add the created event to the calendar store for immediate UI update
-				// Type assertion since the event object will be enriched by the calendar loader
-				calendarStore.setEvents([...calendarStore.events, /** @type {any} */ (eventWithDTag)]);
-				console.log('📅 Calendar Actions: Added created event to store');
+				// Transform the raw Nostr event to CalendarEvent format for immediate UI display
+				const transformedEvent = getCalendarEventMetadata(eventWithDTag);
+				
+				// Add the transformed event to the calendar store for immediate UI update
+				calendarStore.setEvents([...calendarStore.events, transformedEvent]);
+				console.log('📅 Calendar Actions: Added transformed event to store');
 
 				// Return the created event so caller can handle sharing/adding to calendars
 				return eventWithDTag;

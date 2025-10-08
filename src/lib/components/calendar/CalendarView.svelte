@@ -348,6 +348,26 @@
 		}
 	});
 
+	// Sync newly created events from calendarStore to local events array
+	$effect(() => {
+		// Watch for changes in calendarStore.events
+		const storeEvents = calendarStore.events;
+		
+		if (storeEvents.length > 0) {
+			// Create a Set of current event IDs for deduplication
+			const currentEventIds = new Set(events.map(e => e.id));
+			
+			// Find new events that aren't in the local array yet
+			const newEvents = storeEvents.filter(storeEvent => !currentEventIds.has(storeEvent.id));
+			
+			if (newEvents.length > 0) {
+				console.log('📅 CalendarView: Syncing', newEvents.length, 'new events from store to local array');
+				// Merge new events with existing events
+				events = [...events, ...newEvents];
+			}
+		}
+	});
+
 	function handlePrevious() {
 		const newDate = new Date(currentDate);
 		switch (viewMode) {
