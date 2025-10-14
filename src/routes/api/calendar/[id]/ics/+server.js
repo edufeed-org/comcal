@@ -1,4 +1,4 @@
-import { fetchCalendarEvents, fetchEventById } from '$lib/helpers/nostrUtils';
+import { fetchCalendarEvents, fetchEventById, encodeEventToNaddr } from '$lib/helpers/nostrUtils';
 import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
 
 /** @type {import('./$types').RequestHandler} */
@@ -162,6 +162,7 @@ function generateICSContent(calendarMetadata, events, url) {
     }
 
     const baseUrl = url.origin;
+    const eventNaddr = encodeEventToNaddr(event, []);
 
     ics.push(
       "BEGIN:VEVENT",
@@ -171,7 +172,7 @@ function generateICSContent(calendarMetadata, events, url) {
       `SUMMARY:${escapeText(metadata.title || "Untitled Event")}`,
       `DESCRIPTION:${escapeText(metadata.summary || "")}`,
       metadata.location ? `LOCATION:${escapeText(metadata.location)}` : "",
-      `URL:${baseUrl}/calendar/event/${event.id}`,
+      `URL:${baseUrl}/calendar/event/${eventNaddr}`,
       `CREATED:${formatDate(event.created_at)}`,
       `LAST-MODIFIED:${formatDate(event.created_at)}`,
       "END:VEVENT"
