@@ -13,6 +13,7 @@
 		LocationIcon,
 		UserIcon
 	} from '$lib/components/icons';
+	import AddToCalendarDropdown from '$lib/components/calendar/AddToCalendarDropdown.svelte';
 
 	/** @type {import('./$types').PageProps} */
 	let { data } = $props();
@@ -261,6 +262,11 @@
 				/>
 			</div>
 		{/if}
+
+		<!-- Add to Calendar Button (Top Right) -->
+		<div class="mb-6 flex justify-end">
+			<AddToCalendarDropdown event={event} disabled={!activeUser} />
+		</div>
 
 		<!-- Event Title -->
 		<h1 class="mb-6 text-4xl font-bold text-base-content">

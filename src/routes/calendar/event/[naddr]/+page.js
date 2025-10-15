@@ -8,6 +8,7 @@ export async function load({ params }) {
   
   return {
     event,
+    rawEvent, // Include raw event for AddToCalendarDropdown
     naddr: params.naddr
   };
 }
