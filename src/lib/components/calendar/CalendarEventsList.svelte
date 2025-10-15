@@ -5,7 +5,7 @@
 
 <script>
 	import { modalStore } from '$lib/stores/modal.svelte.js';
-	import { CalendarIcon, ClockIcon, AlertIcon } from '$lib/components/icons';
+	import { CalendarIcon, AlertIcon } from '$lib/components/icons';
 	import { getWeekDates, getMonthDates, isEventInDateRange, groupEventsByDate, createDateKey } from '$lib/helpers/calendar.js';
 	
 	// Import existing UI components
@@ -129,48 +129,6 @@
 		modalStore.openModal('eventDetails', { event });
 		console.log('📅 SimpleCalendarEventsList: Event clicked, opening details modal:', event.title);
 	}
-
-	/**
-	 * Format event date for display
-	 * @param {CalendarEvent} event
-	 * @returns {string}
-	 */
-	function formatEventDate(event) {
-		const date = new Date(event.start * 1000);
-		return date.toLocaleDateString('en-US', {
-			weekday: 'short',
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric'
-		});
-	}
-
-	/**
-	 * Format event time for display
-	 * @param {CalendarEvent} event
-	 * @returns {string}
-	 */
-	function formatEventTime(event) {
-		if (event.kind === 31922) return 'All Day'; // Date-based events
-		
-		const startDate = new Date(event.start * 1000);
-		const endDate = event.end ? new Date(event.end * 1000) : null;
-		
-		const startTime = startDate.toLocaleTimeString('en-US', {
-			hour: 'numeric',
-			minute: '2-digit'
-		});
-		
-		if (endDate) {
-			const endTime = endDate.toLocaleTimeString('en-US', {
-				hour: 'numeric',
-				minute: '2-digit'
-			});
-			return `${startTime} - ${endTime}`;
-		}
-		
-		return startTime;
-	}
 </script>
 
 <div class="space-y-4">
@@ -206,62 +164,11 @@
 		{#if upcomingEvents.length > 0}
 			<div class="grid gap-4">
 				{#each upcomingEvents as event (event.id)}
-					<div class="card bg-base-100 border border-base-300 shadow-sm hover:shadow-md transition-shadow">
-						<div class="card-body p-4">
-							<div class="flex items-start justify-between gap-4">
-								<div class="flex-1 min-w-0">
-									<h3 class="card-title text-base font-semibold text-base-content mb-2">
-										{event.title}
-									</h3>
-									
-									<div class="flex items-center gap-4 text-sm text-base-content/70 mb-2">
-										<div class="flex items-center gap-1">
-											<CalendarIcon class_="w-4 h-4" />
-											<span>{formatEventDate(event)}</span>
-										</div>
-										
-										<div class="flex items-center gap-1">
-											<ClockIcon class_="w-4 h-4" />
-											<span>{formatEventTime(event)}</span>
-										</div>
-									</div>
-									
-									{#if event.summary}
-										<p class="text-sm text-base-content/80 line-clamp-2 mb-2">
-											{event.summary}
-										</p>
-									{/if}
-									
-									<div class="flex items-center gap-2 text-xs text-base-content/60">
-										<span class="badge badge-outline badge-xs">
-											{event.kind === 31922 ? 'Date Event' : 'Time Event'}
-										</span>
-										<span>Created {new Date(event.createdAt * 1000).toLocaleDateString()}</span>
-									</div>
-								</div>
-								
-								{#if event.image}
-									<div class="flex-shrink-0">
-										<img 
-											src={event.image} 
-											alt={event.title}
-											class="w-16 h-16 object-cover rounded-lg"
-											loading="lazy"
-										/>
-									</div>
-								{/if}
-							</div>
-							
-							<div class="card-actions justify-end mt-3">
-								<button 
-									class="btn btn-primary btn-sm"
-									onclick={() => handleEventClick(event)}
-								>
-									View Details
-								</button>
-							</div>
-						</div>
-					</div>
+					<CalendarEventCard 
+						{event} 
+						compact={false} 
+						onEventClick={handleEventClick}
+					/>
 				{/each}
 			</div>
 		{:else if !loading}
@@ -291,62 +198,11 @@
 		{#if pastEvents.length > 0}
 			<div class="grid gap-4">
 				{#each pastEvents as event (event.id)}
-					<div class="card bg-base-100 border border-base-300 shadow-sm hover:shadow-md transition-shadow">
-						<div class="card-body p-4">
-							<div class="flex items-start justify-between gap-4">
-								<div class="flex-1 min-w-0">
-									<h3 class="card-title text-base font-semibold text-base-content mb-2">
-										{event.title}
-									</h3>
-									
-									<div class="flex items-center gap-4 text-sm text-base-content/70 mb-2">
-										<div class="flex items-center gap-1">
-											<CalendarIcon class_="w-4 h-4" />
-											<span>{formatEventDate(event)}</span>
-										</div>
-										
-										<div class="flex items-center gap-1">
-											<ClockIcon class_="w-4 h-4" />
-											<span>{formatEventTime(event)}</span>
-										</div>
-									</div>
-									
-									{#if event.summary}
-										<p class="text-sm text-base-content/80 line-clamp-2 mb-2">
-											{event.summary}
-										</p>
-									{/if}
-									
-									<div class="flex items-center gap-2 text-xs text-base-content/60">
-										<span class="badge badge-outline badge-xs">
-											{event.kind === 31922 ? 'Date Event' : 'Time Event'}
-										</span>
-										<span>Created {new Date(event.createdAt * 1000).toLocaleDateString()}</span>
-									</div>
-								</div>
-								
-								{#if event.image}
-									<div class="flex-shrink-0">
-										<img 
-											src={event.image} 
-											alt={event.title}
-											class="w-16 h-16 object-cover rounded-lg"
-											loading="lazy"
-										/>
-									</div>
-								{/if}
-							</div>
-							
-							<div class="card-actions justify-end mt-3">
-								<button 
-									class="btn btn-primary btn-sm"
-									onclick={() => handleEventClick(event)}
-								>
-									View Details
-								</button>
-							</div>
-						</div>
-					</div>
+					<CalendarEventCard 
+						{event} 
+						compact={false} 
+						onEventClick={handleEventClick}
+					/>
 				{/each}
 			</div>
 		{:else if !loading}

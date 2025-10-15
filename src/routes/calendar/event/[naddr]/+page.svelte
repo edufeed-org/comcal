@@ -14,6 +14,7 @@
 		UserIcon
 	} from '$lib/components/icons';
 	import AddToCalendarDropdown from '$lib/components/calendar/AddToCalendarDropdown.svelte';
+	import EventTags from '$lib/components/calendar/EventTags.svelte';
 
 	/** @type {import('./$types').PageProps} */
 	let { data } = $props();
@@ -364,16 +365,8 @@
 			<div class="card mb-8 bg-base-200 shadow-lg">
 				<div class="card-body">
 					<h2 class="card-title text-2xl">Tags</h2>
-					<div class="mt-4 flex flex-wrap gap-2">
-						{#each event.hashtags as tag}
-							<a
-								href="/calendar?view=list&tags={encodeURIComponent(tag)}"
-								class="badge badge-outline badge-lg transition-colors hover:badge-primary"
-								title="View all events with #{tag}"
-							>
-								#{tag}
-							</a>
-						{/each}
+					<div class="mt-4">
+						<EventTags tags={event.hashtags} size="lg" />
 					</div>
 				</div>
 			</div>

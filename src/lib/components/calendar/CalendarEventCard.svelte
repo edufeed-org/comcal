@@ -1,10 +1,12 @@
 <!--
   CalendarEventCard Component
   Displays individual calendar events in a card format
+  Unified component used in both CalendarGrid and CalendarEventsList
 -->
 
 <script>
 	import { formatCalendarDate } from '../../helpers/calendar.js';
+	import EventTags from './EventTags.svelte';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
@@ -40,38 +42,93 @@
 			handleClick(e);
 		}
 	}
+
 </script>
 
-	<div
-		class="calendar-event-card bg-base-100 border border-base-300 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 {compact ? 'p-2 text-sm' : 'p-3'} {isAllDay ? 'border-l-4 border-l-info' : ''} {isMultiDay ? 'border-l-4 border-l-secondary' : ''}"
-		role="button"
-		tabindex="0"
-		onclick={handleClick}
-		onkeydown={handleKeydown}
-	>
-	<!-- Event Title -->
-	<div class="font-semibold text-base-content mb-1 {compact ? 'text-xs font-medium mb-0 truncate' : 'line-clamp-2'}">
-		{event.title}
-	</div>
+<div
+	class="calendar-event-card bg-base-100 border border-base-300 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 {compact
+		? 'p-2 text-sm'
+		: 'p-4'} {isAllDay ? 'border-l-4 border-l-info' : ''} {isMultiDay
+		? 'border-l-4 border-l-secondary'
+		: ''}"
+	role="button"
+	tabindex="0"
+	onclick={handleClick}
+	onkeydown={handleKeydown}
+>
+	<div class="flex gap-3">
+		<!-- Event Image (full mode only) -->
+		{#if event.image && !compact}
+			<div class="flex-shrink-0">
+				<img
+					src={event.image}
+					alt={event.title}
+					loading="lazy"
+					class="w-20 h-20 object-cover rounded-lg"
+				/>
+			</div>
+		{/if}
 
-	<!-- Event Time (for time-based events) -->
-	{#if !isAllDay && !compact}
-		<div class="text-sm text-base-content/70 mb-1">
-			{formatCalendarDate(startDate, 'time')}
-			{#if endDate}
-				- {formatCalendarDate(endDate, 'time')}
-			{/if}
-		</div>
-	{/if}
+		<!-- Content area -->
+		<div class="flex-1 min-w-0">
+			<!-- Event Title -->
+			<div
+				class="font-semibold text-base-content {compact
+					? 'text-xs font-medium mb-0 truncate'
+					: 'text-base mb-2 line-clamp-2'}"
+			>
+				{event.title}
+			</div>
 
-	<!-- Event Date (for compact view or multi-day events) -->
-	{#if compact || isMultiDay}
-		<div class="text-xs text-base-content/50 mb-1">
-			{formatCalendarDate(startDate, 'short')}
-			{#if isMultiDay && endDate}
-				- {formatCalendarDate(endDate, 'short')}
-			{/if}
+	<!-- Event Date and Time -->
+	{#if !compact}
+		<div class="flex items-center gap-4 text-sm text-base-content/70 mb-2">
+			<!-- Date -->
+			<div class="flex items-center gap-1">
+				<span class="text-xs">📅</span>
+				<span>
+					{formatCalendarDate(startDate, 'short')}
+					{#if isMultiDay && endDate}
+						- {formatCalendarDate(endDate, 'short')}
+					{/if}
+				</span>
+			</div>
+
+			<!-- Time -->
+			<div class="flex items-center gap-1">
+				<span class="text-xs">🕐</span>
+				<span>
+					{#if isAllDay}
+						All Day
+					{:else}
+						{formatCalendarDate(startDate, 'time')}
+						{#if endDate}
+							- {formatCalendarDate(endDate, 'time')}
+						{/if}
+					{/if}
+				</span>
+			</div>
 		</div>
+	{:else}
+		<!-- Compact time display -->
+		{#if !isAllDay}
+			<div class="text-xs text-base-content/70 mb-1">
+				{formatCalendarDate(startDate, 'time')}
+				{#if endDate}
+					- {formatCalendarDate(endDate, 'time')}
+				{/if}
+			</div>
+		{/if}
+
+		<!-- Compact date display for multi-day -->
+		{#if isMultiDay}
+			<div class="text-xs text-base-content/50 mb-1">
+				{formatCalendarDate(startDate, 'short')}
+				{#if endDate}
+					- {formatCalendarDate(endDate, 'short')}
+				{/if}
+			</div>
+		{/if}
 	{/if}
 
 	<!-- Event Location -->
@@ -85,39 +142,48 @@
 		</div>
 	{/if}
 
-	<!-- Event Summary (truncated for compact view) -->
+	<!-- Event Summary (full mode only) -->
 	{#if event.summary && !compact}
-		<div class="text-sm text-base-content/80 mb-2 line-clamp-3">
+		<div class="text-sm text-base-content/80 mb-3 line-clamp-2">
 			{event.summary}
 		</div>
 	{/if}
 
-	<!-- Event Image -->
-	{#if event.image && !compact}
-		<div class="mb-2">
-			<img src={event.image} alt={event.title} loading="lazy" class="w-full h-24 object-cover rounded" />
+	<!-- Event Type Badge and Creation Date (full mode only) -->
+	{#if !compact}
+		<div class="flex items-center gap-2 text-xs text-base-content/60 mb-2">
+			<span class="badge badge-outline badge-xs">
+				{event.kind === 31922 ? 'Date Event' : 'Time Event'}
+			</span>
+			{#if event.createdAt}
+				<span>Created {new Date(event.createdAt * 1000).toLocaleDateString()}</span>
+			{/if}
 		</div>
 	{/if}
 
-	<!-- Event Tags -->
-	{#if event.hashtags && event.hashtags.length > 0 && !compact}
-		<div class="flex flex-wrap gap-1">
-			{#each event.hashtags.slice(0, 3) as tag}
-				<span class="badge badge-outline text-xs">#{tag}</span>
-			{/each}
-			{#if event.hashtags.length > 3}
-				<span class="text-xs text-base-content/40">+{event.hashtags.length - 3}</span>
-			{/if}
+	<!-- Event Tags (clickable) -->
+	{#if event.hashtags && event.hashtags.length > 0}
+		<div class="mb-2">
+			<EventTags 
+				tags={event.hashtags} 
+				size={compact ? 'xs' : 'sm'} 
+				maxDisplay={compact ? 3 : undefined}
+			/>
 		</div>
 	{/if}
 
 	<!-- RSVP Count -->
 	{#if (event.rsvpCount || (event.rsvps && event.rsvps.length > 0)) && !compact}
-		<div class="flex items-center gap-1 mt-2">
+		<div class="flex items-center gap-1 mb-2">
 			<span class="text-xs">👥</span>
 			<span class="text-sm text-base-content/70">
-				{event.rsvpCount || event.rsvps.length} RSVP{(event.rsvpCount || event.rsvps.length) !== 1 ? 's' : ''}
+				{event.rsvpCount || event.rsvps.length} RSVP{(event.rsvpCount || event.rsvps.length) !==
+				1
+					? 's'
+					: ''}
 			</span>
 		</div>
 	{/if}
+		</div>
+	</div>
 </div>
