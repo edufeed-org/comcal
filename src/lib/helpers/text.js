@@ -35,3 +35,30 @@ export function normalizeUrl(url) {
 	
 	return trimmed;
 }
+
+/**
+ * Extract all URLs from a string
+ * @param {string} str - The string to search for URLs
+ * @returns {Array<{url: string, start: number, end: number}>} Array of URL objects with position info
+ */
+export function extractUrls(str) {
+	if (!str || typeof str !== 'string') {
+		return [];
+	}
+	
+	// Match URLs anywhere in the string
+	// Matches http://, https://, or www. followed by non-whitespace characters
+	const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+	const urls = [];
+	let match;
+	
+	while ((match = urlRegex.exec(str)) !== null) {
+		urls.push({
+			url: match[0],
+			start: match.index,
+			end: match.index + match[0].length
+		});
+	}
+	
+	return urls;
+}
