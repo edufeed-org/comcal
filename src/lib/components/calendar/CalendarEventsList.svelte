@@ -6,7 +6,7 @@
 <script>
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { CalendarIcon, ClockIcon, AlertIcon } from '$lib/components/icons';
-	import { getWeekDates, getMonthDates, isEventInDateRange } from '$lib/helpers/calendar.js';
+	import { getWeekDates, getMonthDates, isEventInDateRange, groupEventsByDate, createDateKey } from '$lib/helpers/calendar.js';
 	
 	// Import existing UI components
 	import CalendarEventCard from '$lib/components/calendar/CalendarEventCard.svelte';
@@ -35,32 +35,63 @@
 		
 		if (!currentDate) return events;
 		
-		// Calculate date range based on viewMode
+		// For day view, use the same date-key approach as CalendarGrid for timezone consistency
+		if (viewMode === 'day') {
+			const groupedEvents = groupEventsByDate(events);
+			const dateKey = createDateKey(currentDate);
+			const dayEvents = groupedEvents.get(dateKey) || [];
+			// Already sorted by groupEventsByDate
+			return dayEvents;
+		}
+		
+		// Calculate date range based on viewMode (for week/month)
 		let startDate, endDate;
 		
 		switch (viewMode) {
-			case 'day': {
-				// Show events for just this day
-				startDate = new Date(currentDate);
-				startDate.setHours(0, 0, 0, 0);
-				endDate = new Date(currentDate);
-				endDate.setHours(23, 59, 59, 999);
-				break;
-			}
 			case 'week': {
-				// Show events for this week
+				// Get week dates in local time
 				const weekDates = getWeekDates(currentDate);
-				startDate = weekDates[0];
-				endDate = weekDates[weekDates.length - 1];
-				endDate.setHours(23, 59, 59, 999);
+				
+				// Convert first day to UTC start
+				const firstDay = weekDates[0];
+				startDate = new Date(Date.UTC(
+					firstDay.getFullYear(),
+					firstDay.getMonth(),
+					firstDay.getDate(),
+					0, 0, 0, 0
+				));
+				
+				// Convert last day to UTC end
+				const lastDay = weekDates[weekDates.length - 1];
+				endDate = new Date(Date.UTC(
+					lastDay.getFullYear(),
+					lastDay.getMonth(),
+					lastDay.getDate(),
+					23, 59, 59, 999
+				));
 				break;
 			}
 			case 'month': {
-				// Show events for this month
+				// Get month dates in local time
 				const monthDates = getMonthDates(currentDate);
-				startDate = monthDates[0];
-				endDate = monthDates[monthDates.length - 1];
-				endDate.setHours(23, 59, 59, 999);
+				
+				// Convert first day to UTC start
+				const firstDay = monthDates[0];
+				startDate = new Date(Date.UTC(
+					firstDay.getFullYear(),
+					firstDay.getMonth(),
+					firstDay.getDate(),
+					0, 0, 0, 0
+				));
+				
+				// Convert last day to UTC end
+				const lastDay = monthDates[monthDates.length - 1];
+				endDate = new Date(Date.UTC(
+					lastDay.getFullYear(),
+					lastDay.getMonth(),
+					lastDay.getDate(),
+					23, 59, 59, 999
+				));
 				break;
 			}
 			default:

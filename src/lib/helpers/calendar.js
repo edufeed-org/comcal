@@ -103,27 +103,27 @@ export function getMonthDates(date) {
 /**
  * Check if an event falls within a date range using UTC comparisons
  * @param {CalendarEvent} event - Calendar event to check
- * @param {Date} start - Start of date range (should be UTC date)
- * @param {Date} end - End of date range (should be UTC date)
+ * @param {Date} start - Start of date range (should be UTC date with time precision)
+ * @param {Date} end - End of date range (should be UTC date with time precision)
  * @returns {boolean} True if event overlaps with date range
  */
 export function isEventInDateRange(event, start, end) {
 	if (!event || !event.start) return false;
 
 	// Convert UNIX timestamps to UTC dates for comparison
-	// event.start and event.end are now UNIX timestamps (seconds)
+	// event.start and event.end are UNIX timestamps (seconds)
 	const eventStartDateUTC = new Date(event.start * 1000);
 	const eventEndDateUTC = event.end
 		? new Date(event.end * 1000)  // Exclusive end date
 		: eventStartDateUTC;          // Same day if no end
 
-	// Ensure range dates are also UTC dates
-	const startUTC = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
-	const endUTC = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()));
-
+	// Use the provided date range directly - they already have proper time precision
+	// Previously, we were recreating UTC dates which lost the time information (00:00:00 always)
+	// This caused events to be filtered out incorrectly in list view
+	
 	// Check for overlap: eventStart < rangeEnd AND eventEnd > rangeStart
 	// Note: NIP-52 end date is exclusive, so we use > instead of >=
-	return eventStartDateUTC < endUTC && eventEndDateUTC > startUTC;
+	return eventStartDateUTC < end && eventEndDateUTC > start;
 }
 
 /**
