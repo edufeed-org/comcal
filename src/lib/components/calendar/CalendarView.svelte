@@ -2,8 +2,20 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { eventStore, pool, relays } from '$lib/store.svelte';
-	import { addressLoader, calendarTimelineLoader } from '$lib/loaders.js';
-	import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
+	import { 
+		addressLoader, 
+		calendarTimelineLoader,
+		communityCalendarTimelineLoader,
+		targetedPublicationTimelineLoader,
+		eventLoader
+	} from '$lib/loaders.js';
+	import { 
+		getCalendarEventTitle,
+		getCalendarEventStart,
+		getCalendarEventEnd,
+		getCalendarEventImage
+	} from 'applesauce-core/helpers/calendar-event';
+	import { getTagValue } from 'applesauce-core/helpers';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { calendarStore, loading, cEvents } from '$lib/stores/calendar-events.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
@@ -11,6 +23,7 @@
 	import { mapEventsToStore, mapEventsToTimeline } from 'applesauce-core/observable';
 	import { map } from 'rxjs';
 	import { parseCalendarFilters } from '$lib/helpers/urlParams.js';
+	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
 
 	// Import existing UI components
 	import CalendarNavigation from '$lib/components/calendar/CalendarNavigation.svelte';
@@ -22,6 +35,7 @@
 	import SearchInput from './SearchInput.svelte';
 	import TagSelector from './TagSelector.svelte';
 	import SimpleCalendarEventsList from './CalendarEventsList.svelte';
+	import AddToCalendarButton from './AddToCalendarButton.svelte';
 	import { getCalendarEventMetadata, parseAddressReference } from '$lib/helpers/eventUtils';
 	import { TimelineModel } from 'applesauce-core/models';
 	import { appConfig } from '$lib/config.js';
@@ -32,7 +46,13 @@
 	 */
 
 	// Props
-	let { communityPubkey = '', globalMode = false, calendar = null, authorPubkey = '' } = $props();
+	let { 
+		communityPubkey = '', 
+		globalMode = false, 
+		calendar = null, 
+		authorPubkey = '',
+		communityMode = false
+	} = $props();
 
 	// Use runes store for reactive state
 	let activeUser = $state(manager.active);
@@ -59,10 +79,36 @@
 	let selectedDateForNewEvent = $state(/** @type {Date | null} */ (null));
 
 	// Subscription management
+	let subscription = $state();
 	let relaySubscription = $state();
 	let userSubscription = $state();
 	let calendarSubscription = $state();
 	let backgroundLoaderSubscription = $state();
+	let targetedPublicationSubscription = $state();
+
+	// Community mode specific state
+	let resolutionErrors = $state(/** @type {string[]} */ ([]));
+
+	// Get community profile for calendar title (when in communityMode)
+	let getCommunityProfile = $derived.by(() => {
+		if (communityMode && communityPubkey) {
+			return useUserProfile(communityPubkey);
+		}
+		return null;
+	});
+
+	let communityProfileData = $derived.by(() => {
+		if (getCommunityProfile) {
+			return getCommunityProfile();
+		}
+		return null;
+	});
+
+	let communityCalendarTitle = $derived.by(() => {
+		if (!communityProfileData) return 'Community Calendar';
+		const displayName = communityProfileData.name || communityProfileData.display_name || '';
+		return displayName ? `${displayName} Calendar` : 'Community Calendar';
+	});
 
 	/**
 	 * @param {any} calendar - Calendar object with eventReferences
@@ -248,6 +294,128 @@
 	}
 
 	/**
+	 * Load community-specific calendar events from both direct events and targeted publications
+	 * This is the logic ported from CommunikeyCalendarView
+	 */
+	function loadCommunityEvents() {
+		if (!communityPubkey) {
+			console.warn('📅 CalendarView: No communityPubkey provided for community mode');
+			return;
+		}
+
+		console.log('📅 CalendarView: Loading community events for:', communityPubkey);
+		
+		loading.loading = true;
+		error = null;
+		resolutionErrors = [];
+
+		// Clean up existing subscriptions
+		if (subscription) {
+			subscription.unsubscribe();
+			subscription = undefined;
+		}
+		if (targetedPublicationSubscription) {
+			targetedPublicationSubscription.unsubscribe();
+			targetedPublicationSubscription = undefined;
+		}
+		if (relaySubscription) {
+			relaySubscription.unsubscribe();
+			relaySubscription = undefined;
+		}
+		if (backgroundLoaderSubscription) {
+			backgroundLoaderSubscription.unsubscribe();
+			backgroundLoaderSubscription = undefined;
+		}
+
+		const allEvents = /** @type {CalendarEvent[]} */ ([]);
+		const eventIds = new Set(); // Deduplicate events
+
+		try {
+			// Subscribe to direct community calendar events (#h tagged)
+			subscription = eventStore
+				.timeline({
+					kinds: [31922, 31923],
+					'#h': [communityPubkey],
+					limit: 100
+				})
+				.subscribe({
+					next: (/** @type {any[]} */ timeline) => {
+						console.log(`📅 CalendarView: Received ${timeline.length} direct community events`);
+						
+						timeline.forEach(event => {
+							if (!eventIds.has(event.id)) {
+								eventIds.add(event.id);
+								const calendarEvent = getCalendarEventMetadata(event);
+								allEvents.push(calendarEvent);
+							}
+						});
+						
+						events = [...allEvents];
+					},
+					error: (/** @type {any} */ err) => {
+						console.error('📅 CalendarView: Error loading direct community events:', err);
+						error = 'Failed to load community calendar events';
+						loading.loading = false;
+					}
+				});
+
+			// Subscribe to targeted publication events (#p tagged with calendar #k)
+			targetedPublicationSubscription = targetedPublicationTimelineLoader(
+				communityPubkey
+			)().subscribe({
+				next: (/** @type {any} */ pubEvent) => {
+					console.log('📅 CalendarView: Received targeted publication event:', pubEvent.id);
+
+					try {
+						const eTag = getTagValue(pubEvent, 'e');
+						if (!eTag) {
+							console.warn('📅 CalendarView: Targeted publication missing e tag:', pubEvent.id);
+							return;
+						}
+
+						// Load referenced event
+						eventLoader({
+							id: eTag,
+							relays: appConfig.calendar.defaultRelays
+						}).subscribe({
+							next: (loadedEvent) => {
+								if (loadedEvent && !eventIds.has(loadedEvent.id)) {
+									console.log('📅 CalendarView: Successfully loaded referenced event', eTag);
+									eventIds.add(loadedEvent.id);
+									const calendarEvent = getCalendarEventMetadata(loadedEvent);
+									allEvents.push(calendarEvent);
+									events = [...allEvents];
+								}
+							},
+							error: (/** @type {any} */ err) => {
+								const errorMsg = `Failed to load referenced calendar event: ${eTag}`;
+								console.warn(`📅 CalendarView: ${errorMsg}`);
+								resolutionErrors = [...resolutionErrors, errorMsg];
+							}
+						});
+					} catch (err) {
+						const errorMsg = `Error resolving targeted publication ${pubEvent.id}: ${/** @type {Error} */ (err).message}`;
+						console.error(`📅 CalendarView: ${errorMsg}`);
+						resolutionErrors = [...resolutionErrors, errorMsg];
+					}
+				},
+				complete: () => {
+					console.log('📅 CalendarView: Finished loading targeted publication events');
+					loading.loading = false;
+				},
+				error: (/** @type {any} */ err) => {
+					console.error('📅 CalendarView: Error loading targeted publication events:', err);
+					loading.loading = false;
+				}
+			});
+		} catch (err) {
+			console.error('📅 CalendarView: Error creating community subscriptions:', err);
+			error = 'Failed to connect to event stream';
+			loading.loading = false;
+		}
+	}
+
+	/**
 	 * Load events created by a specific author
 	 * @param {string} pubkey - The author's public key
 	 * @param {string[]} [relays] - Optional relay URLs to use (if not provided, reads from store)
@@ -374,8 +542,20 @@
 	});
 
 	onMount(() => {
-		// Start the default calendar timeline loader (store subscription for later control)
-		backgroundLoaderSubscription = calendarTimelineLoader().subscribe();
+		// Start the default calendar timeline loader (unless in community mode)
+		if (!communityMode) {
+			backgroundLoaderSubscription = calendarTimelineLoader().subscribe();
+		} else {
+			// Bootstrap EventStore with community calendar loader
+			communityCalendarTimelineLoader(communityPubkey)().subscribe({
+				complete: () => {
+					console.log('📅 CalendarView: Community calendar loader bootstrap complete');
+				},
+				error: (err) => {
+					console.warn('📅 CalendarView: Community calendar loader bootstrap error:', err);
+				}
+			});
+		}
 
 		userSubscription = manager.active$.subscribe((user) => {
 			activeUser = user;
@@ -390,29 +570,49 @@
 		}
 		
 		// Load events on mount based on initial state
-		// This only runs once on mount, not reactively
-		if (authorPubkey) {
+		if (communityMode) {
+			console.log('📅 CalendarView: Initial load - community events');
+			loadCommunityEvents();
+		} else if (authorPubkey) {
 			console.log('📅 CalendarView: Initial load - events by author:', authorPubkey);
 			loadEventsByAuthor(authorPubkey);
 		} else if (globalMode) {
 			console.log('📅 CalendarView: Initial load - global events');
-			loadEventsFromEventStore(); // Use default approach on initial load
+			loadEventsFromEventStore();
 		} else if (calendar) {
 			console.log('📅 CalendarView: Initial load - calendar:', calendar.title);
 			loadCalendarSpecificEvents(calendar);
 		} else {
 			console.log('📅 CalendarView: Initial load - global events (fallback)');
-			loadEventsFromEventStore(); // Use default approach
+			loadEventsFromEventStore();
 		}
 
 		// Cleanup subscriptions on unmount
 		return () => {
+			subscription?.unsubscribe();
 			relaySubscription?.unsubscribe();
 			userSubscription?.unsubscribe();
 			calendarSubscription?.unsubscribe();
 			backgroundLoaderSubscription?.unsubscribe();
+			targetedPublicationSubscription?.unsubscribe();
 		};
 	});
+	/**
+	 * Refresh calendar events
+	 * @param {string[]} [relays] - Optional relay URLs to use for filtering
+	 */
+	function handleRefresh(relays) {
+		// Reload with current filters, passing relays if provided
+		if (communityMode) {
+			loadCommunityEvents();
+		} else if (authorPubkey) {
+			loadEventsByAuthor(authorPubkey, relays);
+		} else if (globalMode || !calendar) {
+			loadEvents(relays);
+		} else if (calendar) {
+			loadCalendarSpecificEvents(calendar);
+		}
+	}
 
 	// React to calendar prop changes - enables automatic event reloading when switching calendars
 	$effect(() => {
@@ -538,21 +738,6 @@
 	}
 
 	/**
-	 * Refresh calendar events
-	 * @param {string[]} [relays] - Optional relay URLs to use for filtering
-	 */
-	function handleRefresh(relays) {
-		// Reload with current filters, passing relays if provided
-		if (authorPubkey) {
-			loadEventsByAuthor(authorPubkey, relays);
-		} else if (globalMode || !calendar) {
-			loadEvents(relays);
-		} else if (calendar) {
-			loadCalendarSpecificEvents(calendar);
-		}
-	}
-
-	/**
 	 * Handle relay filter changes
 	 * @param {string[]} relays
 	 */
@@ -638,9 +823,21 @@
 	<div class="border-b border-base-300 bg-base-200 px-6 py-4">
 		<div class="flex items-center justify-between">
 			<div class="flex items-center gap-4">
-				<CalendarDropdown currentCalendar={calendar} />
+				{#if communityMode}
+					<h2 class="text-lg font-semibold text-base-content">Community Calendar</h2>
+				{:else}
+					<CalendarDropdown currentCalendar={calendar} />
+				{/if}
 			</div>
 			<div class="flex items-center gap-3">
+				<!-- Add to Calendar Button (community mode only) -->
+				{#if communityMode && communityPubkey}
+					<AddToCalendarButton 
+						calendarId={communityPubkey} 
+						calendarTitle={communityCalendarTitle}
+					/>
+				{/if}
+
 				<button
 					class="btn btn-ghost btn-sm"
 					onclick={() => handleRefresh()}
@@ -711,23 +908,76 @@
 		</div>
 	{/if}
 
-	<!-- Relay Selector -->
-	<RelaySelector onApplyFilters={handleRelayFilterChange} />
+	<!-- Resolution Errors Display (community mode) -->
+	{#if communityMode && resolutionErrors.length > 0}
+		<div class="alert rounded-none border-b alert-warning border-warning/20 px-6 py-3">
+			<div class="flex items-start gap-3">
+				<svg
+					class="mt-0.5 h-5 w-5 text-warning"
+					fill="none"
+					stroke="currentColor"
+					viewBox="0 0 24 24"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+					/>
+				</svg>
+				<div class="flex-1">
+					<h4 class="mb-1 text-sm font-medium">Some calendar events could not be loaded</h4>
+					<p class="mb-2 text-xs text-base-content/70">
+						{resolutionErrors.length} referenced event{resolutionErrors.length === 1 ? '' : 's'} could not be found or loaded.
+					</p>
+					<details class="text-xs">
+						<summary class="cursor-pointer hover:text-base-content">Show details</summary>
+						<ul class="mt-2 space-y-1">
+							{#each resolutionErrors as errorMsg}
+								<li class="text-base-content/60">• {errorMsg}</li>
+							{/each}
+						</ul>
+					</details>
+				</div>
+				<button
+					class="btn btn-ghost btn-xs"
+					onclick={() => (resolutionErrors = [])}
+					aria-label="Dismiss resolution errors"
+				>
+					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						/>
+					</svg>
+				</button>
+			</div>
+		</div>
+	{/if}
 
-	<!-- Follow List Selector -->
-	<FollowListSelector onApplyFilters={handleFollowListFilterChange} />
+	<!-- Filters (hidden in community mode) -->
+	{#if !communityMode}
+		<!-- Relay Selector -->
+		<RelaySelector onApplyFilters={handleRelayFilterChange} />
 
-	<!-- Search Input -->
-	<SearchInput onSearchQueryChange={handleSearchQueryChange} />
+		<!-- Follow List Selector -->
+		<FollowListSelector onApplyFilters={handleFollowListFilterChange} />
 
-	<!-- Tag Selector -->
-	<TagSelector {events} onTagFilterChange={handleTagFilterChange} />
+		<!-- Search Input -->
+		<SearchInput onSearchQueryChange={handleSearchQueryChange} />
+
+		<!-- Tag Selector -->
+		<TagSelector {events} onTagFilterChange={handleTagFilterChange} />
+	{/if}
 
 	<!-- Calendar Navigation -->
 	<CalendarNavigation
 		{currentDate}
 		{viewMode}
 		{presentationViewMode}
+		{communityMode}
 		onPrevious={handlePrevious}
 		onNext={handleNext}
 		onToday={handleToday}

@@ -29,6 +29,8 @@
 	import EventDebugInfo from './EventDebugInfo.svelte';
 	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
+	import LocationLink from '../shared/LocationLink.svelte';
+	import MarkdownRenderer from '../shared/MarkdownRenderer.svelte';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
@@ -604,9 +606,7 @@
 			{#if event.summary}
 				<div class="mb-6">
 					<h3 class="mb-2 text-lg font-semibold text-base-content">Description</h3>
-					<p class="leading-relaxed whitespace-pre-wrap text-base-content/80">
-						{event.summary}
-					</p>
+					<MarkdownRenderer content={event.summary} class="prose max-w-none" />
 				</div>
 			{/if}
 
@@ -670,7 +670,9 @@
 						{#each event.locations as location}
 							<div class="flex items-start gap-3 rounded-lg bg-base-200 p-3">
 								<LocationIcon class_="w-5 h-5 text-base-content/60 mt-0.5" />
-								<span class="text-base-content/80">{location}</span>
+								<div class="text-base-content/80">
+									<LocationLink {location} />
+								</div>
 							</div>
 						{/each}
 					</div>

@@ -7,6 +7,8 @@
 <script>
 	import { formatCalendarDate } from '../../helpers/calendar.js';
 	import EventTags from './EventTags.svelte';
+	import LocationLink from '../shared/LocationLink.svelte';
+	import MarkdownRenderer from '../shared/MarkdownRenderer.svelte';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
@@ -135,7 +137,7 @@
 	{#if event.locations && event.locations.length > 0 && !compact}
 		<div class="text-sm text-base-content/70 mb-2 flex items-center gap-1">
 			<span class="text-xs">📍</span>
-			{event.locations[0]}
+			<LocationLink location={event.locations[0]} />
 			{#if event.locations.length > 1}
 				<span class="text-xs text-base-content/40 ml-1">+{event.locations.length - 1}</span>
 			{/if}

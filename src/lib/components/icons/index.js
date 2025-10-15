@@ -25,6 +25,7 @@ export { default as LockIcon } from './ui/LockIcon.svelte';
 export { default as CopyIcon } from './actions/CopyIcon.svelte';
 export { default as RefreshIcon } from './actions/RefreshIcon.svelte';
 export { default as ExternalLinkIcon } from './actions/ExternalLinkIcon.svelte';
+export { default as EditIcon } from './actions/EditIcon.svelte';
 
 // Social Icons
 export { default as ChatIcon } from './social/ChatIcon.svelte';

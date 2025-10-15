@@ -2,14 +2,13 @@
 	import { onMount } from 'svelte';
 	import CommunikeyHeader from '$lib/components/CommunikeyHeader.svelte';
 	import Chat from '$lib/components/Chat.svelte';
-	import CommunikeyCalendarView from '$lib/components/calendar/CommunikeyCalendarView.svelte';
+	import CalendarView from '$lib/components/calendar/CalendarView.svelte';
 
 	/** @type {import('./$types').PageProps} */
 	let { data } = $props();
 
 	import { eventStore } from '$lib/store.svelte';
 	import { getCommunityContentTypes } from '$lib/helpers';
-	import CalendarView from '$lib/components/calendar/CalendarView.svelte';
 
 	let communikeyEvent = $state(/** @type {any} */ (null));
 	let profileEvent = $state(/** @type {any} */ (null));
@@ -79,7 +78,7 @@
 					<Chat {communikeyEvent} />
 				<!-- {/if} -->
 			{:else if activeTab === 'calendar'}
-				<CommunikeyCalendarView communityPubkey={data.pubkey} />
+				<CalendarView communityPubkey={data.pubkey} communityMode={true} />
 			{/if}
 		</div>
 	</div>

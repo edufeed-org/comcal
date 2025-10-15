@@ -11,10 +11,14 @@
 		CalendarIcon,
 		ClockIcon,
 		LocationIcon,
-		UserIcon
+		UserIcon,
+		EditIcon
 	} from '$lib/components/icons';
 	import AddToCalendarDropdown from '$lib/components/calendar/AddToCalendarDropdown.svelte';
 	import EventTags from '$lib/components/calendar/EventTags.svelte';
+	import CalendarEventModal from '$lib/components/calendar/CalendarEventModal.svelte';
+	import LocationLink from '$lib/components/shared/LocationLink.svelte';
+	import MarkdownRenderer from '$lib/components/shared/MarkdownRenderer.svelte';
 
 	/** @type {import('./$types').PageProps} */
 	let { data } = $props();
@@ -27,6 +31,7 @@
 	let isPostingComment = $state(false);
 	let featuredCalendars = $state(/** @type {any[]} */ ([]));
 	let isLoadingCalendars = $state(true);
+	let isEditModalOpen = $state(false);
 
 	// Subscribe to active user
 	$effect(() => {
@@ -38,6 +43,10 @@
 
 	// Get event from data
 	let event = $derived(data.event);
+	let rawEvent = $derived(data.rawEvent);
+
+	// Check if user owns this event
+	let isUserEvent = $derived(event && activeUser && event.pubkey === activeUser.pubkey);
 
 	// Format event data for display
 	let startDate = $derived(event ? new Date(event.start * 1000) : null);
@@ -264,9 +273,33 @@
 			</div>
 		{/if}
 
-		<!-- Add to Calendar Button (Top Right) -->
-		<div class="mb-6 flex justify-end">
-			<AddToCalendarDropdown event={event} disabled={!activeUser} />
+		<!-- Action Buttons and User Badge -->
+		<div class="mb-6 flex items-center justify-between gap-4">
+			<!-- Your Event Badge -->
+			{#if isUserEvent}
+				<div class="badge badge-primary badge-lg gap-2">
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-4 h-4 stroke-current">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+					</svg>
+					Your Event
+				</div>
+			{:else}
+				<div></div>
+			{/if}
+
+			<!-- Action Buttons -->
+			<div class="flex gap-2">
+				{#if isUserEvent}
+					<button
+						class="btn btn-secondary gap-2"
+						onclick={() => isEditModalOpen = true}
+					>
+						<EditIcon class_="w-5 h-5" />
+						Edit Event
+					</button>
+				{/if}
+				<AddToCalendarDropdown event={event} disabled={!activeUser} />
+			</div>
 		</div>
 
 		<!-- Event Title -->
@@ -276,8 +309,8 @@
 
 		<!-- Event Description -->
 		{#if event.summary}
-			<div class="prose prose-lg mb-8 max-w-none">
-				<p class="whitespace-pre-wrap text-base-content/80">{event.summary}</p>
+			<div class="mb-8">
+				<MarkdownRenderer content={event.summary} />
 			</div>
 		{/if}
 
@@ -341,7 +374,7 @@
 			</div>
 		</div>
 
-		<!-- Location Card (disabled state) -->
+		<!-- Location Card -->
 		{#if event.location}
 			<div class="card mb-8 bg-base-200 shadow-lg">
 				<div class="card-body">
@@ -350,11 +383,12 @@
 						Location
 					</h2>
 					<div class="mt-4">
-						<div class="flex items-start gap-3 opacity-60">
+						<div class="flex items-start gap-3">
 							<LocationIcon class_="w-5 h-5 mt-0.5" />
-							<span class="text-base-content/80">{event.location}</span>
+							<div class="text-base-content/80">
+								<LocationLink location={event.location} />
+							</div>
 						</div>
-						<p class="mt-2 text-sm text-base-content/50">(Map functionality coming soon)</p>
 					</div>
 				</div>
 			</div>
@@ -573,4 +607,21 @@
 			<span>Event not found</span>
 		</div>
 	</div>
+{/if}
+
+<!-- Edit Modal -->
+{#if event && rawEvent}
+	<CalendarEventModal
+		isOpen={isEditModalOpen}
+		mode="edit"
+		existingEvent={event}
+		existingRawEvent={rawEvent}
+		communityPubkey={event.pubkey}
+		onClose={() => isEditModalOpen = false}
+		onEventCreated={() => {
+			isEditModalOpen = false;
+			// Reload page to show updated event
+			window.location.reload();
+		}}
+	/>
 {/if}

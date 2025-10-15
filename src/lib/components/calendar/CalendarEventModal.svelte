@@ -22,6 +22,9 @@
 		isOpen = false,
 		communityPubkey,
 		selectedDate = null,
+		mode = 'create',
+		existingEvent = null,
+		existingRawEvent = null,
 		onClose = () => {},
 		onEventCreated = () => {}
 	} = $props();
@@ -31,7 +34,7 @@
 
 	// Form state
 	/** @type {EventFormData} */
-	let formData = {
+	let formData = $state({
 		title: '',
 		summary: '',
 		image: '',
@@ -44,7 +47,7 @@
 		locations: [''],
 		isAllDay: false,
 		eventType: 'date'
-	};
+	});
 
 	let validationErrors = /** @type {string[]} */ ([]);
 	let isSubmitting = false;
@@ -71,14 +74,18 @@
 	// Initialize form when modal opens
 	$effect(() => {
 		if (isOpen) {
-			initializeForm();
+			if (mode === 'edit' && existingEvent) {
+				initializeFormForEdit();
+			} else {
+				initializeForm();
+			}
 			selectedCalendarIds = [];
 			selectedCommunityIds = [];
 		}
 	});
 
 	/**
-	 * Initialize form with default values
+	 * Initialize form with default values for creating new event
 	 */
 	function initializeForm() {
 		const today = selectedDate || new Date();
@@ -98,6 +105,45 @@
 			locations: [''],
 			isAllDay: false,
 			eventType: 'date'
+		};
+
+		validationErrors = [];
+		isSubmitting = false;
+		submitError = '';
+	}
+
+	/**
+	 * Initialize form with existing event data for editing
+	 */
+	function initializeFormForEdit() {
+		if (!existingEvent) return;
+
+		// Convert Unix timestamps to Date objects
+		const startDate = new Date(existingEvent.start * 1000);
+		const endDate = existingEvent.end ? new Date(existingEvent.end * 1000) : null;
+		
+		// Determine event type
+		const isAllDay = existingEvent.kind === 31922;
+		const eventType = isAllDay ? 'date' : 'time';
+
+		// Extract locations from event
+		const locations = existingEvent.locations && existingEvent.locations.length > 0 
+			? existingEvent.locations 
+			: [''];
+
+		formData = {
+			title: existingEvent.title || '',
+			summary: existingEvent.summary || '',
+			image: existingEvent.image || '',
+			startDate: startDate.toISOString().split('T')[0],
+			startTime: startDate.toTimeString().slice(0, 5),
+			endDate: endDate ? endDate.toISOString().split('T')[0] : '',
+			endTime: endDate ? endDate.toTimeString().slice(0, 5) : '10:00',
+			startTimezone: existingEvent.startTimezone || getCurrentTimezone(),
+			endTimezone: existingEvent.endTimezone || getCurrentTimezone(),
+			locations: locations,
+			isAllDay: isAllDay,
+			eventType: eventType
 		};
 
 		validationErrors = [];
@@ -148,35 +194,43 @@
 		submitError = '';
 
 		try {
-			// Create the calendar event
-			const createdEvent = /** @type {any} */ (await calendarActions.createEvent(formData, communityPubkey));
-			
-			// Only proceed with calendar/community operations if event was created successfully
-			if (createdEvent && createdEvent.id) {
-				// Add event to selected calendars (event already has dTag from createEvent)
-				if (calendarManagement && selectedCalendarIds.length > 0) {
-					await Promise.all(
-						selectedCalendarIds.map(calendarId =>
-							calendarManagement.addEventToCalendar(calendarId, createdEvent)
-						)
-					);
-				}
+			let resultEvent = /** @type {any} */ (null);
+
+			if (mode === 'edit' && existingRawEvent) {
+				// Update existing event
+				resultEvent = await calendarActions.updateEvent(formData, existingRawEvent);
+				console.log('Event updated successfully');
+			} else {
+				// Create new event
+				resultEvent = await calendarActions.createEvent(formData, communityPubkey);
 				
-				// Share event with selected communities
-				if (selectedCommunityIds.length > 0) {
-					await Promise.all(
-						selectedCommunityIds.map(communityPubkey =>
-							calendarActions.createTargetedPublication(createdEvent.id, communityPubkey)
-						)
-					);
+				// Only proceed with calendar/community operations if event was created successfully
+				if (resultEvent && resultEvent.id) {
+					// Add event to selected calendars (event already has dTag from createEvent)
+					if (calendarManagement && selectedCalendarIds.length > 0) {
+						await Promise.all(
+							selectedCalendarIds.map(calendarId =>
+								calendarManagement.addEventToCalendar(calendarId, resultEvent)
+							)
+						);
+					}
+					
+					// Share event with selected communities
+					if (selectedCommunityIds.length > 0) {
+						await Promise.all(
+							selectedCommunityIds.map(communityPubkey =>
+								calendarActions.createTargetedPublication(resultEvent.id, communityPubkey)
+							)
+						);
+					}
 				}
 			}
 			
 			onEventCreated();
 			handleClose();
 		} catch (error) {
-			console.error('Error creating event:', error);
-			submitError = error instanceof Error ? error.message : 'Failed to create event';
+			console.error(`Error ${mode === 'edit' ? 'updating' : 'creating'} event:`, error);
+			submitError = error instanceof Error ? error.message : `Failed to ${mode === 'edit' ? 'update' : 'create'} event`;
 		} finally {
 			isSubmitting = false;
 		}
@@ -225,7 +279,7 @@
 			<!-- Modal Header -->
 			<div class="flex items-center justify-between mb-4">
 				<h2 id="modal-title" class="text-xl font-semibold text-base-content">
-					Create New Event
+					{mode === 'edit' ? 'Edit Event' : 'Create New Event'}
 				</h2>
 				<button
 					class="btn btn-sm btn-circle btn-ghost"
@@ -444,9 +498,9 @@
 							disabled={isSubmitting}
 						>
 							{#if isSubmitting}
-								Creating...
+								{mode === 'edit' ? 'Updating...' : 'Creating...'}
 							{:else}
-								Create Event
+								{mode === 'edit' ? 'Update Event' : 'Create Event'}
 							{/if}
 						</button>
 					</div>

@@ -144,25 +144,126 @@ export function createCalendarActions(communityPubkey) {
 
 		/**
 		 * Update an existing calendar event
-		 * @param {string} eventId - Event ID to update
-		 * @param {Partial<CalendarEvent>} updates - Event updates
-		 * @returns {Promise<void>}
+		 * @param {EventFormData} formData - Event form data
+		 * @param {any} existingEvent - Existing raw Nostr event to update
+		 * @returns {Promise<any>}
 		 */
-		async updateEvent(eventId, updates) {
+		async updateEvent(formData, existingEvent) {
+			// Validate form data
+			const validationErrors = validateEventForm(formData);
+			if (validationErrors.length > 0) {
+				throw new Error(`Validation failed: ${validationErrors.join(', ')}`);
+			}
+
 			// Get current account
 			const currentAccount = manager.active;
 			if (!currentAccount) {
 				throw new Error('No account selected. Please log in to update events.');
 			}
 
+			// Extract the original d-tag from the existing event
+			const dTag = existingEvent.tags.find((/** @type {string[]} */ t) => t[0] === 'd')?.[1];
+			if (!dTag) {
+				throw new Error('Cannot update event: missing d-tag. Event may not be replaceable.');
+			}
+
+			// Verify the user owns this event
+			if (existingEvent.pubkey !== currentAccount.pubkey) {
+				throw new Error('Cannot update event: you do not own this event.');
+			}
+
 			try {
-				// Note: In Nostr, events are immutable, so "updating" means creating a new event
-				// that replaces the old one. For calendar events, this would involve creating
-				// a new event with the same 'd' tag (for replaceable events) or using deletion.
+				// Convert form data to event object
+				const eventData = convertFormDataToEvent(formData, existingEvent.pubkey);
+
+				// Create the calendar event using EventFactory with the SAME d-tag
+				const eventFactory = new EventFactory();
 				
-				// For now, we'll throw an error as event updating needs more complex logic
-				throw new Error('Event updating not yet implemented. Events are immutable in Nostr.');
+				// Build event template with tags
+				const tags = [];
 				
+				// CRITICAL: Use the original d-tag for addressable event replacement
+				tags.push(['d', dTag]);
+				
+				// Add calendar-specific tags
+				tags.push(['title', eventData.title]);
+				if (eventData.start) {
+					tags.push(['start', eventData.start.toString()]);
+				}
+
+				if (eventData.end) {
+					tags.push(['end', eventData.end.toString()]);
+				}
+
+				// Add timezone tags for time-based events
+				if (eventData.kind === 31923) {
+					if (eventData.startTimezone) {
+						tags.push(['start_tz', eventData.startTimezone]);
+					}
+					if (eventData.endTimezone) {
+						tags.push(['end_tz', eventData.endTimezone]);
+					}
+				}
+
+				// Add optional properties
+				if (eventData.image) {
+					tags.push(['image', eventData.image]);
+				}
+
+				// Add location
+				if (eventData.location) {
+					tags.push(['location', eventData.location]);
+				}
+
+				// Add hashtags
+				if (eventData.hashtags) {
+					eventData.hashtags.forEach(hashtag => {
+						if (hashtag) tags.push(['t', hashtag]);
+					});
+				}
+
+				// Add references
+				if (eventData.references) {
+					eventData.references.forEach(reference => {
+						if (reference) tags.push(['e', reference]);
+					});
+				}
+
+				// Add geohash if present
+				if (eventData.geohash) {
+					tags.push(['g', eventData.geohash]);
+				}
+
+				// Build and sign the updated calendar event
+				const eventTemplate = await eventFactory.build({
+					kind: eventData.kind || existingEvent.kind,
+					content: eventData.summary || '',
+					tags: tags
+				});
+
+				const updatedEvent = await currentAccount.signEvent(eventTemplate);
+				await pool.publish(relays, updatedEvent);
+
+				// Add dTag property to the event object
+				const eventWithDTag = {
+					...updatedEvent,
+					dTag: dTag
+				};
+
+				// Transform the raw Nostr event to CalendarEvent format for immediate UI display
+				const transformedEvent = getCalendarEventMetadata(eventWithDTag);
+				
+				// Update the event in the calendar store
+				const currentEvents = calendarStore.events;
+				const updatedEvents = currentEvents.map(evt => 
+					evt.id === existingEvent.id ? transformedEvent : evt
+				);
+				calendarStore.setEvents(updatedEvents);
+				console.log('📅 Calendar Actions: Updated event in store');
+
+				// Return the updated event
+				return eventWithDTag;
+
 			} catch (error) {
 				console.error('Error updating calendar event:', error);
 				const errorMessage = error instanceof Error ? error.message : 'Unknown error';

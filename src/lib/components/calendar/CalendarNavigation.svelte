@@ -27,6 +27,7 @@
 		currentDate,
 		viewMode,
 		presentationViewMode = 'calendar',
+		communityMode = false,
 		onPrevious,
 		onNext,
 		onToday,
@@ -224,5 +225,7 @@
 			Day
 		</button>
 	</div>
-	<AddToCalendarButton />
+	{#if !communityMode}
+		<AddToCalendarButton />
+	{/if}
 </div>

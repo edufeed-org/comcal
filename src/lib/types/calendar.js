@@ -111,8 +111,8 @@
 
 /**
  * @typedef {Object} CalendarActions
- * @property {function(EventFormData, string): Promise<void>} createEvent - Create new event
- * @property {function(string, Partial<CalendarEvent>): Promise<void>} updateEvent - Update event
+ * @property {function(EventFormData, string): Promise<any>} createEvent - Create new event
+ * @property {function(EventFormData, any): Promise<any>} updateEvent - Update event with form data and existing event
  * @property {function(string): Promise<void>} deleteEvent - Delete event
  * @property {function(string, string): Promise<void>} createTargetedPublication - Create targeted publication
  * @property {function(string, string=): Promise<string>} createCalendar - Create new calendar

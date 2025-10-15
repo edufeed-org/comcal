@@ -1,0 +1,49 @@
+<!--
+  MarkdownRenderer Component
+  Safely renders markdown content with XSS protection
+-->
+
+<script>
+	import { marked } from 'marked';
+	import DOMPurify from 'dompurify';
+
+	let { content = '', class: className = 'prose prose-lg max-w-none' } = $props();
+
+	// Configure marked for better compatibility
+	marked.setOptions({
+		breaks: true, // Convert line breaks to <br>
+		gfm: true // GitHub Flavored Markdown
+	});
+
+	// Parse and sanitize markdown content
+	let html = $derived.by(() => {
+		if (!content || typeof content !== 'string') {
+			return '';
+		}
+
+		try {
+			// Parse markdown to HTML (synchronous)
+			const rawHtml = marked.parse(content, { async: false });
+			
+			// Sanitize HTML to prevent XSS attacks
+			return DOMPurify.sanitize(String(rawHtml), {
+				// Allow common markdown elements
+				ALLOWED_TAGS: [
+					'p', 'br', 'strong', 'em', 'u', 's', 'del', 'code', 'pre',
+					'a', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 
+					'h4', 'h5', 'h6', 'hr', 'table', 'thead', 'tbody', 'tr', 
+					'th', 'td', 'img'
+				],
+				ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'title', 'class']
+			});
+		} catch (error) {
+			console.error('Markdown parsing error:', error);
+			// Fallback to plain text with line breaks preserved
+			return content.replace(/\n/g, '<br>');
+		}
+	});
+</script>
+
+<div class={className}>
+	{@html html}
+</div>
