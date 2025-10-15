@@ -27,7 +27,9 @@
 	import CalendarGrid from '$lib/components/calendar/CalendarGrid.svelte';
 	import CalendarEventsList from './CalendarEventsList.svelte';
 	import CalendarEventModal from '$lib/components/calendar/CalendarEventModal.svelte';
-	import { getTagValue } from 'applesauce-core/helpers';
+	import AddToCalendarButton from '$lib/components/calendar/AddToCalendarButton.svelte';
+	import { getTagValue, getDisplayName } from 'applesauce-core/helpers';
+	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
 
 	/**
 	 * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
@@ -82,7 +84,7 @@
 			end: endTimestamp,
 			startTimezone: undefined,
 			endTimezone: undefined,
-			locations: [],
+			location: '',
 			participants: [],
 			hashtags: [],
 			references: [],
@@ -90,9 +92,18 @@
 			communityPubkey: communityPubkey,
 			createdAt: event.created_at,
 			dTag,
+			eventReferences: [],
 			originalEvent: event
 		};
 	}
+
+	// Get community profile for calendar title
+	const getCommunityProfile = useUserProfile(communityPubkey);
+	let communityProfile = $derived(getCommunityProfile());
+	let communityCalendarTitle = $derived(() => {
+		const displayName = communityProfile?.name || communityProfile?.display_name || '';
+		return displayName ? `${displayName} Calendar` : 'Community Calendar';
+	});
 
 	/**
 	 * Load community-specific calendar events from both direct events and targeted publications
@@ -384,6 +395,12 @@
 				<h2 class="text-lg font-semibold text-base-content">Community Calendar</h2>
 			</div>
 			<div class="flex items-center gap-3">
+				<!-- Calendar Subscription Button -->
+				<AddToCalendarButton 
+					calendarId={communityPubkey} 
+					calendarTitle={communityCalendarTitle()}
+				/>
+
 				<button
 					class="btn btn-ghost btn-sm"
 					onclick={handleRefresh}

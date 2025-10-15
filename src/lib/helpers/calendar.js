@@ -362,3 +362,212 @@ export function getWeekdayHeaders() {
 
 	return rotatedWeekdays;
 }
+
+/**
+ * Detect calendar identifier type
+ * @param {string} identifier - Calendar identifier (naddr, npub, or hex pubkey)
+ * @returns {'naddr' | 'pubkey' | 'unknown'} Identifier type
+ */
+export function detectCalendarIdentifierType(identifier) {
+	if (!identifier || typeof identifier !== 'string') {
+		return 'unknown';
+	}
+
+	// Check if it's an naddr
+	if (identifier.startsWith('naddr1')) {
+		return 'naddr';
+	}
+
+	// Check if it's an npub or hex pubkey (64 hex chars)
+	if (identifier.startsWith('npub1') || /^[0-9a-f]{64}$/i.test(identifier)) {
+		return 'pubkey';
+	}
+
+	return 'unknown';
+}
+
+/**
+ * Fetch all calendar events for a community
+ * Consolidates events from both direct (#h tagged) and targeted publications (#p tagged)
+ * @param {string} communityPubkey - Community public key
+ * @param {string[]} [relays] - Optional relay URLs to query
+ * @returns {Promise<import('nostr-tools').NostrEvent[]>} Array of calendar events
+ */
+export async function fetchCommunityCalendarEvents(communityPubkey, relays = []) {
+	const { eventStore } = await import('$lib/store.svelte.js');
+	const { communityCalendarTimelineLoader, targetedPublicationTimelineLoader, eventLoader } = await import('$lib/loaders.js');
+	const { getTagValue } = await import('applesauce-core/helpers');
+	const { bufferTime, mergeMap, firstValueFrom } = await import('rxjs');
+
+	console.log('📅 fetchCommunityCalendarEvents: Fetching events for community:', communityPubkey);
+
+	/** @type {import('nostr-tools').NostrEvent[]} */
+	const allEvents = [];
+	/** @type {Set<string>} */
+	const eventIds = new Set(); // For deduplication
+
+	try {
+		// Fetch direct community calendar events (#h tagged)
+		// Use bufferTime to wait for events from multiple relays (3 seconds)
+		const directTimeline$ = communityCalendarTimelineLoader(communityPubkey)();
+		/** @type {import('nostr-tools').NostrEvent[]} */
+		const directEventsBuffered = await firstValueFrom(
+			directTimeline$.pipe(
+				bufferTime(3000), // Wait 3 seconds to collect events from relays
+				mergeMap(bufferedArrays => {
+					// Flatten the array of arrays into a single array
+					const flattened = bufferedArrays.flat();
+					return [flattened];
+				})
+			),
+			{ defaultValue: [] }
+		);
+		
+		// Flatten and deduplicate direct events
+		/** @type {import('nostr-tools').NostrEvent[]} */
+		const directEventsArray = Array.isArray(directEventsBuffered) ? directEventsBuffered.flat() : [];
+		
+		console.log(`📅 fetchCommunityCalendarEvents: Found ${directEventsArray.length} direct events`);
+		
+		for (const event of directEventsArray) {
+			if (!eventIds.has(event.id)) {
+				eventIds.add(event.id);
+				allEvents.push(event);
+			}
+		}
+
+		// Fetch targeted publication events (#p tagged with #k for calendar)
+		// Use bufferTime to wait for events from multiple relays (3 seconds)
+		const targetedPubTimeline$ = targetedPublicationTimelineLoader(communityPubkey)();
+		/** @type {import('nostr-tools').NostrEvent[]} */
+		const targetedPubsBuffered = await firstValueFrom(
+			targetedPubTimeline$.pipe(
+				bufferTime(3000), // Wait 3 seconds to collect events from relays
+				mergeMap(bufferedArrays => {
+					// Flatten the array of arrays into a single array
+					const flattened = bufferedArrays.flat();
+					return [flattened];
+				})
+			),
+			{ defaultValue: [] }
+		);
+		
+		// Flatten and deduplicate targeted publications
+		/** @type {import('nostr-tools').NostrEvent[]} */
+		const targetedPubsArray = Array.isArray(targetedPubsBuffered) ? targetedPubsBuffered.flat() : [];
+		
+		console.log(`📅 fetchCommunityCalendarEvents: Found ${targetedPubsArray.length} targeted publications`);
+
+		// Resolve referenced events from targeted publications
+		// We need to wait for each referenced event to load
+		const referencedEventPromises = [];
+		
+		for (const pubEvent of targetedPubsArray) {
+			try {
+				const eTag = getTagValue(pubEvent, 'e');
+				if (!eTag) continue;
+
+				// Check if already in allEvents
+				if (eventIds.has(eTag)) continue;
+
+				// Try to get from event store first
+				let referencedEvent = eventStore.getEvent(eTag);
+				
+				if (referencedEvent && !eventIds.has(referencedEvent.id)) {
+					eventIds.add(referencedEvent.id);
+					allEvents.push(referencedEvent);
+				} else if (!referencedEvent) {
+					// If not in store, create a promise to load it
+					/** @type {string[]} */
+					let relayList = relays;
+					// Use default relays as fallback if no relays provided
+					if (relayList.length === 0) {
+						const { relays: defaultRelays } = await import('$lib/store.svelte.js');
+						relayList = defaultRelays;
+					}
+					
+					const loadPromise = firstValueFrom(
+						eventLoader({ id: eTag, relays: relayList }).pipe(bufferTime(2000)),
+						{ defaultValue: null }
+					).then(bufferedEvents => {
+						if (bufferedEvents && Array.isArray(bufferedEvents)) {
+							const loadedEvent = bufferedEvents.find(e => e && e.id === eTag);
+							if (loadedEvent && !eventIds.has(loadedEvent.id)) {
+								eventIds.add(loadedEvent.id);
+								allEvents.push(loadedEvent);
+							}
+						}
+					}).catch(err => {
+						console.warn(`📅 fetchCommunityCalendarEvents: Failed to load referenced event ${eTag}:`, err);
+					});
+					
+					referencedEventPromises.push(loadPromise);
+				}
+			} catch (err) {
+				console.warn(`📅 fetchCommunityCalendarEvents: Failed to resolve targeted publication ${pubEvent.id}:`, err);
+			}
+		}
+		
+		// Wait for all referenced events to be resolved
+		await Promise.all(referencedEventPromises);
+
+		console.log(`📅 fetchCommunityCalendarEvents: Total events fetched: ${allEvents.length}`);
+		return allEvents;
+	} catch (error) {
+		console.error('📅 fetchCommunityCalendarEvents: Error fetching community calendar events:', error);
+		return [];
+	}
+}
+
+/**
+ * Get community calendar metadata for ICS generation
+ * @param {string} communityPubkey - Community public key
+ * @returns {Promise<{title: string, summary: string, relays: string[]}>} Calendar metadata
+ */
+export async function getCommunityCalendarMetadata(communityPubkey) {
+	const { eventStore } = await import('$lib/store.svelte.js');
+	const { firstValueFrom } = await import('rxjs');
+
+	try {
+		// Get community profile (kind 0)
+		const profile$ = eventStore.profile(communityPubkey);
+		const profileEvent = await firstValueFrom(profile$, { defaultValue: null });
+		
+		let title = 'Community Calendar';
+		let summary = '';
+		
+		if (profileEvent) {
+			// profileEvent is already ProfileContent from eventStore.profile()
+			const displayName = profileEvent?.name || profileEvent?.display_name || '';
+			title = displayName ? `${displayName} Calendar` : 'Community Calendar';
+			summary = profileEvent?.about || '';
+		}
+
+		// Get community definition (kind 10222) for relays
+		const communityDef$ = eventStore.replaceable({ kind: 10222, pubkey: communityPubkey });
+		const communityDefEvent = await firstValueFrom(communityDef$, { defaultValue: null });
+		
+		/** @type {string[]} */
+		let relays = [];
+		if (communityDefEvent) {
+			relays = communityDefEvent.tags
+				.filter(/** @param {string[]} tag */ tag => tag[0] === 'r')
+				.map(/** @param {string[]} tag */ tag => tag[1]);
+			
+			// Check for description override
+			const descTag = communityDefEvent.tags.find(/** @param {string[]} tag */ tag => tag[0] === 'description');
+			if (descTag && descTag[1]) {
+				summary = descTag[1];
+			}
+		}
+
+		return { title, summary, relays };
+	} catch (error) {
+		console.error('📅 getCommunityCalendarMetadata: Error fetching metadata:', error);
+		return {
+			title: 'Community Calendar',
+			summary: '',
+			relays: []
+		};
+	}
+}

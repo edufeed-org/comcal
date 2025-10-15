@@ -1,12 +1,49 @@
 import { fetchCalendarEvents, fetchEventById, encodeEventToNaddr } from '$lib/helpers/nostrUtils';
 import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
+import { 
+  detectCalendarIdentifierType, 
+  fetchCommunityCalendarEvents, 
+  getCommunityCalendarMetadata 
+} from '$lib/helpers/calendar';
+import { nip19 } from 'nostr-tools';
 
 /** @type {import('./$types').RequestHandler} */
 export async function GET({ url, params }) {
-  const { id: nostrCalendarAddress } = params ?? null;
+  const { id: calendarIdentifier } = params ?? null;
 
-  const calendarEvent = await fetchEventById(nostrCalendarAddress);
-  const calendarMetadata = getCalendarEventMetadata(calendarEvent)
+  if (!calendarIdentifier) {
+    return new Response(JSON.stringify({ error: "Calendar ID is required" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  // Detect identifier type
+  const identifierType = detectCalendarIdentifierType(calendarIdentifier);
+
+  if (identifierType === 'naddr') {
+    // Handle NIP-52 calendar (existing flow)
+    return await handleNIP52Calendar(calendarIdentifier, url);
+  } else if (identifierType === 'pubkey') {
+    // Handle community calendar (new flow)
+    return await handleCommunityCalendar(calendarIdentifier, url);
+  } else {
+    return new Response(JSON.stringify({ error: "Invalid calendar identifier format" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+}
+
+/**
+ * Handle NIP-52 calendar ICS generation
+ * @param {string} naddr - Calendar naddr identifier
+ * @param {URL} url - Request URL
+ * @returns {Promise<Response>}
+ */
+async function handleNIP52Calendar(naddr, url) {
+  const calendarEvent = await fetchEventById(naddr);
+  const calendarMetadata = getCalendarEventMetadata(calendarEvent);
 
   if (!calendarEvent || calendarEvent.kind !== 31924) {
     return new Response(JSON.stringify({ error: "Invalid calendar ID or event not found" }), {
@@ -15,11 +52,14 @@ export async function GET({ url, params }) {
     });
   }
 
-  const { upcoming, past } = await fetchCalendarEvents(calendarEvent)
-
+  const { upcoming, past } = await fetchCalendarEvents(calendarEvent);
   const allEvents = [...upcoming, ...past];
 
-  const icsContent = generateICSContent(calendarMetadata, allEvents, url);
+  const icsContent = generateICSContent(
+    { title: calendarMetadata.title || '', summary: calendarMetadata.summary || '' },
+    allEvents,
+    url
+  );
 
   return new Response(icsContent, {
     headers: {
@@ -32,11 +72,71 @@ export async function GET({ url, params }) {
 }
 
 /**
+ * Handle community calendar ICS generation
+ * @param {string} pubkeyOrNpub - Community pubkey (hex or npub)
+ * @param {URL} url - Request URL
+ * @returns {Promise<Response>}
+ */
+async function handleCommunityCalendar(pubkeyOrNpub, url) {
+  try {
+    // Decode npub to hex if needed
+    let communityPubkey = pubkeyOrNpub;
+    if (pubkeyOrNpub.startsWith('npub1')) {
+      const decoded = nip19.decode(pubkeyOrNpub);
+      if (decoded.type === 'npub') {
+        communityPubkey = decoded.data;
+      } else {
+        return new Response(JSON.stringify({ error: "Invalid npub format" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+    }
+
+    // Fetch community calendar metadata
+    const metadata = await getCommunityCalendarMetadata(communityPubkey);
+    
+    // Get default relays and combine with community relays
+    const { relays: defaultRelays } = await import('$lib/store.svelte.js');
+    const allRelays = [...new Set([...defaultRelays, ...metadata.relays])];
+    
+    // Fetch community calendar events with combined relays
+    const events = await fetchCommunityCalendarEvents(communityPubkey, allRelays);
+
+    if (events.length === 0) {
+      console.warn(`No events found for community calendar: ${communityPubkey}`);
+    }
+
+    // Generate ICS content
+    const icsContent = generateICSContent(
+      { title: metadata.title, summary: metadata.summary },
+      events,
+      url
+    );
+
+    return new Response(icsContent, {
+      headers: {
+        "Content-Type": "text/calendar; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${metadata.title || "community-calendar"}.ics"`,
+        "Cache-Control": "no-cache, must-revalidate",
+        "X-Published-TTL": "PT1H", // Refresh every hour
+      },
+    });
+  } catch (error) {
+    console.error('Error generating community calendar ICS:', error);
+    return new Response(JSON.stringify({ error: "Failed to generate community calendar" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+}
+
+/**
  * 
- * @param {import('$lib/types/calendar.js').CalendarEvent} calendarMetadata 
+ * @param {{title: string, summary: string}} calendarMetadata 
  * @param {import('nostr-tools').NostrEvent[]} events 
  * @param {URL} url - Request URL object for generating event URLs
- * @returns 
+ * @returns {string}
  */
 function generateICSContent(calendarMetadata, events, url) {
   /** @type {Date} */

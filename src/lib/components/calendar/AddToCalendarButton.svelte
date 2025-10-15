@@ -6,6 +6,9 @@
 	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 
+	// Props for explicit calendar ID (for community calendars)
+	let { calendarId = null, calendarTitle = null } = $props();
+
 	let selectedCalendar = $state(calendarStore.selectedCalendar);
 	let calendarSubscription = $state();
 
@@ -19,18 +22,33 @@
 		};
 	});
 
+	// Get calendar ID (from prop or selectedCalendar)
+	const getCalendarId = () => {
+		if (calendarId) return calendarId;
+		if (selectedCalendar?.originalEvent) {
+			return encodeEventToNaddr(selectedCalendar.originalEvent);
+		}
+		return selectedCalendar?.id || '';
+	};
+
+	// Get calendar title (from prop or selectedCalendar)
+	const getCalendarTitle = () => {
+		if (calendarTitle) return calendarTitle;
+		return selectedCalendar?.title || 'Calendar';
+	};
+
 	// Generate webcal URL for calendar subscription
 	const generateWebcalUrl = () => {
 		const baseUrl = window.location.origin;
-		const calendarNaddr = encodeEventToNaddr(selectedCalendar.originalEvent);
-		return `webcal://${baseUrl.replace(/^https?:\/\//, '')}/api/calendar/${calendarNaddr}/ics`;
+		const id = getCalendarId();
+		return `webcal://${baseUrl.replace(/^https?:\/\//, '')}/api/calendar/${id}/ics`;
 	};
 
 	// Generate ICS download URL
 	const generateIcsUrl = () => {
 		const baseUrl = window.location.origin;
-		const calendarId = selectedCalendar.id;
-		return `${baseUrl}/api/calendar/${calendarId}/ics`;
+		const id = getCalendarId();
+		return `${baseUrl}/api/calendar/${id}/ics`;
 	};
 
 	const handleCopyWebcalLink = async () => {
