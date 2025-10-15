@@ -4,22 +4,23 @@
 -->
 
 <script>
+	import { page } from '$app/stores';
 	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
+	import { updateQueryParams } from '$lib/helpers/urlParams.js';
 	import { FilterIcon } from '../icons';
 
 	// Props
 	let { events = [], onTagFilterChange = () => {} } = $props();
 
-	// Local state
-	let selectedTags = $state(/** @type {string[]} */ ([]));
+	// Sync local state with store (which is synced from URL in CalendarView)
+	let selectedTags = $derived(calendarStore.selectedTags);
 
 	/**
-	 * Extract and count popular tags from events
+	 * Get all tag counts from events
 	 * @param {import('$lib/types/calendar.js').CalendarEvent[]} events
-	 * @param {number} limit
-	 * @returns {{ tag: string, count: number }[]}
+	 * @returns {Map<string, number>}
 	 */
-	function getPopularTags(events, limit = 15) {
+	function getAllTagCounts(events) {
 		const tagCounts = new Map();
 
 		// Count all hashtags
@@ -33,11 +34,41 @@
 			});
 		});
 
-		// Sort by popularity and return top N
-		return Array.from(tagCounts.entries())
+		return tagCounts;
+	}
+
+	/**
+	 * Get tags to display: selected tags + popular tags
+	 * @param {import('$lib/types/calendar.js').CalendarEvent[]} events
+	 * @param {string[]} selectedTags
+	 * @param {number} popularLimit
+	 * @returns {{ tag: string, count: number, isSelected: boolean }[]}
+	 */
+	function getDisplayedTags(events, selectedTags, popularLimit = 15) {
+		const tagCounts = getAllTagCounts(events);
+		
+		// Get top N popular tags
+		const popularTags = Array.from(tagCounts.entries())
 			.sort((a, b) => b[1] - a[1])
-			.slice(0, limit)
-			.map(([tag, count]) => ({ tag, count }));
+			.slice(0, popularLimit)
+			.map(([tag, count]) => ({ 
+				tag, 
+				count,
+				isSelected: selectedTags.includes(tag)
+			}));
+		
+		// Find selected tags that aren't in the popular list
+		const popularTagNames = new Set(popularTags.map(t => t.tag));
+		const selectedNotPopular = selectedTags
+			.filter(tag => !popularTagNames.has(tag))
+			.map(tag => ({ 
+				tag, 
+				count: tagCounts.get(tag) || 0,
+				isSelected: true 
+			}));
+		
+		// Combine: selected (not popular) first, then popular tags
+		return [...selectedNotPopular, ...popularTags];
 	}
 
 	/**
@@ -45,16 +76,19 @@
 	 * @param {string} tag
 	 */
 	function toggleTag(tag) {
-		if (selectedTags.includes(tag)) {
-			selectedTags = selectedTags.filter((t) => t !== tag);
-		} else {
-			selectedTags = [...selectedTags, tag];
-		}
+		const newTags = selectedTags.includes(tag)
+			? selectedTags.filter((t) => t !== tag)
+			: [...selectedTags, tag];
 
-		// Update store and notify parent
-		calendarStore.setSelectedTags(selectedTags);
-		onTagFilterChange(selectedTags);
-		console.log('🏷️ Selected tags:', selectedTags);
+		// Update store
+		calendarStore.setSelectedTags(newTags);
+		
+		// Update URL
+		updateQueryParams($page.url.searchParams, { tags: newTags });
+		
+		// Notify parent
+		onTagFilterChange(newTags);
+		console.log('🏷️ Selected tags:', newTags);
 	}
 
 	/**
@@ -62,15 +96,21 @@
 	 */
 	function clearTags() {
 		console.log('🏷️ Clearing tag filters');
-		selectedTags = [];
+		
+		// Update store
 		calendarStore.clearSelectedTags();
+		
+		// Update URL (empty array removes the parameter)
+		updateQueryParams($page.url.searchParams, { tags: [] });
+		
+		// Notify parent
 		onTagFilterChange([]);
 	}
 
 	// Derived state
-	let popularTags = $derived(getPopularTags(events));
+	let displayedTags = $derived(getDisplayedTags(events, selectedTags));
 	let hasActiveTags = $derived(selectedTags.length > 0);
-	let hasTags = $derived(popularTags.length > 0);
+	let hasTags = $derived(displayedTags.length > 0);
 </script>
 
 <div class="border-b border-base-300 bg-base-100 px-6 py-4">
@@ -86,11 +126,11 @@
 	{#if hasTags}
 		<!-- Tag buttons grid -->
 		<div class="flex flex-wrap gap-2">
-			{#each popularTags as { tag, count }}
+			{#each displayedTags as { tag, count, isSelected }}
 				<button
 					class="btn btn-sm gap-1"
-					class:btn-primary={selectedTags.includes(tag)}
-					class:btn-ghost={!selectedTags.includes(tag)}
+					class:btn-primary={isSelected}
+					class:btn-ghost={!isSelected}
 					onclick={() => toggleTag(tag)}
 					title="Show events with #{tag} tag"
 				>

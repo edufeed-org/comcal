@@ -511,41 +511,44 @@
 		}
 	}
 
-	// /**
-	//  * Select all communities that don't already have shares
-	//  */
-	// function selectAllCommunities() {
-	// 	const availableCommunities = joinedCommunities
-	// 		.filter(community => !communitiesWithShares.has(community.pubkey))
-	// 		.map(community => community.pubkey);
-	// 	selectedCommunityIds = availableCommunities;
-	// }
+	/**
+	 * Select all communities that don't already have shares
+	 */
+	function selectAllCommunities() {
+		const availableCommunities = joinedCommunities
+			.filter(community => {
+				const pubkey = getTagValue(community, 'd') || '';
+				return !communitiesWithShares.has(pubkey);
+			})
+			.map(community => getTagValue(community, 'd') || '');
+		selectedCommunityIds = availableCommunities;
+	}
 
-	// /**
-	//  * Deselect all communities
-	//  */
-	// function deselectAllCommunities() {
-	// 	selectedCommunityIds = [];
-	// }
+	/**
+	 * Deselect all communities
+	 */
+	function deselectAllCommunities() {
+		selectedCommunityIds = [];
+	}
 
-	// /**
-	//  * Reset community sharing state when modal closes
-	//  */
-	// function resetCommunitySharingState() {
-	// 	selectedCommunityIds = [];
-	// 	communitiesWithShares = new Set();
-	// 	isProcessingCommunityShares = false;
-	// 	communityShareError = '';
-	// 	communityShareSuccess = '';
-	// 	communityShareResults = { successful: [], failed: [] };
-	// }
+	/**
+	 * Reset community sharing state when modal closes
+	 */
+	function resetCommunitySharingState() {
+		selectedCommunityIds = [];
+		communitiesWithShares = new Set();
+		isProcessingCommunityShares = false;
+		communityShareError = '';
+		communityShareSuccess = '';
+		communityShareResults = { successful: [], failed: [] };
+	}
 
 	/**
 	 * Handle modal close with state reset
 	 */
 	function handleClose() {
 		resetCalendarChangesState();
-		// resetCommunitySharingState();
+		resetCommunitySharingState();
 		modal.closeModal();
 	}
 </script>
@@ -713,7 +716,13 @@
 					<h3 class="mb-3 text-lg font-semibold text-base-content">Tags</h3>
 					<div class="flex flex-wrap gap-2">
 						{#each event.hashtags as tag}
-							<span class="badge badge-outline badge-lg">#{tag}</span>
+							<a
+								href="/calendar?view=list&tags={encodeURIComponent(tag)}"
+								class="badge badge-outline badge-lg transition-colors hover:badge-primary"
+								title="View all events with #{tag}"
+							>
+								#{tag}
+							</a>
 						{/each}
 					</div>
 				</div>

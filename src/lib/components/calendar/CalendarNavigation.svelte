@@ -4,7 +4,9 @@
 -->
 
 <script>
+	import { page } from '$app/stores';
 	import { formatCalendarDate } from '../../helpers/calendar.js';
+	import { updateQueryParams } from '../../helpers/urlParams.js';
 	import AddToCalendarButton from './AddToCalendarButton.svelte';
 
 	import {
@@ -116,6 +118,12 @@
 	 */
 	function handlePresentationViewModeClick(mode) {
 		console.log('🔄 handlePresentationViewModeClick called with mode:', mode);
+		
+		// Update URL with new view mode
+		updateQueryParams($page.url.searchParams, { 
+			view: mode === 'calendar' ? null : mode // Don't include 'calendar' as it's the default
+		});
+		
 		onPresentationViewModeChange(mode);
 		console.log('✅ onPresentationViewModeChange callback completed');
 	}

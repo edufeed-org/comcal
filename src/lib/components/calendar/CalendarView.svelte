@@ -1,5 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
 	import { eventStore, pool, relays } from '$lib/store.svelte';
 	import { addressLoader, calendarTimelineLoader } from '$lib/loaders.js';
 	import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
@@ -9,6 +10,7 @@
 	import { onlyEvents } from 'applesauce-relay/operators';
 	import { mapEventsToStore, mapEventsToTimeline } from 'applesauce-core/observable';
 	import { map } from 'rxjs';
+	import { parseCalendarFilters } from '$lib/helpers/urlParams.js';
 
 	// Import existing UI components
 	import CalendarNavigation from '$lib/components/calendar/CalendarNavigation.svelte';
@@ -314,6 +316,62 @@
 			});
 		}
 	}
+
+	// Reactive URL parameter watching - syncs state when URL changes
+	$effect(() => {
+		// This effect tracks $page.url and re-runs whenever the URL changes
+		const urlFilters = /** @type {any} */ (parseCalendarFilters($page.url.searchParams));
+		console.log('📅 CalendarView: URL changed, syncing filters:', urlFilters);
+		
+		// Sync tags - normalize to lowercase for consistent filtering
+		if (urlFilters?.tags && Array.isArray(urlFilters.tags)) {
+			if (urlFilters.tags.length > 0) {
+				// Normalize tags to lowercase to match filter logic
+				const normalizedTags = urlFilters.tags.map((/** @type {string} */ tag) => tag.toLowerCase().trim());
+				calendarStore.setSelectedTags(normalizedTags);
+			} else {
+				calendarStore.clearSelectedTags();
+			}
+		} else {
+			calendarStore.clearSelectedTags();
+		}
+		
+		// Sync relays
+		if (urlFilters?.relays && Array.isArray(urlFilters.relays)) {
+			if (urlFilters.relays.length > 0) {
+				calendarStore.setSelectedRelays(urlFilters.relays);
+			} else {
+				calendarStore.setSelectedRelays([]);
+			}
+		} else {
+			calendarStore.setSelectedRelays([]);
+		}
+		
+		// Sync authors (follow lists)
+		if (urlFilters?.authors && Array.isArray(urlFilters.authors)) {
+			if (urlFilters.authors.length > 0) {
+				calendarStore.setSelectedFollowListIds(urlFilters.authors);
+			} else {
+				calendarStore.setSelectedFollowListIds([]);
+			}
+		} else {
+			calendarStore.setSelectedFollowListIds([]);
+		}
+		
+		// Sync search query
+		if (urlFilters?.search && typeof urlFilters.search === 'string' && urlFilters.search.trim()) {
+			calendarStore.setSearchQuery(urlFilters.search);
+		} else {
+			calendarStore.setSearchQuery('');
+		}
+		
+		// Sync presentation view mode
+		if (urlFilters?.view && typeof urlFilters.view === 'string') {
+			presentationViewMode = /** @type {'calendar' | 'list' | 'map'} */ (urlFilters.view);
+		} else {
+			presentationViewMode = 'calendar'; // Default view
+		}
+	});
 
 	onMount(() => {
 		// Start the default calendar timeline loader (store subscription for later control)

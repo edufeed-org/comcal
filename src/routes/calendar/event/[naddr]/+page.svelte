@@ -366,7 +366,13 @@
 					<h2 class="card-title text-2xl">Tags</h2>
 					<div class="mt-4 flex flex-wrap gap-2">
 						{#each event.hashtags as tag}
-							<span class="badge badge-outline badge-lg">#{tag}</span>
+							<a
+								href="/calendar?view=list&tags={encodeURIComponent(tag)}"
+								class="badge badge-outline badge-lg transition-colors hover:badge-primary"
+								title="View all events with #{tag}"
+							>
+								#{tag}
+							</a>
 						{/each}
 					</div>
 				</div>
