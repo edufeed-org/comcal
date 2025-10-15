@@ -23,10 +23,12 @@
 		LocationIcon,
 		PlusIcon,
 		CheckIcon,
-		AlertIcon
+		AlertIcon,
+		ExternalLinkIcon
 	} from '$lib/components/icons';
 	import EventDebugInfo from './EventDebugInfo.svelte';
 	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
+	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
@@ -141,6 +143,11 @@
 	let isAllDay = $derived(event ? event.kind === 31922 : false);
 	let isMultiDay = $derived(
 		event && endDate && startDate ? startDate.toDateString() !== endDate.toDateString() : false
+	);
+
+	// Generate URL for event detail page
+	let eventDetailUrl = $derived(
+		event?.originalEvent ? `/calendar/event/${encodeEventToNaddr(event.originalEvent)}` : ''
 	);
 
 	/**
@@ -560,13 +567,22 @@
 				<h2 id="event-title" class="text-2xl font-bold text-base-content">
 					{event.title}
 				</h2>
-				<button
-					class="btn btn-circle btn-ghost btn-sm"
-					onclick={handleClose}
-					aria-label="Close modal"
-				>
-					<CloseIcon class_="w-6 h-6" />
-				</button>
+				<div class="flex items-center gap-2">
+					<a
+						href={eventDetailUrl}
+						class="btn btn-circle btn-ghost btn-sm"
+						aria-label="Open event details page"
+					>
+						<ExternalLinkIcon class_="w-6 h-6" />
+					</a>
+					<button
+						class="btn btn-circle btn-ghost btn-sm"
+						onclick={handleClose}
+						aria-label="Close modal"
+					>
+						<CloseIcon class_="w-6 h-6" />
+					</button>
+				</div>
 			</div>
 
 			<!-- Event Image -->
