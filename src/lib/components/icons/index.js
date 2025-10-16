@@ -20,6 +20,10 @@ export { default as UserIcon } from './ui/UserIcon.svelte';
 export { default as GlobeIcon } from './ui/GlobeIcon.svelte';
 export { default as SettingsIcon } from './ui/SettingsIcon.svelte';
 export { default as LockIcon } from './ui/LockIcon.svelte';
+export { default as HomeIcon } from './ui/HomeIcon.svelte';
+export { default as BellIcon } from './ui/BellIcon.svelte';
+export { default as FilesIcon } from './ui/FilesIcon.svelte';
+export { default as MoreIcon } from './ui/MoreIcon.svelte';
 
 // Action Icons
 export { default as CopyIcon } from './actions/CopyIcon.svelte';
