@@ -5,6 +5,7 @@
 	import { CalendarIcon } from '../icons';
 	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
+	import DownloadIcon from '../icons/actions/DownloadIcon.svelte';
 
 	// Props for explicit calendar ID (for community calendars)
 	let { calendarId = null, calendarTitle = null } = $props();
@@ -131,7 +132,7 @@
 <div class="z-10">
 	<div class="dropdown dropdown-end dropdown-bottom">
 		<div tabindex="0" role="button" class="btn btn-circle btn-primary">
-			<CalendarIcon class_="w-4 h-4" />
+			<DownloadIcon class_="w-4 h-4" />
 		</div>
 		<ul class="dropdown-content menu z-[1] mb-2 rounded-box p-2 shadow">
 			{#each actions as action}
