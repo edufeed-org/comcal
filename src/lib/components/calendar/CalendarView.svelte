@@ -1,29 +1,15 @@
 <script>
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { eventStore, pool, relays } from '$lib/store.svelte';
-	import { 
-		addressLoader, 
-		calendarTimelineLoader,
-		communityCalendarTimelineLoader,
-		targetedPublicationTimelineLoader,
-		eventLoader
-	} from '$lib/loaders.js';
-	import { 
-		getCalendarEventTitle,
-		getCalendarEventStart,
-		getCalendarEventEnd,
-		getCalendarEventImage
-	} from 'applesauce-core/helpers/calendar-event';
-	import { getTagValue } from 'applesauce-core/helpers';
+	import { communityCalendarTimelineLoader } from '$lib/loaders.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
-	import { calendarStore, loading, cEvents } from '$lib/stores/calendar-events.svelte.js';
+	import { calendarStore, loading } from '$lib/stores/calendar-events.svelte.js';
 	import { manager } from '$lib/accounts.svelte.js';
-	import { onlyEvents } from 'applesauce-relay/operators';
-	import { mapEventsToStore, mapEventsToTimeline } from 'applesauce-core/observable';
-	import { map } from 'rxjs';
-	import { parseCalendarFilters } from '$lib/helpers/urlParams.js';
 	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
+	import {
+		useCalendarEventLoader,
+		useCalendarUrlSync
+	} from '$lib/stores/calendar-event-loader.svelte.js';
 
 	// Import existing UI components
 	import CalendarNavigation from '$lib/components/calendar/CalendarNavigation.svelte';
@@ -36,9 +22,6 @@
 	import TagSelector from './TagSelector.svelte';
 	import SimpleCalendarEventsList from './CalendarEventsList.svelte';
 	import AddToCalendarButton from './AddToCalendarButton.svelte';
-	import { getCalendarEventMetadata, parseAddressReference } from '$lib/helpers/eventUtils';
-	import { TimelineModel } from 'applesauce-core/models';
-	import { appConfig } from '$lib/config.js';
 
 	/**
 	 * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
@@ -46,10 +29,10 @@
 	 */
 
 	// Props
-	let { 
-		communityPubkey = '', 
-		globalMode = false, 
-		calendar = null, 
+	let {
+		communityPubkey = '',
+		globalMode = false,
+		calendar = null,
 		authorPubkey = '',
 		communityMode = false
 	} = $props();
@@ -67,7 +50,6 @@
 	 * @type {import("$lib/types/calendar.js").CalendarEvent[]}
 	 */
 	let events = $state([]);
-	// let loading = $derived(getLoading());
 	let error = $derived(calendarStore.error);
 	let selectedCalendar = $state(calendarStore.selectedCalendar);
 	let missingEvents = $derived(calendarStore.missingEvents);
@@ -78,16 +60,37 @@
 	let isEventModalOpen = $state(false);
 	let selectedDateForNewEvent = $state(/** @type {Date | null} */ (null));
 
-	// Subscription management
-	let subscription = $state();
-	let relaySubscription = $state();
+	// Subscription management (non-loader subscriptions only)
 	let userSubscription = $state();
 	let calendarSubscription = $state();
-	let backgroundLoaderSubscription = $state();
-	let targetedPublicationSubscription = $state();
 
 	// Community mode specific state
 	let resolutionErrors = $state(/** @type {string[]} */ ([]));
+
+	// Initialize event loader composable
+	const eventLoaderComposable = useCalendarEventLoader({
+		onEventsUpdate: (newEvents) => {
+			events = newEvents;
+		},
+		onLoadingChange: (isLoading) => {
+			loading.loading = isLoading;
+		},
+		onError: (errorMsg) => {
+			error = errorMsg;
+		},
+		onResolutionErrors: (errors) => {
+			resolutionErrors = errors;
+		}
+	});
+
+	// Initialize URL sync composable
+	useCalendarUrlSync($page, (mode) => {
+		presentationViewMode = mode;
+		// If switching to calendar view and viewMode is 'all', switch to 'month'
+		if (mode === 'calendar' && viewMode === 'all') {
+			viewMode = 'month';
+		}
+	});
 
 	// Get community profile for calendar title (when in communityMode)
 	let getCommunityProfile = $derived.by(() => {
@@ -111,441 +114,63 @@
 	});
 
 	/**
-	 * @param {any} calendar - Calendar object with eventReferences
+	 * Refresh calendar events
+	 * @param {string[]} [relays] - Optional relay URLs to use for filtering
 	 */
-	function loadCalendarSpecificEvents(calendar) {
-		if (!calendar) {
-			console.warn('📅 CalendarView: No calendar provided');
-			return;
-		}
-
-		if (!calendar.eventReferences || calendar.eventReferences.length === 0) {
-			console.log('📅 CalendarView: No event references found for calendar:', calendar.title);
-			console.log('📅 CalendarView: Calendar object:', calendar);
-			return;
-		}
-
-		// Unsubscribe from existing subscriptions to prevent event duplication
-		if (relaySubscription) {
-			console.log('📅 CalendarView: Stopping relay subscription for calendar-specific loading');
-			relaySubscription.unsubscribe();
-			relaySubscription = null;
-		}
-		if (backgroundLoaderSubscription) {
-			console.log('📅 CalendarView: Stopping background loader for calendar-specific loading');
-			backgroundLoaderSubscription.unsubscribe();
-			backgroundLoaderSubscription = null;
-		}
-
-		loading.loading = true;
-		events = [];
-		
-		// Use Map to deduplicate events by ID
-		const eventMap = new Map();
-		
-		calendar.eventReferences.forEach(
-			(/** @type {string} */ addressRef, /** @type {number} */ index) => {
-				const parsed = parseAddressReference(addressRef);
-
-				if (!parsed) {
-					console.warn('📅 CalendarView: Invalid address reference:', addressRef);
-					return;
-				}
-
-				console.log(
-					`📅 CalendarView: Attempting to load event ${index + 1}/${calendar.eventReferences.length}:`,
-					parsed
-				);
-
-				eventStore.addressableLoader({
-					kind: parsed.kind,
-					pubkey: parsed.pubkey,
-					identifier: parsed.dTag
-				}).subscribe((event) => {
-					console.log(
-						`📅 CalendarView: Successfully loaded event:`,
-						event.id,
-						getCalendarEventTitle(event)
-					);
-					const calendarEvent = getCalendarEventMetadata(event);
-					
-					// Deduplicate by event ID
-					if (!eventMap.has(calendarEvent.id)) {
-						eventMap.set(calendarEvent.id, calendarEvent);
-						// Update events array reactively
-						events = Array.from(eventMap.values());
-						console.log(`📅 CalendarView: Added unique event, total: ${events.length}`);
-					} else {
-						console.log(`📅 CalendarView: Skipped duplicate event:`, calendarEvent.id);
-					}
-				});
-			}
-		);
-	}
-
-	/**
-	 * Load events - either from specific relays or using default loader
-	 * @param {string[]} [relays] - Optional relay URLs to use (if not provided, reads from store)
-	 */
-	function loadEvents(relays) {
-		// Use provided relays or fall back to store value
+	function handleRefresh(relays) {
 		const selectedRelays = relays !== undefined ? relays : calendarStore.selectedRelays;
 		const selectedAuthors = calendarStore.getSelectedAuthors();
-		
-		loading.loading = true;
-		
-		// If relay filtering OR author filtering is active, use pool.subscription
-		if (selectedRelays.length > 0 || selectedAuthors.length > 0) {
-			console.log('📅 CalendarView: Loading events with filters');
-			// Use default relays from config if no specific relays selected
-			const relaysToUse = selectedRelays.length > 0 ? selectedRelays : appConfig.calendar.defaultRelays;
-			loadEventsFromRelays(relaysToUse, selectedAuthors);
+
+		if (communityMode) {
+			eventLoaderComposable.loadByCommunity(communityPubkey);
+		} else if (authorPubkey) {
+			eventLoaderComposable.loadByAuthor(authorPubkey, selectedRelays);
+		} else if (calendar) {
+			eventLoaderComposable.loadByCalendar(calendar);
 		} else {
-			// Default behavior: use EventStore model (original working approach)
-			console.log('📅 CalendarView: Loading events using default loaders');
-			loadEventsFromEventStore();
-		}
-	}
-	
-	/**
-	 * Load events from specific relays using pool.subscription
-	 * @param {string[]} relayUrls
-	 * @param {string[]} [authors] - Optional array of author pubkeys to filter by
-	 */
-	function loadEventsFromRelays(relayUrls, authors) {
-		events = [];
-		
-		// Stop background loader to prevent interference with filtered results
-		if (backgroundLoaderSubscription) {
-			console.log('📅 CalendarView: Stopping background loader for relay filtering');
-			backgroundLoaderSubscription.unsubscribe();
-			backgroundLoaderSubscription = null;
-		}
-		
-		// Unsubscribe from previous relay subscription if exists
-		if (relaySubscription) {
-			relaySubscription.unsubscribe();
-		}
-		
-		// Build the filter object
-		const filter = {
-			kinds: [31922, 31923],
-			limit: 50
-		};
-		
-		// Add authors filter if provided
-		if (authors && authors.length > 0) {
-			filter.authors = authors;
-			console.log(`📅 CalendarView: Filtering by ${authors.length} authors from follow lists`);
-		}
-		
-		// Subscribe to specific relays using pool.subscription()
-		// Using the applesauce pattern with mapEventsToTimeline for proper reactivity
-		relaySubscription = pool
-			.subscription(relayUrls, filter)
-			.pipe(
-				onlyEvents(), // Filter out EOSE messages
-				mapEventsToStore(eventStore), // Add to EventStore
-				mapEventsToTimeline(), // Collect events into timeline array
-				map((timeline) => [...timeline]) // Duplicate array for Svelte reactivity
-			)
-			.subscribe({
-				next: (timeline) => {
-					console.log('📅 CalendarView: Received timeline with', timeline.length, 'events');
-					// Assign entire timeline at once - triggers Svelte reactivity
-					events = timeline.map(getCalendarEventMetadata);
-					loading.loading = false;
-				},
-				error: (err) => {
-					console.error('📅 CalendarView: Relay subscription error:', err);
-					loading.loading = false;
-				}
-			});
-	}
-	
-	/**
-	 * Load events from EventStore using TimelineModel (default approach)
-	 */
-	function loadEventsFromEventStore() {
-		// Clear events array first
-		events = [];
-		
-		// Unsubscribe from relay subscription if it exists (prevents interference)
-		if (relaySubscription) {
-			console.log('📅 CalendarView: Stopping relay subscription for default loading');
-			relaySubscription.unsubscribe();
-			relaySubscription = null;
-		}
-		
-		// Restart background loader if not running (for default/unfiltered behavior)
-		if (!backgroundLoaderSubscription) {
-			console.log('📅 CalendarView: Restarting background loader');
-			backgroundLoaderSubscription = calendarTimelineLoader().subscribe();
-		}
-		
-		const filter = { kinds: [31922, 31923], limit: 50 };
-		
-		eventStore.model(TimelineModel, filter).subscribe((timeline) => {
-			console.log('📅 CalendarView: Loaded', timeline.length, 'events from EventStore');
-			const mapped = timeline.map(getCalendarEventMetadata);
-			events = mapped;
-			loading.loading = false;
-		});
-	}
-
-	/**
-	 * Load community-specific calendar events from both direct events and targeted publications
-	 * This is the logic ported from CommunikeyCalendarView
-	 */
-	function loadCommunityEvents() {
-		if (!communityPubkey) {
-			console.warn('📅 CalendarView: No communityPubkey provided for community mode');
-			return;
-		}
-
-		console.log('📅 CalendarView: Loading community events for:', communityPubkey);
-		
-		loading.loading = true;
-		error = null;
-		resolutionErrors = [];
-
-		// Clean up existing subscriptions
-		if (subscription) {
-			subscription.unsubscribe();
-			subscription = undefined;
-		}
-		if (targetedPublicationSubscription) {
-			targetedPublicationSubscription.unsubscribe();
-			targetedPublicationSubscription = undefined;
-		}
-		if (relaySubscription) {
-			relaySubscription.unsubscribe();
-			relaySubscription = undefined;
-		}
-		if (backgroundLoaderSubscription) {
-			backgroundLoaderSubscription.unsubscribe();
-			backgroundLoaderSubscription = undefined;
-		}
-
-		const allEvents = /** @type {CalendarEvent[]} */ ([]);
-		const eventIds = new Set(); // Deduplicate events
-
-		try {
-			// Subscribe to direct community calendar events (#h tagged)
-			subscription = eventStore
-				.timeline({
-					kinds: [31922, 31923],
-					'#h': [communityPubkey],
-					limit: 100
-				})
-				.subscribe({
-					next: (/** @type {any[]} */ timeline) => {
-						console.log(`📅 CalendarView: Received ${timeline.length} direct community events`);
-						
-						timeline.forEach(event => {
-							if (!eventIds.has(event.id)) {
-								eventIds.add(event.id);
-								const calendarEvent = getCalendarEventMetadata(event);
-								allEvents.push(calendarEvent);
-							}
-						});
-						
-						events = [...allEvents];
-					},
-					error: (/** @type {any} */ err) => {
-						console.error('📅 CalendarView: Error loading direct community events:', err);
-						error = 'Failed to load community calendar events';
-						loading.loading = false;
-					}
-				});
-
-			// Subscribe to targeted publication events (#p tagged with calendar #k)
-			targetedPublicationSubscription = targetedPublicationTimelineLoader(
-				communityPubkey
-			)().subscribe({
-				next: (/** @type {any} */ pubEvent) => {
-					console.log('📅 CalendarView: Received targeted publication event:', pubEvent.id);
-
-					try {
-						const eTag = getTagValue(pubEvent, 'e');
-						if (!eTag) {
-							console.warn('📅 CalendarView: Targeted publication missing e tag:', pubEvent.id);
-							return;
-						}
-
-						// Load referenced event
-						eventLoader({
-							id: eTag,
-							relays: appConfig.calendar.defaultRelays
-						}).subscribe({
-							next: (loadedEvent) => {
-								if (loadedEvent && !eventIds.has(loadedEvent.id)) {
-									console.log('📅 CalendarView: Successfully loaded referenced event', eTag);
-									eventIds.add(loadedEvent.id);
-									const calendarEvent = getCalendarEventMetadata(loadedEvent);
-									allEvents.push(calendarEvent);
-									events = [...allEvents];
-								}
-							},
-							error: (/** @type {any} */ err) => {
-								const errorMsg = `Failed to load referenced calendar event: ${eTag}`;
-								console.warn(`📅 CalendarView: ${errorMsg}`);
-								resolutionErrors = [...resolutionErrors, errorMsg];
-							}
-						});
-					} catch (err) {
-						const errorMsg = `Error resolving targeted publication ${pubEvent.id}: ${/** @type {Error} */ (err).message}`;
-						console.error(`📅 CalendarView: ${errorMsg}`);
-						resolutionErrors = [...resolutionErrors, errorMsg];
-					}
-				},
-				complete: () => {
-					console.log('📅 CalendarView: Finished loading targeted publication events');
-					loading.loading = false;
-				},
-				error: (/** @type {any} */ err) => {
-					console.error('📅 CalendarView: Error loading targeted publication events:', err);
-					loading.loading = false;
-				}
-			});
-		} catch (err) {
-			console.error('📅 CalendarView: Error creating community subscriptions:', err);
-			error = 'Failed to connect to event stream';
-			loading.loading = false;
+			// Global mode
+			eventLoaderComposable.loadGlobal(selectedRelays, selectedAuthors);
 		}
 	}
 
-	/**
-	 * Load events created by a specific author
-	 * @param {string} pubkey - The author's public key
-	 * @param {string[]} [relays] - Optional relay URLs to use (if not provided, reads from store)
-	 */
-	function loadEventsByAuthor(pubkey, relays) {
-		console.log('📅 CalendarView: Loading events by author:', pubkey);
-		loading.loading = true;
-		events = [];
-		
-		// Use provided relays or fall back to store value
-		const selectedRelays = relays !== undefined ? relays : calendarStore.selectedRelays;
-		
-		// If relay filtering is active, use selected relays
-		if (selectedRelays.length > 0) {
-			console.log('📅 CalendarView: Loading author events from selected relays:', selectedRelays);
-			
-			// Unsubscribe from previous subscription if exists
-			if (relaySubscription) {
-				relaySubscription.unsubscribe();
-			}
-			
-			// Subscribe to specific relays with author filter
-			// Using the applesauce pattern with mapEventsToTimeline for proper reactivity
-			relaySubscription = pool
-				.subscription(selectedRelays, {
-					kinds: [31922, 31923],
-					authors: [pubkey],
-					limit: 50
-				})
-				.pipe(
-					onlyEvents(),
-					mapEventsToStore(eventStore),
-					mapEventsToTimeline(), // Collect events into timeline array
-					map((timeline) => [...timeline]) // Duplicate array for Svelte reactivity
-				)
-				.subscribe({
-					next: (timeline) => {
-						console.log('📅 CalendarView: Received timeline with', timeline.length, 'events by author');
-						// Assign entire timeline at once - triggers Svelte reactivity
-						events = timeline.map(getCalendarEventMetadata);
-						loading.loading = false;
-					},
-					error: (err) => {
-						console.error('📅 CalendarView: Relay subscription error:', err);
-						loading.loading = false;
-					}
-				});
-		} else {
-			// Default: use EventStore model
-			console.log('📅 CalendarView: Loading author events from EventStore');
-			
-			// Unsubscribe from relay subscription if it exists (prevents interference)
-			if (relaySubscription) {
-				console.log('📅 CalendarView: Stopping relay subscription for author EventStore loading');
-				relaySubscription.unsubscribe();
-				relaySubscription = null;
-			}
-			
-			const filter = { kinds: [31922, 31923], authors: [pubkey], limit: 50 };
-			
-			eventStore.model(TimelineModel, filter).subscribe((timeline) => {
-				console.log('📅 CalendarView: Loaded', timeline.length, 'events by author from EventStore');
-				const mapped = timeline.map(getCalendarEventMetadata);
-				events = mapped;
-				loading.loading = false;
-			});
-		}
-	}
-
-	// Reactive URL parameter watching - syncs state when URL changes
+	// React to calendar prop changes - enables automatic event reloading when switching calendars
 	$effect(() => {
-		// This effect tracks $page.url and re-runs whenever the URL changes
-		const urlFilters = /** @type {any} */ (parseCalendarFilters($page.url.searchParams));
-		console.log('📅 CalendarView: URL changed, syncing filters:', urlFilters);
-		
-		// Sync tags - normalize to lowercase for consistent filtering
-		if (urlFilters?.tags && Array.isArray(urlFilters.tags)) {
-			if (urlFilters.tags.length > 0) {
-				// Normalize tags to lowercase to match filter logic
-				const normalizedTags = urlFilters.tags.map((/** @type {string} */ tag) => tag.toLowerCase().trim());
-				calendarStore.setSelectedTags(normalizedTags);
-			} else {
-				calendarStore.clearSelectedTags();
+		// Only react when in calendar mode (not author or global mode)
+		if (calendar && !authorPubkey && !globalMode) {
+			console.log('📅 CalendarView: Calendar prop changed, reloading events:', calendar.title);
+			eventLoaderComposable.loadByCalendar(calendar);
+		}
+	});
+
+	// Sync newly created events from calendarStore to local events array
+	$effect(() => {
+		// Watch for changes in calendarStore.events
+		const storeEvents = calendarStore.events;
+
+		if (storeEvents.length > 0) {
+			// Create a Set of current event IDs for deduplication
+			const currentEventIds = new Set(events.map((e) => e.id));
+
+			// Find new events that aren't in the local array yet
+			const newEvents = storeEvents.filter(
+				(storeEvent) => !currentEventIds.has(storeEvent.id)
+			);
+
+			if (newEvents.length > 0) {
+				console.log(
+					'📅 CalendarView: Syncing',
+					newEvents.length,
+					'new events from store to local array'
+				);
+				// Merge new events with existing events
+				events = [...events, ...newEvents];
 			}
-		} else {
-			calendarStore.clearSelectedTags();
-		}
-		
-		// Sync relays
-		if (urlFilters?.relays && Array.isArray(urlFilters.relays)) {
-			if (urlFilters.relays.length > 0) {
-				calendarStore.setSelectedRelays(urlFilters.relays);
-			} else {
-				calendarStore.setSelectedRelays([]);
-			}
-		} else {
-			calendarStore.setSelectedRelays([]);
-		}
-		
-		// Sync authors (follow lists)
-		if (urlFilters?.authors && Array.isArray(urlFilters.authors)) {
-			if (urlFilters.authors.length > 0) {
-				calendarStore.setSelectedFollowListIds(urlFilters.authors);
-			} else {
-				calendarStore.setSelectedFollowListIds([]);
-			}
-		} else {
-			calendarStore.setSelectedFollowListIds([]);
-		}
-		
-		// Sync search query
-		if (urlFilters?.search && typeof urlFilters.search === 'string' && urlFilters.search.trim()) {
-			calendarStore.setSearchQuery(urlFilters.search);
-		} else {
-			calendarStore.setSearchQuery('');
-		}
-		
-		// Sync presentation view mode
-		if (urlFilters?.view && typeof urlFilters.view === 'string') {
-			presentationViewMode = /** @type {'calendar' | 'list' | 'map'} */ (urlFilters.view);
-		} else {
-			presentationViewMode = 'calendar'; // Default view
 		}
 	});
 
 	onMount(() => {
-		// Start the default calendar timeline loader (unless in community mode)
-		if (!communityMode) {
-			backgroundLoaderSubscription = calendarTimelineLoader().subscribe();
-		} else {
+		// Bootstrap EventStore with appropriate loader (unless in community mode)
+		if (communityMode && communityPubkey) {
 			// Bootstrap EventStore with community calendar loader
 			communityCalendarTimelineLoader(communityPubkey)().subscribe({
 				complete: () => {
@@ -568,79 +193,16 @@
 				console.log('📅 CalendarView: selectedCalendar changed to:', cal?.id);
 			});
 		}
-		
+
 		// Load events on mount based on initial state
-		if (communityMode) {
-			console.log('📅 CalendarView: Initial load - community events');
-			loadCommunityEvents();
-		} else if (authorPubkey) {
-			console.log('📅 CalendarView: Initial load - events by author:', authorPubkey);
-			loadEventsByAuthor(authorPubkey);
-		} else if (globalMode) {
-			console.log('📅 CalendarView: Initial load - global events');
-			loadEventsFromEventStore();
-		} else if (calendar) {
-			console.log('📅 CalendarView: Initial load - calendar:', calendar.title);
-			loadCalendarSpecificEvents(calendar);
-		} else {
-			console.log('📅 CalendarView: Initial load - global events (fallback)');
-			loadEventsFromEventStore();
-		}
+		handleRefresh();
 
 		// Cleanup subscriptions on unmount
 		return () => {
-			subscription?.unsubscribe();
-			relaySubscription?.unsubscribe();
 			userSubscription?.unsubscribe();
 			calendarSubscription?.unsubscribe();
-			backgroundLoaderSubscription?.unsubscribe();
-			targetedPublicationSubscription?.unsubscribe();
+			eventLoaderComposable.cleanup();
 		};
-	});
-	/**
-	 * Refresh calendar events
-	 * @param {string[]} [relays] - Optional relay URLs to use for filtering
-	 */
-	function handleRefresh(relays) {
-		// Reload with current filters, passing relays if provided
-		if (communityMode) {
-			loadCommunityEvents();
-		} else if (authorPubkey) {
-			loadEventsByAuthor(authorPubkey, relays);
-		} else if (globalMode || !calendar) {
-			loadEvents(relays);
-		} else if (calendar) {
-			loadCalendarSpecificEvents(calendar);
-		}
-	}
-
-	// React to calendar prop changes - enables automatic event reloading when switching calendars
-	$effect(() => {
-		// Only react when in calendar mode (not author or global mode)
-		if (calendar && !authorPubkey && !globalMode) {
-			console.log('📅 CalendarView: Calendar prop changed, reloading events:', calendar.title);
-			loadCalendarSpecificEvents(calendar);
-		}
-	});
-
-	// Sync newly created events from calendarStore to local events array
-	$effect(() => {
-		// Watch for changes in calendarStore.events
-		const storeEvents = calendarStore.events;
-		
-		if (storeEvents.length > 0) {
-			// Create a Set of current event IDs for deduplication
-			const currentEventIds = new Set(events.map(e => e.id));
-			
-			// Find new events that aren't in the local array yet
-			const newEvents = storeEvents.filter(storeEvent => !currentEventIds.has(storeEvent.id));
-			
-			if (newEvents.length > 0) {
-				console.log('📅 CalendarView: Syncing', newEvents.length, 'new events from store to local array');
-				// Merge new events with existing events
-				events = [...events, ...newEvents];
-			}
-		}
 	});
 
 	function handlePrevious() {
@@ -691,20 +253,19 @@
 	 */
 	function handlePresentationViewModeChange(newPresentationViewMode) {
 		presentationViewMode = newPresentationViewMode;
-		
+
 		// If switching to calendar view and viewMode is 'all', switch to 'month'
 		// since 'all' is only available in list view
 		if (newPresentationViewMode === 'calendar' && viewMode === 'all') {
 			viewMode = 'month';
 			console.log('📅 CalendarView: Switched from "all" to "month" for calendar view');
 		}
-		
+
 		console.log(
-			'📅 SimpleCalendarView: Presentation view mode changed to:',
+			'📅 CalendarView: Presentation view mode changed to:',
 			newPresentationViewMode
 		);
 	}
-
 
 	/**
 	 * @param {Date} date
@@ -719,7 +280,7 @@
 	 */
 	function handleEventClick(event) {
 		modalStore.openModal('eventDetails', { event });
-		console.log('📅 SimpleCalendarView: Event clicked, opening details modal:', event.title);
+		console.log('📅 CalendarView: Event clicked, opening details modal:', event.title);
 	}
 
 	function handleCreateEvent() {
@@ -783,37 +344,42 @@
 		let filtered = events;
 		const selectedTags = calendarStore.selectedTags;
 		const searchQuery = calendarStore.searchQuery;
-		
+
 		// Step 1: Apply tag filtering (OR logic)
 		if (selectedTags.length > 0) {
-			filtered = filtered.filter(event => {
+			filtered = filtered.filter((event) => {
 				// Normalize event hashtags to lowercase for case-insensitive matching
-				const normalizedHashtags = (event.hashtags || []).map(tag => tag.toLowerCase().trim());
-				
+				const normalizedHashtags = (event.hashtags || []).map((tag) =>
+					tag.toLowerCase().trim()
+				);
+
 				// Check if event has any of the selected tags
-				return selectedTags.some(tag => normalizedHashtags.includes(tag));
+				return selectedTags.some((tag) => normalizedHashtags.includes(tag));
 			});
-			console.log(`🏷️ CalendarView: Filtered ${filtered.length}/${events.length} events by tags:`, selectedTags);
+			console.log(
+				`🏷️ CalendarView: Filtered ${filtered.length}/${events.length} events by tags:`,
+				selectedTags
+			);
 		}
-		
+
 		// Step 2: Apply text search (AND logic with tags)
 		const query = searchQuery.trim();
 		if (query) {
 			const lowerQuery = query.toLowerCase();
-			filtered = filtered.filter(event => {
+			filtered = filtered.filter((event) => {
 				// Search in title
 				const titleMatch = event.title?.toLowerCase().includes(lowerQuery);
-				
+
 				// Search in tags
-				const tagMatch = event.hashtags?.some(tag => 
-					tag.toLowerCase().includes(lowerQuery)
-				);
-				
+				const tagMatch = event.hashtags?.some((tag) => tag.toLowerCase().includes(lowerQuery));
+
 				return titleMatch || tagMatch;
 			});
-			console.log(`🔍 CalendarView: Filtered ${filtered.length} events by search query: "${query}"`);
+			console.log(
+				`🔍 CalendarView: Filtered ${filtered.length} events by search query: "${query}"`
+			);
 		}
-		
+
 		return filtered;
 	});
 </script>
@@ -832,10 +398,7 @@
 			<div class="flex items-center gap-3">
 				<!-- Add to Calendar Button (community mode only) -->
 				{#if communityMode && communityPubkey}
-					<AddToCalendarButton 
-						calendarId={communityPubkey} 
-						calendarTitle={communityCalendarTitle}
-					/>
+					<AddToCalendarButton calendarId={communityPubkey} calendarTitle={communityCalendarTitle} />
 				{/if}
 
 				<button
@@ -928,7 +491,9 @@
 				<div class="flex-1">
 					<h4 class="mb-1 text-sm font-medium">Some calendar events could not be loaded</h4>
 					<p class="mb-2 text-xs text-base-content/70">
-						{resolutionErrors.length} referenced event{resolutionErrors.length === 1 ? '' : 's'} could not be found or loaded.
+						{resolutionErrors.length} referenced event{resolutionErrors.length === 1
+							? ''
+							: 's'} could not be found or loaded.
 					</p>
 					<details class="text-xs">
 						<summary class="cursor-pointer hover:text-base-content">Show details</summary>
@@ -997,11 +562,11 @@
 		/>
 	{:else if presentationViewMode === 'list'}
 		<!-- List View -->
-		<SimpleCalendarEventsList 
+		<SimpleCalendarEventsList
 			events={displayedEvents}
 			{viewMode}
 			{currentDate}
-			loading={loading.loading} 
+			loading={loading.loading}
 			{error}
 		/>
 	{:else if presentationViewMode === 'map'}
