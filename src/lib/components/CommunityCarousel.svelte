@@ -159,18 +159,20 @@
 					{/each}
 				</div>
 
-				<!-- Dot indicators -->
-				{#if slides().length > 1}
-					<div class="mt-8 flex justify-center gap-2">
-						{#each slides() as _, index}
-							<a 
-								href="#slide{index + 1}"
-								class="h-2 w-2 rounded-full transition-all duration-300 bg-base-300 hover:bg-base-400"
-								aria-label="Go to slide {index + 1}"
-							></a>
-						{/each}
-					</div>
-				{/if}
+			<!-- Dot indicators -->
+			{#if slides().length > 1}
+				<div class="mt-8 flex justify-center gap-3">
+					{#each slides() as _, index}
+						<a 
+							href="#slide{index + 1}"
+							class="group flex items-center justify-center p-2 rounded-full hover:bg-base-200 transition-all duration-300"
+							aria-label="Go to slide {index + 1}"
+						>
+							<div class="h-3 w-3 rounded-full bg-base-300 group-hover:bg-primary group-hover:scale-125 transition-all duration-300"></div>
+						</a>
+					{/each}
+				</div>
+			{/if}
 			</div>
 
 			<!-- View all link -->
