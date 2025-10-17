@@ -3,7 +3,7 @@
  * Loads and parses user's follow lists (kind 3 events) and follow sets (kind 30000 events)
  */
 
-import { pool } from '$lib/store.svelte';
+import { pool } from '$lib/stores/nostr-infrastructure.svelte';
 import { onlyEvents } from 'applesauce-relay/operators';
 import { appConfig } from '$lib/config.js';
 

@@ -5,7 +5,7 @@
 
 <script>
 	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
-	import { manager } from '$lib/accounts.svelte.js';
+	import { manager } from '$lib/stores/accounts.svelte';
 	import { loadFollowList, loadFollowSets } from '$lib/helpers/followListLoader.js';
 	import { FilterIcon, CloseIcon, UserIcon } from '../icons';
 	import { onMount } from 'svelte';

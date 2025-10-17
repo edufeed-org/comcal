@@ -2,9 +2,9 @@
 	let { modalId, onNSECTransition } = $props();
 
 	import { ExtensionSigner } from 'applesauce-signers';
-	import { signer } from '$lib/shared.svelte.js';
+	import { signer } from '$lib/stores/accounts.svelte';
 
-	import { manager } from '$lib/accounts.svelte';
+	import { manager } from '$lib/stores/accounts.svelte';
 	import { ExtensionAccount } from 'applesauce-accounts/accounts';
 	import AccountProfile from './AccountProfile.svelte';
 	import { useAccounts } from '$lib/stores/accounts.svelte.js';

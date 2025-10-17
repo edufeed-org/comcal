@@ -1,7 +1,7 @@
 <script>
 	import { getProfilePicture } from 'applesauce-core/helpers';
 	import { useUserProfile } from '$lib/stores/user-profile.svelte';
-	import { manager } from '$lib/accounts.svelte';
+	import { manager } from '$lib/stores/accounts.svelte';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { CalendarIcon } from './icons';
 

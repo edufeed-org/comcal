@@ -1,7 +1,7 @@
 <script>
 	let { account } = $props();
 
-	import { manager } from '$lib/accounts.svelte';
+	import { manager } from '$lib/stores/accounts.svelte';
 	import { getProfilePicture } from 'applesauce-core/helpers';
 	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
 

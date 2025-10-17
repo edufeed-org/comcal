@@ -6,14 +6,14 @@
 -->
 
 <script>
-	import { manager } from '../../accounts.svelte.js';
+	import { manager } from '$lib/stores/accounts.svelte';
 	import {
 		useCalendarManagement,
 		registerCalendarEventsRefreshCallback
 	} from '../../stores/calendar-management-store.svelte.js';
 	import { useJoinedCommunitiesList } from '../../stores/joined-communities-list.svelte.js';
 	import { useUserProfile } from '../../stores/user-profile.svelte.js';
-	import { eventStore } from '../../store.svelte.js';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { EventFactory } from 'applesauce-factory';
 	import { publishEvent } from '../../helpers/publisher.js';
 	import { getTagValue, getDisplayName } from 'applesauce-core/helpers';
@@ -244,9 +244,9 @@
 		// Sign the event
 		const signedEvent = await factory.sign(shareEvent);
 
-		// Get user relays from the relays store
-		const { relays: userRelays } = await import('../../store.svelte.js');
-		const allRelays = [...new Set([...userRelays])];
+		// Get user relays from config
+		const { appConfig } = await import('$lib/config.js');
+		const allRelays = [...new Set([...appConfig.calendar.defaultRelays])];
 
 		const result = await publishEvent(signedEvent, {
 			relays: allRelays,

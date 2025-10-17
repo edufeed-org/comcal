@@ -1,16 +1,17 @@
 import { createAddressLoader, createTimelineLoader, createEventLoader } from 'applesauce-loaders/loaders';
-import { pool, relays, eventStore } from '$lib/store.svelte';
+import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+import { appConfig } from '$lib/config.js';
 import { getProfileContent } from 'applesauce-core/helpers';
 import { take, map } from 'rxjs';
 
-export const addressLoader = createAddressLoader(pool, { eventStore, lookupRelays: relays });
+export const addressLoader = createAddressLoader(pool, { eventStore, lookupRelays: appConfig.calendar.defaultRelays });
 
 eventStore.addressableLoader = addressLoader;
 eventStore.replaceableLoader = addressLoader;
 
 export const communikeyTimelineLoader = createTimelineLoader(
 	pool,
-	relays,
+	appConfig.calendar.defaultRelays,
 	{
 		kinds: [10222]
 	},
@@ -19,7 +20,7 @@ export const communikeyTimelineLoader = createTimelineLoader(
 // Calendar event loaders following the same pattern
 export const calendarTimelineLoader = createTimelineLoader(
 	pool,
-	relays,
+	appConfig.calendar.defaultRelays,
 	{
 		kinds: [31922, 31923], // NIP-52 calendar events
 		limit: 40
@@ -34,7 +35,7 @@ export const calendarTimelineLoader = createTimelineLoader(
  * @returns {Function} Timeline loader function that returns an Observable
  */
 export const createRelayFilteredCalendarLoader = (customRelays = [], additionalFilters = {}) => {
-	const relaysToUse = customRelays.length > 0 ? customRelays : relays;
+	const relaysToUse = customRelays.length > 0 ? customRelays : appConfig.calendar.defaultRelays;
 	
 	return createTimelineLoader(
 		pool,
@@ -52,7 +53,7 @@ export const createRelayFilteredCalendarLoader = (customRelays = [], additionalF
 // Calendar definition loader for personal calendars
 export const calendarLoader = createTimelineLoader(
 	pool,
-	relays,
+	appConfig.calendar.defaultRelays,
 	{
 		kinds: [31924], // Calendar definitions
 		limit: 100
@@ -62,7 +63,7 @@ export const calendarLoader = createTimelineLoader(
 
 export const communityCalendarTimelineLoader = (communityPubkey) => createTimelineLoader(
 	pool,
-	relays,
+	appConfig.calendar.defaultRelays,
 	{
 		kinds: [31922, 31923],
 		'#h': [communityPubkey], // Community targeting
@@ -74,7 +75,7 @@ export const communityCalendarTimelineLoader = (communityPubkey) => createTimeli
 // Targeted Publication Events loader for community calendar events
 export const targetedPublicationTimelineLoader = (communityPubkey) => createTimelineLoader(
 	pool,
-	relays,
+	appConfig.calendar.defaultRelays,
 	{
 		kinds: [30222], // Targeted Publication Events
 		'#p': [communityPubkey], // Community targeting
@@ -90,7 +91,7 @@ export const eventLoader = createEventLoader(pool, { eventStore });
 // Relationship events loader for community membership tracking
 export const relationshipTimelineLoader = createTimelineLoader(
 	pool,
-	relays,
+	appConfig.calendar.defaultRelays,
 	{
 		kinds: [30382], // Relationship events
 		limit: 100
@@ -104,7 +105,7 @@ export const profileLoader = createAddressLoader(pool, {
 });
 
 export function loadUserProfile(kind, pubkey) {
-	return profileLoader({ kind, pubkey, relays }).pipe(
+	return profileLoader({ kind, pubkey, relays: appConfig.calendar.defaultRelays }).pipe(
 		// Take only the first (most recent) profile
 		take(1),
 		map((event) => getProfileContent(event))
@@ -114,7 +115,7 @@ export function loadUserProfile(kind, pubkey) {
 export function kind1Loader(pubkey, limit) {
 	return createTimelineLoader(
 		pool,
-		relays,
+		appConfig.calendar.defaultRelays,
 		{
 			kinds: [1],
 			authors: [pubkey],

@@ -8,7 +8,7 @@
 	import { useCalendarActions } from '../../stores/calendar-actions.svelte.js';
 	import { useCalendarManagement } from '../../stores/calendar-management-store.svelte.js';
 	import { useJoinedCommunitiesList } from '../../stores/joined-communities-list.svelte.js';
-	import { manager } from '../../accounts.svelte.js';
+	import { manager } from '$lib/stores/accounts.svelte';
 	import CalendarSelector from './CalendarSelector.svelte';
 	import CommunitySelector from './CommunitySelector.svelte';
 	import { CloseIcon } from '../icons';

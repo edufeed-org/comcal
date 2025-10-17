@@ -2,10 +2,10 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { eventStore } from '$lib/store.svelte';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { calendarLoader } from '$lib/loaders';
 	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
-	import { manager } from '$lib/accounts.svelte.js';
+	import { manager } from '$lib/stores/accounts.svelte';
 	import CalendarCreationModal from './CalendarCreationModal.svelte';
 	import {
 		CalendarIcon,

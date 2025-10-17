@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { SimpleAccount } from 'applesauce-accounts/accounts';
 	import { merge, Subject, Subscription } from 'rxjs';
-	import { manager } from '$lib/accounts.svelte';
+	import { manager } from '$lib/stores/accounts.svelte';
 
 	let accounts = [];
 	let activeAccount = null;

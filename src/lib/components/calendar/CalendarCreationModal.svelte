@@ -2,7 +2,7 @@
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { useCalendarManagement } from '$lib/stores/calendar-management-store.svelte.js';
 	import { useCalendarActions } from '$lib/stores/calendar-actions.svelte.js';
-	import { manager } from '$lib/accounts.svelte.js';
+	import { manager } from '$lib/stores/accounts.svelte';
 	import { CloseIcon, AlertIcon } from '$lib/components/icons';
 
 	/**

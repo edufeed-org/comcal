@@ -1,5 +1,5 @@
 import { loadUserProfile } from '$lib/loaders';
-import { manager } from '$lib/accounts.svelte';
+import { manager } from '$lib/stores/accounts.svelte';
 
 /**
  * Custom hook for loading and managing user profile data

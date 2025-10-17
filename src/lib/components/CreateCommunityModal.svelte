@@ -1,5 +1,5 @@
 <script>
-	import { manager } from '$lib/accounts.svelte';
+	import { manager } from '$lib/stores/accounts.svelte';
 	import { SimpleSigner } from 'applesauce-signers';
 	import { SimpleAccount } from 'applesauce-accounts/accounts';
 	import { modalStore } from '$lib/stores/modal.svelte.js';

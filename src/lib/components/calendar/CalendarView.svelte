@@ -4,7 +4,7 @@
 	import { communityCalendarTimelineLoader } from '$lib/loaders.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { calendarStore, loading } from '$lib/stores/calendar-events.svelte.js';
-	import { manager } from '$lib/accounts.svelte.js';
+	import { manager } from '$lib/stores/accounts.svelte';
 	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
 	import {
 		useCalendarEventLoader,

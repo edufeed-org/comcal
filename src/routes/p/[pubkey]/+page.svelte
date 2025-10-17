@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { eventStore } from '$lib/store.svelte';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { getProfilePicture, getProfileContent } from 'applesauce-core/helpers';
 	import { fetchProfileData } from '$lib/helpers/profile.js';
 	import NotesTimeline from '$lib/components/notes/NotesTimeline.svelte';

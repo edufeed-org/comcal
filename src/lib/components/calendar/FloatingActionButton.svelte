@@ -1,6 +1,6 @@
 <script>
 	import { PlusIcon, CalendarIcon } from '$lib/components/icons';
-	import { manager } from '$lib/accounts.svelte.js';
+	import { manager } from '$lib/stores/accounts.svelte';
 	import CalendarEventModal from './CalendarEventModal.svelte';
 	import CalendarCreationModal from './CalendarCreationModal.svelte';
 

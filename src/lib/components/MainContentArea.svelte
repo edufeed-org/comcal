@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { eventStore } from '$lib/store.svelte';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import Chat from '$lib/components/Chat.svelte';
 	import CalendarView from '$lib/components/calendar/CalendarView.svelte';
 	import HomeView from '$lib/components/HomeView.svelte';

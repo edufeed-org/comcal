@@ -1,6 +1,6 @@
 <script>
 	import FloatingActionButton from '$lib/components/calendar/FloatingActionButton.svelte';
-	import { manager } from '$lib/accounts.svelte.js';
+	import { manager } from '$lib/stores/accounts.svelte';
 
 	// Track active user for conditional FAB display
 	let activeUser = $state(manager.active);

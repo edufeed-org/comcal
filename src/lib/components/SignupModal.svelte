@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { manager } from '$lib/accounts.svelte';
+	import { manager } from '$lib/stores/accounts.svelte';
 	import { SimpleSigner } from 'applesauce-signers';
 	import { SimpleAccount } from 'applesauce-accounts/accounts';
 	import { nip19, generateSecretKey, getPublicKey } from 'nostr-tools';

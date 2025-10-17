@@ -2,7 +2,7 @@
 	import { getProfilePicture } from 'applesauce-core/helpers';
 	import { useCommunityMembership } from '$lib/stores/joined-communities-list.svelte.js';
 	import { EventFactory } from 'applesauce-factory';
-	import { manager } from '$lib/accounts.svelte';
+	import { manager } from '$lib/stores/accounts.svelte';
 	import { publishEvent } from '$lib/helpers/publisher';
 
 	let { profile, communikeyEvent, communikeyContentTypes } = $props();
@@ -30,9 +30,9 @@
 		const signedEvent = await factory.sign(joinEvent);
 		console.log('Signed Join Event:', signedEvent);
 
-		// Get user relays from the relays store
-		const { relays: userRelays } = await import('$lib/store.svelte.js');
-		const allRelays = [...new Set([...userRelays])];
+		// Get default relays from config
+		const { appConfig } = await import('$lib/config.js');
+		const allRelays = [...new Set([...appConfig.calendar.defaultRelays])];
 
 		const result = await publishEvent(signedEvent, {
 			relays: allRelays,

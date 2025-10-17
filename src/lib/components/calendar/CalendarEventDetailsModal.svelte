@@ -11,8 +11,8 @@
 		registerCalendarEventsRefreshCallback
 	} from '../../stores/calendar-management-store.svelte.js';
 	import { useJoinedCommunitiesList } from '../../stores/joined-communities-list.svelte.js';
-	import { manager } from '../../accounts.svelte.js';
-	import { eventStore } from '../../store.svelte.js';
+	import { manager } from '$lib/stores/accounts.svelte';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { EventFactory } from 'applesauce-factory';
 	import { publishEvent } from '../../helpers/publisher.js';
 	import { getTagValue, getProfileContent, getDisplayName } from 'applesauce-core/helpers';
@@ -384,10 +384,10 @@
 		// Sign the event
 		const signedEvent = await factory.sign(shareEvent);
 
-		// Get user relays from the relays store
-		const { relays: userRelays } = await import('../../store.svelte.js');
+		// Get default relays from config
+		const { appConfig } = await import('$lib/config.js');
 		const communityRelays = [] // communityRelay ? [communityRelay] : [];
-		const allRelays = [...new Set([...userRelays, ...communityRelays])];
+		const allRelays = [...new Set([...appConfig.calendar.defaultRelays, ...communityRelays])];
 
 		const result = await publishEvent(signedEvent, {
 			relays: allRelays,

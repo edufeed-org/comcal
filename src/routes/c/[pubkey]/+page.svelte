@@ -7,7 +7,7 @@
 	/** @type {import('./$types').PageProps} */
 	let { data } = $props();
 
-	import { eventStore } from '$lib/store.svelte';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { getCommunityContentTypes } from '$lib/helpers';
 
 	let communikeyEvent = $state(/** @type {any} */ (null));

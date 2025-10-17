@@ -394,7 +394,7 @@ export function detectCalendarIdentifierType(identifier) {
  * @returns {Promise<import('nostr-tools').NostrEvent[]>} Array of calendar events
  */
 export async function fetchCommunityCalendarEvents(communityPubkey, relays = []) {
-	const { eventStore } = await import('$lib/store.svelte.js');
+	const { eventStore } = await import('$lib/stores/nostr-infrastructure.svelte');
 	const { communityCalendarTimelineLoader, targetedPublicationTimelineLoader, eventLoader } = await import('$lib/loaders.js');
 	const { getTagValue } = await import('applesauce-core/helpers');
 	const { bufferTime, mergeMap, firstValueFrom } = await import('rxjs');
@@ -482,8 +482,8 @@ export async function fetchCommunityCalendarEvents(communityPubkey, relays = [])
 					let relayList = relays;
 					// Use default relays as fallback if no relays provided
 					if (relayList.length === 0) {
-						const { relays: defaultRelays } = await import('$lib/store.svelte.js');
-						relayList = defaultRelays;
+						const { appConfig } = await import('$lib/config.js');
+						relayList = appConfig.calendar.defaultRelays;
 					}
 					
 					const loadPromise = firstValueFrom(
@@ -525,7 +525,7 @@ export async function fetchCommunityCalendarEvents(communityPubkey, relays = [])
  * @returns {Promise<{title: string, summary: string, relays: string[]}>} Calendar metadata
  */
 export async function getCommunityCalendarMetadata(communityPubkey) {
-	const { eventStore } = await import('$lib/store.svelte.js');
+	const { eventStore } = await import('$lib/stores/nostr-infrastructure.svelte');
 	const { firstValueFrom } = await import('rxjs');
 
 	try {

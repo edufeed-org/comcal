@@ -2,8 +2,8 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { TimelineModel } from 'applesauce-core/models';
 	import { createTimelineLoader } from 'applesauce-loaders/loaders';
-	import { pool, relays } from '$lib/store.svelte';
-	import { eventStore } from '$lib/store.svelte';
+	import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+	import { appConfig } from '$lib/config.js';
 	import NoteCard from './NoteCard.svelte';
 
 	let { pubkey, profileEvent = null } = $props();
@@ -13,7 +13,7 @@
 
 	const timelineLoader = createTimelineLoader(
 		pool,
-		relays,
+		appConfig.calendar.defaultRelays,
 		{ kinds: [1], authors: [pubkey], limit: 1 },
 		{ eventStore }
 	);

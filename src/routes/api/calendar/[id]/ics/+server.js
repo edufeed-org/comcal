@@ -97,8 +97,8 @@ async function handleCommunityCalendar(pubkeyOrNpub, url) {
     const metadata = await getCommunityCalendarMetadata(communityPubkey);
     
     // Get default relays and combine with community relays
-    const { relays: defaultRelays } = await import('$lib/store.svelte.js');
-    const allRelays = [...new Set([...defaultRelays, ...metadata.relays])];
+    const { appConfig } = await import('$lib/config.js');
+    const allRelays = [...new Set([...appConfig.calendar.defaultRelays, ...metadata.relays])];
     
     // Fetch community calendar events with combined relays
     const events = await fetchCommunityCalendarEvents(communityPubkey, allRelays);

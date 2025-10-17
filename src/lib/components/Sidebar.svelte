@@ -3,7 +3,6 @@
 	import { useActiveUser } from '$lib/stores/accounts.svelte';
 	import { getDisplayName, getTagValue, getProfilePicture } from 'applesauce-core/helpers';
 	import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte.js';
-	import { userProfile } from '$lib/shared.svelte';
 	import { useUserProfile } from '$lib/stores/user-profile.svelte';
 
 	const activeUser = useActiveUser();

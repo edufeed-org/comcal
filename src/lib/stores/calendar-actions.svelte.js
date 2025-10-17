@@ -4,8 +4,9 @@
  */
 
 import { EventFactory } from 'applesauce-factory';
-import { pool, relays } from '$lib/store.svelte';
-import { manager } from '$lib/accounts.svelte';
+import { pool } from '$lib/stores/nostr-infrastructure.svelte';
+import { manager } from '$lib/stores/accounts.svelte';
+import { appConfig } from '$lib/config.js';
 import { validateEventForm, convertFormDataToEvent, createEventTargetingTags } from '../helpers/calendar.js';
 import { calendarStore } from './calendar-events.svelte.js';
 import { getCalendarEventMetadata } from '../helpers/eventUtils.js';
@@ -117,7 +118,7 @@ export function createCalendarActions(communityPubkey) {
 				});
 
 				const calendarEvent = await currentAccount.signEvent(eventTemplate);
-				await pool.publish(relays, calendarEvent);
+				await pool.publish(appConfig.calendar.defaultRelays, calendarEvent);
 
 				// Add dTag property to the event object for calendar management
 				const eventWithDTag = {
@@ -242,7 +243,7 @@ export function createCalendarActions(communityPubkey) {
 				});
 
 				const updatedEvent = await currentAccount.signEvent(eventTemplate);
-				await pool.publish(relays, updatedEvent);
+				await pool.publish(appConfig.calendar.defaultRelays, updatedEvent);
 
 				// Add dTag property to the event object
 				const eventWithDTag = {
@@ -295,7 +296,7 @@ export function createCalendarActions(communityPubkey) {
 
 				// Sign and publish the deletion event
 				const deletionEvent = await currentAccount.signEvent(eventTemplate);
-				await pool.publish(relays, deletionEvent);
+				await pool.publish(appConfig.calendar.defaultRelays, deletionEvent);
 
 			} catch (error) {
 				console.error('Error deleting calendar event:', error);
@@ -334,7 +335,7 @@ export function createCalendarActions(communityPubkey) {
 
 				// Sign and publish the targeting event
 				const targetingEvent = await currentAccount.signEvent(eventTemplate);
-				await pool.publish(relays, targetingEvent);
+				await pool.publish(appConfig.calendar.defaultRelays, targetingEvent);
 
 			} catch (error) {
 				console.error('Error creating targeted publication:', error);
@@ -380,7 +381,7 @@ export function createCalendarActions(communityPubkey) {
 
 				// Sign and publish the calendar event
 				const calendarEvent = await currentAccount.signEvent(eventTemplate);
-				await pool.publish(relays, calendarEvent);
+				await pool.publish(appConfig.calendar.defaultRelays, calendarEvent);
 
 				console.log('📅 Calendar created successfully:', calendarEvent.id);
 				return calendarEvent.id;

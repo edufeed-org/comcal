@@ -4,7 +4,7 @@
  * Follows the project's EventStore intelligence pattern
  */
 
-import { eventStore, pool } from '$lib/store.svelte';
+import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
 import { TimelineModel } from 'applesauce-core/models';
 import { onlyEvents } from 'applesauce-relay/operators';
 import { mapEventsToStore, mapEventsToTimeline } from 'applesauce-core/observable';

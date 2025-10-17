@@ -1,6 +1,7 @@
 <script>
-	import { eventStore, pool, relays } from '$lib/store.svelte';
-	import { manager } from '$lib/accounts.svelte';
+	import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
+	import { manager } from '$lib/stores/accounts.svelte';
+	import { appConfig } from '$lib/config.js';
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils';
 	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
@@ -70,7 +71,7 @@
 
 		// Create persistent subscription for comments
 		const subscription = pool
-			.group(relays)
+			.group(appConfig.calendar.defaultRelays)
 			.subscription({
 				kinds: [1111],
 				'#A': [eventAddress]
@@ -115,7 +116,7 @@
 
 		// Query for calendars (kind 31924) that reference this event
 		const subscription = pool
-			.group(relays)
+			.group(appConfig.calendar.defaultRelays)
 			.subscription({
 				kinds: [31924],
 				'#a': [eventAddress]
@@ -170,14 +171,14 @@
 				content: newComment.trim(),
 				tags: [
 					// Root scope
-					['A', eventAddress, relays[0] || ''],
+					['A', eventAddress, appConfig.calendar.defaultRelays[0] || ''],
 					['K', event.kind.toString()],
-					['P', event.pubkey, relays[0] || ''],
+					['P', event.pubkey, appConfig.calendar.defaultRelays[0] || ''],
 					// Parent (same as root for top-level comments)
-					['a', eventAddress, relays[0] || ''],
-					['e', event.id, relays[0] || ''],
+					['a', eventAddress, appConfig.calendar.defaultRelays[0] || ''],
+					['e', event.id, appConfig.calendar.defaultRelays[0] || ''],
 					['k', event.kind.toString()],
-					['p', event.pubkey, relays[0] || '']
+					['p', event.pubkey, appConfig.calendar.defaultRelays[0] || '']
 				]
 			});
 
@@ -191,7 +192,7 @@
 
 			// Publish to relays
 			const result = await publishEvent(signedEvent, {
-				relays: relays,
+				relays: appConfig.calendar.defaultRelays,
 				logPrefix: 'EventComment'
 			});
 

@@ -1,4 +1,4 @@
-import { eventStore } from '$lib/store.svelte.js';
+import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { getProfilePicture } from 'applesauce-core/helpers';
 import { nip19 } from 'nostr-tools';
 

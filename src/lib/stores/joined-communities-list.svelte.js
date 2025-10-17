@@ -1,5 +1,5 @@
-import { manager } from '$lib/accounts.svelte';
-import { eventStore } from '$lib/store.svelte';
+import { manager } from '$lib/stores/accounts.svelte';
+import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { getTagValue } from 'applesauce-core/helpers';
 import { useAllCommunities } from './all-communities.svelte.js';
 import { relationshipTimelineLoader } from '$lib/loaders.js';

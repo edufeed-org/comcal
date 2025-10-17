@@ -1,4 +1,5 @@
-import { pool, relays, eventStore } from '$lib/store.svelte.js';
+import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+import { appConfig } from '$lib/config.js';
 
 /**
  * Generic event publishing utility for Nostr events
@@ -13,7 +14,7 @@ import { pool, relays, eventStore } from '$lib/store.svelte.js';
  */
 export async function publishEvent(signedEvent, options = {}) {
 	const {
-		relays: customRelays = relays,
+		relays: customRelays = appConfig.calendar.defaultRelays,
 		addToStore = true,
 		logPrefix = 'Publisher'
 	} = options;

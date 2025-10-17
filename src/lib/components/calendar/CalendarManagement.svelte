@@ -1,7 +1,7 @@
 <script>
 	import { useCalendarManagement } from '$lib/stores/calendar-management-store.svelte.js';
 	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
-	import { manager } from '$lib/accounts.svelte.js';
+	import { manager } from '$lib/stores/accounts.svelte';
 	import CalendarCreationModal from '$lib/components/calendar/CalendarCreationModal.svelte';
 	import { EventFactory } from 'applesauce-factory';
 	import { publishEvent } from '$lib/helpers/publisher.js';

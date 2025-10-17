@@ -6,10 +6,11 @@
 import { map, catchError } from 'rxjs/operators';
 import { of, BehaviorSubject } from 'rxjs';
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
-import { pool, relays, eventStore } from '$lib/store.svelte';
+import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+import { appConfig } from '$lib/config.js';
 import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
 import { EventFactory } from 'applesauce-factory';
-import { manager } from '../accounts.svelte.js';
+import { manager } from '$lib/stores/accounts.svelte';
 
 /**
  * @typedef {Object} Calendar
@@ -71,7 +72,7 @@ export function createCalendarManagementStore(userPubkey) {
 		// Create timeline loader with filter for user's calendars (kind 31924)
 		timelineLoader = createTimelineLoader(
 			pool,
-			relays,
+			appConfig.calendar.defaultRelays,
 			{
 				kinds: [31924],
 				authors: [userPubkey],
@@ -227,7 +228,7 @@ export function createCalendarManagementStore(userPubkey) {
 			const signedEvent = await currentAccount.signEvent(eventTemplate);
 
 			// Publish to multiple relays
-			const responses = await pool.publish(relays, signedEvent);
+			const responses = await pool.publish(appConfig.calendar.defaultRelays, signedEvent);
 
 			// Check if at least one relay accepted the event
 			const hasSuccess = responses.some(response => response.ok);
@@ -330,7 +331,7 @@ export function createCalendarManagementStore(userPubkey) {
 			const signedEvent = await currentAccount.signEvent(eventTemplate);
 
 			// Publish to multiple relays
-			const responses = await pool.publish(relays, signedEvent);
+			const responses = await pool.publish(appConfig.calendar.defaultRelays, signedEvent);
 
 			// Check if at least one relay accepted the event
 			const hasSuccess = responses.some(response => response.ok);
