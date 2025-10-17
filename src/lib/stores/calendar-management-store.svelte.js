@@ -5,8 +5,8 @@
 
 import { map, catchError } from 'rxjs/operators';
 import { of, BehaviorSubject } from 'rxjs';
-import { createTimelineLoader } from 'applesauce-loaders/loaders';
-import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+import { calendarLoader } from '$lib/loaders';
+import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
 import { appConfig } from '$lib/config.js';
 import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
 import { EventFactory } from 'applesauce-factory';
@@ -69,17 +69,8 @@ export function createCalendarManagementStore(userPubkey) {
 		store.loading = true;
 		loadingSubject.next(true);
 
-		// Create timeline loader with filter for user's calendars (kind 31924)
-		timelineLoader = createTimelineLoader(
-			pool,
-			appConfig.calendar.defaultRelays,
-			{
-				kinds: [31924],
-				authors: [userPubkey],
-				limit: 100
-			},
-			{ eventStore }
-		);
+		// Use the pre-configured calendar loader (kind 31924)
+		timelineLoader = calendarLoader;
 
 		subscription = timelineLoader()
 			.pipe(

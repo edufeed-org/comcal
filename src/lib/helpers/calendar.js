@@ -395,7 +395,7 @@ export function detectCalendarIdentifierType(identifier) {
  */
 export async function fetchCommunityCalendarEvents(communityPubkey, relays = []) {
 	const { eventStore } = await import('$lib/stores/nostr-infrastructure.svelte');
-	const { communityCalendarTimelineLoader, targetedPublicationTimelineLoader, eventLoader } = await import('$lib/loaders.js');
+	const { communityCalendarTimelineLoader, targetedPublicationTimelineLoader, eventLoader } = await import('$lib/loaders');
 	const { getTagValue } = await import('applesauce-core/helpers');
 	const { bufferTime, mergeMap, firstValueFrom } = await import('rxjs');
 

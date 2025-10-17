@@ -1,7 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { communityCalendarTimelineLoader } from '$lib/loaders.js';
+	import { communityCalendarTimelineLoader } from '$lib/loaders';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { calendarStore, loading } from '$lib/stores/calendar-events.svelte.js';
 	import { manager } from '$lib/stores/accounts.svelte';
@@ -9,7 +9,7 @@
 	import {
 		useCalendarEventLoader,
 		useCalendarUrlSync
-	} from '$lib/stores/calendar-event-loader.svelte.js';
+	} from '$lib/loaders';
 
 	// Import existing UI components
 	import CalendarNavigation from '$lib/components/calendar/CalendarNavigation.svelte';

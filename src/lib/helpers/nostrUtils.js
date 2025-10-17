@@ -1,5 +1,5 @@
 import { nip19 } from "nostr-tools";
-import { eventLoader, addressLoader } from "$lib/loaders.js";
+import { eventLoader, addressLoader } from "$lib/loaders";
 import { firstValueFrom } from "rxjs";
 import { getCalendarEventStart } from "applesauce-core/helpers";
 

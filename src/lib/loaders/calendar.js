@@ -1,23 +1,12 @@
-import { createAddressLoader, createTimelineLoader, createEventLoader } from 'applesauce-loaders/loaders';
+/**
+ * Calendar domain loaders for NIP-52 calendar events.
+ * Includes timeline loaders and factory functions for custom filtering.
+ */
+import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { appConfig } from '$lib/config.js';
-import { getProfileContent } from 'applesauce-core/helpers';
-import { take, map } from 'rxjs';
 
-export const addressLoader = createAddressLoader(pool, { eventStore, lookupRelays: appConfig.calendar.defaultRelays });
-
-eventStore.addressableLoader = addressLoader;
-eventStore.replaceableLoader = addressLoader;
-
-export const communikeyTimelineLoader = createTimelineLoader(
-	pool,
-	appConfig.calendar.defaultRelays,
-	{
-		kinds: [10222]
-	},
-	{ eventStore });
-
-// Calendar event loaders following the same pattern
+// Global calendar events (kinds 31922, 31923)
 export const calendarTimelineLoader = createTimelineLoader(
 	pool,
 	appConfig.calendar.defaultRelays,
@@ -49,8 +38,7 @@ export const createRelayFilteredCalendarLoader = (customRelays = [], additionalF
 	);
 };
 
-
-// Calendar definition loader for personal calendars
+// Calendar definition loader for personal calendars (kind 31924)
 export const calendarLoader = createTimelineLoader(
 	pool,
 	appConfig.calendar.defaultRelays,
@@ -61,6 +49,11 @@ export const calendarLoader = createTimelineLoader(
 	{ eventStore }
 );
 
+/**
+ * Factory: Create a timeline loader for community-specific calendar events
+ * @param {string} communityPubkey - The pubkey of the community
+ * @returns {Function} Timeline loader function that returns an Observable
+ */
 export const communityCalendarTimelineLoader = (communityPubkey) => createTimelineLoader(
 	pool,
 	appConfig.calendar.defaultRelays,
@@ -72,7 +65,12 @@ export const communityCalendarTimelineLoader = (communityPubkey) => createTimeli
 	{ eventStore }
 );
 
-// Targeted Publication Events loader for community calendar events
+/**
+ * Factory: Create a timeline loader for targeted publication events
+ * Targeted publications (kind 30222) are used to publish events to specific communities
+ * @param {string} communityPubkey - The pubkey of the community
+ * @returns {Function} Timeline loader function that returns an Observable
+ */
 export const targetedPublicationTimelineLoader = (communityPubkey) => createTimelineLoader(
 	pool,
 	appConfig.calendar.defaultRelays,
@@ -84,43 +82,3 @@ export const targetedPublicationTimelineLoader = (communityPubkey) => createTime
 	},
 	{ eventStore }
 );
-
-// Event loader for resolving referenced events from targeted publications
-export const eventLoader = createEventLoader(pool, { eventStore });
-
-// Relationship events loader for community membership tracking
-export const relationshipTimelineLoader = createTimelineLoader(
-	pool,
-	appConfig.calendar.defaultRelays,
-	{
-		kinds: [30382], // Relationship events
-		limit: 100
-	},
-	{ eventStore }
-);
-
-export const profileLoader = createAddressLoader(pool, {
-	eventStore,
-	lookupRelays: ['wss://purplepag.es/']
-});
-
-export function loadUserProfile(kind, pubkey) {
-	return profileLoader({ kind, pubkey, relays: appConfig.calendar.defaultRelays }).pipe(
-		// Take only the first (most recent) profile
-		take(1),
-		map((event) => getProfileContent(event))
-	);
-}
-
-export function kind1Loader(pubkey, limit) {
-	return createTimelineLoader(
-		pool,
-		appConfig.calendar.defaultRelays,
-		{
-			kinds: [1],
-			authors: [pubkey],
-			limit
-		},
-		{ eventStore },
-	)
-}

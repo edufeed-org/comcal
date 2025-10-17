@@ -16,7 +16,7 @@ import {
 	calendarTimelineLoader,
 	targetedPublicationTimelineLoader,
 	eventLoader
-} from '$lib/loaders.js';
+} from '$lib/loaders';
 import { appConfig } from '$lib/config.js';
 import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
 import { parseCalendarFilters } from '$lib/helpers/urlParams.js';
