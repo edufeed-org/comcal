@@ -395,7 +395,7 @@ export function detectCalendarIdentifierType(identifier) {
  */
 export async function fetchCommunityCalendarEvents(communityPubkey, relays = []) {
 	const { eventStore } = await import('$lib/stores/nostr-infrastructure.svelte');
-	const { communityCalendarTimelineLoader, targetedPublicationTimelineLoader, eventLoader } = await import('$lib/loaders');
+	const { communityCalendarTimelineLoader, targetedPublicationTimelineLoader, eventLoader, addressLoader } = await import('$lib/loaders');
 	const { getTagValue } = await import('applesauce-core/helpers');
 	const { bufferTime, mergeMap, firstValueFrom } = await import('rxjs');
 
@@ -459,25 +459,57 @@ export async function fetchCommunityCalendarEvents(communityPubkey, relays = [])
 		console.log(`📅 fetchCommunityCalendarEvents: Found ${targetedPubsArray.length} targeted publications`);
 
 		// Resolve referenced events from targeted publications
-		// We need to wait for each referenced event to load
+		// Now using addressable references ('a' tags) instead of event IDs ('e' tags)
 		const referencedEventPromises = [];
 		
 		for (const pubEvent of targetedPubsArray) {
 			try {
-				const eTag = getTagValue(pubEvent, 'e');
-				if (!eTag) continue;
+				// Look for 'a' tag (addressable reference) instead of 'e' tag (event ID)
+				const aTag = getTagValue(pubEvent, 'a');
+				if (!aTag) {
+					// Fallback to 'e' tag for backward compatibility with old shares
+					const eTag = getTagValue(pubEvent, 'e');
+					if (!eTag) continue;
+					
+					console.warn(`📅 fetchCommunityCalendarEvents: Found old-style share with 'e' tag: ${eTag}`);
+					// Handle old-style event ID reference (will be deprecated)
+					if (eventIds.has(eTag)) continue;
+					
+					let referencedEvent = eventStore.getEvent(eTag);
+					if (referencedEvent && !eventIds.has(referencedEvent.id)) {
+						eventIds.add(referencedEvent.id);
+						allEvents.push(referencedEvent);
+					}
+					continue;
+				}
 
-				// Check if already in allEvents
-				if (eventIds.has(eTag)) continue;
+				// Parse address: kind:pubkey:dtag
+				const parts = aTag.split(':');
+				if (parts.length < 3) {
+					console.warn(`📅 fetchCommunityCalendarEvents: Invalid address format: ${aTag}`);
+					continue;
+				}
 
-				// Try to get from event store first
-				let referencedEvent = eventStore.getEvent(eTag);
+				const [kindStr, pubkey, dTag] = parts;
+				const kind = parseInt(kindStr);
+
+				// Validate it's a calendar event kind
+				if (kind !== 31922 && kind !== 31923) {
+					console.warn(`📅 fetchCommunityCalendarEvents: Invalid calendar event kind: ${kind}`);
+					continue;
+				}
+
+				// Try to get from event store first using address
+				const existingEvent = eventStore.replaceable({ kind, pubkey, identifier: dTag });
 				
-				if (referencedEvent && !eventIds.has(referencedEvent.id)) {
-					eventIds.add(referencedEvent.id);
-					allEvents.push(referencedEvent);
-				} else if (!referencedEvent) {
-					// If not in store, create a promise to load it
+				// If we have it in store, use it immediately
+				if (existingEvent && typeof existingEvent === 'object' && 'id' in existingEvent) {
+					if (!eventIds.has(existingEvent.id)) {
+						eventIds.add(existingEvent.id);
+						allEvents.push(existingEvent);
+					}
+				} else {
+					// If not in store, create a promise to load it by address
 					/** @type {string[]} */
 					let relayList = relays;
 					// Use default relays as fallback if no relays provided
@@ -487,18 +519,24 @@ export async function fetchCommunityCalendarEvents(communityPubkey, relays = [])
 					}
 					
 					const loadPromise = firstValueFrom(
-						eventLoader({ id: eTag, relays: relayList }).pipe(bufferTime(2000)),
+						addressLoader({ kind, pubkey, identifier: dTag, relays: relayList }).pipe(bufferTime(2000)),
 						{ defaultValue: null }
 					).then(bufferedEvents => {
 						if (bufferedEvents && Array.isArray(bufferedEvents)) {
-							const loadedEvent = bufferedEvents.find(e => e && e.id === eTag);
+							const loadedEvent = bufferedEvents.find(e => e && e.kind === kind);
 							if (loadedEvent && !eventIds.has(loadedEvent.id)) {
 								eventIds.add(loadedEvent.id);
 								allEvents.push(loadedEvent);
 							}
+						} else if (bufferedEvents && typeof bufferedEvents === 'object' && 'id' in bufferedEvents) {
+							// Single event returned
+							if (!eventIds.has(bufferedEvents.id)) {
+								eventIds.add(bufferedEvents.id);
+								allEvents.push(bufferedEvents);
+							}
 						}
 					}).catch(err => {
-						console.warn(`📅 fetchCommunityCalendarEvents: Failed to load referenced event ${eTag}:`, err);
+						console.warn(`📅 fetchCommunityCalendarEvents: Failed to load referenced event ${aTag}:`, err);
 					});
 					
 					referencedEventPromises.push(loadPromise);

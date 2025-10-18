@@ -31,7 +31,7 @@ export const createRelayFilteredCalendarLoader = (customRelays = [], additionalF
 		relaysToUse,
 		{
 			kinds: [31922, 31923], // NIP-52 calendar events
-			limit: 50,
+			limit: 200,
 			...additionalFilters
 		},
 		{ eventStore }
@@ -68,6 +68,7 @@ export const communityCalendarTimelineLoader = (communityPubkey) => createTimeli
 /**
  * Factory: Create a timeline loader for targeted publication events
  * Targeted publications (kind 30222) are used to publish events to specific communities
+ * Now supports both 'a' tag (addressable) and 'e' tag (event ID) references for backward compatibility
  * @param {string} communityPubkey - The pubkey of the community
  * @returns {Function} Timeline loader function that returns an Observable
  */
