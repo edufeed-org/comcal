@@ -2,18 +2,15 @@
 	import { getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
 	import CommunikeyHeader from '$lib/components/CommunikeyHeader.svelte';
 	import { getCommunityContentTypes } from '$lib/helpers';
-	import { UserIcon, CalendarIcon, ChatIcon } from '$lib/components/icons';
+	
+	// Import stat components
+	import MembersStat from '$lib/components/community/stats/MembersStat.svelte';
+	import CalendarEventsStat from '$lib/components/community/stats/CalendarEventsStat.svelte';
+	import MessagesStat from '$lib/components/community/stats/MessagesStat.svelte';
 
 	let { communikeyEvent, profileEvent, communityId } = $props();
 
 	let contentTypes = $derived(communikeyEvent ? getCommunityContentTypes(communikeyEvent) : []);
-	
-	// TODO: These would be loaded from actual data
-	const stats = {
-		members: 0,
-		events: 0,
-		messages: 0
-	};
 </script>
 
 {#if profileEvent && communikeyEvent}
@@ -29,32 +26,9 @@
 		<div class="container mx-auto px-4 py-8 max-w-4xl">
 			<!-- Quick Stats -->
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-				<div class="stat bg-base-200 rounded-lg shadow">
-					<div class="stat-figure text-primary">
-						<UserIcon class_="w-8 h-8" />
-					</div>
-					<div class="stat-title">Members</div>
-					<div class="stat-value text-primary">{stats.members}</div>
-					<div class="stat-desc">Community size</div>
-				</div>
-
-				<div class="stat bg-base-200 rounded-lg shadow">
-					<div class="stat-figure text-secondary">
-						<CalendarIcon class_="w-8 h-8" />
-					</div>
-					<div class="stat-title">Events</div>
-					<div class="stat-value text-secondary">{stats.events}</div>
-					<div class="stat-desc">Upcoming</div>
-				</div>
-
-				<div class="stat bg-base-200 rounded-lg shadow">
-					<div class="stat-figure text-accent">
-						<ChatIcon class_="w-8 h-8" />
-					</div>
-					<div class="stat-title">Messages</div>
-					<div class="stat-value text-accent">{stats.messages}</div>
-					<div class="stat-desc">Recent activity</div>
-				</div>
+				<MembersStat {communityId} />
+				<CalendarEventsStat {communityId} />
+				<MessagesStat {communityId} />
 			</div>
 
 			<!-- Community Description -->
