@@ -1,5 +1,5 @@
 import { loadUserProfile } from '$lib/loaders';
-import { manager } from '$lib/stores/accounts.svelte';
+import { useActiveUser } from '$lib/stores/accounts.svelte';
 
 /**
  * Custom hook for loading and managing user profile data
@@ -11,16 +11,8 @@ export function useUserProfile(pubkey) {
 	// Store the profile data reactively
 	let profile = $state(/** @type {any} */ (null));
 
-	// Create a reactive state for the active account to bridge RxJS to Svelte reactivity
-	let activeAccount = $state(manager.active);
-
-	// Subscribe to manager.active$ to keep activeAccount in sync
-	$effect(() => {
-		const subscription = manager.active$.subscribe((account) => {
-			activeAccount = account;
-		});
-		return () => subscription.unsubscribe();
-	});
+	// Use the proper hook for active user
+	const getActiveUser = useActiveUser();
 
 	// Effect to handle profile loading and subscription management
 	$effect(() => {
@@ -28,11 +20,11 @@ export function useUserProfile(pubkey) {
 		profile = null;
 
 		// Determine the target pubkey: use provided pubkey or fallback to active user's pubkey
-		const targetPubkey = pubkey || activeAccount?.pubkey;
+		const targetPubkey = pubkey || getActiveUser()?.pubkey;
 
 		if (targetPubkey) {
 			// Subscribe to the profile loading observable
-			const subscription = loadUserProfile(0, targetPubkey).subscribe((loadedProfile) => {
+			const subscription = loadUserProfile(0, targetPubkey).subscribe((loadedProfile /** @type {any} */) => {
 				if (loadedProfile) {
 					profile = loadedProfile;
 				}

@@ -8,13 +8,9 @@
 	// Use the modal store for opening modals
 	const modal = modalStore;
 
-	// Use the enhanced hook without pubkey - it will automatically use manager.active
-	const getProfile = useUserProfile();
+	// Use $state + $effect for reactive RxJS subscription bridge (Svelte 5 pattern)
+	let activeAccount = $state(/** @type {any} */ (null));
 
-	// Reactive state for active account
-	let activeAccount = $state(manager.active);
-
-	// Subscribe to active account changes
 	$effect(() => {
 		const subscription = manager.active$.subscribe((account) => {
 			activeAccount = account;
@@ -22,6 +18,9 @@
 		});
 		return () => subscription.unsubscribe();
 	});
+
+	// Use the enhanced hook without pubkey - it will automatically use manager.active
+	const getProfile = useUserProfile();
 
 	// Debug: Log profile changes
 	$effect(() => {

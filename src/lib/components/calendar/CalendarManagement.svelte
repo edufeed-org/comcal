@@ -9,19 +9,20 @@
 	import { showToast } from '$lib/helpers/toast.js';
 	import { goto } from '$app/navigation';
 
-	// Create local reactive state for active user
-	let activeUser = $state(manager.active);
+	// Use $state + $effect for reactive RxJS subscription bridge (Svelte 5 pattern)
+	let activeUser = $state(/** @type {any} */ (null));
+	let calendarManagement = $state(/** @type {any} */ (null));
 
-	// Subscribe to manager.active$ for reactive updates
 	$effect(() => {
 		const subscription = manager.active$.subscribe((user) => {
 			activeUser = user;
+			// Update calendarManagement when activeUser changes
+			// This avoids state_unsafe_mutation error that occurs when calling
+			// a function that creates $state() inside a $derived() context
+			calendarManagement = user ? useCalendarManagement(user.pubkey) : null;
 		});
 		return () => subscription.unsubscribe();
 	});
-
-	// Reactive calendar management store
-	let calendarManagement = $derived(activeUser ? useCalendarManagement(activeUser.pubkey) : null);
 
 	// Local state for editing
 	let editingCalendarId = $state(/** @type {string | null} */ (null));
