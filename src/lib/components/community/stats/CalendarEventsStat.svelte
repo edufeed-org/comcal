@@ -1,127 +1,75 @@
 <script>
+	import { onMount } from 'svelte';
 	import { CalendarIcon } from '$lib/components/icons';
-	import { targetedPublicationTimelineLoader, eventLoader } from '$lib/loaders';
-	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-	import { getTagValue } from 'applesauce-core/helpers';
-	import { parseAddressReference } from '$lib/helpers/eventUtils';
-	import { appConfig } from '$lib/config.js';
+	import { useCalendarEventLoader } from '$lib/loaders/calendar-event-loader.svelte.js';
 
 	// Props
 	let { communityId } = $props();
-
-	// Store event references from publications
-	const eventRefs = new Set();
-	const addressableRefs = new Set();
 	
 	// Local state
+	let events = $state(/** @type {any[]} */ ([]));
 	let isLoading = $state(true);
-	let publicationsLoaded = $state(false);
-	
-	// Guard to prevent redundant loads
-	/** @type {string | null} */
-	let lastLoadedCommunityId = $state(null);
+	let error = $state(/** @type {string | null} */ (null));
+	let lastLoadedCommunityId = $state(/** @type {string | null} */ (null));
 
-	// Subscription
-	let subscription = $state();
-
-	// Count unique calendar events from EventStore
-	const eventCount = $derived.by(() => {
-		const uniqueEventIds = new Set();
-		const events = []
-		
-		// Check e-tag references (events by ID)
-		for (const id of eventRefs) {
-			const event = eventStore.getEvent(id);
-			if (event && (event.kind === 31922 || event.kind === 31923)) {
-				uniqueEventIds.add(event.id);
-				events.push(event);
-			}
+	// Initialize event loader composable
+	const eventLoaderComposable = useCalendarEventLoader({
+		onEventsUpdate: (newEvents) => {
+			events = newEvents;
+			console.log(events)
+			console.log('📊 CalendarEventsStat: Events updated, count:', newEvents.length);
+		},
+		onLoadingChange: (loading) => {
+			isLoading = loading;
+		},
+		onError: (errorMsg) => {
+			error = errorMsg;
 		}
-		
-		// Check a-tag references (addressable events)
-		for (const aTag of addressableRefs) {
-			const parsed = parseAddressReference(aTag);
-			if (parsed && (parsed.kind === 31922 || parsed.kind === 31923)) {
-				const event = eventStore.getReplaceable(parsed.kind, parsed.pubkey, parsed.dTag);
-				if (event) {
-					uniqueEventIds.add(event.id);
-					events.push(event);
-				}
-			}
-		}
-		console.log(events)
-		return uniqueEventIds.size;
 	});
 
-	// Load targeted publications when communityId changes
-	$effect(() => {
+	// Function to load events for a community
+	function loadEvents() {
 		if (!communityId) {
-			console.log('🔍 CalendarEventsStat: No communityId provided');
-			lastLoadedCommunityId = null;
-			eventRefs.clear();
-			addressableRefs.clear();
+			console.log('📊 CalendarEventsStat: No communityId provided');
+			events = [];
 			isLoading = false;
-			publicationsLoaded = false;
+			error = null;
+			lastLoadedCommunityId = null;
 			return;
 		}
-	
-		console.log('🔍 CalendarEventsStat: Loading targeted publications for community:', communityId);
+
+		// Skip if already loading this community
+		if (communityId === lastLoadedCommunityId) {
+			console.log('📊 CalendarEventsStat: Already loaded for this community');
+			return;
+		}
+
+		console.log('📊 CalendarEventsStat: Loading events for community:', communityId);
 		lastLoadedCommunityId = communityId;
-		isLoading = true;
-		publicationsLoaded = false;
-		eventRefs.clear();
-		addressableRefs.clear();
+		eventLoaderComposable.loadByCommunity(communityId);
+	}
+
+	// Watch for communityId changes
+	$effect(() => {
+		// Track communityId as dependency
+		const currentId = communityId;
+		console.log('📊 CalendarEventsStat: communityId changed to:', currentId);
+		loadEvents();
+	});
+
+	// Setup and cleanup
+	onMount(() => {
+		console.log('📊 CalendarEventsStat: Component mounted');
 		
-		// Subscribe to targeted publications (kind 30222)
-		subscription = targetedPublicationTimelineLoader(communityId)().subscribe({
-			next: (/** @type {any} */ pubEvent) => {
-				console.log('🔍 CalendarEventsStat: Targeted publication received:', pubEvent.id);
-				
-				// Extract e-tag (event reference)
-				const eTag = getTagValue(pubEvent, 'e');
-				if (eTag) {
-					console.log('🔍 CalendarEventsStat: Found e-tag:', eTag);
-					eventRefs.add(eTag);
-					// Trigger loader to fetch the event
-					eventLoader({ id: eTag, relays: appConfig.calendar.defaultRelays });
-				}
-				
-				// Extract a-tag (addressable reference)
-				const aTag = getTagValue(pubEvent, 'a');
-				if (aTag) {
-					console.log('🔍 CalendarEventsStat: Found a-tag:', aTag);
-					addressableRefs.add(aTag);
-					// Trigger loader to fetch the addressable event
-					const parsed = parseAddressReference(aTag);
-					if (parsed) {
-						eventStore.addressableLoader?.({ 
-							kind: parsed.kind, 
-							pubkey: parsed.pubkey, 
-							identifier: parsed.dTag 
-						});
-					}
-				}
-			},
-			error: (/** @type {any} */ err) => {
-				console.error('🔍 CalendarEventsStat: Error loading targeted publications:', err);
-				isLoading = false;
-				publicationsLoaded = true;
-			},
-			complete: () => {
-				console.log('🔍 CalendarEventsStat: Publications loading complete');
-				console.log('🔍 CalendarEventsStat: Total e-tags:', eventRefs.size);
-				console.log('🔍 CalendarEventsStat: Total a-tags:', addressableRefs.size);
-				isLoading = false;
-				publicationsLoaded = true;
-			}
-		});
-		
-		// Cleanup function
+		// Cleanup on unmount
 		return () => {
-			console.log('🔍 CalendarEventsStat: Cleaning up subscription');
-			subscription?.unsubscribe();
+			console.log('📊 CalendarEventsStat: Component unmounting, cleaning up');
+			eventLoaderComposable.cleanup();
 		};
 	});
+
+	// Count unique calendar events
+	const eventCount = $derived(events.length);
 </script>
 
 <div class="stat bg-base-200 rounded-lg shadow">
@@ -134,11 +82,15 @@
 			<span class="loading loading-spinner loading-sm"></span>
 		</div>
 		<div class="stat-desc text-xs opacity-70">Loading...</div>
-	{:else if publicationsLoaded}
+	{:else if error}
+		<div class="stat-value text-error">
+			<svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+			</svg>
+		</div>
+		<div class="stat-desc text-xs text-error">Error loading</div>
+	{:else}
 		<div class="stat-value text-secondary">{eventCount}</div>
 		<div class="stat-desc">calendar events</div>
-	{:else}
-		<div class="stat-value text-secondary">0</div>
-		<div class="stat-desc">no data</div>
 	{/if}
 </div>
