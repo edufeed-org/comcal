@@ -5,7 +5,7 @@
 
 import { map, catchError } from 'rxjs/operators';
 import { of, BehaviorSubject } from 'rxjs';
-import { calendarLoader } from '$lib/loaders';
+import { userCalendarLoader } from '$lib/loaders/calendar.js';
 import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
 import { appConfig } from '$lib/config.js';
 import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
@@ -69,8 +69,8 @@ export function createCalendarManagementStore(userPubkey) {
 		store.loading = true;
 		loadingSubject.next(true);
 
-		// Use the pre-configured calendar loader (kind 31924)
-		timelineLoader = calendarLoader;
+		// Use the user-specific calendar loader (kind 31924, filtered by author)
+		timelineLoader = userCalendarLoader(userPubkey);
 
 		subscription = timelineLoader()
 			.pipe(

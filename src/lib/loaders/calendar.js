@@ -39,11 +39,29 @@ export const createRelayFilteredCalendarLoader = (customRelays = [], additionalF
 };
 
 // Calendar definition loader for personal calendars (kind 31924)
+// NOTE: This loads ALL calendars without filtering - use userCalendarLoader for user-specific calendars
 export const calendarLoader = createTimelineLoader(
 	pool,
 	appConfig.calendar.defaultRelays,
 	{
 		kinds: [31924], // Calendar definitions
+		limit: 100
+	},
+	{ eventStore }
+);
+
+/**
+ * Factory: Create a timeline loader for user-specific calendar definitions
+ * This loader filters calendars by author at the relay level for efficiency
+ * @param {string} userPubkey - The pubkey of the user whose calendars to load
+ * @returns {Function} Timeline loader function that returns an Observable
+ */
+export const userCalendarLoader = (userPubkey) => createTimelineLoader(
+	pool,
+	appConfig.calendar.defaultRelays,
+	{
+		kinds: [31924], // Calendar definitions
+		authors: [userPubkey], // Filter by user at relay level
 		limit: 100
 	},
 	{ eventStore }

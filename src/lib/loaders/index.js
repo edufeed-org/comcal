@@ -14,6 +14,7 @@ export { addressLoader, eventLoader } from './base.js';
 export {
 	calendarTimelineLoader,
 	calendarLoader,
+	userCalendarLoader,
 	createRelayFilteredCalendarLoader,
 	communityCalendarTimelineLoader,
 	targetedPublicationTimelineLoader
