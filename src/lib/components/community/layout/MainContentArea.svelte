@@ -56,15 +56,20 @@
 		<div class="flex items-center justify-center h-full">
 			<div class="loading loading-spinner loading-lg text-primary"></div>
 		</div>
-	{:else if selectedContentType === 'home'}
-		<HomeView {communikeyEvent} {profileEvent} communityId={selectedCommunityId} />
-	{:else if selectedContentType === 'chat'}
-		<Chat {communikeyEvent} />
-	{:else if selectedContentType === 'calendar'}
-		<CalendarView communityPubkey={selectedCommunityId} communityMode={true} />
-	{:else if selectedContentType === 'activity'}
-		<ActivityView communityId={selectedCommunityId} {communikeyEvent} />
-	{:else if selectedContentType === 'settings'}
-		<SettingsView communityId={selectedCommunityId} {communikeyEvent} {profileEvent} />
+	{:else}
+		<!-- Key block ensures views remount when community changes -->
+		{#key selectedCommunityId}
+			{#if selectedContentType === 'home'}
+				<HomeView {communikeyEvent} {profileEvent} communityId={selectedCommunityId} />
+			{:else if selectedContentType === 'chat'}
+				<Chat {communikeyEvent} />
+			{:else if selectedContentType === 'calendar'}
+				<CalendarView communityPubkey={selectedCommunityId} communityMode={true} />
+			{:else if selectedContentType === 'activity'}
+				<ActivityView communityId={selectedCommunityId} {communikeyEvent} />
+			{:else if selectedContentType === 'settings'}
+				<SettingsView communityId={selectedCommunityId} {communikeyEvent} {profileEvent} />
+			{/if}
+		{/key}
 	{/if}
 </div>

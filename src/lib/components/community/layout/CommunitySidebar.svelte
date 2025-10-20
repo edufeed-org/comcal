@@ -26,7 +26,7 @@
 </script>
 
 <!-- Desktop: Fixed left sidebar -->
-<div class="hidden lg:flex flex-col w-16 bg-base-200 border-r border-base-300 h-[calc(100vh-4rem)] fixed left-0 top-16 overflow-y-auto">
+<div class="hidden lg:flex flex-col w-16 bg-base-200 border-r border-base-300 h-[calc(100vh-4rem)] fixed left-0 top-16 overflow-y-auto overflow-x-hidden">
 	<div class="flex flex-col items-center py-4 space-y-3">
 		{#each joinedCommunities.sort() as community}
 			{@const communityPubKey = getTagValue(community, 'd') || ''}
