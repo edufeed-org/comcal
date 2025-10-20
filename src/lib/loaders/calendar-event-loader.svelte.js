@@ -333,36 +333,72 @@ export function useCalendarEventLoader(options) {
 
 					try {
 						const eTag = getTagValue(pubEvent, 'e');
-						if (!eTag) {
-							console.warn('📅 EventLoader: Targeted publication missing e tag:', pubEvent.id);
-							return;
-						}
-
-						// Load referenced event
-						const loader = eventLoader({
-							id: eTag,
-							relays: appConfig.calendar.defaultRelays
-						});
+						const aTag = getTagValue(pubEvent, 'a');
 						
-						// eventLoader can return Observable or Promise, handle both
-						if (loader && 'subscribe' in loader) {
-							loader.subscribe({
-								next: (loadedEvent) => {
-									if (loadedEvent && !eventMap.has(loadedEvent.id)) {
-										console.log('📅 EventLoader: Successfully loaded referenced event', eTag);
-										eventMap.set(loadedEvent.id, getCalendarEventMetadata(loadedEvent));
-										options.onEventsUpdate(Array.from(eventMap.values()));
-									}
-								},
-								error: () => {
-									const errorMsg = `Failed to load referenced calendar event: ${eTag}`;
-									console.warn(`📅 EventLoader: ${errorMsg}`);
-									resolutionErrors.push(errorMsg);
-									if (options.onResolutionErrors) {
-										options.onResolutionErrors([...resolutionErrors]);
-									}
-								}
+						if (eTag) {
+							// Load referenced event by event ID
+							console.log('📅 EventLoader: Resolving e-tag reference:', eTag);
+							const loader = eventLoader({
+								id: eTag,
+								relays: appConfig.calendar.defaultRelays
 							});
+							
+							// eventLoader can return Observable or Promise, handle both
+							if (loader && 'subscribe' in loader) {
+								loader.subscribe({
+									next: (loadedEvent) => {
+										if (loadedEvent && !eventMap.has(loadedEvent.id)) {
+											console.log('📅 EventLoader: Successfully loaded e-tag referenced event', eTag);
+											eventMap.set(loadedEvent.id, getCalendarEventMetadata(loadedEvent));
+											options.onEventsUpdate(Array.from(eventMap.values()));
+										}
+									},
+									error: () => {
+										const errorMsg = `Failed to load e-tag referenced event: ${eTag}`;
+										console.warn(`📅 EventLoader: ${errorMsg}`);
+										resolutionErrors.push(errorMsg);
+										if (options.onResolutionErrors) {
+											options.onResolutionErrors([...resolutionErrors]);
+										}
+									}
+								});
+							}
+						} else if (aTag) {
+							// Load referenced event by addressable reference
+							console.log('📅 EventLoader: Resolving a-tag reference:', aTag);
+							const parsed = parseAddressReference(aTag);
+							
+							if (parsed) {
+								const loader = eventStore.addressableLoader?.({
+									kind: parsed.kind,
+									pubkey: parsed.pubkey,
+									identifier: parsed.dTag
+								});
+								
+								if (loader && 'subscribe' in loader) {
+									loader.subscribe({
+										next: (/** @type {any} */ loadedEvent) => {
+											if (loadedEvent && !eventMap.has(loadedEvent.id)) {
+												console.log('📅 EventLoader: Successfully loaded a-tag referenced event', aTag);
+												eventMap.set(loadedEvent.id, getCalendarEventMetadata(loadedEvent));
+												options.onEventsUpdate(Array.from(eventMap.values()));
+											}
+										},
+										error: () => {
+											const errorMsg = `Failed to load a-tag referenced event: ${aTag}`;
+											console.warn(`📅 EventLoader: ${errorMsg}`);
+											resolutionErrors.push(errorMsg);
+											if (options.onResolutionErrors) {
+												options.onResolutionErrors([...resolutionErrors]);
+											}
+										}
+									});
+								}
+							} else {
+								console.warn('📅 EventLoader: Invalid a-tag format:', aTag);
+							}
+						} else {
+							console.warn('📅 EventLoader: Targeted publication missing both e and a tags:', pubEvent.id);
 						}
 					} catch (err) {
 						const errorMsg = `Error resolving targeted publication ${pubEvent.id}: ${/** @type {Error} */ (err).message}`;
