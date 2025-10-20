@@ -142,14 +142,6 @@
 		}
 	});
 
-	// React to communityPubkey changes in community mode
-	$effect(() => {
-		if (communityMode && communityPubkey) {
-			console.log('📅 CalendarView: Community pubkey changed, reloading events:', communityPubkey);
-			eventLoaderComposable.loadByCommunity(communityPubkey);
-		}
-	});
-
 	// Sync newly created events from calendarStore to local events array
 	$effect(() => {
 		// Watch for changes in calendarStore.events
