@@ -1,16 +1,3 @@
-<!--
-  CommunityCalendarShare Component
-  Manages sharing/unsharing calendar events with communities
-  Features:
-  - Automatically checks existing shares using addressable references
-  - Shows correct checkbox states
-  - Handles create/delete share operations
-  - Uses correct d-tag generation (address-based)
-  - Built-in debug logging
-  - Proper async/timing handling
-  - Supports compact mode for different layouts
--->
-
 <script>
 	import { useJoinedCommunitiesList } from '../../stores/joined-communities-list.svelte.js';
 	import { useUserProfile } from '../../stores/user-profile.svelte.js';
@@ -22,12 +9,8 @@
 		getDisplayName,
 		getAddressPointerForEvent,
 		getAddressPointerFromATag,
-
 		getReplaceableIdentifier,
-
 		getReplaceableAddress
-
-
 	} from 'applesauce-core/helpers';
 	import { PlusIcon, CheckIcon, AlertIcon } from '../icons';
 	import { onDestroy } from 'svelte';
@@ -64,37 +47,7 @@
 	/** @type {Array<import('rxjs').Subscription>} */
 	let subscriptions = [];
 
-	/**
-	 * Get event address (NIP-19 format) for addressable events
-	 * Handles missing dTag by extracting from originalEvent or generating one
-	 * @param {any} evt
-	 * @returns {string | null}
-	 */
-	function getEventAddress(evt) {
-		console.log(
-			'🌐 CommunityCalendarShare: Getting event address for:',
-			evt?.title,
-			evt || 'Unknown'
-		);
-		const address = getAddressPointerForEvent(evt.originalEvent);
-		console.log('🌐 CommunityCalendarShare: Event address:', address);
-		return address;
-	}
-
-	/**
-	 * Generate consistent d-tag for community sharing events (address-based)
-	 * Uses event address instead of event ID for persistence across edits
-	 * @param {string} eventAddress - Event address in format kind:pubkey:dtag
-	 * @param {string} communityPubkey
-	 * @returns {string}
-	 */
-	function generateShareDTag(eventAddress, communityPubkey) {
-		// Use a hash of the event address for shorter d-tag
-		const dTag = `share-${eventAddress.slice(0, 16)}-${communityPubkey.slice(0, 8)}`;
-		console.log('🌐 CommunityCalendarShare: Generated share d-tag:', dTag);
-		return dTag;
-	}
-
+	// TODO make this a shared helper function
 	/**
 	 * Get community name from profile
 	 * @param {string} communityPubkey
@@ -129,15 +82,6 @@
 		}
 
 		isCheckingShares = true;
-
-		// Get event address for consistent d-tag generation
-		const eventAddress = getEventAddress(event);
-		if (!eventAddress) {
-			console.warn('🌐 CommunityCalendarShare: Cannot check shares - invalid event address');
-			communitiesWithShares = new Set();
-			isCheckingShares = false;
-			return;
-		}
 
 		// Use local Set to accumulate results without triggering reactive updates
 		const shares = new Set();
@@ -244,6 +188,7 @@
 		}
 	}
 
+	// TODO reuse publish functionality here
 	/**
 	 * Create a community sharing event (kind 30222)
 	 * Uses addressable event reference ('a' tag) instead of event ID ('e' tag)
@@ -252,15 +197,6 @@
 	 * @returns {Promise<boolean>}
 	 */
 	async function createCommunityShare(communityPubkey) {
-		console.log(
-			`🌐 CommunityCalendarShare: Creating share for community ${communityPubkey.slice(0, 8)}...`
-		);
-
-		if (!activeUser || !event) {
-			throw new Error('Missing user or event data');
-		}
-
-		// Get event address for addressable reference
 		const eventAddress = getReplaceableAddress(event.originalEvent);
 		if (!eventAddress) {
 			throw new Error('Cannot create share: event address invalid');
@@ -272,7 +208,7 @@
 		});
 
 		// Generate d-tag based on event address (not event ID)
-		const dTag = getReplaceableIdentifier(event.originalEvent)
+		const dTag = getReplaceableIdentifier(event.originalEvent);
 
 		console.log(`🌐 CommunityCalendarShare: Creating share event with d-tag: ${dTag}`);
 
@@ -313,6 +249,7 @@
 		return result.success;
 	}
 
+	// TODO reuse publish functionality here
 	/**
 	 * Delete a community sharing event
 	 * Uses Applesauce EventStore subscription pattern (no promises except for signing/publishing!)
@@ -328,24 +265,13 @@
 			throw new Error('Missing user or event data');
 		}
 
-		// Get event address for consistent d-tag generation
-		const eventAddress = getEventAddress(event);
-		if (!eventAddress) {
-			throw new Error('Cannot delete share: event address invalid');
-		}
-
-		// Get the existing share event using address-based d-tag
-		const dTag = generateShareDTag(eventAddress, communityPubkey);
-
-		console.log(`🌐 CommunityCalendarShare: Looking for share with d-tag: ${dTag}`);
-
 		// Get share event from subscription
 		return new Promise((resolve) => {
 			const sub = eventStore
 				.replaceable({
 					kind: 30222,
 					pubkey: activeUser.pubkey,
-					identifier: dTag
+					identifier: getReplaceableIdentifier(event.originalEvent)
 				})
 				.subscribe(async (shareEvent) => {
 					sub.unsubscribe();
