@@ -1,6 +1,5 @@
 <script>
 	import { useCalendarManagement } from '$lib/stores/calendar-management-store.svelte.js';
-	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import CalendarCreationModal from '$lib/components/calendar/CalendarCreationModal.svelte';
 	import { EventFactory } from 'applesauce-factory';
@@ -225,16 +224,71 @@
 	}
 
 	/**
-	 * View a calendar by navigating to the calendar route with the selected calendar
+	 * View a calendar by navigating to the calendar-specific route
 	 * @param {string} calendarId
 	 */
 	function viewCalendar(calendarId) {
-		// Find the calendar object to pass to the store
 		const calendar = calendarManagement?.calendars.find((c) => c.id === calendarId);
+		
+		if (!calendar) {
+			console.error('Calendar not found:', calendarId);
+			showToast('Calendar not found', 'error');
+			return;
+		}
 
-		// Update the calendar events store with the selection
-		calendarStore.setSelectedCalendar(calendar);
-		goto('/calendar');
+		try {
+			// Create minimal event object for naddr encoding
+			// encodeEventToNaddr needs: kind, pubkey, and tags with d-tag
+			const calendarEvent = {
+				kind: calendar.kind,        // 31924
+				pubkey: calendar.pubkey,
+				tags: [['d', calendar.dTag]],
+				content: '',
+				created_at: 0,
+				id: '',
+				sig: ''
+			};
+
+			// Encode to naddr
+			const naddr = encodeEventToNaddr(calendarEvent, []);
+
+			if (!naddr) {
+				throw new Error('Failed to encode calendar naddr');
+			}
+
+			// Navigate to calendar-specific route
+			goto(`/calendar/${naddr}`);
+		} catch (error) {
+			console.error('Error navigating to calendar:', error);
+			showToast('Failed to open calendar', 'error');
+		}
+	}
+
+	/**
+	 * Handle clicking on a calendar card
+	 * @param {MouseEvent} e - Click event
+	 * @param {string} calendarId - Calendar ID
+	 */
+	function handleCardClick(e, calendarId) {
+		// Don't navigate if in edit or delete mode
+		if (editingCalendarId === calendarId || deletingCalendarId === calendarId) {
+			return;
+		}
+
+		// Don't navigate if clicking on interactive elements
+		const target = /** @type {HTMLElement} */ (e.target);
+		if (
+			target.closest('button') ||
+			target.closest('a') ||
+			target.closest('input') ||
+			target.closest('textarea') ||
+			target.closest('.dropdown')
+		) {
+			return;
+		}
+
+		// Navigate to calendar view
+		viewCalendar(calendarId);
 	}
 
 	/**
@@ -416,7 +470,13 @@
 		<!-- Calendar list -->
 		<div class="grid gap-6">
 			{#each calendarManagement?.calendars || [] as calendar (calendar.id)}
-				<div class="card border border-base-300 bg-base-100 shadow-lg">
+				<div
+					class="card border border-base-300 bg-base-100 shadow-lg {editingCalendarId !==
+						calendar.id && deletingCalendarId !== calendar.id
+						? 'cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-xl'
+						: ''}"
+					onclick={(e) => handleCardClick(e, calendar.id)}
+				>
 					<div class="card-body">
 						<!-- Calendar header -->
 						<div class="flex items-start justify-between">
