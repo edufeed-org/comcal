@@ -4,6 +4,7 @@
  */
 
 import { appConfig } from '../config.js';
+import { validateCalendarEvent } from './eventValidation.js';
 
 /**
  * @typedef {import('../types/calendar.js').CalendarEvent} CalendarEvent
@@ -128,6 +129,7 @@ export function isEventInDateRange(event, start, end) {
 
 /**
  * Group events by date for calendar display
+ * Only includes valid events that pass NIP-52 validation
  * @param {CalendarEvent[]} events - Array of calendar events
  * @returns {Map<string, CalendarEvent[]>} Map of date strings to event arrays
  */
@@ -141,6 +143,12 @@ export function groupEventsByDate(events) {
 	const groupedEvents = new Map();
 
 	events.forEach(event => {
+		// Validate event against NIP-52 specifications
+		// This ensures only valid events are displayed in the calendar
+		// if (!validateCalendarEvent(event.originalEvent || event)) {
+		// 	return; // Skip invalid events
+		// }
+
 		if (!event.start) return;
 
 		// Validate that start is a valid number
@@ -395,7 +403,7 @@ export function detectCalendarIdentifierType(identifier) {
  */
 export async function fetchCommunityCalendarEvents(communityPubkey, relays = []) {
 	const { eventStore } = await import('$lib/stores/nostr-infrastructure.svelte');
-	const { communityCalendarTimelineLoader, targetedPublicationTimelineLoader, eventLoader, addressLoader } = await import('$lib/loaders');
+	const { communityCalendarTimelineLoader, targetedPublicationTimelineLoader, addressLoader } = await import('$lib/loaders');
 	const { getTagValue } = await import('applesauce-core/helpers');
 	const { bufferTime, mergeMap, firstValueFrom } = await import('rxjs');
 

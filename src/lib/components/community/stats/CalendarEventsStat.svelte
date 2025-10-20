@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { CalendarIcon } from '$lib/components/icons';
 	import { useCalendarEventLoader } from '$lib/loaders/calendar-event-loader.svelte.js';
+	import { filterValidEvents } from '$lib/helpers/eventValidation.js';
 
 	// Props
 	let { communityId } = $props();
@@ -68,8 +69,10 @@
 		};
 	});
 
-	// Count unique calendar events
-	const eventCount = $derived(events.length);
+	// Count unique valid calendar events (filter out invalid events)
+	// Note: events are transformed CalendarEvent objects, validation needs original Nostr events
+	const validEvents = $derived(filterValidEvents(events.map(e => e.originalEvent)));
+	const eventCount = $derived(validEvents.length);
 </script>
 
 <div class="stat bg-base-200 rounded-lg shadow">
