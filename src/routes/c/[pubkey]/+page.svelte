@@ -1,7 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import CommunikeyHeader from '$lib/components/CommunikeyHeader.svelte';
-	import Chat from '$lib/components/Chat.svelte';
+	import Chat from '$lib/components/community/views/Chat.svelte';
 	import CalendarView from '$lib/components/calendar/CalendarView.svelte';
 
 	/** @type {import('./$types').PageProps} */

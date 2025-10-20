@@ -1,10 +1,10 @@
 <script>
 	import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte.js';
 	import { getTagValue } from 'applesauce-core/helpers';
-	import CommunitySidebar from '$lib/components/CommunitySidebar.svelte';
-	import ContentNavSidebar from '$lib/components/ContentNavSidebar.svelte';
-	import BottomTabBar from '$lib/components/BottomTabBar.svelte';
-	import MainContentArea from '$lib/components/MainContentArea.svelte';
+	import CommunitySidebar from './CommunitySidebar.svelte';
+	import ContentNavSidebar from './ContentNavSidebar.svelte';
+	import BottomTabBar from './BottomTabBar.svelte';
+	import MainContentArea from './MainContentArea.svelte';
 	import { MenuIcon, CloseIcon } from '$lib/components/icons';
 
 	const getJoinedCommunities = useJoinedCommunitiesList();

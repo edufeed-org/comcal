@@ -1,11 +1,11 @@
 <script>
 	import { onMount } from 'svelte';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-	import Chat from '$lib/components/Chat.svelte';
+	import Chat from '../views/Chat.svelte';
 	import CalendarView from '$lib/components/calendar/CalendarView.svelte';
-	import HomeView from '$lib/components/HomeView.svelte';
-	import ActivityView from '$lib/components/ActivityView.svelte';
-	import SettingsView from '$lib/components/SettingsView.svelte';
+	import HomeView from '../views/HomeView.svelte';
+	import ActivityView from '../views/ActivityView.svelte';
+	import SettingsView from '../views/SettingsView.svelte';
 
 	let { selectedCommunityId, selectedContentType } = $props();
 
