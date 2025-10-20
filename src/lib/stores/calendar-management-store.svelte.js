@@ -5,7 +5,8 @@
 
 import { map, catchError } from 'rxjs/operators';
 import { of, BehaviorSubject } from 'rxjs';
-import { userCalendarLoader } from '$lib/loaders/calendar.js';
+import { SvelteSet, SvelteMap } from 'svelte/reactivity';
+import { userCalendarLoader, userDeletionLoader } from '$lib/loaders';
 import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
 import { appConfig } from '$lib/config.js';
 import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
@@ -53,23 +54,85 @@ export function createCalendarManagementStore(userPubkey) {
 	// Observable loading state for reactive dependencies
 	let loadingSubject = new BehaviorSubject(false);
 
-	// Create timeline loader for calendar events
+	// Create timeline loaders for calendars and deletions
 	let timelineLoader = null;
+	let deletionLoader = null;
 	/** @type {import('rxjs').Subscription | null} */
 	let subscription = null;
+	/** @type {import('rxjs').Subscription | null} */
+	let deletionSubscription = null;
+	
+	// Track deleted calendar identifiers (format: "31924:pubkey:dTag")
+	const deletedCalendarIds = new SvelteSet();
 
-	// Initialize timeline loader and subscription
+	/**
+	 * Extract calendar identifier from a deletion event (kind 5)
+	 * @param {any} deletionEvent - NIP-09 deletion event
+	 * @returns {string | null} Calendar identifier or null
+	 */
+	function getDeletedCalendarId(deletionEvent) {
+		if (!deletionEvent || !deletionEvent.tags) return null;
+		
+		// Find 'a' tag with format: 31924:pubkey:dTag
+		const aTag = deletionEvent.tags.find(
+			/** @param {any[]} tag */ tag => 
+				tag[0] === 'a' && tag[1] && tag[1].startsWith('31924:')
+		);
+		
+		return aTag ? aTag[1] : null;
+	}
+
+	/**
+	 * Filter calendars to exclude deleted ones
+	 * @param {Calendar[]} calendars - Array of calendars
+	 * @returns {Calendar[]} Filtered calendars
+	 */
+	function filterDeletedCalendars(calendars) {
+		return calendars.filter(calendar => {
+			const calendarId = `${calendar.kind}:${calendar.pubkey}:${calendar.dTag}`;
+			return !deletedCalendarIds.has(calendarId);
+		});
+	}
+
+	// Initialize timeline loaders and subscriptions
 	function initializeLoader() {
-		// Clean up existing subscription
+		// Clean up existing subscriptions
 		if (subscription) {
 			subscription.unsubscribe();
+		}
+		if (deletionSubscription) {
+			deletionSubscription.unsubscribe();
 		}
 
 		// Set loading state and emit to observable
 		store.loading = true;
 		loadingSubject.next(true);
 
-		// Use the user-specific calendar loader (kind 31924, filtered by author)
+		// Subscribe to user's deletion events (kind 5)
+		deletionLoader = userDeletionLoader(userPubkey);
+		
+		deletionSubscription = deletionLoader()
+			.pipe(
+				catchError(/** @param {any} error */ error => {
+					console.error('Error loading deletion events:', error);
+					return of(null);
+				})
+			)
+			.subscribe(/** @param {any} deletionEvent */ deletionEvent => {
+				if (deletionEvent && deletionEvent.kind === 5) {
+					const deletedId = getDeletedCalendarId(deletionEvent);
+					if (deletedId) {
+						console.log('📅 Calendar Management: Deletion event received for:', deletedId);
+						deletedCalendarIds.add(deletedId);
+						
+						// Re-filter calendars to remove the deleted one
+						store.calendars = filterDeletedCalendars(store.calendars);
+						console.log('📅 Calendar Management: Calendar count after deletion:', store.calendars.length);
+					}
+				}
+			});
+
+		// Subscribe to user's calendars (kind 31924)
 		timelineLoader = userCalendarLoader(userPubkey);
 
 		subscription = timelineLoader()
@@ -85,6 +148,15 @@ export function createCalendarManagementStore(userPubkey) {
 			)
 			.subscribe(/** @param {Calendar | null} calendar */ calendar => {
 				if (calendar) {
+					// Build calendar identifier to check if it's deleted
+					const calendarId = `${calendar.kind}:${calendar.pubkey}:${calendar.dTag}`;
+					
+					// Skip if calendar has been deleted
+					if (deletedCalendarIds.has(calendarId)) {
+						console.log('📅 Calendar Management: Skipping deleted calendar:', calendar.title);
+						return;
+					}
+					
 					// Check if calendar already exists to avoid duplicates
 					const exists = store.calendars.some(c => c.id === calendar.id);
 					if (!exists) {
@@ -110,6 +182,7 @@ export function createCalendarManagementStore(userPubkey) {
 		loadingSubject.next(true);
 		store.error = null;
 		store.calendars = []; // Clear existing calendars
+		deletedCalendarIds.clear(); // Clear deletion tracking
 		initializeLoader(); // Reinitialize loader
 	}
 
@@ -367,10 +440,13 @@ export function createCalendarManagementStore(userPubkey) {
 		}
 	}
 
-	// Cleanup subscription
+	// Cleanup subscriptions
 	function destroy() {
 		if (subscription) {
 			subscription.unsubscribe();
+		}
+		if (deletionSubscription) {
+			deletionSubscription.unsubscribe();
 		}
 	}
 
@@ -428,9 +504,9 @@ function convertNDKEventToCalendar(ndkEvent) {
 
 /**
  * Global calendar management store instances
- * @type {Map<string, CalendarManagementStore>}
+ * @type {SvelteMap<string, CalendarManagementStore>}
  */
-const calendarManagementStores = new Map();
+const calendarManagementStores = new SvelteMap();
 
 /**
  * Calendar events store refresh callback
