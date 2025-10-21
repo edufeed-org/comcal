@@ -14,7 +14,7 @@
 	} from 'applesauce-core/helpers';
 	import { PlusIcon, CheckIcon, AlertIcon } from '../icons';
 	import { onDestroy } from 'svelte';
-	import { addressLoader } from '$lib/loaders/base.js';
+	import { addressLoader, userDeletionLoader } from '$lib/loaders/base.js';
 	import { targetedPublicationTimelineLoader } from '$lib/loaders/calendar.js';
 
 	/**
@@ -186,6 +186,25 @@
 
 			subscriptions.push(sub);
 		}
+
+		// Subscribe to user's deletion events (NIP-09)
+		// EventStore automatically removes referenced events when deletion events are added
+		console.log('🌐 CommunityCalendarShare: Subscribing to deletion events');
+		const deletionLoader = userDeletionLoader(activeUser.pubkey);
+		const deletionSub = deletionLoader().subscribe((deletionEvent) => {
+			if (deletionEvent?.kind === 5) {
+				console.log('🌐 CommunityCalendarShare: Deletion event received:', deletionEvent);
+				
+				// Add to EventStore - it will automatically remove referenced share events
+				eventStore.add(deletionEvent);
+				
+				// The existing subscriptions will automatically update because
+				// EventStore removes the referenced share events
+				console.log('🌐 CommunityCalendarShare: Deletion event added to EventStore');
+			}
+		});
+		
+		subscriptions.push(deletionSub);
 	}
 
 	// TODO reuse publish functionality here
@@ -267,14 +286,16 @@
 
 		// Get share event from subscription
 		return new Promise((resolve) => {
-			const sub = eventStore
+			/** @type {import('rxjs').Subscription | undefined} */
+			let sub;
+			sub = eventStore
 				.replaceable({
 					kind: 30222,
 					pubkey: activeUser.pubkey,
 					identifier: getReplaceableIdentifier(event.originalEvent)
 				})
 				.subscribe(async (shareEvent) => {
-					sub.unsubscribe();
+					if (sub) sub.unsubscribe();
 
 					if (!shareEvent) {
 						console.warn(
@@ -292,7 +313,10 @@
 					});
 
 					// Create deletion event (kind 5)
-					const deleteEvent = await factory.delete([shareEvent]);
+					const deleteEventTemplate = await factory.delete([shareEvent]);
+					
+					// Sign the deletion event
+					const deleteEvent = await factory.sign(deleteEventTemplate);
 
 					// Get default relays from config
 					const { appConfig } = await import('$lib/config.js');
@@ -304,6 +328,11 @@
 					});
 
 					if (result.success) {
+						// Add deletion event to EventStore immediately
+						// This triggers EventStore's automatic deletion of referenced share events
+						// and updates all subscriptions without waiting for relay roundtrip
+						eventStore.add(deleteEvent);
+						
 						console.log('✅ CommunityCalendarShare: Share deleted successfully');
 					} else {
 						console.error('❌ CommunityCalendarShare: Share deletion failed');
@@ -527,12 +556,12 @@
 		>
 			{#if isProcessingCommunityShares}
 				<span class="loading loading-spinner {compact ? 'loading-sm' : ''}"></span>
-				Sharing with {selectedCommunityIds.length} community{selectedCommunityIds.length > 1
+				Applying changes to {selectedCommunityIds.length} community{selectedCommunityIds.length > 1
 					? 'ies'
 					: ''}...
 			{:else}
 				<PlusIcon class_="w-4 h-4 mr-2" />
-				Share with {selectedCommunityIds.length || 'Selected'} Communit{selectedCommunityIds.length !==
+				Apply Changes to {selectedCommunityIds.length || 'Selected'} Communit{selectedCommunityIds.length !==
 				1
 					? 'ies'
 					: 'y'}
