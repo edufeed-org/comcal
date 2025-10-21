@@ -41,8 +41,8 @@
 	<span class="text-error font-medium">⚠️ @invalid</span>
 {:else if !profile}
 	<!-- Loading state: Show placeholder while profile loads -->
-	<a href={profileUrl} class="text-primary hover:underline font-medium">@...</a>
+	<a href={profileUrl} class="text-info hover:underline font-medium">@...</a>
 {:else}
 	<!-- Loaded state: Simple inline mention -->
-	<a href={profileUrl} class="text-primary hover:underline font-medium no-underline">@{displayName}</a>
+	<a href={profileUrl} class="text-info hover:underline font-medium no-underline">@{displayName}</a>
 {/if}

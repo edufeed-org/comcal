@@ -4,6 +4,7 @@
 	import { appConfig } from '$lib/config.js';
 	import { loadUserProfile } from '$lib/loaders';
 	import { getProfilePicture } from 'applesauce-core/helpers';
+	import NostrIdentifierParser from '$lib/components/shared/NostrIdentifierParser.svelte';
 
 	/** @type {any} */
 	let { communikeyEvent } = $props();
@@ -87,13 +88,13 @@
 			if (!userProfiles.has(pubkey)) {
 				// Use the proper profile loader with kind 0 for user profiles
 				const profileSubscription = loadUserProfile(0, pubkey).subscribe({
-					next: (profile) => {
+					next: (/** @type {any} */ profile) => {
 						if (profile) {
 							userProfiles.set(pubkey, profile);
 							userProfiles = new Map(userProfiles); // Trigger reactivity
 						}
 					},
-					error: (error) => {
+					error: (/** @type {any} */ error) => {
 						console.error('Profile loading error:', error);
 					}
 				});
@@ -258,7 +259,7 @@
 				</div>
 
 				<div class="chat-bubble {isOwnMessage ? 'chat-bubble-primary' : ''}">
-					{message.content}
+					<NostrIdentifierParser text={message.content} />
 				</div>
 			</div>
 		{/each}

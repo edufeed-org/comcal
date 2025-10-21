@@ -8,12 +8,14 @@
 	import { modalStore } from '../../stores/modal.svelte.js';
 	import { registerCalendarEventsRefreshCallback } from '../../stores/calendar-management-store.svelte.js';
 	import { manager } from '$lib/stores/accounts.svelte';
+	import { showToast } from '$lib/helpers/toast.js';
 	import {
 		CloseIcon,
 		CalendarIcon,
 		ClockIcon,
 		LocationIcon,
-		ExternalLinkIcon
+		ExternalLinkIcon,
+		CopyIcon
 	} from '$lib/components/icons';
 	import EventDebugInfo from './EventDebugInfo.svelte';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
@@ -97,16 +99,18 @@
 	}
 
 	/**
-	 * Copy event ID to clipboard
+	 * Copy event naddr to clipboard
 	 */
-	async function copyEventId() {
-		if (event && event.id) {
+	async function copyNaddr() {
+		if (event?.originalEvent) {
 			try {
-				await navigator.clipboard.writeText(event.id);
-				// Could add a toast notification here if desired
-				console.log('Event ID copied to clipboard:', event.id);
+				const naddr = encodeEventToNaddr(event.originalEvent);
+				await navigator.clipboard.writeText(naddr);
+				console.log('Event naddr copied to clipboard:', naddr);
+				showToast('Event link copied to clipboard!', 'success');
 			} catch (err) {
-				console.error('Failed to copy event ID:', err);
+				console.error('Failed to copy event naddr:', err);
+				showToast('Failed to copy link', 'error');
 			}
 		}
 	}
@@ -137,6 +141,14 @@
 					{event.title}
 				</h2>
 				<div class="flex items-center gap-2">
+					<button
+						class="btn btn-circle btn-ghost btn-sm"
+						onclick={copyNaddr}
+						aria-label="Copy event address"
+						title="Copy naddr"
+					>
+						<CopyIcon class_="w-5 h-5" />
+					</button>
 					<a
 						href={eventDetailUrl}
 						class="btn btn-circle btn-ghost btn-sm"

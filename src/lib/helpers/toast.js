@@ -10,12 +10,18 @@
  * @param {number} duration - Duration in milliseconds (default: 3000)
  */
 export function showToast(message, type = 'info', duration = 3000) {
-  // Create toast container if it doesn't exist
-  let toastContainer = document.querySelector('.toast-container');
+  // Determine where to append the toast container
+  // If a modal is open, append to the modal to ensure proper stacking
+  const openModal = document.querySelector('.modal-open');
+  const targetElement = openModal || document.body;
+
+  // Create toast container if it doesn't exist, or get existing one
+  let toastContainer = targetElement.querySelector('.toast-container');
+  
   if (!toastContainer) {
     toastContainer = document.createElement('div');
-    toastContainer.className = 'toast-container toast toast-top toast-end fixed top-4 right-4 z-50';
-    document.body.appendChild(toastContainer);
+    toastContainer.className = 'toast-container toast toast-top toast-end fixed top-4 right-4 z-[9999]';
+    targetElement.appendChild(toastContainer);
   }
 
   // Create toast element
@@ -40,6 +46,11 @@ export function showToast(message, type = 'info', duration = 3000) {
     setTimeout(() => {
       if (toast.parentNode) {
         toast.parentNode.removeChild(toast);
+      }
+      
+      // Clean up empty toast container
+      if (toastContainer && toastContainer.children.length === 0) {
+        toastContainer.remove();
       }
     }, 300);
   }, duration);

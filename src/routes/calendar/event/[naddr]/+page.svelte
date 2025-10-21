@@ -8,6 +8,7 @@
 	import { getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
 	import { EventFactory } from 'applesauce-factory';
 	import { publishEvent } from '$lib/helpers/publisher.js';
+	import { showToast } from '$lib/helpers/toast.js';
 	import CommentList from '$lib/components/comments/CommentList.svelte';
 import {
 	CalendarIcon,
@@ -15,7 +16,8 @@ import {
 	LocationIcon,
 	UserIcon,
 	EditIcon,
-	TrashIcon
+	TrashIcon,
+	CopyIcon
 } from '$lib/components/icons';
 	import AddToCalendarDropdown from '$lib/components/calendar/AddToCalendarDropdown.svelte';
 	import EventTags from '$lib/components/calendar/EventTags.svelte';
@@ -128,6 +130,23 @@ import {
 	}
 
 	/**
+	 * Copy event naddr to clipboard
+	 */
+	async function copyNaddr() {
+		if (rawEvent) {
+			try {
+				const naddr = encodeEventToNaddr(rawEvent);
+				await navigator.clipboard.writeText(naddr);
+				console.log('Event naddr copied to clipboard:', naddr);
+				showToast('Event link copied to clipboard!', 'success');
+			} catch (err) {
+				console.error('Failed to copy event naddr:', err);
+				showToast('Failed to copy link', 'error');
+			}
+		}
+	}
+
+	/**
 	 * Handle event deletion with NIP-09
 	 */
 	async function handleDeleteEvent() {
@@ -220,19 +239,27 @@ import {
 
 			<!-- Action Buttons -->
 			<div class="flex gap-2">
+				<button
+					class="btn btn-outline gap-2"
+					onclick={copyNaddr}
+					title="Copy event address (naddr)"
+				>
+					<CopyIcon />
+					Copy Link
+				</button>
 				{#if isUserEvent}
 					<button
 						class="btn btn-secondary gap-2"
 						onclick={() => isEditModalOpen = true}
 					>
-						<EditIcon class_="w-5 h-5" />
+						<EditIcon />
 						Edit Event
 					</button>
 					<button
 						class="btn btn-error gap-2"
 						onclick={() => showDeleteConfirmation = true}
 					>
-						<TrashIcon class_="w-5 h-5" />
+						<TrashIcon />
 						Delete Event
 					</button>
 				{/if}
