@@ -1,9 +1,11 @@
 <script>
+	import { goto } from '$app/navigation';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { useCalendarManagement } from '$lib/stores/calendar-management-store.svelte.js';
 	import { useCalendarActions } from '$lib/stores/calendar-actions.svelte.js';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { CloseIcon, AlertIcon } from '$lib/components/icons';
+	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils';
 
 	/**
 	 * @typedef {Object} Props
@@ -45,18 +47,22 @@
 
 		try {
 			// Create calendar using calendar actions (publishes to Nostr)
-			const calendarId = await calendarActions.createCalendar(
+			const resultCalendar = await calendarActions.createCalendar(
 				title.trim(),
 				description.trim()
 			);
 
-			if (calendarId) {
-				console.log('Calendar created successfully:', calendarId);
+			if (resultCalendar && resultCalendar.id) {
+				console.log('Calendar created successfully:', resultCalendar.id);
 
 				// Refresh the calendar management store to show the new calendar
 				if (calendarManagement) {
 					await calendarManagement.refresh();
 				}
+
+				// Generate naddr and navigate to calendar page
+				const naddr = encodeEventToNaddr(resultCalendar, []);
+				console.log('Navigating to newly created calendar:', naddr);
 
 				// Call optional success callback
 				if (onCalendarCreated) {
@@ -64,6 +70,9 @@
 				}
 
 				handleClose();
+
+				// Navigate to the calendar page
+				await goto(`/calendar/${naddr}`);
 			} else {
 				error = 'Failed to create calendar';
 			}

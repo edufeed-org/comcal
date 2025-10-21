@@ -348,7 +348,7 @@ export function createCalendarActions(communityPubkey) {
 		 * Create a new calendar
 		 * @param {string} title - Calendar title
 		 * @param {string} [description=''] - Calendar description
-		 * @returns {Promise<string>} Created calendar event ID
+		 * @returns {Promise<any>} Created calendar event object
 		 */
 		async createCalendar(title, description = '') {
 			// Validate inputs
@@ -379,12 +379,12 @@ export function createCalendarActions(communityPubkey) {
 					]
 				});
 
-				// Sign and publish the calendar event
-				const calendarEvent = await currentAccount.signEvent(eventTemplate);
-				await pool.publish(appConfig.calendar.defaultRelays, calendarEvent);
+			// Sign and publish the calendar event
+			const calendarEvent = await currentAccount.signEvent(eventTemplate);
+			await pool.publish(appConfig.calendar.defaultRelays, calendarEvent);
 
-				console.log('📅 Calendar created successfully:', calendarEvent.id);
-				return calendarEvent.id;
+			console.log('📅 Calendar created successfully:', calendarEvent.id);
+			return calendarEvent;
 
 			} catch (error) {
 				console.error('Error creating calendar:', error);

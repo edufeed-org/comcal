@@ -115,7 +115,7 @@
  * @property {function(EventFormData, any): Promise<any>} updateEvent - Update event with form data and existing event
  * @property {function(string): Promise<void>} deleteEvent - Delete event
  * @property {function(string, string): Promise<void>} createTargetedPublication - Create targeted publication
- * @property {function(string, string=): Promise<string>} createCalendar - Create new calendar
+ * @property {function(string, string=): Promise<any>} createCalendar - Create new calendar (returns full event object)
  * @property {function(string): Promise<CalendarEvent[]>} loadEvents - Load community events
  */
 
