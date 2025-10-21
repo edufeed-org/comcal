@@ -5,9 +5,10 @@
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils';
 	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
+	import { getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
 	import { EventFactory } from 'applesauce-factory';
 	import { publishEvent } from '$lib/helpers/publisher.js';
-	import { getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
+	import CommentList from '$lib/components/comments/CommentList.svelte';
 import {
 	CalendarIcon,
 	ClockIcon,
@@ -30,10 +31,6 @@ import {
 	let activeUser = $derived(getActiveUser());
 
 	// Reactive state
-	let comments = $state(/** @type {any[]} */ ([]));
-	let newComment = $state('');
-	let isLoadingComments = $state(true);
-	let isPostingComment = $state(false);
 	let featuredCalendars = $state(/** @type {any[]} */ ([]));
 	let isLoadingCalendars = $state(true);
 	let isEditModalOpen = $state(false);
@@ -55,55 +52,13 @@ import {
 		event && endDate && startDate ? startDate.toDateString() !== endDate.toDateString() : false
 	);
 
-	// Generate event address for comments
-	let eventAddress = $derived(
-		event && event.dTag ? `${event.kind}:${event.pubkey}:${event.dTag}` : null
-	);
-
-	// Subscribe to comments with real-time updates
-	$effect(() => {
-		if (!eventAddress) return;
-
-		isLoadingComments = true;
-		let initialLoadComplete = false;
-
-		// Create persistent subscription for comments
-		const subscription = pool
-			.group(appConfig.calendar.defaultRelays)
-			.subscription({
-				kinds: [1111],
-				'#A': [eventAddress]
-			})
-			.subscribe({
-				next: (response) => {
-					if (response === 'EOSE') {
-						console.log('Comments: End of stored events');
-						initialLoadComplete = true;
-						isLoadingComments = false;
-					} else if (response && typeof response === 'object' && response.kind === 1111) {
-						console.log('Received comment event:', response);
-
-						// Add to eventStore for persistence
-						eventStore.add(response);
-
-						// Add comment to list if not already present
-						const existingIndex = comments.findIndex((c) => c.id === response.id);
-						if (existingIndex === -1) {
-							comments = [...comments, response].sort((a, b) => b.created_at - a.created_at); // Newest first
-						}
-
-						if (initialLoadComplete && isLoadingComments) {
-							isLoadingComments = false;
-						}
-					}
-				},
-				error: (error) => {
-					console.error('Comment subscription error:', error);
-					isLoadingComments = false;
-				}
-			});
-
-		return () => subscription.unsubscribe();
+	// Generate event address for featured calendars
+	let eventAddress = $derived.by(() => {
+		if (!event) return null;
+		if (event.kind >= 30000 && event.kind < 40000) {
+			return `${event.kind}:${event.pubkey}:${event.dTag}`;
+		}
+		return `${event.kind}:${event.pubkey}:${event.id}`;
 	});
 
 	// Subscribe to featured calendars
@@ -145,86 +100,6 @@ import {
 
 		return () => subscription.unsubscribe();
 	});
-
-	/**
-	 * Post a new comment
-	 * @param {Event} e
-	 */
-	async function handlePostComment(e) {
-		e.preventDefault();
-
-		if (!activeUser || !newComment.trim() || !event || !eventAddress) return;
-
-		isPostingComment = true;
-
-		try {
-			// Create EventFactory for the user
-			const factory = new EventFactory({
-				signer: activeUser.signer
-			});
-
-			// Create the comment event with NIP-22 structure
-			const commentEvent = await factory.build({
-				kind: 1111,
-				content: newComment.trim(),
-				tags: [
-					// Root scope
-					['A', eventAddress, appConfig.calendar.defaultRelays[0] || ''],
-					['K', event.kind.toString()],
-					['P', event.pubkey, appConfig.calendar.defaultRelays[0] || ''],
-					// Parent (same as root for top-level comments)
-					['a', eventAddress, appConfig.calendar.defaultRelays[0] || ''],
-					['e', event.id, appConfig.calendar.defaultRelays[0] || ''],
-					['k', event.kind.toString()],
-					['p', event.pubkey, appConfig.calendar.defaultRelays[0] || '']
-				]
-			});
-
-			// Sign the event
-			const signedEvent = await factory.sign(commentEvent);
-
-			// Add immediately to local comments for instant UI feedback
-			comments = [signedEvent, ...comments];
-
-			console.log('Comment event created:', signedEvent);
-
-			// Publish to relays
-			const result = await publishEvent(signedEvent, {
-				relays: appConfig.calendar.defaultRelays,
-				logPrefix: 'EventComment'
-			});
-
-			if (result.success) {
-				console.log('Comment published successfully');
-				eventStore.add(signedEvent);
-			} else {
-				console.error('Failed to publish comment');
-			}
-
-			// Clear input
-			newComment = '';
-		} catch (error) {
-			console.error('Failed to post comment:', error);
-		} finally {
-			isPostingComment = false;
-		}
-	}
-
-	/**
-	 * Format timestamp
-	 * @param {number} timestamp
-	 */
-	function formatTimestamp(timestamp) {
-		const date = new Date(timestamp * 1000);
-		const now = new Date();
-		const diff = now.getTime() - date.getTime();
-
-		if (diff < 60000) return 'just now';
-		if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-		if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-		if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
-		return date.toLocaleDateString();
-	}
 
 	/**
 	 * Get calendar title
@@ -575,94 +450,10 @@ import {
 			</div>
 		{/if}
 
-		<!-- Comments Section -->
-		<div class="card bg-base-200 shadow-lg">
-			<div class="card-body">
-				<h2 class="card-title text-2xl">Comments</h2>
-
-				<!-- Comment Input Form -->
-				{#if activeUser}
-					<form onsubmit={handlePostComment} class="mt-4">
-						<textarea
-							bind:value={newComment}
-							placeholder="Write a comment..."
-							class="textarea textarea-bordered w-full"
-							rows="3"
-							disabled={isPostingComment}
-							required
-						></textarea>
-						<div class="mt-2 flex justify-end">
-							<button
-								type="submit"
-								class="btn btn-primary"
-								disabled={!newComment.trim() || isPostingComment}
-							>
-								{#if isPostingComment}
-									<span class="loading loading-sm loading-spinner"></span>
-									Posting...
-								{:else}
-									Post Comment
-								{/if}
-							</button>
-						</div>
-					</form>
-				{:else}
-					<div class="mt-4 rounded-lg bg-base-300 p-4 text-center">
-						<p class="text-base-content/70">Sign in to post a comment</p>
-					</div>
-				{/if}
-
-				<!-- Comments List -->
-				<div class="mt-6 space-y-4">
-					{#if isLoadingComments}
-						<div class="flex items-center justify-center py-8">
-							<span class="loading loading-lg loading-spinner"></span>
-						</div>
-					{:else if comments.length === 0}
-						<div class="py-8 text-center text-base-content/60">
-							No comments yet. Be the first to comment!
-						</div>
-					{:else}
-						{#each comments as comment (comment.id)}
-							{@const getCommentAuthorProfile = useUserProfile(comment.pubkey)}
-							{@const authorProfile = getCommentAuthorProfile()}
-							<div class="rounded-lg bg-base-100 p-4">
-								<div class="mb-3 flex items-start gap-3">
-									<a href="/p/{comment.pubkey}" class="avatar">
-										<div class="w-10 rounded-full">
-											{#if getProfilePicture(authorProfile)}
-												<img
-													src={getProfilePicture(authorProfile)}
-													alt={getDisplayName(authorProfile)}
-												/>
-											{:else}
-												<div
-													class="flex h-full w-full items-center justify-center bg-primary text-sm font-semibold text-primary-content"
-												>
-													{getDisplayName(authorProfile)?.charAt(0).toUpperCase() || '?'}
-												</div>
-											{/if}
-										</div>
-									</a>
-									<div class="flex-1">
-										<div class="flex items-baseline gap-2">
-											<a href="/p/{comment.pubkey}" class="font-semibold hover:underline">
-												{getDisplayName(authorProfile) ||
-													`${comment.pubkey.slice(0, 8)}...${comment.pubkey.slice(-4)}`}
-											</a>
-											<span class="text-xs text-base-content/50">
-												{formatTimestamp(comment.created_at)}
-											</span>
-										</div>
-										<p class="mt-2 whitespace-pre-wrap text-base-content/80">{comment.content}</p>
-									</div>
-								</div>
-							</div>
-						{/each}
-					{/if}
-				</div>
-			</div>
-		</div>
+		<!-- Comments Section - New Component -->
+		{#if rawEvent}
+			<CommentList rootEvent={rawEvent} activeUser={activeUser} />
+		{/if}
 	</div>
 {:else}
 	<div class="container mx-auto px-4 py-8">
