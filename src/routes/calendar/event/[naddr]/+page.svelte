@@ -8,13 +8,14 @@
 	import { EventFactory } from 'applesauce-factory';
 	import { publishEvent } from '$lib/helpers/publisher.js';
 	import { getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
-	import {
-		CalendarIcon,
-		ClockIcon,
-		LocationIcon,
-		UserIcon,
-		EditIcon
-	} from '$lib/components/icons';
+import {
+	CalendarIcon,
+	ClockIcon,
+	LocationIcon,
+	UserIcon,
+	EditIcon,
+	TrashIcon
+} from '$lib/components/icons';
 	import AddToCalendarDropdown from '$lib/components/calendar/AddToCalendarDropdown.svelte';
 	import EventTags from '$lib/components/calendar/EventTags.svelte';
 	import CalendarEventModal from '$lib/components/calendar/CalendarEventModal.svelte';
@@ -36,6 +37,8 @@
 	let featuredCalendars = $state(/** @type {any[]} */ ([]));
 	let isLoadingCalendars = $state(true);
 	let isEditModalOpen = $state(false);
+	let isDeletingEvent = $state(false);
+	let showDeleteConfirmation = $state(false);
 
 	// Get event from data
 	let event = $derived(data.event);
@@ -248,6 +251,63 @@
 	function getCalendarNaddr(calendar) {
 		return encodeEventToNaddr(calendar, []);
 	}
+
+	/**
+	 * Handle event deletion with NIP-09
+	 */
+	async function handleDeleteEvent() {
+		if (!activeUser || !event || !rawEvent) return;
+
+		isDeletingEvent = true;
+
+		try {
+			// Create EventFactory
+			const factory = new EventFactory({
+				signer: activeUser.signer
+			});
+
+			// Create NIP-09 deletion event (kind 5) manually for addressable events
+			// According to NIP-09, use 'a' tag for addressable events (not 'e' tag)
+			const deleteTemplate = await factory.build({
+				kind: 5,
+				content: 'Event deleted by author',
+				tags: [
+					['a', `${event.kind}:${event.pubkey}:${event.dTag}`],
+					['k', event.kind.toString()]
+				]
+			});
+
+			// Sign the deletion event
+			const signedDelete = await factory.sign(deleteTemplate);
+
+			console.log('📅 Deletion event created:', signedDelete);
+
+			// Publish to relays
+			const result = await publishEvent(signedDelete, {
+				relays: appConfig.calendar.defaultRelays,
+				logPrefix: 'EventDeletion'
+			});
+
+			if (result.success) {
+				console.log('✅ Deletion event published successfully');
+
+				// Add to EventStore - this automatically removes the referenced event!
+				eventStore.add(signedDelete);
+
+				// Navigate back to previous page
+				window.history.back();
+			} else {
+				console.error('❌ Failed to publish deletion event');
+				alert('Failed to delete event. Please try again.');
+			}
+		} catch (error) {
+			console.error('Failed to delete event:', error);
+			alert('An error occurred while deleting the event.');
+		} finally {
+			isDeletingEvent = false;
+			showDeleteConfirmation = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -292,6 +352,13 @@
 					>
 						<EditIcon class_="w-5 h-5" />
 						Edit Event
+					</button>
+					<button
+						class="btn btn-error gap-2"
+						onclick={() => showDeleteConfirmation = true}
+					>
+						<TrashIcon class_="w-5 h-5" />
+						Delete Event
 					</button>
 				{/if}
 				<AddToCalendarDropdown event={event} disabled={!activeUser} />
@@ -620,4 +687,39 @@
 			window.location.reload();
 		}}
 	/>
+{/if}
+
+<!-- Delete Confirmation Modal -->
+{#if showDeleteConfirmation && event}
+	<div class="modal modal-open">
+		<div class="modal-box">
+			<h3 class="text-lg font-bold">Delete Event?</h3>
+			<p class="py-4">
+				Are you sure you want to delete <strong>{event.title}</strong>?
+				<br />
+				This action cannot be undone.
+			</p>
+			<div class="modal-action">
+				<button 
+					class="btn" 
+					onclick={() => showDeleteConfirmation = false}
+					disabled={isDeletingEvent}
+				>
+					Cancel
+				</button>
+				<button 
+					class="btn btn-error" 
+					onclick={handleDeleteEvent}
+					disabled={isDeletingEvent}
+				>
+					{#if isDeletingEvent}
+						<span class="loading loading-spinner loading-sm"></span>
+						Deleting...
+					{:else}
+						Delete Event
+					{/if}
+				</button>
+			</div>
+		</div>
+	</div>
 {/if}

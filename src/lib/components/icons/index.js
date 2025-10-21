@@ -30,6 +30,7 @@ export { default as CopyIcon } from './actions/CopyIcon.svelte';
 export { default as RefreshIcon } from './actions/RefreshIcon.svelte';
 export { default as ExternalLinkIcon } from './actions/ExternalLinkIcon.svelte';
 export { default as EditIcon } from './actions/EditIcon.svelte';
+export { default as TrashIcon } from './actions/TrashIcon.svelte';
 
 // Social Icons
 export { default as ChatIcon } from './social/ChatIcon.svelte';

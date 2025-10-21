@@ -4,7 +4,9 @@
 -->
 
 <script>
+	import { goto } from '$app/navigation';
 	import { validateEventForm, getCurrentTimezone } from '../../helpers/calendar.js';
+	import { encodeEventToNaddr } from '../../helpers/nostrUtils.js';
 	import { useCalendarActions } from '../../stores/calendar-actions.svelte.js';
 	import { useCalendarManagement } from '../../stores/calendar-management-store.svelte.js';
 	import { useJoinedCommunitiesList } from '../../stores/joined-communities-list.svelte.js';
@@ -200,6 +202,9 @@
 				// Update existing event
 				resultEvent = await calendarActions.updateEvent(formData, existingRawEvent);
 				console.log('Event updated successfully');
+				
+				onEventCreated();
+				handleClose();
 			} else {
 				// Create new event
 				resultEvent = await calendarActions.createEvent(formData, communityPubkey);
@@ -223,11 +228,18 @@
 							)
 						);
 					}
+					
+					// Generate naddr and navigate to event page
+					const naddr = encodeEventToNaddr(resultEvent, []);
+					console.log('Navigating to newly created event:', naddr);
+					
+					onEventCreated();
+					handleClose();
+					
+					// Navigate to the event page
+					await goto(`/calendar/event/${naddr}`);
 				}
 			}
-			
-			onEventCreated();
-			handleClose();
 		} catch (error) {
 			console.error(`Error ${mode === 'edit' ? 'updating' : 'creating'} event:`, error);
 			submitError = error instanceof Error ? error.message : `Failed to ${mode === 'edit' ? 'update' : 'create'} event`;
