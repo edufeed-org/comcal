@@ -20,7 +20,7 @@ import {
 import { appConfig } from '$lib/config.js';
 import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
 import { parseCalendarFilters } from '$lib/helpers/urlParams.js';
-import { SvelteMap } from 'svelte/reactivity';
+import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 
 /**
  * @typedef {Object} LoaderOptions
@@ -278,7 +278,7 @@ export function useCalendarEventLoader(options) {
 	}
 
 	/**
-	 * Load community events
+	 * Load community events with reactive deletion handling
 	 * @param {string} communityPubkey - The community's public key
 	 */
 	function loadByCommunity(communityPubkey) {
@@ -297,8 +297,11 @@ export function useCalendarEventLoader(options) {
 		// Clean up all subscriptions
 		cleanupAll();
 
+		// Track resolved events per share event to enable cleanup
+		const shareToEventMap = new SvelteMap(); // shareEventId -> Set of calendarEventIds
+
 		try {
-			// Load direct community events
+			// Load direct community events (these are always shown)
 			subscription = eventStore
 				.timeline({
 					kinds: [31922, 31923],
@@ -324,12 +327,31 @@ export function useCalendarEventLoader(options) {
 					}
 				});
 
-			// Load targeted publication events
+			// Reactively subscribe to targeted publications (share events)
+			// EventStore automatically removes deleted share events from this subscription
 			targetedPublicationSubscription = targetedPublicationTimelineLoader(
 				communityPubkey
 			)().subscribe({
 				next: (/** @type {any} */ pubEvent) => {
-					console.log('📅 EventLoader: Received targeted publication event:', pubEvent.id);
+					console.log('📅 EventLoader: Processing share event:', pubEvent.id);
+
+					// Clean up any previously resolved events for this share
+					if (shareToEventMap.has(pubEvent.id)) {
+						const previousEventIds = shareToEventMap.get(pubEvent.id);
+						previousEventIds?.forEach((eventId) => {
+							// Only remove if this event isn't referenced by another share or direct event
+							const isDirectEvent = eventStore.get(eventId)?.tags?.some(
+								(/** @type {any[]} */ tag) => tag[0] === 'h' && tag[1] === communityPubkey
+							);
+							if (!isDirectEvent) {
+								eventMap.delete(eventId);
+								console.log('📅 EventLoader: Removed orphaned event:', eventId);
+							}
+						});
+					}
+
+					// Initialize tracking for this share
+					shareToEventMap.set(pubEvent.id, new SvelteSet());
 
 					try {
 						const eTag = getTagValue(pubEvent, 'e');
@@ -343,13 +365,15 @@ export function useCalendarEventLoader(options) {
 								relays: appConfig.calendar.defaultRelays
 							});
 							
-							// eventLoader can return Observable or Promise, handle both
 							if (loader && 'subscribe' in loader) {
 								loader.subscribe({
 									next: (loadedEvent) => {
-										if (loadedEvent && !eventMap.has(loadedEvent.id)) {
-											eventMap.set(loadedEvent.id, getCalendarEventMetadata(loadedEvent));
+										if (loadedEvent) {
+											const calendarEvent = getCalendarEventMetadata(loadedEvent);
+											eventMap.set(calendarEvent.id, calendarEvent);
+											shareToEventMap.get(pubEvent.id)?.add(calendarEvent.id);
 											options.onEventsUpdate(Array.from(eventMap.values()));
+											console.log('📅 EventLoader: Added event from share:', calendarEvent.id);
 										}
 									},
 									error: () => {
@@ -377,9 +401,12 @@ export function useCalendarEventLoader(options) {
 								if (loader && 'subscribe' in loader) {
 									loader.subscribe({
 										next: (/** @type {any} */ loadedEvent) => {
-											if (loadedEvent && !eventMap.has(loadedEvent.id)) {
-												eventMap.set(loadedEvent.id, getCalendarEventMetadata(loadedEvent));
+											if (loadedEvent) {
+												const calendarEvent = getCalendarEventMetadata(loadedEvent);
+												eventMap.set(calendarEvent.id, calendarEvent);
+												shareToEventMap.get(pubEvent.id)?.add(calendarEvent.id);
 												options.onEventsUpdate(Array.from(eventMap.values()));
+												console.log('📅 EventLoader: Added event from share:', calendarEvent.id);
 											}
 										},
 										error: () => {
