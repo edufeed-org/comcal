@@ -5,6 +5,89 @@ import { getCalendarEventStart } from "applesauce-core/helpers";
 
 
 /**
+ * Extract NIP-19 identifiers from text
+ * Pattern matches both plain and nostr: URI formats:
+ * - Plain: npub1..., nprofile1..., note1..., nevent1..., naddr1...
+ * - URI: nostr:npub1..., nostr:naddr1..., etc. (NIP-21)
+ * @param {string} text - Text to search for identifiers
+ * @returns {Array<{identifier: string, type: string, start: number, end: number}>} Array of found identifiers
+ */
+export function extractNostrIdentifiers(text) {
+  if (!text || typeof text !== 'string') return [];
+  
+  // Match both plain identifiers and nostr: URI scheme (NIP-21)
+  // Captures optional "nostr:" prefix and the identifier
+  const regex = /\b(?:nostr:)?(npub|nprofile|note|nevent|naddr)1[a-z0-9]+\b/gi;
+  const matches = [];
+  let match;
+  
+  while ((match = regex.exec(text)) !== null) {
+    const fullMatch = match[0]; // May include "nostr:" prefix
+    const identifier = fullMatch.startsWith('nostr:') 
+      ? fullMatch.substring(6) // Remove "nostr:" prefix
+      : fullMatch;
+    
+    matches.push({
+      identifier: identifier,
+      type: match[1].toLowerCase(),
+      start: match.index,
+      end: match.index + match[0].length
+    });
+  }
+  
+  return matches;
+}
+
+
+/**
+ * Decode NIP-19 identifier and extract entity info
+ * @param {string} identifier - NIP-19 identifier to decode
+ * @returns {{success: boolean, type?: string, data?: any, identifier: string, error?: string}}
+ */
+export function decodeNostrIdentifier(identifier) {
+  try {
+    const decoded = nip19.decode(identifier);
+    return {
+      success: true,
+      type: decoded.type,
+      data: decoded.data,
+      identifier
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      identifier
+    };
+  }
+}
+
+
+/**
+ * Check if identifier points to a calendar event
+ * @param {ReturnType<typeof decodeNostrIdentifier>} decoded - Decoded identifier
+ * @returns {boolean}
+ */
+export function isCalendarEventIdentifier(decoded) {
+  return decoded.success && 
+         decoded.type === 'naddr' && 
+         (decoded.data.kind === 31922 || decoded.data.kind === 31923);
+}
+
+
+/**
+ * Check if identifier points to a calendar
+ * @param {ReturnType<typeof decodeNostrIdentifier>} decoded - Decoded identifier
+ * @returns {boolean}
+ */
+export function isCalendarIdentifier(decoded) {
+  return decoded.success && 
+         decoded.type === 'naddr' && 
+         decoded.data.kind === 31924;
+}
+
+
+/**
  * Fetches a Nostr event using various identifier types
  *
  * @param identifier {string} - Can be an event ID, naddr, or other identifier
@@ -115,12 +198,7 @@ export const fetchCalendarEvents = async (
       if (!event) return null;
 
       // Check for deletion events (NIP-09)
-      const isDeleted = await checkForDeletionEvents(
-        event,
-        pubkey,
-        kind,
-        dTag
-      );
+      const isDeleted = await checkForDeletionEvents(event);
 
       if (isDeleted) {
         deletedEventRefs.push(tag[1]);
@@ -212,17 +290,9 @@ async function removeDeletedEventsFromCalendar(
  * Checks if an event has been deleted according to NIP-09
  *
  * @param {import('nostr-tools').NostrEvent} event - The event to check
- * @param {string} pubkey - The event author's public key
- * @param {number} kind - The event kind
- * @param {string} dTag - The d-tag identifier for replaceable events
  * @returns {Promise<boolean>} True if the event has been deleted
  */
-async function checkForDeletionEvents(
-  event,
-  pubkey,
-  kind,
-  dTag
-) {
+async function checkForDeletionEvents(event) {
   try {
     // For now, return false as deletion event checking with applesauce
     // would require more complex timeline loader setup

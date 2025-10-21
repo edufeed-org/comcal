@@ -7,8 +7,13 @@
 	import { marked } from 'marked';
 	import DOMPurify from 'dompurify';
 	import { browser } from '$app/environment';
+	import { extractNostrIdentifiers } from '$lib/helpers/nostrUtils.js';
+	import NostrIdentifierParser from './NostrIdentifierParser.svelte';
 
 	let { content = '', class: className = 'prose prose-lg max-w-none' } = $props();
+	
+	// Check if content contains NIP-19 identifiers
+	let hasIdentifiers = $derived(extractNostrIdentifiers(content).length > 0);
 
 	// Configure marked for better compatibility
 	marked.setOptions({
@@ -52,6 +57,14 @@
 	});
 </script>
 
-<div class={className}>
-	{@html html}
-</div>
+{#if hasIdentifiers}
+	<!-- Content has NIP-19 identifiers - parse them inline -->
+	<div class={className}>
+		<NostrIdentifierParser text={content} />
+	</div>
+{:else}
+	<!-- No identifiers - use standard markdown rendering -->
+	<div class={className}>
+		{@html html}
+	</div>
+{/if}

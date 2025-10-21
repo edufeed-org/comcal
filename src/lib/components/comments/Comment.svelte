@@ -3,6 +3,7 @@
 	import { getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
 	import CommentInput from './CommentInput.svelte';
 	import { ChatIcon } from '$lib/components/icons';
+	import MarkdownRenderer from '$lib/components/shared/MarkdownRenderer.svelte';
 
 	/**
 	 * @typedef {Object} CommentProps
@@ -108,7 +109,10 @@
 				</div>
 
 				<!-- Comment Content -->
-				<p class="mt-2 whitespace-pre-wrap text-base-content/80">{comment.content}</p>
+				<MarkdownRenderer 
+					content={comment.content} 
+					class="mt-2 prose-sm max-w-none text-base-content/80" 
+				/>
 
 				<!-- Actions -->
 				<div class="mt-2 flex items-center gap-4">
