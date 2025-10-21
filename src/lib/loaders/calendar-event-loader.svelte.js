@@ -348,7 +348,6 @@ export function useCalendarEventLoader(options) {
 								loader.subscribe({
 									next: (loadedEvent) => {
 										if (loadedEvent && !eventMap.has(loadedEvent.id)) {
-											console.log('📅 EventLoader: Successfully loaded e-tag referenced event', eTag);
 											eventMap.set(loadedEvent.id, getCalendarEventMetadata(loadedEvent));
 											options.onEventsUpdate(Array.from(eventMap.values()));
 										}
@@ -379,7 +378,6 @@ export function useCalendarEventLoader(options) {
 									loader.subscribe({
 										next: (/** @type {any} */ loadedEvent) => {
 											if (loadedEvent && !eventMap.has(loadedEvent.id)) {
-												console.log('📅 EventLoader: Successfully loaded a-tag referenced event', aTag);
 												eventMap.set(loadedEvent.id, getCalendarEventMetadata(loadedEvent));
 												options.onEventsUpdate(Array.from(eventMap.values()));
 											}
