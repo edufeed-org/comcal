@@ -141,6 +141,7 @@
 						href={eventDetailUrl}
 						class="btn btn-circle btn-ghost btn-sm"
 						aria-label="Open event details page"
+						onclick={handleClose}
 					>
 						<ExternalLinkIcon class_="w-6 h-6" />
 					</a>
