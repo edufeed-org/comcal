@@ -1,6 +1,6 @@
 <script>
 	import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
-	import { manager } from '$lib/stores/accounts.svelte';
+	import { useActiveUser } from '$lib/stores/accounts.svelte';
 	import { appConfig } from '$lib/config.js';
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils';
@@ -24,8 +24,11 @@
 	/** @type {import('./$types').PageProps} */
 	let { data } = $props();
 
+	// Use the proper reactive hook for active user
+	const getActiveUser = useActiveUser();
+	let activeUser = $derived(getActiveUser());
+
 	// Reactive state
-	let activeUser = $state(manager.active);
 	let comments = $state(/** @type {any[]} */ ([]));
 	let newComment = $state('');
 	let isLoadingComments = $state(true);
@@ -33,14 +36,6 @@
 	let featuredCalendars = $state(/** @type {any[]} */ ([]));
 	let isLoadingCalendars = $state(true);
 	let isEditModalOpen = $state(false);
-
-	// Subscribe to active user
-	$effect(() => {
-		const subscription = manager.active$.subscribe((user) => {
-			activeUser = user;
-		});
-		return () => subscription.unsubscribe();
-	});
 
 	// Get event from data
 	let event = $derived(data.event);

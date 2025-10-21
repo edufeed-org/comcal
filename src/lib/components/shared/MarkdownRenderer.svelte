@@ -6,6 +6,7 @@
 <script>
 	import { marked } from 'marked';
 	import DOMPurify from 'dompurify';
+	import { browser } from '$app/environment';
 
 	let { content = '', class: className = 'prose prose-lg max-w-none' } = $props();
 
@@ -25,17 +26,24 @@
 			// Parse markdown to HTML (synchronous)
 			const rawHtml = marked.parse(content, { async: false });
 			
-			// Sanitize HTML to prevent XSS attacks
-			return DOMPurify.sanitize(String(rawHtml), {
-				// Allow common markdown elements
-				ALLOWED_TAGS: [
-					'p', 'br', 'strong', 'em', 'u', 's', 'del', 'code', 'pre',
-					'a', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 
-					'h4', 'h5', 'h6', 'hr', 'table', 'thead', 'tbody', 'tr', 
-					'th', 'td', 'img'
+			// Only sanitize in browser context (DOMPurify requires DOM)
+			if (browser && typeof DOMPurify?.sanitize === 'function') {
+				// Sanitize HTML to prevent XSS attacks
+				return DOMPurify.sanitize(String(rawHtml), {
+					// Allow common markdown elements
+					ALLOWED_TAGS: [
+						'p', 'br', 'strong', 'em', 'u', 's', 'del', 'code', 'pre',
+						'a', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 
+						'h4', 'h5', 'h6', 'hr', 'table', 'thead', 'tbody', 'tr', 
+						'th', 'td', 'img'
 				],
-				ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'title', 'class']
-			});
+					ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'title', 'class']
+				});
+			}
+			
+			// During SSR or if DOMPurify unavailable, return raw HTML
+			// It will be sanitized on the client side during hydration
+			return String(rawHtml);
 		} catch (error) {
 			console.error('Markdown parsing error:', error);
 			// Fallback to plain text with line breaks preserved

@@ -28,7 +28,16 @@
 	let { event, activeUser, compact = false } = $props();
 
 	// Get calendar management store
-	let calendarManagement = $derived(activeUser ? useCalendarManagement(activeUser.pubkey) : null);
+	let calendarManagement = $state(/** @type {any} */ (null));
+	
+	// Update calendar management when activeUser changes
+	$effect(() => {
+		if (activeUser) {
+			calendarManagement = useCalendarManagement(activeUser.pubkey);
+		} else {
+			calendarManagement = null;
+		}
+	});
 
 	// State management
 	let selectedCalendarIds = $state(/** @type {string[]} */ ([]));
