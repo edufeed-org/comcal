@@ -164,10 +164,10 @@
 						<!-- Public Key -->
 						<div class="flex items-center gap-2 mb-4">
 							<code class="bg-gray-800 bg-opacity-50 px-3 py-1 rounded text-sm font-mono">
-								{formatPubkey(data.pubkey)}
+								{data.npub ? `${data.npub.slice(0, 16)}...${data.npub.slice(-8)}` : formatPubkey(data.pubkey)}
 							</code>
 							<button 
-								onclick={() => copyToClipboard(data.pubkey)}
+								onclick={() => copyToClipboard(data.npub || data.pubkey)}
 								class="p-1 hover:bg-gray-700 rounded transition-colors"
 								title="Copy public key"
 							>
@@ -278,7 +278,13 @@
 								<h3 class="text-lg font-medium text-white mb-4">Basic Information</h3>
 								<div class="space-y-3 text-sm">
 									<div class="flex justify-between items-center">
-										<span class="text-gray-400">Public Key:</span>
+										<span class="text-gray-400">Npub:</span>
+										<code class="text-xs font-mono bg-gray-700 px-2 py-1 rounded text-gray-200">
+											{data.npub || 'N/A'}
+										</code>
+									</div>
+									<div class="flex justify-between items-center">
+										<span class="text-gray-400">Hex Public Key:</span>
 										<code class="text-xs font-mono bg-gray-700 px-2 py-1 rounded text-gray-200">
 											{data.pubkey}
 										</code>

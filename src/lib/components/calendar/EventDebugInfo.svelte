@@ -4,6 +4,8 @@
 -->
 
 <script>
+	import { hexToNpub } from '$lib/helpers/nostrUtils';
+	
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
 	 */
@@ -86,7 +88,8 @@
 	 */
 	function goToProfile() {
 		if (event?.pubkey) {
-			window.location.href = `/p/${event.pubkey}`;
+			const npub = hexToNpub(event.pubkey);
+			window.location.href = `/p/${npub || event.pubkey}`;
 		}
 	}
 

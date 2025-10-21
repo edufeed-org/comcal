@@ -4,6 +4,7 @@
 	import { getDisplayName, getTagValue, getProfilePicture } from 'applesauce-core/helpers';
 	import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte.js';
 	import { useUserProfile } from '$lib/stores/user-profile.svelte';
+	import { hexToNpub } from '$lib/helpers/nostrUtils';
 
 	const activeUser = useActiveUser();
 	const getJoinedCommunities = useJoinedCommunitiesList(); // gets the getter function
@@ -27,7 +28,7 @@
 		{@const communityPubKey = getTagValue(community, 'd')}
 		{@const getCommunityProfile = useUserProfile(communityPubKey)}
 		{@const communityProfile = getCommunityProfile()}
-		<a href={`/c/${communityPubKey}`} class="flex bg-base-100 p-3 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer transform hover:scale-[1.02] items-center gap-2 rounded-lg border border-base-200 hover:border-primary/20">
+		<a href={`/c/${communityPubKey ? (hexToNpub(communityPubKey) || communityPubKey) : '#'}`} class="flex bg-base-100 p-3 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer transform hover:scale-[1.02] items-center gap-2 rounded-lg border border-base-200 hover:border-primary/20">
 			<div class="avatar">
 				<div class="w-8 h-8 rounded-full ring-2 ring-base-300 hover:ring-primary/50 transition-colors duration-300">
 					<img src={getProfilePicture(communityProfile) || `https://robohash.org/${getTagValue(community, 'd')}`} alt="Community" class="rounded-full object-cover" />

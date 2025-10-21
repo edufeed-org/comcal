@@ -5,6 +5,7 @@
 
 <script>
 	import { nip19 } from 'nostr-tools';
+	import { hexToNpub } from '$lib/helpers/nostrUtils';
 
 	let { identifier, decoded } = $props();
 
@@ -21,7 +22,7 @@
 </script>
 
 <a
-	href="/p/{pubkey}"
+	href="/p/{pubkey ? (hexToNpub(pubkey) || pubkey) : '#'}"
 	class="inline-flex items-center gap-1 badge badge-outline badge-primary hover:badge-primary transition-colors"
 >
 	👤 {displayId}

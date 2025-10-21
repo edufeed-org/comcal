@@ -5,6 +5,64 @@ import { getCalendarEventStart } from "applesauce-core/helpers";
 
 
 /**
+ * Convert hex pubkey to npub format
+ * @param {string} hex - 64-character hex pubkey
+ * @returns {string|null} npub string or null if invalid
+ */
+export function hexToNpub(hex) {
+  if (!hex || typeof hex !== 'string') return null;
+  // Validate hex format (64 chars, hex only)
+  if (!/^[0-9a-f]{64}$/i.test(hex)) return null;
+  
+  try {
+    return nip19.npubEncode(hex);
+  } catch (error) {
+    console.error('Error encoding npub:', error);
+    return null;
+  }
+}
+
+/**
+ * Convert npub to hex pubkey
+ * @param {string} npub - npub1... identifier
+ * @returns {string|null} hex pubkey or null if invalid
+ */
+export function npubToHex(npub) {
+  if (!npub || typeof npub !== 'string') return null;
+  if (!npub.startsWith('npub1')) return null;
+  
+  try {
+    const decoded = nip19.decode(npub);
+    if (decoded.type === 'npub') {
+      return decoded.data;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error decoding npub:', error);
+    return null;
+  }
+}
+
+/**
+ * Normalize pubkey identifier to hex format
+ * Accepts both hex and npub, returns hex
+ * @param {string} identifier - hex pubkey or npub
+ * @returns {string|null} hex pubkey or null if invalid
+ */
+export function normalizeToHex(identifier) {
+  if (!identifier || typeof identifier !== 'string') return null;
+  
+  // Already hex format
+  if (/^[0-9a-f]{64}$/i.test(identifier)) {
+    return identifier.toLowerCase();
+  }
+  
+  // Try decoding as npub
+  return npubToHex(identifier);
+}
+
+
+/**
  * Extract NIP-19 identifiers from text
  * Pattern matches both plain and nostr: URI formats:
  * - Plain: npub1..., nprofile1..., note1..., nevent1..., naddr1...

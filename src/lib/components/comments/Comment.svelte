@@ -4,6 +4,7 @@
 	import CommentInput from './CommentInput.svelte';
 	import { ChatIcon } from '$lib/components/icons';
 	import MarkdownRenderer from '$lib/components/shared/MarkdownRenderer.svelte';
+	import { hexToNpub } from '$lib/helpers/nostrUtils';
 
 	/**
 	 * @typedef {Object} CommentProps
@@ -82,7 +83,7 @@
 		<!-- Comment Header -->
 		<div class="mb-3 flex items-start gap-3">
 			<!-- Avatar -->
-			<a href="/p/{comment.pubkey}" class="avatar flex-shrink-0">
+			<a href="/p/{hexToNpub(comment.pubkey) || comment.pubkey}" class="avatar flex-shrink-0">
 				<div class="w-10 rounded-full">
 					{#if getProfilePicture(authorProfile)}
 						<img src={getProfilePicture(authorProfile)} alt={getDisplayName(authorProfile)} />
@@ -99,7 +100,7 @@
 			<!-- Author & Timestamp -->
 			<div class="flex-1">
 				<div class="flex items-baseline gap-2">
-					<a href="/p/{comment.pubkey}" class="font-semibold hover:underline">
+					<a href="/p/{hexToNpub(comment.pubkey) || comment.pubkey}" class="font-semibold hover:underline">
 						{getDisplayName(authorProfile) ||
 							`${comment.pubkey.slice(0, 8)}...${comment.pubkey.slice(-4)}`}
 					</a>

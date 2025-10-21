@@ -3,7 +3,7 @@
 	import { useActiveUser } from '$lib/stores/accounts.svelte';
 	import { appConfig } from '$lib/config.js';
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
-	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils';
+	import { encodeEventToNaddr, hexToNpub } from '$lib/helpers/nostrUtils';
 	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
 	import { getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
 	import { EventFactory } from 'applesauce-factory';
@@ -413,7 +413,7 @@ import {
 							{@const profile = getUserProfile()}
 							{@const status = /** @type {any} */ (rsvp).status}
 							<a
-								href="/p/{rsvp.pubkey}"
+								href="/p/{hexToNpub(rsvp.pubkey) || rsvp.pubkey}"
 								class="flex items-center gap-3 rounded-lg bg-base-100 p-3 transition hover:bg-base-300"
 							>
 								<div class="avatar">

@@ -5,6 +5,7 @@
 	import { useCommunityMembership } from '$lib/stores/joined-communities-list.svelte.js';
 	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
 	import BookmarkIcon from '$lib/components/icons/social/BookmarkIcon.svelte';
+	import { hexToNpub } from '$lib/helpers/nostrUtils';
 
 	// Use the reusable user profile hook
 	const getProfile = useUserProfile(pubkey);
@@ -13,7 +14,7 @@
 	const getJoined = useCommunityMembership(pubkey);
 </script>
 
-<a href={pubkey ? `/c/${pubkey}` : '#'} class="card w-48 bg-base-100 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105 flex flex-col items-center gap-2 justify-center p-4 rounded-xl border border-base-200 hover:border-primary/20">
+<a href={pubkey ? `/c/${hexToNpub(pubkey) || pubkey}` : '#'} class="card w-48 bg-base-100 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105 flex flex-col items-center gap-2 justify-center p-4 rounded-xl border border-base-200 hover:border-primary/20">
 	<div class="absolute top-3 right-3 z-10">
 		{#if getJoined()}
 			<div class="bg-emerald-500 shadow-sm border border-emerald-600/20 rounded-full w-6 h-6 flex items-center justify-center">
