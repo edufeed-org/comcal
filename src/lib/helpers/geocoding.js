@@ -27,13 +27,95 @@ const URL_PATTERN = /https?:\/\//i;
 const BASE32 = '0123456789bcdefghjkmnpqrstuvwxyz';
 
 /**
+ * Check if location contains address-like components
+ * @param {string} location - Location string
+ * @returns {boolean}
+ */
+function hasAddressComponents(location) {
+	const lower = location.toLowerCase();
+	const config = appConfig.geocoding.validation;
+
+	// Check for street type keywords
+	const hasStreetType = config.streetTypeKeywords.some((keyword) =>
+		lower.includes(keyword)
+	);
+
+	// Check for numbers (street numbers, postal codes)
+	const hasNumber = /\d+/.test(location);
+
+	// Check for comma (typically separates address parts)
+	const hasComma = location.includes(',');
+
+	// At least one of these should be present
+	return hasStreetType || (hasNumber && hasComma);
+}
+
+/**
+ * Validate if location is likely a geocodable address
+ * @param {string} location - Location string
+ * @returns {boolean}
+ */
+function isGeocodableAddress(location) {
+	const config = appConfig.geocoding.validation;
+
+	// Must meet minimum length
+	if (location.length < config.minAddressLength) {
+		return false;
+	}
+
+	// Must have address components if required
+	if (config.requireAddressComponents && !hasAddressComponents(location)) {
+		return false;
+	}
+
+	// Cannot be just a single word
+	if (!location.includes(' ') && !location.includes(',')) {
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * Validate OpenCage geocoding result
+ * @param {Object} result - OpenCage result object
+ * @returns {boolean}
+ */
+function validateGeocodeResult(result) {
+	const config = appConfig.geocoding.validation;
+
+	// Check confidence score
+	if (result.confidence < config.minConfidenceScore) {
+		console.log(`Geocode result rejected: low confidence (${result.confidence})`);
+		return false;
+	}
+
+	// Check component type
+	const componentType = result.components._type;
+	if (config.acceptedComponentTypes.length > 0) {
+		if (!config.acceptedComponentTypes.includes(componentType)) {
+			console.log(`Geocode result rejected: type '${componentType}' not accepted`);
+			return false;
+		}
+	}
+
+	// Ensure coordinates are valid
+	if (!isValidCoordinates(result.geometry.lat, result.geometry.lng)) {
+		console.log('Geocode result rejected: invalid coordinates');
+		return false;
+	}
+
+	return true;
+}
+
+/**
  * Detect the type of location string
  * @param {string} location - Location string
- * @returns {'url' | 'coordinates' | 'geohash' | 'address'}
+ * @returns {'url' | 'coordinates' | 'geohash' | 'address' | 'venue'}
  */
 export function detectLocationType(location) {
 	if (!location || typeof location !== 'string') {
-		return 'address';
+		return 'venue';
 	}
 
 	const trimmed = location.trim();
@@ -52,13 +134,18 @@ export function detectLocationType(location) {
 
 	// Check if it's a valid geohash (3-12 chars, only base32 chars)
 	if (trimmed.length >= 3 && trimmed.length <= 12) {
-		const isGeohash = [...trimmed.toLowerCase()].every(char => BASE32.includes(char));
+		const isGeohash = [...trimmed.toLowerCase()].every((char) => BASE32.includes(char));
 		if (isGeohash) {
 			return 'geohash';
 		}
 	}
 
-	return 'address';
+	// Distinguish between geocodable address and venue name
+	if (isGeocodableAddress(trimmed)) {
+		return 'address';
+	}
+
+	return 'venue';
 }
 
 /**
@@ -209,12 +296,18 @@ export function setCachedCoordinates(location, coords) {
 }
 
 /**
- * Geocode an address using OpenCage API
+ * Geocode an address using OpenCage API with validation
  * @param {string} address - Address to geocode
- * @returns {Promise<{ lat: number, lng: number } | null>}
+ * @returns {Promise<{ lat: number, lng: number, formatted: string } | null>}
  */
 export async function geocodeAddress(address) {
 	if (!address || typeof address !== 'string') {
+		return null;
+	}
+
+	// Pre-validation: Check if address is geocodable
+	if (!isGeocodableAddress(address)) {
+		console.log(`Skipping geocoding for '${address}': does not appear to be a proper address`);
 		return null;
 	}
 
@@ -225,7 +318,7 @@ export async function geocodeAddress(address) {
 	}
 
 	try {
-		const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(address)}&key=${apiKey}&limit=1&no_annotations=1`;
+		const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(address)}&key=${apiKey}&limit=1`;
 		const response = await fetch(url);
 
 		if (!response.ok) {
@@ -236,9 +329,16 @@ export async function geocodeAddress(address) {
 
 		if (data.results && data.results.length > 0) {
 			const result = data.results[0];
+
+			// Post-validation: Check result quality
+			if (!validateGeocodeResult(result)) {
+				return null;
+			}
+
 			const coords = {
 				lat: result.geometry.lat,
-				lng: result.geometry.lng
+				lng: result.geometry.lng,
+				formatted: result.formatted // Store formatted address for display
 			};
 
 			// Cache the result
@@ -247,6 +347,7 @@ export async function geocodeAddress(address) {
 			return coords;
 		}
 
+		console.log(`No geocoding results found for '${address}'`);
 		return null;
 	} catch (error) {
 		console.error('Geocoding error:', error);

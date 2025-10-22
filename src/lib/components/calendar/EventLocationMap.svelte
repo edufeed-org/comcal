@@ -6,7 +6,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { MapLibre, Marker, Popup } from 'svelte-maplibre';
-	import { parseLocation } from '$lib/helpers/geocoding.js';
+	import { parseLocation, detectLocationType } from '$lib/helpers/geocoding.js';
 	import { MapIcon } from '$lib/components/icons';
 
 	let { location = '', geohash = null, compact = true } = $props();
@@ -14,6 +14,7 @@
 	let coordinates = $state(/** @type {{ lat: number, lng: number } | null} */ (null));
 	let loading = $state(true);
 	let error = $state(/** @type {string | null} */ (null));
+	let isVenue = $state(false);
 
 	// Reactive computed values
 	let hasCoordinates = $derived(coordinates !== null);
@@ -41,6 +42,24 @@
 			loading = true;
 			error = null;
 
+			// Check location type first
+			const locationType = detectLocationType(location);
+
+			if (locationType === 'venue') {
+				// Venue name detected - don't attempt geocoding
+				isVenue = true;
+				console.log(`'${location}' detected as venue name, skipping geocoding`);
+				loading = false;
+				return;
+			}
+
+			if (locationType === 'url') {
+				// URL detected - don't show map
+				console.log(`'${location}' detected as URL, skipping map display`);
+				loading = false;
+				return;
+			}
+
 			// Parse location to get coordinates
 			const result = await parseLocation(location, geohash);
 
@@ -48,7 +67,10 @@
 				coordinates = { lat: result.lat, lng: result.lng };
 				console.log(`Location parsed (${result.source}):`, coordinates);
 			} else {
-				error = 'Unable to determine location coordinates';
+				// Only show error if we expected to find coordinates
+				if (locationType === 'address') {
+					error = 'Unable to geocode address';
+				}
 			}
 		} catch (err) {
 			console.error('Error parsing location:', err);
@@ -79,10 +101,11 @@
 				class="map"
 				attributionControl={false}
 			>
-				<Marker lngLat={markerLngLat} class="marker">
+				<Marker lngLat={markerLngLat}>
+					<div class="map-pin">📍</div>
 					{#if location && typeof location === 'string'}
-						<Popup openOn="hover" closeButton={false}>
-							<div class="popup-content">
+						<Popup openOn="hover" closeButton={false} offset={[0, -10]}>
+							<div class="popup-content" style="background: #ffffff; color: #1a1a1a;">
 								{location}
 							</div>
 						</Popup>
@@ -211,8 +234,15 @@
 		max-width: 200px;
 	}
 
-	/* Marker styling */
-	:global(.event-location-map .marker) {
+	/* Pin styling */
+	:global(.event-location-map .map-pin) {
+		font-size: 2rem;
 		cursor: pointer;
+		filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+		transition: transform 0.2s;
+	}
+
+	:global(.event-location-map .map-pin:hover) {
+		transform: scale(1.2);
 	}
 </style>
