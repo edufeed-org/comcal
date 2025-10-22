@@ -87,20 +87,24 @@
 		modelSubscription = eventStore.model(ReactionsModel, event).subscribe((reactionEvents) => {
 			console.log('ReactionBar: ReactionsModel emitted:', reactionEvents);
 			
-			// Use deduplication to prevent infinite loop
-			// Only update if we have new reactions
-			let hasNewReactions = false;
-			for (const reaction of reactionEvents || []) {
-				if (!loadedReactions.has(reaction.id)) {
-					loadedReactions.set(reaction.id, reaction);
-					hasNewReactions = true;
-				}
-			}
+			// Create a Set of current and new reaction IDs for comparison
+			const currentIds = new Set(loadedReactions.keys());
+			const newIds = new Set((reactionEvents || []).map(r => r.id));
 			
-			// Only update reactions array if there are new reactions
-			if (hasNewReactions) {
+			// Check if there's any difference (additions OR removals)
+			const hasChanges = 
+				currentIds.size !== newIds.size ||
+				[...currentIds].some(id => !newIds.has(id)) ||
+				[...newIds].some(id => !currentIds.has(id));
+			
+			if (hasChanges) {
+				// Rebuild the map with the new state
+				loadedReactions.clear();
+				for (const reaction of reactionEvents || []) {
+					loadedReactions.set(reaction.id, reaction);
+				}
 				reactions = Array.from(loadedReactions.values());
-				console.log('ReactionBar: Updated reactions array with new reactions');
+				console.log('ReactionBar: Updated reactions array (additions or removals detected)');
 			}
 		});
 		
