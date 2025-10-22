@@ -1,0 +1,326 @@
+/**
+ * Geocoding Helper
+ * Handles location parsing, coordinate extraction, and geocoding
+ * Supports NIP-52 location formats:
+ * - Physical addresses
+ * - GPS coordinates (various formats)
+ * - Geohash
+ * - URLs (detected and skipped)
+ */
+
+import { appConfig } from '$lib/config.js';
+
+// Coordinate pattern matchers
+const COORD_PATTERNS = {
+	// "40.7829,-73.9654" or "40.7829, -73.9654"
+	standard: /^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/,
+	// "geo:40.7829,-73.9654"
+	geoUri: /^geo:(-?\d+\.?\d*),(-?\d+\.?\d*)$/i,
+	// "lat:40.7829 lng:-73.9654" or "lat:40.7829,lng:-73.9654"
+	labeled: /(?:lat|latitude)[:\s]+(-?\d+\.?\d*)[\s,]+(?:lon|lng|longitude)[:\s]+(-?\d+\.?\d*)/i
+};
+
+// URL pattern
+const URL_PATTERN = /^https?:\/\//i;
+
+// Geohash base32 characters
+const BASE32 = '0123456789bcdefghjkmnpqrstuvwxyz';
+
+/**
+ * Detect the type of location string
+ * @param {string} location - Location string
+ * @returns {'url' | 'coordinates' | 'geohash' | 'address'}
+ */
+export function detectLocationType(location) {
+	if (!location || typeof location !== 'string') {
+		return 'address';
+	}
+
+	const trimmed = location.trim();
+
+	// Check if it's a URL
+	if (URL_PATTERN.test(trimmed)) {
+		return 'url';
+	}
+
+	// Check if it matches coordinate patterns
+	for (const pattern of Object.values(COORD_PATTERNS)) {
+		if (pattern.test(trimmed)) {
+			return 'coordinates';
+		}
+	}
+
+	// Check if it's a valid geohash (3-12 chars, only base32 chars)
+	if (trimmed.length >= 3 && trimmed.length <= 12) {
+		const isGeohash = [...trimmed.toLowerCase()].every(char => BASE32.includes(char));
+		if (isGeohash) {
+			return 'geohash';
+		}
+	}
+
+	return 'address';
+}
+
+/**
+ * Parse coordinates from a location string
+ * @param {string} location - Location string
+ * @returns {{ lat: number, lng: number } | null}
+ */
+export function parseCoordinates(location) {
+	if (!location || typeof location !== 'string') {
+		return null;
+	}
+
+	const trimmed = location.trim();
+
+	// Try each coordinate pattern
+	for (const pattern of Object.values(COORD_PATTERNS)) {
+		const match = trimmed.match(pattern);
+		if (match) {
+			const lat = parseFloat(match[1]);
+			const lng = parseFloat(match[2]);
+
+			if (isValidCoordinates(lat, lng)) {
+				return { lat, lng };
+			}
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Validate coordinates
+ * @param {number} lat - Latitude
+ * @param {number} lng - Longitude
+ * @returns {boolean}
+ */
+export function isValidCoordinates(lat, lng) {
+	return (
+		typeof lat === 'number' &&
+		typeof lng === 'number' &&
+		!isNaN(lat) &&
+		!isNaN(lng) &&
+		lat >= -90 &&
+		lat <= 90 &&
+		lng >= -180 &&
+		lng <= 180
+	);
+}
+
+/**
+ * Decode geohash to approximate coordinates
+ * @param {string} geohash - Geohash string
+ * @returns {{ lat: number, lng: number } | null}
+ */
+export function geohashToCoordinates(geohash) {
+	if (!geohash || typeof geohash !== 'string') {
+		return null;
+	}
+
+	const hash = geohash.toLowerCase();
+	let evenBit = true;
+	let latMin = -90.0;
+	let latMax = 90.0;
+	let lngMin = -180.0;
+	let lngMax = 180.0;
+
+	for (let i = 0; i < hash.length; i++) {
+		const char = hash[i];
+		const index = BASE32.indexOf(char);
+
+		if (index === -1) {
+			return null; // Invalid character
+		}
+
+		for (let j = 4; j >= 0; j--) {
+			const bit = (index >> j) & 1;
+
+			if (evenBit) {
+				// Longitude
+				const mid = (lngMin + lngMax) / 2;
+				if (bit === 1) {
+					lngMin = mid;
+				} else {
+					lngMax = mid;
+				}
+			} else {
+				// Latitude
+				const mid = (latMin + latMax) / 2;
+				if (bit === 1) {
+					latMin = mid;
+				} else {
+					latMax = mid;
+				}
+			}
+
+			evenBit = !evenBit;
+		}
+	}
+
+	const lat = (latMin + latMax) / 2;
+	const lng = (lngMin + lngMax) / 2;
+
+	return { lat, lng };
+}
+
+/**
+ * Get cached coordinates for a location
+ * @param {string} location - Location string
+ * @returns {{ lat: number, lng: number } | null}
+ */
+export function getCachedCoordinates(location) {
+	try {
+		const cache = JSON.parse(localStorage.getItem('geocode_cache') || '{}');
+		const cached = cache[location];
+
+		if (cached && cached.timestamp) {
+			const age = Date.now() - cached.timestamp;
+			const maxAge = appConfig.geocoding.cacheDurationDays * 24 * 60 * 60 * 1000;
+
+			if (age < maxAge && isValidCoordinates(cached.lat, cached.lng)) {
+				return { lat: cached.lat, lng: cached.lng };
+			}
+		}
+	} catch (error) {
+		console.error('Error reading geocode cache:', error);
+	}
+
+	return null;
+}
+
+/**
+ * Set cached coordinates for a location
+ * @param {string} location - Location string
+ * @param {{ lat: number, lng: number }} coords - Coordinates
+ */
+export function setCachedCoordinates(location, coords) {
+	try {
+		const cache = JSON.parse(localStorage.getItem('geocode_cache') || '{}');
+		cache[location] = {
+			lat: coords.lat,
+			lng: coords.lng,
+			timestamp: Date.now()
+		};
+		localStorage.setItem('geocode_cache', JSON.stringify(cache));
+	} catch (error) {
+		console.error('Error writing to geocode cache:', error);
+	}
+}
+
+/**
+ * Geocode an address using OpenCage API
+ * @param {string} address - Address to geocode
+ * @returns {Promise<{ lat: number, lng: number } | null>}
+ */
+export async function geocodeAddress(address) {
+	if (!address || typeof address !== 'string') {
+		return null;
+	}
+
+	const apiKey = appConfig.geocoding.apiKey;
+	if (!apiKey) {
+		console.error('OpenCage API key not configured');
+		return null;
+	}
+
+	try {
+		const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(address)}&key=${apiKey}&limit=1&no_annotations=1`;
+		const response = await fetch(url);
+
+		if (!response.ok) {
+			throw new Error(`Geocoding failed: ${response.status}`);
+		}
+
+		const data = await response.json();
+
+		if (data.results && data.results.length > 0) {
+			const result = data.results[0];
+			const coords = {
+				lat: result.geometry.lat,
+				lng: result.geometry.lng
+			};
+
+			// Cache the result
+			setCachedCoordinates(address, coords);
+
+			return coords;
+		}
+
+		return null;
+	} catch (error) {
+		console.error('Geocoding error:', error);
+		return null;
+	}
+}
+
+/**
+ * Parse location string to extract coordinates
+ * Priority: cache > coordinates > address geocoding
+ * @param {string} location - Location string
+ * @param {string | null} [geohash] - Optional geohash from event
+ * @returns {Promise<{ lat: number, lng: number, source: string } | null>}
+ */
+export async function parseLocation(location, geohash = null) {
+	if (!location || typeof location !== 'string') {
+		// Try geohash if location is empty
+		if (geohash) {
+			const coords = geohashToCoordinates(geohash);
+			if (coords) {
+				return { ...coords, source: 'geohash' };
+			}
+		}
+		return null;
+	}
+
+	const trimmed = location.trim();
+	const type = detectLocationType(trimmed);
+
+	// Skip URLs
+	if (type === 'url') {
+		return null;
+	}
+
+	// Check cache first
+	const cached = getCachedCoordinates(trimmed);
+	if (cached) {
+		return { ...cached, source: 'cache' };
+	}
+
+	// Try parsing as coordinates
+	if (type === 'coordinates') {
+		const coords = parseCoordinates(trimmed);
+		if (coords) {
+			setCachedCoordinates(trimmed, coords);
+			return { ...coords, source: 'coordinates' };
+		}
+	}
+
+	// Try geohash from location string
+	if (type === 'geohash') {
+		const coords = geohashToCoordinates(trimmed);
+		if (coords) {
+			setCachedCoordinates(trimmed, coords);
+			return { ...coords, source: 'geohash' };
+		}
+	}
+
+	// Try geohash from event if provided
+	if (geohash && type === 'address') {
+		const coords = geohashToCoordinates(geohash);
+		if (coords) {
+			// Don't cache geohash as the location string (address might be more specific)
+			return { ...coords, source: 'geohash' };
+		}
+	}
+
+	// Geocode as address
+	if (type === 'address') {
+		const coords = await geocodeAddress(trimmed);
+		if (coords) {
+			return { ...coords, source: 'geocoded' };
+		}
+	}
+
+	return null;
+}

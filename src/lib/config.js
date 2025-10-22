@@ -34,6 +34,16 @@ export const appConfig = {
 		]
 	},
 
+	geocoding: {
+		// OpenCage API key for geocoding addresses
+		// Free tier: 2,500 requests/day
+		// Get your key at: https://opencagedata.com/api
+		apiKey: '324cfa67aec44c27b0ec767881636065',
+		
+		// Cache geocoding results for 30 days
+		cacheDurationDays: 30
+	},
+
 	// Other app-wide configurations can be added here:
 	// ui: {
 	//   theme: 'auto',

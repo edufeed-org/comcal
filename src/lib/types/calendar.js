@@ -41,7 +41,8 @@
  * @property {string[]} hashtags - Event hashtags
  * @property {string[]} references - Referenced event IDs
  * @property {string[]} eventReferences - Referenced calendar event IDs
- * @property {string} [geohash] - Optional geohash for location
+ * @property {string} [geohash] - Optional geohash for location (NIP-52 'g' tag)
+ * @property {Object} [coordinates] - Parsed coordinates for map display {lat: number, lng: number}
  * @property {string} communityPubkey - Target community public key
  * @property {number} createdAt - Creation timestamp (Unix timestamp)
  * @property {string} [dTag] - Optional d-tag identifier for NIP-52 events

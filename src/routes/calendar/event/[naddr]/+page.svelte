@@ -24,6 +24,7 @@ import {
 	import CalendarEventModal from '$lib/components/calendar/CalendarEventModal.svelte';
 	import LocationLink from '$lib/components/shared/LocationLink.svelte';
 	import MarkdownRenderer from '$lib/components/shared/MarkdownRenderer.svelte';
+	import EventLocationMap from '$lib/components/calendar/EventLocationMap.svelte';
 
 	/** @type {import('./$types').PageProps} */
 	let { data } = $props();
@@ -353,6 +354,15 @@ import {
 							<div class="text-base-content/80">
 								<LocationLink location={event.location} />
 							</div>
+						</div>
+						
+						<!-- Map Preview -->
+						<div class="mt-4">
+							<EventLocationMap 
+								location={event.location} 
+								geohash={event.geohash}
+								compact={true}
+							/>
 						</div>
 					</div>
 				</div>

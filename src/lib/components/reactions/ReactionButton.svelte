@@ -6,7 +6,7 @@
 	 */
 	import { reactionsStore } from '$lib/stores/reactions.svelte.js';
 	import { TrashIcon } from '$lib/components/icons';
-	import { useActiveUser } from '$lib/stores/accounts.svelte.js';
+	import { manager } from '$lib/stores/accounts.svelte.js';
 	import { deleteReaction } from '$lib/helpers/reactions.js';
 	import { showToast } from '$lib/helpers/toast.js';
 	import { appConfig } from '$lib/config.js';
@@ -17,18 +17,28 @@
 	let loading = $state(false);
 	let isHovering = $state(false);
 	
-	// Use reactive getter for active user to ensure proper reactivity on login/logout
-	const getActiveUser = useActiveUser();
+	// Track active user with direct subscription for proper reactivity
+	let activeUser = $state(manager.active);
+	
+	$effect(() => {
+		const subscription = manager.active$.subscribe((user) => {
+			activeUser = user;
+		});
+		return () => subscription.unsubscribe();
+	});
+	
+	// Check if user is logged in
+	let isLoggedIn = $derived(!!activeUser);
 	
 	// Check if this is the logged-in user's reaction and can be deleted
 	let canDelete = $derived(
 		userReactionEvent && 
-		getActiveUser() && 
-		userReactionEvent.pubkey === getActiveUser().pubkey
+		activeUser && 
+		userReactionEvent.pubkey === activeUser.pubkey
 	);
 	
 	async function toggleReaction() {
-		if (loading) return;
+		if (loading || !isLoggedIn) return;
 		
 		loading = true;
 		try {
@@ -67,7 +77,7 @@
 	onclick={toggleReaction}
 	onmouseenter={() => isHovering = true}
 	onmouseleave={() => isHovering = false}
-	disabled={loading}
+	disabled={loading || !isLoggedIn}
 	class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border {userReacted 
 		? 'bg-blue-500/20 text-blue-400 border-blue-500 hover:bg-blue-500/30' 
 		: 'bg-gray-700/50 text-gray-300 border-gray-600 hover:bg-gray-700'}"
