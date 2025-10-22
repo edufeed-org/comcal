@@ -1,6 +1,7 @@
 <script>
 	import { getProfilePicture } from 'applesauce-core/helpers';
 	import { ChatIcon, RepostIcon, LightningIcon, BookmarkIcon } from '$lib/components/icons';
+	import ReactionBar from '$lib/components/reactions/ReactionBar.svelte';
 
 	/** @type {any} */
 	let { note, profileEvent = null } = $props();
@@ -67,6 +68,11 @@
 			
 			<!-- Note Text -->
 			<p class="text-gray-200 mb-3 whitespace-pre-wrap break-words">{note.content}</p>
+			
+			<!-- Reactions -->
+			<div class="mb-3">
+				<ReactionBar event={note} />
+			</div>
 			
 			<!-- Actions -->
 			<div class="flex items-center gap-6 text-gray-400 text-sm">

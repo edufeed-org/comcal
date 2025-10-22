@@ -5,6 +5,7 @@
 	import { ChatIcon } from '$lib/components/icons';
 	import MarkdownRenderer from '$lib/components/shared/MarkdownRenderer.svelte';
 	import { hexToNpub } from '$lib/helpers/nostrUtils';
+	import ReactionBar from '$lib/components/reactions/ReactionBar.svelte';
 
 	/**
 	 * @typedef {Object} CommentProps
@@ -115,6 +116,11 @@
 					content={comment.content} 
 					class="mt-2 prose-sm max-w-none text-base-content/80" 
 				/>
+
+				<!-- Reactions -->
+				<div class="mt-3">
+					<ReactionBar event={comment} />
+				</div>
 
 				<!-- Actions -->
 				<div class="mt-2 flex items-center gap-4">

@@ -23,6 +23,7 @@
 	import MarkdownRenderer from '../shared/MarkdownRenderer.svelte';
 	import PersonalCalendarShare from './PersonalCalendarShare.svelte';
 	import CommunityCalendarShare from './CommunityCalendarShare.svelte';
+	import ReactionBar from '../reactions/ReactionBar.svelte';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
@@ -306,6 +307,12 @@
 					</div>
 				</div>
 			{/if}
+
+			<!-- Reactions -->
+			<div class="mb-6">
+				<h3 class="mb-3 text-lg font-semibold text-base-content">Reactions</h3>
+				<ReactionBar event={event} />
+			</div>
 
 			<!-- Personal Calendar Sharing Section -->
 			{#if activeUser}

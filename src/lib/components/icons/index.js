@@ -37,3 +37,4 @@ export { default as ChatIcon } from './social/ChatIcon.svelte';
 export { default as LightningIcon } from './social/LightningIcon.svelte';
 export { default as BookmarkIcon } from './social/BookmarkIcon.svelte';
 export { default as RepostIcon } from './social/RepostIcon.svelte';
+export { default as HeartIcon } from './social/HeartIcon.svelte';

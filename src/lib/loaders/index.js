@@ -35,3 +35,9 @@ export {
 
 // Calendar event loader composable
 export { useCalendarEventLoader, useCalendarUrlSync } from './calendar-event-loader.svelte';
+
+// Comments loader
+export { createCommentLoader } from './comments.js';
+
+// Reactions loader
+export { reactionsLoader } from './reactions.js';

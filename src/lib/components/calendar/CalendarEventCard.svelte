@@ -9,6 +9,7 @@
 	import EventTags from './EventTags.svelte';
 	import LocationLink from '../shared/LocationLink.svelte';
 	import MarkdownRenderer from '../shared/MarkdownRenderer.svelte';
+	import ReactionBar from '../reactions/ReactionBar.svelte';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
@@ -184,6 +185,13 @@
 					? 's'
 					: ''}
 			</span>
+		</div>
+	{/if}
+
+	<!-- Reactions -->
+	{#if !compact}
+		<div class="mt-2">
+			<ReactionBar event={event} />
 		</div>
 	{/if}
 		</div>
