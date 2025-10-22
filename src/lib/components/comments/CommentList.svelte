@@ -1,5 +1,6 @@
 <script>
 	import { createCommentLoader } from '$lib/loaders/comments.js';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { CommentsModel } from 'applesauce-core/models';
 	import { buildCommentTree, countComments } from '$lib/helpers/commentThreading.js';
 	import CommentThread from './CommentThread.svelte';
@@ -20,6 +21,10 @@
 	let totalCount = $derived(countComments(commentTree));
 	// Map to track loaded comments and prevent duplicates
 	let loadedComments = new Map();
+	/** @type {any} */
+	let loaderSubscription = $state(null);
+	// Map to track model subscriptions for each comment (commentId -> subscription)
+	let modelSubscriptions = new Map();
 
 	// Generate event address for comments
 	let eventAddress = $derived.by(() => {
@@ -33,38 +38,104 @@
 		return `${rootEvent.kind}:${rootEvent.pubkey}:${rootEvent.id}`;
 	});
 
-	// Load comments using the comment loader
+	/**
+	 * Subscribe to CommentsModel for a specific comment to watch for replies
+	 * @param {any} comment - The comment event to watch
+	 */
+	function subscribeToCommentReplies(comment) {
+		// Don't subscribe if we already have a subscription for this comment
+		if (modelSubscriptions.has(comment.id)) return;
+
+		console.log('CommentList: Subscribing to replies for comment:', comment.id);
+		
+		const subscription = eventStore.model(CommentsModel, comment).subscribe((replies) => {
+			console.log(`CommentList: CommentsModel for ${comment.id} emitted:`, replies);
+			
+			let hasChanges = false;
+			
+			// Process each reply
+			for (const reply of replies || []) {
+				if (!loadedComments.has(reply.id)) {
+					console.log('CommentList: New reply detected:', reply.id);
+					loadedComments.set(reply.id, reply);
+					hasChanges = true;
+					
+					// Recursively subscribe to this reply's replies
+					subscribeToCommentReplies(reply);
+				}
+			}
+			
+			// Check for deletions: if a reply we had is no longer in the list
+			const replyIds = new Set((replies || []).map(r => r.id));
+			for (const [id, existingReply] of loadedComments) {
+				// Check if this comment was a reply to the current comment
+				// and is now missing from the replies list
+				if (existingReply.tags?.some((/** @type {any[]} */ t) => t[0] === 'e' && t[1] === comment.id)) {
+					if (!replyIds.has(id)) {
+						console.log('CommentList: Reply deleted:', id);
+						loadedComments.delete(id);
+						hasChanges = true;
+					}
+				}
+			}
+			
+			if (hasChanges) {
+				flatComments = Array.from(loadedComments.values());
+				console.log('CommentList: Updated comments array (changes detected)');
+			}
+		});
+		
+		modelSubscriptions.set(comment.id, subscription);
+	}
+
+	// Load comments using loader + recursive model subscriptions
 	$effect(() => {
 		if (!rootEvent || !eventAddress) return;
 
+		console.log('CommentList: Loading comments for event:', rootEvent.id);
 		isLoading = true;
-		// Reset the map when rootEvent or eventAddress changes
+		
+		// Reset state
 		loadedComments.clear();
+		modelSubscriptions.forEach(sub => sub.unsubscribe());
+		modelSubscriptions.clear();
 
-		// Use the comment loader to fetch from relays
+		// Subscribe to the root event's direct comments
+		subscribeToCommentReplies(rootEvent);
+
+		// Source: Loader fetches ALL comments from relays and adds to EventStore
 		const commentLoader = createCommentLoader(eventAddress);
-		const subscription = commentLoader().subscribe({
+		loaderSubscription = commentLoader().subscribe({
 			next: (/** @type {any} */ comment) => {
-				console.log('Loaded comment from relay:', comment);
-				// Add to map to deduplicate
+				console.log('CommentList: Loaded comment from relay:', comment);
+				
+				// Add to our loaded comments map
 				if (!loadedComments.has(comment.id)) {
 					loadedComments.set(comment.id, comment);
-					// Update flatComments array
 					flatComments = Array.from(loadedComments.values());
+					
+					// Subscribe to this comment's replies
+					subscribeToCommentReplies(comment);
 				}
 			},
 			error: (/** @type {any} */ err) => {
-				console.error('Error in comment loader:', err);
+				console.error('CommentList: Error in comment loader:', err);
 				isLoading = false;
 			},
 			complete: () => {
-				console.log('Comment loading complete');
+				console.log('CommentList: Comment loading complete');
 				isLoading = false;
 			}
 		});
 
 		return () => {
-			subscription.unsubscribe();
+			if (loaderSubscription) {
+				loaderSubscription.unsubscribe();
+				loaderSubscription = null;
+			}
+			// Unsubscribe from all comment model subscriptions
+			modelSubscriptions.forEach(sub => sub.unsubscribe());
+			modelSubscriptions.clear();
 		};
 	});
 
@@ -80,6 +151,9 @@
 			loadedComments.set(event.id, event);
 			// Update flatComments array to trigger reactive update
 			flatComments = Array.from(loadedComments.values());
+			
+			// Subscribe to this comment's replies
+			subscribeToCommentReplies(event);
 		}
 	}
 </script>
