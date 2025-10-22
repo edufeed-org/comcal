@@ -67,19 +67,20 @@
 		showReplyForm = false;
 	}
 
-	// Calculate indentation (16px per level, max 5 levels)
+	// Calculate indentation using padding (16px per level, max 5 levels)
 	const maxDepth = 5;
 	const effectiveDepth = Math.min(depth, maxDepth);
-	const indentClass = effectiveDepth > 0 ? `ml-${effectiveDepth * 4}` : '';
+	const indent = effectiveDepth * 16; // 16px per level
 </script>
 
-<div class="comment-wrapper {indentClass}">
-	<!-- Reddit-style thread line for nested comments -->
-	{#if depth > 0}
-		<div class="absolute left-0 top-0 bottom-0 w-0.5 bg-base-300"></div>
-	{/if}
-
-	<div class="relative rounded-lg bg-base-100 p-4 {depth > 0 ? 'ml-4' : ''}">
+<div 
+	class="comment-wrapper"
+	style="
+		padding-left: {indent}px;
+		border-left: {depth > 0 ? '2px solid hsl(var(--bc) / 0.15)' : 'none'};
+	"
+>
+	<div class="relative rounded-lg bg-base-100 p-4">
 		<!-- Comment Header -->
 		<div class="mb-3 flex items-start gap-3">
 			<!-- Avatar -->
