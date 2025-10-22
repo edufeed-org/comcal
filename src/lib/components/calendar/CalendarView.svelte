@@ -22,6 +22,7 @@
 	import TagSelector from './TagSelector.svelte';
 	import SimpleCalendarEventsList from './CalendarEventsList.svelte';
 	import AddToCalendarButton from './AddToCalendarButton.svelte';
+	import CalendarMapView from './CalendarMapView.svelte';
 
 	/**
 	 * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
@@ -570,29 +571,8 @@
 			{error}
 		/>
 	{:else if presentationViewMode === 'map'}
-		<!-- Map View (placeholder for future implementation) -->
-		<div class="flex flex-col items-center justify-center px-6 py-16 text-center">
-			<div class="mb-4 text-base-content/30">
-				<svg class="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-					/>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-					/>
-				</svg>
-			</div>
-			<h3 class="mb-2 text-lg font-medium text-base-content">Map View Coming Soon</h3>
-			<p class="text-base-content/60">
-				Map view for calendar events will be available in a future update.
-			</p>
-		</div>
+		<!-- Map View -->
+		<CalendarMapView events={displayedEvents} {viewMode} />
 	{/if}
 
 	<!-- Loading indicator with progress -->

@@ -12,10 +12,10 @@ export const appConfig = {
 		defaultRelays: [
 			'wss://relay-rpi.edufeed.org',
 			'wss://relay.damus.io',
-			'wss://nos.lol',
-			'wss://relay.nostr.band',
-			'wss://nostr.wine',
-			'wss://relay.snort.social'
+			// 'wss://nos.lol',
+			// 'wss://relay.nostr.band',
+			// 'wss://nostr.wine',
+			// 'wss://relay.snort.social'
 		],
 
 		// Future configuration options can be added here:

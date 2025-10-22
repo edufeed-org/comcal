@@ -180,8 +180,7 @@
 				class:btn-outline={presentationViewMode !== 'map'}
 				class:btn-primary={presentationViewMode === 'map'}
 				onclick={() => handlePresentationViewModeClick('map')}
-				title="Map View (Coming Soon)"
-				disabled
+				title="Map View"
 			>
 				<LocationIcon class_="w-4 h-4" />
 			</button>

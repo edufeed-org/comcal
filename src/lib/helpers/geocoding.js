@@ -20,8 +20,8 @@ const COORD_PATTERNS = {
 	labeled: /(?:lat|latitude)[:\s]+(-?\d+\.?\d*)[\s,]+(?:lon|lng|longitude)[:\s]+(-?\d+\.?\d*)/i
 };
 
-// URL pattern
-const URL_PATTERN = /^https?:\/\//i;
+// URL pattern - detects URLs anywhere in the string (e.g., "Zoom: https://..." or "https://...")
+const URL_PATTERN = /https?:\/\//i;
 
 // Geohash base32 characters
 const BASE32 = '0123456789bcdefghjkmnpqrstuvwxyz';
