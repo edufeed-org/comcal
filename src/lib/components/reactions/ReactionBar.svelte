@@ -9,7 +9,7 @@
 	import { reactionsLoader } from '$lib/loaders/reactions.js';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { ReactionsModel } from 'applesauce-core/models';
-	import { manager } from '$lib/stores/accounts.svelte.js';
+	import { useActiveUser } from '$lib/stores/accounts.svelte.js';
 	import { normalizeReactionContent } from '$lib/helpers/reactions.js';
 	import ReactionButton from './ReactionButton.svelte';
 	import AddReactionButton from './AddReactionButton.svelte';
@@ -27,9 +27,12 @@
 	// Map to track loaded reactions and prevent duplicates
 	let loadedReactions = new Map();
 	
+	// Use reactive getter for active user to ensure proper reactivity on login/logout
+	const getActiveUser = useActiveUser();
+	
 	// Derive aggregated reactions from reactions array
 	let aggregated = $derived.by(() => {
-		const currentUser = manager.active;
+		const currentUser = getActiveUser();
 		const agg = new Map();
 		
 		for (const reaction of reactions) {
@@ -135,6 +138,7 @@
 					{emoji}
 					count={summary.count}
 					userReacted={summary.userReacted}
+					userReactionEvent={summary.userReactionEvent}
 				/>
 			{/each}
 			

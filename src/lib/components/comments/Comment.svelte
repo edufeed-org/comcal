@@ -2,10 +2,13 @@
 	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
 	import { getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
 	import CommentInput from './CommentInput.svelte';
-	import { ChatIcon } from '$lib/components/icons';
+	import { ChatIcon, TrashIcon } from '$lib/components/icons';
 	import MarkdownRenderer from '$lib/components/shared/MarkdownRenderer.svelte';
 	import { hexToNpub } from '$lib/helpers/nostrUtils';
 	import ReactionBar from '$lib/components/reactions/ReactionBar.svelte';
+	import { deleteComment } from '$lib/helpers/comments.js';
+	import { showToast } from '$lib/helpers/toast.js';
+	import { appConfig } from '$lib/config.js';
 
 	/**
 	 * @typedef {Object} CommentProps
@@ -26,10 +29,16 @@
 	} = $props();
 
 	let showReplyForm = $state(false);
+	let isDeleting = $state(false);
 
 	// Get author profile
 	const getUserProfile = useUserProfile(comment.pubkey);
 	let authorProfile = $derived(getUserProfile());
+
+	// Check if user can delete this comment (must be the author)
+	let canDelete = $derived(
+		activeUser && comment.pubkey === activeUser.pubkey
+	);
 
 	/**
 	 * Format timestamp
@@ -66,6 +75,31 @@
 	 */
 	function handleCancelReply() {
 		showReplyForm = false;
+	}
+
+	/**
+	 * Handle delete comment
+	 */
+	async function handleDelete() {
+		if (isDeleting || !canDelete) return;
+
+		// Confirm deletion
+		if (!confirm('Are you sure you want to delete this comment?')) {
+			return;
+		}
+
+		isDeleting = true;
+		try {
+			await deleteComment(comment, {
+				relays: appConfig.calendar.defaultRelays
+			});
+			showToast('Comment deleted', 'success');
+		} catch (error) {
+			console.error('Failed to delete comment:', error);
+			showToast('Failed to delete comment', 'error');
+		} finally {
+			isDeleting = false;
+		}
 	}
 
 	// Calculate indentation using padding (16px per level, max 5 levels)
@@ -132,6 +166,16 @@
 						>
 							<ChatIcon class_="w-4 h-4" />
 							Reply
+						</button>
+					{/if}
+					{#if canDelete}
+						<button
+							class="btn btn-ghost btn-xs gap-1 text-error hover:bg-error/10"
+							onclick={handleDelete}
+							disabled={isDeleting}
+						>
+							<TrashIcon class="w-4 h-4" />
+							Delete
 						</button>
 					{/if}
 					{#if comment.replies && comment.replies.length > 0}

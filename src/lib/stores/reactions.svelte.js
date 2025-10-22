@@ -7,6 +7,7 @@ import { normalizeReactionContent, publishReaction, deleteReaction } from '$lib/
 import { manager } from './accounts.svelte.js';
 import { appConfig } from '$lib/config.js';
 import { showToast } from '$lib/helpers/toast.js';
+import { eventStore } from './nostr-infrastructure.svelte.js';
 
 /**
  * @typedef {Object} ReactionSummary
@@ -198,30 +199,20 @@ class ReactionsStore {
 		}
 
 		try {
-			const current = this.#reactionsMap.get(event.id);
-			if (!current) return;
-
-			const normalizedEmoji = normalizeReactionContent(emoji);
-			const summary = current.aggregated.get(normalizedEmoji);
-
-			if (!summary?.userReacted || !summary.userReactionEvent) {
-				return;
+			// Get the user's reaction event for this emoji from the aggregated data
+			const eventReactions = this.getReactions(event.id);
+			const reactionData = eventReactions.aggregated.get(emoji);
+			
+			if (!reactionData?.userReactionEvent) {
+				throw new Error('No reaction found to delete');
 			}
 
-			// Delete the reaction
-			await deleteReaction(summary.userReactionEvent, 'Reaction removed', { relays });
+			// Delete the reaction - pass the REACTION event, not the target event
+			console.log('Attempting to delete reaction for emoji:', emoji);
+			const { event: deletedEvent } = await deleteReaction(reactionData.userReactionEvent, { relays });
 
 			// Remove from store
-			const newReactions = current.reactions.filter(
-				r => r.id !== summary.userReactionEvent.id
-			);
-			const aggregated = this.#aggregateReactions(newReactions);
-
-			this.#reactionsMap.set(event.id, {
-				reactions: newReactions,
-				aggregated,
-				loading: false
-			});
+			eventStore.add(deletedEvent);
 
 			showToast('Reaction removed', 'success');
 		} catch (error) {

@@ -5,6 +5,7 @@
 import { EventFactory } from 'applesauce-factory';
 import { publishEvent } from './publisher.js';
 import { manager } from '$lib/stores/accounts.svelte.js';
+import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { appConfig } from '$lib/config.js';
 
 /**
@@ -120,14 +121,14 @@ export async function publishReaction(targetEvent, content, options = {}) {
 
 /**
  * Delete a reaction event
+ * Uses idiomatic applesauce pattern with factory.delete() and EventStore
  * 
  * @param {any} reactionEvent - The reaction event to delete
- * @param {string} reason - Reason for deletion
  * @param {Object} [options] - Publishing options
  * @param {string[]} [options.relays] - Custom relay list
  * @returns {Promise<{success: boolean, event: any, results: any}>}
  */
-export async function deleteReaction(reactionEvent, reason = 'Reaction removed', options = {}) {
+export async function deleteReaction(reactionEvent, options = {}) {
 	const account = manager.active;
 	
 	if (!account?.signer) {
@@ -143,25 +144,28 @@ export async function deleteReaction(reactionEvent, reason = 'Reaction removed',
 		signer: account.signer
 	});
 	
-	// Build the deletion event (kind 5)
-	const unsignedEvent = await factory.build({
-		kind: 5,
-		content: reason,
-		tags: [['e', reactionEvent.id]]
-	});
+	// Use factory.delete() to create proper deletion event (idiomatic applesauce pattern)
+	const deleteEventTemplate = await factory.delete([reactionEvent]);
 	
-	// Sign the event using EventFactory
-	const signedEvent = await factory.sign(unsignedEvent);
+	// Sign the deletion event
+	const deleteEvent = await factory.sign(deleteEventTemplate);
 	
-	const result = await publishEvent(signedEvent, {
+	const result = await publishEvent(deleteEvent, {
 		relays: options.relays || appConfig.calendar.defaultRelays,
 		addToStore: true,
 		logPrefix: 'Reactions'
 	});
 	
+	// Explicitly add deletion event to EventStore after successful publish
+	// This triggers automatic removal of the referenced reaction event
+	// and updates all subscriptions (including ReactionsModel)
+	if (result.success) {
+		eventStore.add(deleteEvent);
+	}
+	
 	return {
 		...result,
-		event: signedEvent
+		event: deleteEvent
 	};
 }
 

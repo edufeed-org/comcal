@@ -311,7 +311,7 @@
 			<!-- Reactions -->
 			<div class="mb-6">
 				<h3 class="mb-3 text-lg font-semibold text-base-content">Reactions</h3>
-				<ReactionBar event={event} />
+				<ReactionBar event={event?.originalEvent || event} />
 			</div>
 
 			<!-- Personal Calendar Sharing Section -->
