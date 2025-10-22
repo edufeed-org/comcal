@@ -20,5 +20,5 @@ import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 export const reactionsLoader = createReactionsLoader(pool, {
 	useSeenRelays: true,
 	eventStore,
-	bufferTime: 500
+	bufferTime: 1000
 });

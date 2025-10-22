@@ -166,24 +166,10 @@ class ReactionsStore {
 		}
 
 		try {
-			// Check if already reacted with this emoji
-			const current = this.#reactionsMap.get(event.id);
-			const normalizedEmoji = normalizeReactionContent(emoji);
-			
-			if (current) {
-				const summary = current.aggregated.get(normalizedEmoji);
-				if (summary?.userReacted) {
-					showToast('You already reacted with this emoji', 'info');
-					return;
-				}
-			}
-
 			// Publish the reaction
 			const result = await publishReaction(event, emoji, { relays });
 			
 			if (result.success) {
-				// Optimistically add to store
-				this.#addReaction(event.id, result.event);
 				showToast('Reaction added!', 'success');
 			} else {
 				throw new Error('Failed to publish reaction');
