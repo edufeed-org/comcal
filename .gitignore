@@ -25,3 +25,5 @@ vite.config.ts.timestamp-*
 # Cline
 memory-bank
 .clineignore
+
+data/
