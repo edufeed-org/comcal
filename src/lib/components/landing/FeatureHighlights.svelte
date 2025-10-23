@@ -1,5 +1,5 @@
 <script>
-	import { CalendarIcon, ChatIcon, PeopleIcon } from '$lib/components/icons';
+	import { CalendarIcon, PeopleIcon } from '$lib/components/icons';
 </script>
 
 <section class="bg-base-200 py-16">
@@ -34,9 +34,13 @@
 			<!-- Decentralized Feature -->
 			<div class="card bg-base-100 shadow-lg transition-all duration-300 hover:shadow-xl">
 				<div class="card-body items-center text-center">
-					<div class="mb-4 rounded-full bg-accent/10 p-4">
-						<ChatIcon class_="h-12 w-12 text-accent" />
-					</div>
+				<div class="mb-4 rounded-full bg-accent/10 p-4">
+					<img 
+						src="/running_nostr.gif"
+						alt="Nostr protocol decentralized network visualization"
+						class="h-12 w-12"
+					/>
+				</div>
 					<h3 class="card-title text-2xl font-bold text-base-content">Decentralized</h3>
 					<p class="text-base-content/70">
 						Your data, your control. Powered by the Nostr protocol for censorship-resistant, decentralized communication.
