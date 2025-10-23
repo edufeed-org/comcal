@@ -5,14 +5,21 @@
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { publishEvent } from '$lib/helpers/publisher';
 
-	let { profile, communikeyEvent, communikeyContentTypes } = $props();
-
-	const contentTypes = {
-		30023: 'long-form-content'
-	};
+	let { profile, communikeyEvent, communikeyContentTypes, activeTab, onTabChange } = $props();
 
 	// Use the reusable community membership hook
 	const getJoined = useCommunityMembership(communikeyEvent.pubkey);
+
+	/**
+	 * Handle tab click
+	 * @param {number} kind - The content type kind number
+	 * @param {boolean} enabled - Whether the content type is enabled
+	 */
+	function handleTabClick(kind, enabled) {
+		if (enabled && onTabChange) {
+			onTabChange(kind);
+		}
+	}
 
 	/**
 	 * Join the community
@@ -43,36 +50,57 @@
 	}
 </script>
 
-<div class="flex items-center gap-3 p-3 bg-base-100 rounded-xl border border-base-200 shadow-sm">
-	<div class="avatar">
-		<div class="mask w-12 mask-hexagon-2 ring-2 ring-base-300">
-			<img src={getProfilePicture(profile)} alt="Community Profile" class="object-cover" />
+<div class="bg-base-100 rounded-xl border border-base-200 shadow-sm">
+	<!-- Top Section: Community Info -->
+	<div class="flex items-center gap-2 p-3">
+		<div class="avatar">
+			<div class="mask w-12 mask-hexagon-2 ring-2 ring-base-300">
+				<img src={getProfilePicture(profile)} alt="Community Profile" class="object-cover" />
+			</div>
+		</div>
+
+		<div class="flex-1 min-w-0">
+			<h1 class="text-base font-bold text-base-content truncate">{profile.name}</h1>
+		</div>
+
+		<div class="flex items-center gap-2 ml-auto">
+			{#if getJoined()}
+				<div class="badge badge-success gap-1">
+					<svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+						<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+					</svg>
+					Joined
+				</div>
+			{:else}
+				<div class="badge badge-ghost gap-1">
+					Not Joined
+				</div>
+				<button onclick={joinCommunity} class="btn btn-primary btn-sm">
+					Join Community
+				</button>
+			{/if}
 		</div>
 	</div>
 
-	<div class="flex gap-3 items-center">
-		<span class="text-base font-semibold text-base-content">{profile.name}</span>
-
-		<div class="flex flex-wrap gap-2">
+	<!-- Bottom Section: Interactive Content Type Tabs -->
+	<div class="border-t border-base-200">
+		<div class="tabs tabs-bordered overflow-x-auto">
 			{#each communikeyContentTypes as contentType}
-				<div class="badge badge-soft badge-primary hover:badge-primary-focus transition-all duration-200 cursor-default px-3 py-1 text-xs font-medium rounded-lg border border-primary/20 hover:border-primary/40 hover:shadow-sm">
+				<button
+					class="tab tab-bordered {activeTab === contentType.kind ? 'tab-active' : ''} {!contentType.enabled ? 'opacity-50 cursor-not-allowed' : ''}"
+					onclick={() => handleTabClick(contentType.kind, contentType.enabled)}
+					disabled={!contentType.enabled}
+					title={contentType.description}
+				>
+					<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={contentType.icon} />
+					</svg>
 					{contentType.name}
-				</div>
+					{#if !contentType.enabled}
+						<span class="ml-1 text-xs">🔒</span>
+					{/if}
+				</button>
 			{/each}
 		</div>
-	</div>
-	<div class="mr-2 ml-auto flex items-center gap-2">
-		{#if getJoined()}
-			<div class="badge badge-soft badge-success hover:badge-success-focus transition-all duration-200 cursor-default px-3 py-1 text-xs font-medium rounded-lg border border-success/20 hover:border-success/40 hover:shadow-sm">
-				Joined
-			</div>
-		{:else}
-			<div class="badge badge-soft badge-outline hover:badge-outline-focus transition-all duration-200 cursor-default px-3 py-1 text-xs font-medium rounded-lg border border-base-300/50 hover:border-base-300 hover:shadow-sm">
-				Not Joined
-			</div>
-			<button onclick={joinCommunity} class="btn btn-primary hover:btn-primary-focus transition-colors duration-200 px-4 py-2">
-				Join
-			</button>
-		{/if}
 	</div>
 </div>
