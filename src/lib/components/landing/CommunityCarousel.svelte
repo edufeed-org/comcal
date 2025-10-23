@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import emblaCarouselSvelte from 'embla-carousel-svelte';
 	import CommunikeyCard from '$lib/components/CommunikeyCard.svelte';
 	import { ChevronLeftIcon, ChevronRightIcon } from '$lib/components/icons';
 	import { useAllCommunities } from '$lib/stores/all-communities.svelte.js';
@@ -9,6 +11,8 @@
 	let showAll = $state(false);
 	let autoScrollInterval = $state<number | null>(null);
 	let isHovered = $state(false);
+	let emblaApi = $state<any>(null);
+	let selectedIndex = $state(0);
 
 	// Calculate how many cards to show per slide based on screen width
 	let cardsPerSlide = $state(4);
@@ -47,14 +51,26 @@
 		return result;
 	});
 
-	// Auto-scroll functionality for carousel
+	// Initialize Embla carousel
+	function handleEmblaInit(emblaInstance: any) {
+		emblaApi = emblaInstance;
+		
+		// Set up event listeners
+		emblaApi.on('select', () => {
+			selectedIndex = emblaApi.selectedScrollSnap();
+		});
+
+		// Initialize selected index
+		selectedIndex = emblaApi.selectedScrollSnap();
+	}
+
+	// Auto-scroll functionality
 	$effect(() => {
-		if (!isHovered && !showAll && slides().length > 1) {
-			let currentSlide = 0;
-			
+		if (!isHovered && !showAll && emblaApi && slides().length > 1) {
 			autoScrollInterval = setInterval(() => {
-				currentSlide = (currentSlide + 1) % slides().length;
-				window.location.hash = `#slide${currentSlide + 1}`;
+				if (emblaApi) {
+					emblaApi.scrollNext();
+				}
 			}, 5000);
 
 			return () => {
@@ -75,19 +91,28 @@
 
 	function toggleShowAll() {
 		showAll = !showAll;
-		if (!showAll) {
+		if (!showAll && emblaApi) {
 			// Reset to first slide when collapsing
-			window.location.hash = '#slide1';
+			emblaApi.scrollTo(0);
 		}
 	}
 
-	// Get prev/next slide numbers for circular navigation
-	function getPrevSlide(currentSlide: number, totalSlides: number) {
-		return currentSlide === 1 ? totalSlides : currentSlide - 1;
+	function scrollPrev() {
+		if (emblaApi) {
+			emblaApi.scrollPrev();
+		}
 	}
 
-	function getNextSlide(currentSlide: number, totalSlides: number) {
-		return currentSlide === totalSlides ? 1 : currentSlide + 1;
+	function scrollNext() {
+		if (emblaApi) {
+			emblaApi.scrollNext();
+		}
+	}
+
+	function scrollTo(index: number) {
+		if (emblaApi) {
+			emblaApi.scrollTo(index);
+		}
 	}
 </script>
 
@@ -129,50 +154,64 @@
 				onmouseenter={handleMouseEnter}
 				onmouseleave={handleMouseLeave}
 			>
-				<div class="carousel w-full rounded-box">
-					{#each slides() as slide, index (index)}
-						{@const slideNumber = index + 1}
-						{@const totalSlides = slides().length}
-						{@const prevSlide = getPrevSlide(slideNumber, totalSlides)}
-						{@const nextSlide = getNextSlide(slideNumber, totalSlides)}
-						
-						<div id="slide{slideNumber}" class="carousel-item relative w-full">
-							<!-- Grid of community cards -->
-							<div class="grid w-full gap-4 p-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-								{#each slide as community (community.pubkey)}
-									<CommunikeyCard pubkey={community.pubkey} />
-								{/each}
-							</div>
-
-							<!-- Navigation buttons -->
-							{#if totalSlides > 1}
-								<div class="absolute left-5 right-5 top-1/2 flex -translate-y-1/2 transform justify-between">
-									<a href="#slide{prevSlide}" class="btn btn-circle btn-primary shadow-lg">
-										<ChevronLeftIcon class_="h-6 w-6" />
-									</a>
-									<a href="#slide{nextSlide}" class="btn btn-circle btn-primary shadow-lg">
-										<ChevronRightIcon class_="h-6 w-6" />
-									</a>
+				<div 
+					class="overflow-hidden rounded-box"
+					use:emblaCarouselSvelte={{ 
+						options: { loop: true, align: 'start' },
+						plugins: []
+					}}
+					onemblaInit={(e) => handleEmblaInit(e.detail)}
+				>
+					<div class="flex">
+						{#each slides() as slide, index (index)}
+							<div class="min-w-0 flex-[0_0_100%]">
+								<!-- Grid of community cards -->
+								<div class="grid w-full gap-4 p-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+									{#each slide as community (community.pubkey)}
+										<CommunikeyCard pubkey={community.pubkey} />
+									{/each}
 								</div>
-							{/if}
-						</div>
-					{/each}
+							</div>
+						{/each}
+					</div>
 				</div>
 
-			<!-- Dot indicators -->
-			{#if slides().length > 1}
-				<div class="mt-8 flex justify-center gap-3">
-					{#each slides() as _, index}
-						<a 
-							href="#slide{index + 1}"
-							class="group flex items-center justify-center p-2 rounded-full hover:bg-base-200 transition-all duration-300"
-							aria-label="Go to slide {index + 1}"
+				<!-- Navigation buttons -->
+				{#if slides().length > 1}
+					<div class="absolute left-5 right-5 top-1/2 flex -translate-y-1/2 transform justify-between pointer-events-none">
+						<button 
+							onclick={scrollPrev}
+							class="btn btn-circle btn-primary shadow-lg pointer-events-auto"
+							aria-label="Previous slide"
 						>
-							<div class="h-3 w-3 rounded-full bg-base-300 group-hover:bg-primary group-hover:scale-125 transition-all duration-300"></div>
-						</a>
-					{/each}
-				</div>
-			{/if}
+							<ChevronLeftIcon class_="h-6 w-6" />
+						</button>
+						<button 
+							onclick={scrollNext}
+							class="btn btn-circle btn-primary shadow-lg pointer-events-auto"
+							aria-label="Next slide"
+						>
+							<ChevronRightIcon class_="h-6 w-6" />
+						</button>
+					</div>
+				{/if}
+
+				<!-- Dot indicators -->
+				{#if slides().length > 1}
+					<div class="mt-8 flex justify-center gap-3">
+						{#each slides() as _, index}
+							<button 
+								onclick={() => scrollTo(index)}
+								class="group flex items-center justify-center p-2 rounded-full hover:bg-base-200 transition-all duration-300"
+								aria-label="Go to slide {index + 1}"
+							>
+								<div 
+									class="h-3 w-3 rounded-full transition-all duration-300 {selectedIndex === index ? 'bg-primary scale-125' : 'bg-base-300 group-hover:bg-primary group-hover:scale-125'}"
+								></div>
+							</button>
+						{/each}
+					</div>
+				{/if}
 			</div>
 
 			<!-- View all link -->

@@ -12,10 +12,10 @@ export const appConfig = {
 		defaultRelays: [
 			'wss://relay-rpi.edufeed.org',
 			'wss://relay.damus.io',
-			// 'wss://nos.lol',
-			// 'wss://relay.nostr.band',
-			// 'wss://nostr.wine',
-			// 'wss://relay.snort.social'
+			'wss://nos.lol',
+			'wss://relay.nostr.band',
+			'wss://nostr.wine',
+			'wss://relay.snort.social'
 		],
 
 		// Future configuration options can be added here:
@@ -41,7 +41,35 @@ export const appConfig = {
 		apiKey: '324cfa67aec44c27b0ec767881636065',
 		
 		// Cache geocoding results for 30 days
-		cacheDurationDays: 30
+		cacheDurationDays: 30,
+
+		// Address validation settings
+		validation: {
+			// Minimum length for a geocodable address
+			minAddressLength: 10,
+			
+			// Minimum confidence score from OpenCage (0-10)
+			// Higher values = more strict validation
+			minConfidenceScore: 7,
+			
+			// Require address components (street types, numbers, etc.)
+			requireAddressComponents: true,
+			
+			// Keywords that suggest a proper address (localized for Germany/English)
+			streetTypeKeywords: [
+				'straße', 'strasse', 'str.', 'str',
+				'weg', 'platz', 'allee', 'gasse',
+				'street', 'avenue', 'road', 'ave', 'rd',
+				'boulevard', 'lane', 'drive', 'way'
+			],
+			
+			// Component types accepted from OpenCage results
+			acceptedComponentTypes: [
+				'road', 'house', 'building', 'retail',
+				'commercial', 'industrial', 'residential',
+				'address', 'postcode', 'street', 'neighbourhood'
+			]
+		}
 	},
 
 	// Other app-wide configurations can be added here:
