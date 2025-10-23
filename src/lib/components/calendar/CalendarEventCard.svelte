@@ -191,7 +191,7 @@
 	<!-- Reactions -->
 	{#if !compact}
 		<div class="mt-2">
-			<ReactionBar event={event} />
+			<ReactionBar event={event.originalEvent || event} />
 		</div>
 	{/if}
 		</div>
