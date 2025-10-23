@@ -267,6 +267,58 @@ export function setCachedCoordinates(location, coords) {
 }
 
 /**
+ * Autocomplete address suggestions using OpenCage API
+ * Focused on Germany and Europe
+ * @param {string} query - Partial address to search for
+ * @returns {Promise<Array<{formatted: string, lat: number, lng: number}>>}
+ */
+export async function autocompleteAddress(query) {
+	if (!query || typeof query !== 'string' || query.trim().length < 3) {
+		return [];
+	}
+
+	const apiKey = appConfig.geocoding.apiKey;
+	if (!apiKey) {
+		console.error('OpenCage API key not configured');
+		return [];
+	}
+
+	try {
+		// Focus on German-speaking countries and Europe
+		const params = new URLSearchParams({
+			q: query.trim(),
+			key: apiKey,
+			limit: '5',
+			countrycode: 'de,at,ch,fr,nl,be,pl,cz,dk,it,es', // Germany and neighboring countries
+			language: 'en',
+			no_annotations: '1'
+		});
+
+		const url = `https://api.opencagedata.com/geocode/v1/json?${params}`;
+		const response = await fetch(url);
+
+		if (!response.ok) {
+			throw new Error(`Autocomplete failed: ${response.status}`);
+		}
+
+		const data = await response.json();
+
+		if (data.results && data.results.length > 0) {
+			return data.results.map(result => ({
+				formatted: result.formatted,
+				lat: result.geometry.lat,
+				lng: result.geometry.lng
+			}));
+		}
+
+		return [];
+	} catch (error) {
+		console.error('Autocomplete error:', error);
+		return [];
+	}
+}
+
+/**
  * Geocode an address using OpenCage API with validation
  * @param {string} address - Address to geocode
  * @returns {Promise<{ lat: number, lng: number, formatted: string } | null>}

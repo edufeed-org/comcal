@@ -7,6 +7,7 @@
 	import { goto } from '$app/navigation';
 	import { validateEventForm, getCurrentTimezone } from '../../helpers/calendar.js';
 	import { encodeEventToNaddr } from '../../helpers/nostrUtils.js';
+	import { autocompleteAddress } from '../../helpers/geocoding.js';
 	import { useCalendarActions } from '../../stores/calendar-actions.svelte.js';
 	import { useCalendarManagement } from '../../stores/calendar-management-store.svelte.js';
 	import { useJoinedCommunitiesList } from '../../stores/joined-communities-list.svelte.js';
@@ -46,7 +47,7 @@
 		endTime: '10:00',
 		startTimezone: getCurrentTimezone(),
 		endTimezone: getCurrentTimezone(),
-		locations: [''],
+		location: '',
 		isAllDay: false,
 		eventType: 'date'
 	});
@@ -54,6 +55,12 @@
 	let validationErrors = /** @type {string[]} */ ([]);
 	let isSubmitting = false;
 	let submitError = '';
+
+	// Autocomplete state
+	let suggestions = $state(/** @type {Array<{formatted: string, lat: number, lng: number}>} */ ([]));
+	let showSuggestions = $state(false);
+	let isLoadingSuggestions = $state(false);
+	let debounceTimer = /** @type {number | null} */ (null);
 
 	// Reactive user state
 	let activeUser = $state(manager.active);
@@ -104,7 +111,7 @@
 			endTime: '10:00',
 			startTimezone: getCurrentTimezone(),
 			endTimezone: getCurrentTimezone(),
-			locations: [''],
+			location: '',
 			isAllDay: false,
 			eventType: 'date'
 		};
@@ -112,6 +119,8 @@
 		validationErrors = [];
 		isSubmitting = false;
 		submitError = '';
+		suggestions = [];
+		showSuggestions = false;
 	}
 
 	/**
@@ -128,10 +137,13 @@
 		const isAllDay = existingEvent.kind === 31922;
 		const eventType = isAllDay ? 'date' : 'time';
 
-		// Extract locations from event
-		const locations = existingEvent.locations && existingEvent.locations.length > 0 
-			? existingEvent.locations 
-			: [''];
+		// Extract location from event (handle both single string and array formats)
+		let location = '';
+		if (existingEvent.location) {
+			location = existingEvent.location;
+		} else if (existingEvent.locations && existingEvent.locations.length > 0) {
+			location = existingEvent.locations[0];
+		}
 
 		formData = {
 			title: existingEvent.title || '',
@@ -143,7 +155,7 @@
 			endTime: endDate ? endDate.toTimeString().slice(0, 5) : '10:00',
 			startTimezone: existingEvent.startTimezone || getCurrentTimezone(),
 			endTimezone: existingEvent.endTimezone || getCurrentTimezone(),
-			locations: locations,
+			location: location,
 			isAllDay: isAllDay,
 			eventType: eventType
 		};
@@ -151,6 +163,8 @@
 		validationErrors = [];
 		isSubmitting = false;
 		submitError = '';
+		suggestions = [];
+		showSuggestions = false;
 	}
 
 	/**
@@ -163,19 +177,68 @@
 	}
 
 	/**
-	 * Add a new location field
+	 * Handle location input with debounced autocomplete
+	 * @param {Event} e
 	 */
-	function addLocation() {
-		formData.locations = [...formData.locations, ''];
+	function handleLocationInput(e) {
+		const input = /** @type {HTMLInputElement} */ (e.target);
+		const query = input.value;
+
+		// Clear existing timer
+		if (debounceTimer !== null) {
+			clearTimeout(debounceTimer);
+		}
+
+		// Don't show suggestions for short queries
+		if (query.length < 3) {
+			showSuggestions = false;
+			suggestions = [];
+			return;
+		}
+
+		// Debounce the API call
+		isLoadingSuggestions = true;
+		debounceTimer = setTimeout(async () => {
+			try {
+				const results = await autocompleteAddress(query);
+				suggestions = results;
+				showSuggestions = results.length > 0;
+			} catch (error) {
+				console.error('Error fetching suggestions:', error);
+				suggestions = [];
+				showSuggestions = false;
+			} finally {
+				isLoadingSuggestions = false;
+			}
+		}, 400);
 	}
 
 	/**
-	 * Remove a location field
-	 * @param {number} index
+	 * Select a suggestion and populate the location field
+	 * @param {string} formatted
 	 */
-	function removeLocation(index) {
-		if (formData.locations.length > 1) {
-			formData.locations = formData.locations.filter((_, i) => i !== index);
+	function selectSuggestion(formatted) {
+		formData.location = formatted;
+		showSuggestions = false;
+		suggestions = [];
+	}
+
+	/**
+	 * Handle location field blur
+	 */
+	function handleLocationBlur() {
+		// Delay hiding to allow click on suggestion
+		setTimeout(() => {
+			showSuggestions = false;
+		}, 200);
+	}
+
+	/**
+	 * Handle location field focus
+	 */
+	function handleLocationFocus() {
+		if (suggestions.length > 0 && formData.location.length >= 3) {
+			showSuggestions = true;
 		}
 	}
 
@@ -407,36 +470,42 @@
 						{/if}
 					</div>
 
-					<!-- Locations -->
-					<div class="mb-4">
-						<span class="block text-sm font-medium text-base-content mb-1">Locations</span>
-						{#each formData.locations as _, index}
-							<div class="flex gap-2 mb-2">
-								<input
-									type="text"
-									class="input input-bordered flex-1"
-									bind:value={formData.locations[index]}
-									placeholder="Enter location"
-								/>
-								{#if formData.locations.length > 1}
+					<!-- Location with Autocomplete -->
+					<div class="mb-4 relative">
+						<label for="location" class="block text-sm font-medium text-base-content mb-1">
+							Location
+						</label>
+						<input
+							id="location"
+							type="text"
+							class="input input-bordered w-full"
+							bind:value={formData.location}
+							oninput={handleLocationInput}
+							onfocus={handleLocationFocus}
+							onblur={handleLocationBlur}
+							placeholder="Enter location (e.g., Berlin, Germany)"
+							autocomplete="off"
+						/>
+						
+						{#if showSuggestions && suggestions.length > 0}
+							<div class="absolute z-10 w-full mt-1 bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+								{#each suggestions as suggestion}
 									<button
 										type="button"
-										class="btn btn-sm btn-error"
-										onclick={() => removeLocation(index)}
-										aria-label="Remove location"
+										class="w-full text-left px-4 py-2 hover:bg-base-200 transition-colors text-sm"
+										onclick={() => selectSuggestion(suggestion.formatted)}
 									>
-										<CloseIcon class_="w-4 h-4" />
+										{suggestion.formatted}
 									</button>
-								{/if}
+								{/each}
 							</div>
-						{/each}
-						<button
-							type="button"
-							class="btn btn-sm btn-primary"
-							onclick={addLocation}
-						>
-							Add Location
-						</button>
+						{/if}
+						
+						{#if isLoadingSuggestions}
+							<div class="text-xs text-base-content/60 mt-1">
+								Loading suggestions...
+							</div>
+						{/if}
 					</div>
 
 					<!-- Event Image -->

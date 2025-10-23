@@ -244,7 +244,7 @@ export function convertFormDataToEvent(formData, communityPubkey) {
 		summary: formData.summary?.trim() || '',
 		image: formData.image?.trim() || '',
 		communityPubkey,
-		location: formData.locations.filter(loc => loc.trim()).join(', '),
+		location: formData.location?.trim() || '',
 		hashtags: [],
 		references: [],
 		participants: []

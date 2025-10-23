@@ -10,6 +10,7 @@
 	import { publishEvent } from '$lib/helpers/publisher.js';
 	import { showToast } from '$lib/helpers/toast.js';
 	import CommentList from '$lib/components/comments/CommentList.svelte';
+	import ReactionBar from '$lib/components/reactions/ReactionBar.svelte';
 import {
 	CalendarIcon,
 	ClockIcon,
@@ -482,6 +483,18 @@ import {
 								</div>
 							</a>
 						{/each}
+					</div>
+				</div>
+			</div>
+		{/if}
+
+		<!-- Reactions Section -->
+		{#if rawEvent}
+			<div class="card mb-8 bg-base-200 shadow-lg">
+				<div class="card-body">
+					<h2 class="card-title text-2xl">Reactions</h2>
+					<div class="mt-4">
+						<ReactionBar event={rawEvent} relays={appConfig.calendar.defaultRelays} />
 					</div>
 				</div>
 			</div>

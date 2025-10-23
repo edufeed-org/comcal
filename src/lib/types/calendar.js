@@ -79,7 +79,7 @@
  * @property {string} endTime - End time (HH:MM)
  * @property {string} startTimezone - Start timezone
  * @property {string} endTimezone - End timezone
- * @property {string[]} locations - Event locations
+ * @property {string} location - Event location
  * @property {boolean} isAllDay - Whether event is all day
  * @property {EventType} eventType - Event type (date or time)
  */
