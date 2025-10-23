@@ -1,20 +1,65 @@
 <script>
-	let { pubkey } = $props();
+	let { pubkey, showJoinButton = false } = $props();
 
 	import { getProfilePicture, getProfileContent } from 'applesauce-core/helpers';
 	import { useCommunityMembership } from '$lib/stores/joined-communities-list.svelte.js';
 	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
+	import { useActiveUser } from '$lib/stores/accounts.svelte';
 	import BookmarkIcon from '$lib/components/icons/social/BookmarkIcon.svelte';
 	import { hexToNpub } from '$lib/helpers/nostrUtils';
+	import { joinCommunity, leaveCommunity } from '$lib/helpers/community';
+	import { showToast } from '$lib/helpers/toast';
 
 	// Use the reusable user profile hook
 	const getProfile = useUserProfile(pubkey);
 
 	// Use the reusable community membership hook
 	const getJoined = useCommunityMembership(pubkey);
+	
+	// Get active user for authentication
+	const getActiveUser = useActiveUser();
+	const activeUser = $derived(getActiveUser());
+
+	let isJoining = $state(false);
+
+	async function handleJoinClick(/** @type {MouseEvent} */ e) {
+		e.preventDefault();
+		e.stopPropagation();
+
+		if (!activeUser) {
+			showToast('Please login to join communities', 'error');
+			return;
+		}
+
+		if (isJoining) return;
+
+		isJoining = true;
+		try {
+			if (getJoined()) {
+				const result = await leaveCommunity(pubkey);
+				if (result.success) {
+					showToast('Left community', 'success');
+				} else {
+					showToast(result.error || 'Failed to leave community', 'error');
+				}
+			} else {
+				const result = await joinCommunity(pubkey);
+				if (result.success) {
+					showToast('Joined community', 'success');
+				} else {
+					showToast(result.error || 'Failed to join community', 'error');
+				}
+			}
+		} catch (error) {
+			console.error('Error toggling community membership:', error);
+			showToast('An error occurred', 'error');
+		} finally {
+			isJoining = false;
+		}
+	}
 </script>
 
-<a href={pubkey ? `/c/${hexToNpub(pubkey) || pubkey}` : '#'} class="card w-48 bg-base-100 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105 flex flex-col items-center gap-2 justify-center p-4 rounded-xl border border-base-200 hover:border-primary/20">
+<a href={pubkey ? `/c/${hexToNpub(pubkey) || pubkey}` : '#'} class="card bg-base-100 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105 flex flex-col items-center gap-3 justify-center p-6 rounded-xl border border-base-200 hover:border-primary/20 min-w-[240px]">
 	<div class="absolute top-3 right-3 z-10">
 		{#if getJoined()}
 			<div class="bg-emerald-500 shadow-sm border border-emerald-600/20 rounded-full w-6 h-6 flex items-center justify-center">
@@ -27,19 +72,35 @@
 		{/if}
 	</div>
 
-	<figure class="mb-2">
+	<figure class="mb-3">
 		<img
 			src={getProfilePicture(getProfile()) || `https://robohash.org/${pubkey}`}
 			alt="Profile"
-			class="rounded-full object-cover w-20 h-20 ring-2 ring-base-300 hover:ring-primary/50 transition-colors duration-300"
+			class="rounded-full object-cover w-24 h-24 ring-2 ring-base-300 hover:ring-primary/50 transition-colors duration-300"
 		/>
 	</figure>
-	<div class="card-body items-center text-center p-0">
-		<h2 class="card-title text-lg font-semibold text-base-content hover:text-primary transition-colors duration-300 mb-1">
+	<div class="card-body items-center text-center p-0 w-full">
+		<h2 class="card-title text-xl font-semibold text-base-content hover:text-primary transition-colors duration-300 mb-2">
 			{getProfile()?.name || 'Unknown User'}
 		</h2>
-		<p class="text-sm text-base-content/70 w-full max-w-40 leading-relaxed relative" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%);" title={getProfile()?.about || 'No bio available'}>
+		<p class="text-sm text-base-content/70 w-full leading-relaxed relative" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%);" title={getProfile()?.about || 'No bio available'}>
 			{getProfile()?.about || 'No bio available'}
 		</p>
+		
+		{#if showJoinButton && activeUser}
+			<button
+				onclick={handleJoinClick}
+				disabled={isJoining}
+				class="btn btn-sm mt-3 w-full {getJoined() ? 'btn-outline' : 'btn-primary'}"
+			>
+				{#if isJoining}
+					<span class="loading loading-spinner loading-xs"></span>
+				{:else if getJoined()}
+					Leave
+				{:else}
+					Join
+				{/if}
+			</button>
+		{/if}
 	</div>
 </a>

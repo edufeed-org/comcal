@@ -14,12 +14,23 @@
 </script>
 
 <!-- Sidebar -->
-<div class="mb-4 flex items-center justify-between">
-	<h2 class="text-base font-semibold text-base-content">Joined Communities</h2>
+<div class="mb-4 space-y-2">
+	<div class="flex items-center justify-between">
+		<h2 class="text-base font-semibold text-base-content">Joined Communities</h2>
+		{#if activeUser()}
+			<button class="btn btn-sm btn-primary hover:btn-primary-focus transition-colors duration-200" onclick={() => modalStore.openModal('createCommunity')}>
+				New Group
+			</button>
+		{/if}
+	</div>
+	
 	{#if activeUser()}
-		<button class="btn btn-sm btn-primary hover:btn-primary-focus transition-colors duration-200" onclick={() => modalStore.openModal('createCommunity')}>
-			New Group
-		</button>
+		<a href="/discover" class="btn btn-sm btn-outline btn-block gap-2">
+			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+			</svg>
+			Discover Communities
+		</a>
 	{/if}
 </div>
 
@@ -43,8 +54,13 @@
 	{/each}
 	{#if joinedCommunities.length === 0}
 		<div class="text-center py-6 px-3">
-			<p class="text-sm text-base-content/60 mb-2">No joined communities yet</p>
-			<p class="text-xs text-base-content/40">Join communities to see them here</p>
+			<p class="text-sm text-base-content/60 mb-3">No joined communities yet</p>
+			<a href="/discover" class="btn btn-sm btn-primary">
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+				</svg>
+				Discover Communities
+			</a>
 		</div>
 	{/if}
 </div>

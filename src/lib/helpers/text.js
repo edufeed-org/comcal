@@ -62,3 +62,26 @@ export function extractUrls(str) {
 	
 	return urls;
 }
+
+/**
+ * Extract hashtags from text
+ * @param {string} text - The text to parse for hashtags
+ * @returns {string[]} Array of hashtags (without # symbol, lowercase)
+ */
+export function extractHashtags(text) {
+	if (!text || typeof text !== 'string') {
+		return [];
+	}
+	
+	// Match #word patterns (Unicode support for international hashtags)
+	const hashtagRegex = /#(\w+)/g;
+	const hashtags = [];
+	let match;
+	
+	while ((match = hashtagRegex.exec(text)) !== null) {
+		hashtags.push(match[1].toLowerCase());
+	}
+	
+	// Deduplicate and return
+	return [...new Set(hashtags)];
+}

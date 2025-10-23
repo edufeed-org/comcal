@@ -4,6 +4,7 @@
 	import { useUserProfile } from '$lib/stores/user-profile.svelte';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { PlusIcon } from '$lib/components/icons';
+	import { goto } from '$app/navigation';
 
 	let { selectedCommunityId = $bindable(), onCommunitySelect } = $props();
 
@@ -55,11 +56,24 @@
 		{/each}
 	</div>
 
-	<!-- Spacer to push + button to bottom -->
+	<!-- Spacer to push buttons to bottom -->
 	<div class="flex-1"></div>
 
-	<!-- Create Community Button -->
-	<div class="flex justify-center py-4 border-t border-base-300">
+	<!-- Action Buttons -->
+	<div class="flex flex-col items-center py-3 border-t border-base-300 gap-2">
+		<!-- Discover Communities Button -->
+		<div class="tooltip tooltip-right" data-tip="Discover Communities">
+			<a
+				href="/discover"
+				class="btn btn-circle btn-ghost btn-sm w-10 h-10"
+			>
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+				</svg>
+			</a>
+		</div>
+		
+		<!-- Create Community Button -->
 		<div class="tooltip tooltip-right" data-tip="Create Community">
 			<button
 				onclick={handleCreateCommunity}
@@ -107,14 +121,25 @@
 
 		{#if joinedCommunities.length === 0}
 			<div class="text-center py-8 text-base-content/60">
-				<p class="text-sm mb-2">No joined communities yet</p>
-				<p class="text-xs">Create or join a community to get started</p>
+				<p class="text-sm mb-3">No joined communities yet</p>
+				<a href="/discover" class="btn btn-sm btn-primary">
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+					</svg>
+					Discover Communities
+				</a>
 			</div>
 		{/if}
 	</div>
 
-	<!-- Create Community Button -->
-	<div class="p-4 border-t border-base-300">
+	<!-- Action Buttons -->
+	<div class="p-4 border-t border-base-300 space-y-2">
+		<a href="/discover" class="btn btn-outline w-full gap-2">
+			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+			</svg>
+			Discover Communities
+		</a>
 		<button
 			onclick={handleCreateCommunity}
 			class="btn btn-primary w-full"
