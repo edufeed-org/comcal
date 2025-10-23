@@ -305,9 +305,10 @@ export async function geocodeAddress(address) {
 		return null;
 	}
 
-	// Pre-validation: Check if address is geocodable
-	if (!isGeocodableAddress(address)) {
-		console.log(`Skipping geocoding for '${address}': does not appear to be a proper address`);
+	// Basic validation: minimum length and not just a single word
+	const trimmed = address.trim();
+	if (trimmed.length < 3 || (!trimmed.includes(' ') && !trimmed.includes(','))) {
+		console.log(`Skipping geocoding for '${address}': too short or single word`);
 		return null;
 	}
 
@@ -406,8 +407,8 @@ export async function parseLocation(location, geohash = null) {
 		}
 	}
 
-	// Try geohash from event if provided
-	if (geohash && type === 'address') {
+	// Try geohash from event if provided (for address or venue types)
+	if (geohash && (type === 'address' || type === 'venue')) {
 		const coords = geohashToCoordinates(geohash);
 		if (coords) {
 			// Don't cache geohash as the location string (address might be more specific)
@@ -415,8 +416,9 @@ export async function parseLocation(location, geohash = null) {
 		}
 	}
 
-	// Geocode as address
-	if (type === 'address') {
+	// Attempt geocoding for both address and venue types
+	// Let the OpenCage API determine if it's geocodable
+	if (type === 'address' || type === 'venue') {
 		const coords = await geocodeAddress(trimmed);
 		if (coords) {
 			return { ...coords, source: 'geocoded' };

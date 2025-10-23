@@ -56,10 +56,12 @@ export const appConfig = {
 			
 			// Minimum confidence score from OpenCage (0-10)
 			// Higher values = more strict validation
-			minConfidenceScore: 7,
+			// Lowered to 5 to accept city-level geocoding
+			minConfidenceScore: 5,
 			
 			// Require address components (street types, numbers, etc.)
-			requireAddressComponents: true,
+			// Set to false to allow city names and organizations
+			requireAddressComponents: false,
 			
 			// Keywords that suggest a proper address (localized for Germany/English)
 			streetTypeKeywords: [
@@ -70,10 +72,14 @@ export const appConfig = {
 			],
 			
 			// Component types accepted from OpenCage results
+			// Expanded to include cities, towns, venues, and organizations
 			acceptedComponentTypes: [
 				'road', 'house', 'building', 'retail',
 				'commercial', 'industrial', 'residential',
-				'address', 'postcode', 'street', 'neighbourhood'
+				'address', 'postcode', 'street', 'neighbourhood',
+				'city', 'town', 'village', 'municipality',
+				'county', 'state', 'country',
+				'amenity', 'venue', 'place', 'locality'
 			]
 		}
 	},

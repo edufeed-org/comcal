@@ -45,14 +45,6 @@
 			// Check location type first
 			const locationType = detectLocationType(location);
 
-			if (locationType === 'venue') {
-				// Venue name detected - don't attempt geocoding
-				isVenue = true;
-				console.log(`'${location}' detected as venue name, skipping geocoding`);
-				loading = false;
-				return;
-			}
-
 			if (locationType === 'url') {
 				// URL detected - don't show map
 				console.log(`'${location}' detected as URL, skipping map display`);
@@ -60,17 +52,16 @@
 				return;
 			}
 
-			// Parse location to get coordinates
+			// Attempt to parse location (parseLocation now handles venue types too)
 			const result = await parseLocation(location, geohash);
 
 			if (result) {
 				coordinates = { lat: result.lat, lng: result.lng };
 				console.log(`Location parsed (${result.source}):`, coordinates);
 			} else {
-				// Only show error if we expected to find coordinates
-				if (locationType === 'address') {
-					error = 'Unable to geocode address';
-				}
+				// parseLocation will have logged why geocoding failed
+				// Don't show an error UI - just don't display the map
+				console.log(`No coordinates found for location: ${location}`);
 			}
 		} catch (err) {
 			console.error('Error parsing location:', err);
