@@ -225,54 +225,60 @@ import {
 			</div>
 		{/if}
 
-		<!-- Action Buttons and User Badge -->
-		<div class="mb-6 flex items-center justify-between gap-4">
-			<!-- Your Event Badge -->
-			{#if isUserEvent}
-				<div class="badge badge-primary badge-lg gap-2">
+		<!-- Event Owner Badge -->
+		{#if isUserEvent}
+			<div class="mb-4 flex items-center gap-2">
+				<div class="badge badge-primary gap-2">
 					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-4 h-4 stroke-current">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
 					</svg>
 					Your Event
 				</div>
-			{:else}
-				<div></div>
-			{/if}
+			</div>
+		{/if}
 
-			<!-- Action Buttons -->
-			<div class="flex gap-2">
+		<!-- Title Row with Copy Icon, Add to Calendar, and Edit -->
+		<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+			<!-- Event Title with Copy Icon -->
+			<div class="flex flex-1 items-start gap-2">
+				<h1 class="text-4xl font-bold text-base-content">
+					{event.title}
+				</h1>
 				<button
-					class="btn btn-outline gap-2"
+					class="btn btn-ghost btn-sm btn-square"
 					onclick={copyNaddr}
-					title="Copy event address (naddr)"
+					title="Copy event link"
 				>
 					<CopyIcon />
-					Copy Link
 				</button>
-				{#if isUserEvent}
-					<button
-						class="btn btn-secondary gap-2"
-						onclick={() => isEditModalOpen = true}
-					>
-						<EditIcon />
-						Edit Event
-					</button>
-					<button
-						class="btn btn-error gap-2"
-						onclick={() => showDeleteConfirmation = true}
-					>
-						<TrashIcon />
-						Delete Event
-					</button>
-				{/if}
+			</div>
+			
+			<!-- Actions (right side) -->
+			<div class="flex flex-shrink-0 items-center gap-2">
 				<AddToCalendarDropdown event={event} disabled={!activeUser} />
+				{#if isUserEvent}
+					<div class="dropdown dropdown-end">
+						<button tabindex="0" class="btn btn-ghost btn-sm btn-square" role="button" title="Manage event">
+							<EditIcon />
+						</button>
+					<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow-lg border border-base-300">
+						<li>
+							<button onclick={() => isEditModalOpen = true} class="flex items-center gap-2">
+								<EditIcon class="w-4 h-4" />
+								<span>Edit Event</span>
+							</button>
+						</li>
+						<li>
+							<button onclick={() => showDeleteConfirmation = true} class="flex items-center gap-2 text-error hover:bg-error/10">
+								<TrashIcon class="w-4 h-4" />
+								<span>Delete Event</span>
+							</button>
+						</li>
+					</ul>
+					</div>
+				{/if}
 			</div>
 		</div>
-
-		<!-- Event Title -->
-		<h1 class="mb-6 text-4xl font-bold text-base-content">
-			{event.title}
-		</h1>
 
 		<!-- Event Description -->
 		{#if event.summary}
