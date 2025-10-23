@@ -25,10 +25,8 @@
 				cardsPerSlide = 1;
 			} else if (width < 1024) {
 				cardsPerSlide = 2;
-			} else if (width < 1280) {
-				cardsPerSlide = 3;
 			} else {
-				cardsPerSlide = 4;
+				cardsPerSlide = 3;
 			}
 		}
 
@@ -166,7 +164,7 @@
 						{#each slides() as slide, index (index)}
 							<div class="min-w-0 flex-[0_0_100%]">
 								<!-- Grid of community cards -->
-								<div class="grid w-full gap-4 p-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+								<div class="grid w-full gap-4 p-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
 									{#each slide as community (community.pubkey)}
 										<CommunikeyCard pubkey={community.pubkey} />
 									{/each}

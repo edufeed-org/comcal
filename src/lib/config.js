@@ -34,6 +34,12 @@ export const appConfig = {
 		]
 	},
 
+	blossom: {
+		// Blossom server for media uploads
+		uploadEndpoint: 'https://blossom.edufeed.org/upload',
+		maxFileSize: 5 * 1024 * 1024, // 5MB limit
+	},
+
 	geocoding: {
 		// OpenCage API key for geocoding addresses
 		// Free tier: 2,500 requests/day

@@ -26,11 +26,11 @@
 		about: '',
 		picture: '',
 		website: '',
-		privateKey: null,
+		privateKey: /** @type {Uint8Array | null} */ (null),
 		publicKey: '',
 		nsec: '',
 		npub: '',
-		selectedFollows: [],
+		selectedFollows: /** @type {any[]} */ ([]),
 		downloadConfirmed: false,
 		ncryptsecPassword: '',
 		useEncryption: false
@@ -39,9 +39,8 @@
 	// UI state
 	let isGeneratingKeys = $state(false);
 	let isPublishing = $state(false);
-	let uploadingImage = $state(false);
-	let imageFile = $state(null);
-	let errors = $state({});
+	let errors = $state(/** @type {Record<string, string>} */ ({}));
+	let signer = $state(/** @type {SimpleSigner | null} */ (null));
 	
 	// No complex profile state needed - #await handles everything!
 
@@ -62,6 +61,9 @@
 			userData.publicKey = publicKey;
 			userData.nsec = nip19.nsecEncode(privateKey);
 			userData.npub = nip19.npubEncode(publicKey);
+			
+			// Create signer for future operations (like image upload with auth)
+			signer = new SimpleSigner(privateKey);
 		} catch (error) {
 			console.error('Error generating keypair:', error);
 			errors.keyGeneration = 'Failed to generate keys. Please try again.';
@@ -70,64 +72,12 @@
 		}
 	}
 
-	async function uploadImageToBlossom(file) {
-		const formData = new FormData();
-		formData.append('file', file);
 
-		// Try nstart.me first, fallback to blossom.primal.net
-		const endpoints = [
-			'https://nstart.me/a/step-end',
-			'https://blossom.primal.net/upload'
-		];
-
-		for (const endpoint of endpoints) {
-			try {
-				const response = await fetch(endpoint, {
-					method: 'POST',
-					body: formData
-				});
-
-				if (response.ok) {
-					const result = await response.json();
-					return result.url || result.data?.url;
-				}
-			} catch (error) {
-				console.warn(`Failed to upload to ${endpoint}:`, error);
-			}
-		}
-
-		throw new Error('Failed to upload image to any Blossom service');
-	}
-
-	async function handleImageUpload(event) {
-		const file = event.target.files[0];
-		if (!file) return;
-
-		if (!file.type.startsWith('image/')) {
-			errors.image = 'Please select a valid image file';
-			return;
-		}
-
-		if (file.size > 5 * 1024 * 1024) { // 5MB limit
-			errors.image = 'Image must be smaller than 5MB';
-			return;
-		}
-
-		try {
-			uploadingImage = true;
-			errors.image = '';
-			imageFile = file;
-			
-			const imageUrl = await uploadImageToBlossom(file);
-			userData.picture = imageUrl;
-		} catch (error) {
-			console.error('Image upload failed:', error);
-			errors.image = 'Failed to upload image. Please try again.';
-		} finally {
-			uploadingImage = false;
-		}
-	}
-
+	/**
+	 * @param {string} content
+	 * @param {string} filename
+	 * @param {string} mimeType
+	 */
 	function downloadFile(content, filename, mimeType = 'text/plain') {
 		const blob = new Blob([content], { type: mimeType });
 		const url = URL.createObjectURL(blob);
@@ -168,6 +118,9 @@
 		}
 	}
 
+	/**
+	 * @param {any} user
+	 */
 	function toggleFollowUser(user) {
 		const index = userData.selectedFollows.findIndex(u => u.npub === user.npub);
 		if (index >= 0) {
@@ -177,12 +130,18 @@
 		}
 	}
 
+	/**
+	 * @param {string} text
+	 */
 	function copyToClipboard(text) {
 		navigator.clipboard.writeText(text).then(() => {
 			// Could add a toast notification here
 		});
 	}
 
+	/**
+	 * @param {number} step
+	 */
 	function validateStep(step) {
 		errors = {};
 		
@@ -220,6 +179,10 @@
 	async function publishProfile() {
 		try {
 			isPublishing = true;
+			
+			if (!userData.privateKey || !userData.publicKey) {
+				throw new Error('Keys not generated');
+			}
 			
 			// Create signer and account
 			const signer = new SimpleSigner(userData.privateKey);
@@ -303,11 +266,14 @@
 		currentStep = 1;
 		userData = {
 			name: '', about: '', picture: '', website: '',
-			privateKey: null, publicKey: null, nsec: '', npub: '',
-			selectedFollows: [], downloadConfirmed: false,
+			privateKey: /** @type {Uint8Array | null} */ (null), 
+			publicKey: '', nsec: '', npub: '',
+			selectedFollows: /** @type {any[]} */ ([]), 
+			downloadConfirmed: false,
 			ncryptsecPassword: '', useEncryption: false
 		};
 		errors = {};
+		signer = null;
 	}
 </script>
 
@@ -344,82 +310,99 @@
 
 			{:else if currentStep === 2}
 				<!-- Profile Creation Step -->
-				<div class="space-y-4">
-					<h2 class="text-xl font-semibold mb-4">Create Your Profile</h2>
+				<div class="space-y-6">
+					<h2 class="text-xl font-semibold mb-6 text-center">Create Your Profile</h2>
 					
-					<!-- Avatar Upload -->
-					<div class="form-control">
-						<label class="label">
-							<span class="label-text">Profile Picture</span>
-						</label>
-						<div class="flex items-center gap-4">
+					<!-- Avatar URL Input (centered) -->
+					<div class="flex flex-col items-center gap-4">
+						<!-- Circular Avatar Preview -->
+						<div class="w-32 h-32 rounded-full overflow-hidden bg-base-300 border-4 border-base-200 shadow-lg">
 							{#if userData.picture}
-								<div class="avatar">
-									<div class="w-16 rounded-full">
-										<img src={userData.picture} alt="Profile" />
-									</div>
+								<img 
+									src={userData.picture} 
+									alt="Profile Preview" 
+									class="w-full h-full object-cover"
+									onerror={(e) => { e.currentTarget.style.display = 'none'; }}
+								/>
+							{:else}
+								<!-- User icon placeholder -->
+								<div class="w-full h-full flex items-center justify-center text-base-content/30">
+									<svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path 
+											stroke-linecap="round" 
+											stroke-linejoin="round" 
+											stroke-width="1.5"
+											d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+										/>
+									</svg>
 								</div>
 							{/if}
-							<input
-								type="file"
-								accept="image/*"
-								class="file-input file-input-bordered w-full max-w-xs"
-								onchange={handleImageUpload}
-								disabled={uploadingImage}
-							/>
-							{#if uploadingImage}
-								<span class="loading loading-spinner loading-sm"></span>
-							{/if}
 						</div>
-						{#if errors.image}
+						
+						<!-- URL Input Field -->
+						<div class="form-control w-full max-w-md flex flex-col">
 							<label class="label">
-								<span class="label-text-alt text-error">{errors.image}</span>
+								<span class="label-text text-center w-full">Profile Picture URL</span>
 							</label>
-						{/if}
-					</div>
-
-					<!-- Name -->
-					<div class="form-control">
-						<label class="label">
-							<span class="label-text">Name *</span>
-						</label>
-						<input
-							type="text"
-							bind:value={userData.name}
-							placeholder="Your name or nickname"
-							class="input input-bordered w-full"
-							class:input-error={errors.name}
-						/>
-						{#if errors.name}
+							<input
+								type="url"
+								bind:value={userData.picture}
+								placeholder="https://example.com/avatar.jpg"
+								class="input input-bordered w-full text-center"
+							/>
 							<label class="label">
-								<span class="label-text-alt text-error">{errors.name}</span>
+								<span class="label-text-alt text-center w-full opacity-70">Paste an image URL for your avatar</span>
 							</label>
-						{/if}
+						</div>
 					</div>
 
-					<!-- About -->
-					<div class="form-control">
-						<label class="label">
-							<span class="label-text">About</span>
-						</label>
-						<textarea
-							bind:value={userData.about}
-							placeholder="Tell us something about yourself"
-							class="textarea textarea-bordered h-24"
-						></textarea>
-					</div>
+					<!-- Form fields container (centered) -->
+					<div class="flex flex-col items-center w-full">
+						<div class="w-full max-w-md space-y-4">
+							<!-- Name -->
+							<div class="form-control flex flex-col">
+								<label class="label">
+									<span class="label-text text-center w-full">Name *</span>
+								</label>
+								<input
+									type="text"
+									bind:value={userData.name}
+									placeholder="Your name or nickname"
+									class="input input-bordered w-full"
+									class:input-error={errors.name}
+								/>
+								{#if errors.name}
+									<label class="label">
+										<span class="label-text-alt text-center w-full text-error">{errors.name}</span>
+									</label>
+								{/if}
+							</div>
 
-					<!-- Website -->
-					<div class="form-control">
-						<label class="label">
-							<span class="label-text">Website</span>
-						</label>
-						<input
-							type="url"
-							bind:value={userData.website}
-							placeholder="https://your-website.com"
-							class="input input-bordered w-full"
-						/>
+							<!-- About -->
+							<div class="form-control flex flex-col">
+								<label class="label">
+									<span class="label-text text-center w-full">About</span>
+								</label>
+								<textarea
+									bind:value={userData.about}
+									placeholder="Tell us something about yourself"
+									class="textarea textarea-bordered h-24 w-full"
+								></textarea>
+							</div>
+
+							<!-- Website -->
+							<div class="form-control flex flex-col">
+								<label class="label">
+									<span class="label-text text-center w-full">Website</span>
+								</label>
+								<input
+									type="url"
+									bind:value={userData.website}
+									placeholder="https://your-website.com"
+									class="input input-bordered w-full"
+								/>
+							</div>
+						</div>
 					</div>
 				</div>
 
