@@ -54,7 +54,7 @@
 	/>
 
 	<!-- Tab Content -->
-	<div class="min-h-screen">
+	<div class="mx-auto max-w-5xl px-4 py-6">
 		{#if activeTab === 9}
 			<Chat {communikeyEvent} />
 		{:else if activeTab === 31923}

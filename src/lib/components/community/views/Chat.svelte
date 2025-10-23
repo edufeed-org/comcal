@@ -210,7 +210,7 @@
 	});
 </script>
 
-<div class="flex h-96 flex-col rounded-lg border bg-base-100">
+<div class="flex flex-col rounded-lg border bg-base-100" style="height: calc(100vh - 20rem);">
 	<!-- Chat header -->
 	<div class="rounded-t-lg border-b bg-base-200 px-4 py-2">
 		<h3 class="font-semibold text-base-content">Community Chat</h3>
