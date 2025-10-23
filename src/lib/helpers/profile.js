@@ -1,109 +1,101 @@
-import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { getProfilePicture } from 'applesauce-core/helpers';
+import { profileLoader } from '$lib/loaders/profile.js';
+import { appConfig } from '$lib/config.js';
+import { getProfilePicture, getProfileContent } from 'applesauce-core/helpers';
 import { nip19 } from 'nostr-tools';
+import { take, timeout, catchError, map, firstValueFrom } from 'rxjs';
+import { of } from 'rxjs';
 
 /**
  * Fetch profile data for a given npub or pubkey
+ * Uses the loader pattern with RxJS operators
  * @param {string} identifier - Either an npub or hex pubkey
  * @returns {Promise<Object>} Profile data with fallbacks
  */
 export async function fetchProfileData(identifier) {
+	// Convert npub to pubkey if needed, but preserve the original npub
+	let pubkey = identifier;
+	let npub = identifier;
+	
 	try {
-		// Convert npub to pubkey if needed
-		let pubkey = identifier;
 		if (identifier.startsWith('npub')) {
 			const decoded = nip19.decode(identifier);
 			pubkey = String(decoded.data);
+			npub = identifier; // Keep the original npub
+		} else {
+			// If given a pubkey, create the npub
+			npub = nip19.npubEncode(identifier);
 		}
-
-		// Simple promise that resolves when we get profile data or times out
-		return new Promise((resolve, reject) => {
-			let resolved = false;
-			
-			const subscription = eventStore.profile(pubkey).subscribe((event) => {
-				if (event && !resolved) {
-					resolved = true;
-					subscription.unsubscribe();
-					
-					try {
-						const profileContent = event;
-						let profilePicture = `https://robohash.org/${pubkey}`;
-						
-						// Use getProfilePicture which works with both events and parsed content
-						try {
-							profilePicture = getProfilePicture(profileContent) || profilePicture;
-						} catch (picError) {
-							// Use fallback if getProfilePicture fails
-						}
-
-						const profileData = {
-							npub: identifier.startsWith('npub') ? identifier : nip19.npubEncode(pubkey),
-							pubkey,
-							name: profileContent?.name || profileContent?.display_name || 'Anonymous',
-							about: profileContent?.about || '',
-							picture: profilePicture,
-							website: profileContent?.website || '',
-							nip05: profileContent?.nip05 || '',
-							lud16: profileContent?.lud16 || '',
-							banner: profileContent?.banner || '',
-							event
-						};
-						
-						resolve(profileData);
-					} catch (error) {
-						console.warn('Error parsing profile content:', error);
-						resolve({
-							npub: identifier.startsWith('npub') ? identifier : nip19.npubEncode(pubkey),
-							pubkey,
-							name: 'Anonymous',
-							about: '',
-							picture: `https://robohash.org/${pubkey}`,
-							website: '',
-							nip05: '',
-							lud16: '',
-							banner: '',
-							event
-						});
-					}
-				}
-			});
-
-			// Clean timeout - resolve with fallback if no data received
-			setTimeout(() => {
-				if (!resolved) {
-					resolved = true;
-					subscription.unsubscribe();
-					resolve({
-						npub: identifier.startsWith('npub') ? identifier : nip19.npubEncode(pubkey),
-						pubkey,
-						name: 'Anonymous',
-						about: '',
-						picture: `https://robohash.org/${pubkey}`,
-						website: '',
-						nip05: '',
-						lud16: '',
-						banner: '',
-						event: null
-					});
-				}
-			}, 2000); // 2 second timeout
-		});
 	} catch (error) {
-		console.error('Error fetching profile data:', error);
-		// Return fallback data on error
-		return {
-			npub: identifier,
-			pubkey: identifier,
-			name: 'Anonymous',
-			about: '',
-			picture: `https://robohash.org/${identifier}`,
-			website: '',
-			nip05: '',
-			lud16: '',
-			banner: '',
-			event: null
-		};
+		console.error('Error decoding identifier:', error);
+		// Return fallback if we can't decode
+		return createFallbackProfile(identifier, identifier);
 	}
+
+	// Use the loader pattern with RxJS operators
+	return firstValueFrom(
+		profileLoader({
+			kind: 0,
+			pubkey,
+			relays: appConfig.calendar.defaultRelays
+		}).pipe(
+			// Take only the first profile event
+			take(1),
+			// Timeout after 2 seconds
+			timeout(2000),
+			// Transform event to profile data
+			map((event) => {
+				// Extract profile content from event
+				const profileContent = getProfileContent(event);
+				let profilePicture = `https://robohash.org/${pubkey}`;
+				
+				// Use getProfilePicture which works with both events and parsed content
+				try {
+					profilePicture = getProfilePicture(event) || profilePicture;
+				} catch {
+					// Use fallback if getProfilePicture fails
+				}
+
+				return {
+					npub,
+					pubkey,
+					name: profileContent?.name || profileContent?.display_name || 'Anonymous',
+					about: profileContent?.about || '',
+					picture: profilePicture,
+					website: profileContent?.website || '',
+					nip05: profileContent?.nip05 || '',
+					lud16: profileContent?.lud16 || '',
+					banner: profileContent?.banner || '',
+					event
+				};
+			}),
+			// Handle errors and timeouts with fallback
+			catchError((error) => {
+				console.warn('Profile fetch error or timeout:', error);
+				return of(createFallbackProfile(npub, pubkey));
+			})
+		)
+	);
+}
+
+/**
+ * Create fallback profile data
+ * @param {string} npub - User's npub
+ * @param {string} pubkey - User's pubkey
+ * @returns {Object} Fallback profile data
+ */
+function createFallbackProfile(npub, pubkey) {
+	return {
+		npub,
+		pubkey,
+		name: 'Anonymous',
+		about: '',
+		picture: `https://robohash.org/${pubkey}`,
+		website: '',
+		nip05: '',
+		lud16: '',
+		banner: '',
+		event: null
+	};
 }
 
 /**
