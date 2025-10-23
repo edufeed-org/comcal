@@ -1,6 +1,7 @@
 <script>
 	import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte.js';
 	import { getTagValue } from 'applesauce-core/helpers';
+	import { kindToContentType } from '$lib/helpers/contentTypes.js';
 	import CommunitySidebar from './CommunitySidebar.svelte';
 	import ContentNavSidebar from './ContentNavSidebar.svelte';
 	import BottomTabBar from './BottomTabBar.svelte';
@@ -42,6 +43,17 @@
 		selectedContentType = type;
 	}
 
+	/**
+	 * Handle navigation from content type kind number
+	 * @param {number} kind - The content type kind number
+	 */
+	function handleKindNavigation(kind) {
+		const contentType = kindToContentType(kind);
+		if (contentType) {
+			selectedContentType = contentType;
+		}
+	}
+
 	function toggleDrawer() {
 		leftDrawerOpen = !leftDrawerOpen;
 	}
@@ -61,6 +73,7 @@
 	<MainContentArea
 		{selectedCommunityId}
 		{selectedContentType}
+		onKindNavigation={handleKindNavigation}
 	/>
 </div>
 
@@ -86,6 +99,7 @@
 				<MainContentArea
 					{selectedCommunityId}
 					{selectedContentType}
+					onKindNavigation={handleKindNavigation}
 				/>
 			</div>
 

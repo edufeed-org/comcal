@@ -7,7 +7,7 @@
 	import ActivityView from '../views/ActivityView.svelte';
 	import SettingsView from '../views/SettingsView.svelte';
 
-	let { selectedCommunityId, selectedContentType } = $props();
+	let { selectedCommunityId, selectedContentType, onKindNavigation } = $props();
 
 	let communikeyEvent = $state(/** @type {any} */ (null));
 	let profileEvent = $state(/** @type {any} */ (null));
@@ -60,7 +60,7 @@
 		<!-- Key block ensures views remount when community changes -->
 		{#key selectedCommunityId}
 			{#if selectedContentType === 'home'}
-				<HomeView {communikeyEvent} {profileEvent} communityId={selectedCommunityId} />
+				<HomeView {communikeyEvent} {profileEvent} communityId={selectedCommunityId} {onKindNavigation} />
 			{:else if selectedContentType === 'chat'}
 				<Chat {communikeyEvent} />
 			{:else if selectedContentType === 'calendar'}

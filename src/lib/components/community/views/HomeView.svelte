@@ -1,16 +1,16 @@
 <script>
 	import { getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
 	import CommunikeyHeader from '$lib/components/CommunikeyHeader.svelte';
-	import { getCommunityContentTypes } from '$lib/helpers';
+	import { getCommunityAvailableContentTypes } from '$lib/helpers/contentTypes.js';
 	
 	// Import stat components
 	import MembersStat from '$lib/components/community/stats/MembersStat.svelte';
 	import CalendarEventsStat from '$lib/components/community/stats/CalendarEventsStat.svelte';
 	import MessagesStat from '$lib/components/community/stats/MessagesStat.svelte';
 
-	let { communikeyEvent, profileEvent, communityId } = $props();
+	let { communikeyEvent, profileEvent, communityId, onKindNavigation } = $props();
 
-	let contentTypes = $derived(communikeyEvent ? getCommunityContentTypes(communikeyEvent) : []);
+	let contentTypes = $derived(communikeyEvent ? getCommunityAvailableContentTypes(communikeyEvent) : []);
 </script>
 
 {#if profileEvent && communikeyEvent}
@@ -20,6 +20,8 @@
 			{communikeyEvent}
 			profile={profileEvent}
 			communikeyContentTypes={contentTypes}
+			activeTab={undefined}
+			onTabChange={onKindNavigation}
 		/>
 
 		<!-- Main Content -->

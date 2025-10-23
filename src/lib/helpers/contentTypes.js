@@ -23,6 +23,14 @@ export const CONTENT_TYPE_CONFIG = {
 		component: 'Chat',
 		description: 'Real-time community chat'
 	},
+	31922: {
+		kind: 31922,
+		name: 'Date-based Calendar Events',
+		icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+		supported: true,
+		component: 'CalendarView',
+		description: 'All-day and multi-day calendar events (NIP-52)'
+	},
 	31923: {
 		kind: 31923,
 		name: 'Calendar',
@@ -30,6 +38,22 @@ export const CONTENT_TYPE_CONFIG = {
 		supported: true,
 		component: 'CalendarView',
 		description: 'Community events and calendar'
+	},
+	31924: {
+		kind: 31924,
+		name: 'Calendar Collection',
+		icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+		supported: true,
+		component: 'CalendarView',
+		description: 'Calendar collections (NIP-52)'
+	},
+	31925: {
+		kind: 31925,
+		name: 'Calendar RSVP',
+		icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+		supported: true,
+		component: 'CalendarView',
+		description: 'Calendar event RSVPs (NIP-52)'
 	},
 	1: {
 		kind: 1,
@@ -63,19 +87,36 @@ export const CONTENT_TYPE_CONFIG = {
  * @returns {Array<{kind: number, name: string, icon: string, supported: boolean, enabled: boolean, description: string, exclusive?: boolean, fee?: Object, roles?: string[]}>}
  */
 export function getCommunityAvailableContentTypes(communikeyEvent) {
-	// Always include Chat and Calendar as they're core features
-	const alwaysAvailable = [9, 31923];
+	// NIP-52 calendar kinds that should enable calendar functionality
+	const CALENDAR_KINDS = [31922, 31923, 31924, 31925];
+	
+	// Always include Chat as a core feature
+	const alwaysAvailable = [9];
 	const result = [];
 	const processedKinds = new Set();
 
 	// Parse community's defined content types
 	const definedContentTypes = getCommunityContentTypes(communikeyEvent);
 
+	// Check if community has any calendar-related kinds
+	let hasCalendarKinds = false;
+	for (const contentType of definedContentTypes) {
+		if (contentType.kinds.some(kind => CALENDAR_KINDS.includes(kind))) {
+			hasCalendarKinds = true;
+			break;
+		}
+	}
+
 	// Process defined content types from the community
 	for (const contentType of definedContentTypes) {
 		for (const kind of contentType.kinds) {
 			if (processedKinds.has(kind)) continue;
 			processedKinds.add(kind);
+
+			// Skip calendar kinds - they'll be represented by a single Calendar tab
+			if (CALENDAR_KINDS.includes(kind)) {
+				continue;
+			}
 
 			const config = CONTENT_TYPE_CONFIG[kind];
 			if (config) {
@@ -122,11 +163,42 @@ export function getCommunityAvailableContentTypes(communikeyEvent) {
 		}
 	}
 
+	// Add calendar (kind 31923) if any calendar kinds are present
+	if (hasCalendarKinds) {
+		const config = CONTENT_TYPE_CONFIG[31923];
+		result.push({
+			kind: 31923,
+			name: config.name,
+			icon: config.icon,
+			supported: config.supported,
+			enabled: config.supported,
+			description: config.description
+		});
+	}
+
 	// Sort: enabled first, then by kind number
 	return result.sort((a, b) => {
 		if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
 		return a.kind - b.kind;
 	});
+}
+
+/**
+ * Map content kind number to navigation content type string
+ * @param {number} kind - The content type kind number
+ * @returns {string|null} - The content type string for navigation, or null if not mapped
+ */
+export function kindToContentType(kind) {
+	/** @type {Record<number, string>} */
+	const mapping = {
+		9: 'chat',
+		31923: 'calendar',
+		31922: 'calendar',
+		31924: 'calendar',
+		31925: 'calendar'
+		// Add more mappings as features are implemented
+	};
+	return mapping[kind] || null;
 }
 
 /**
