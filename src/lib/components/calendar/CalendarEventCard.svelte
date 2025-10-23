@@ -166,13 +166,12 @@
 		</div>
 	{/if}
 
-	<!-- Event Tags (clickable) -->
-	{#if event.hashtags && event.hashtags.length > 0}
+	<!-- Event Tags (clickable) - Only show in full mode -->
+	{#if event.hashtags && event.hashtags.length > 0 && !compact}
 		<div class="mb-2">
 			<EventTags 
 				tags={event.hashtags} 
-				size={compact ? 'xs' : 'sm'} 
-				maxDisplay={compact ? 3 : undefined}
+				size="sm"
 			/>
 		</div>
 	{/if}
