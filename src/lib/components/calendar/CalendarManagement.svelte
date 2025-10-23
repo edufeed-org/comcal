@@ -6,6 +6,7 @@
 	import { publishEvent } from '$lib/helpers/publisher.js';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
 	import { showToast } from '$lib/helpers/toast.js';
+	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import { goto } from '$app/navigation';
 
 	// Use $state + $effect for reactive RxJS subscription bridge (Svelte 5 pattern)
@@ -663,7 +664,7 @@
 											d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
 										/>
 									</svg>
-									<span>Created {new Date(calendar.createdAt * 1000).toLocaleDateString()}</span>
+									<span>Created {formatCalendarDate(new Date(calendar.createdAt * 1000), 'short')}</span>
 								</div>
 							</div>
 						{/if}

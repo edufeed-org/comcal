@@ -5,6 +5,7 @@
 	import { ChatIcon, TrashIcon } from '$lib/components/icons';
 	import MarkdownRenderer from '$lib/components/shared/MarkdownRenderer.svelte';
 	import { hexToNpub } from '$lib/helpers/nostrUtils';
+	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import ReactionBar from '$lib/components/reactions/ReactionBar.svelte';
 	import { deleteComment } from '$lib/helpers/comments.js';
 	import { showToast } from '$lib/helpers/toast.js';
@@ -52,7 +53,7 @@
 		if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
 		if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
 		if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
-		return date.toLocaleDateString();
+		return formatCalendarDate(date, 'short');
 	}
 
 	/**

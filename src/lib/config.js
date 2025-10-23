@@ -18,8 +18,11 @@ export const appConfig = {
 			'wss://relay.snort.social'
 		],
 
+		// Date and time formatting (European format)
+		locale: 'de-DE', // German locale for European date/time formatting
+		timeFormat: '24h', // '12h' or '24h'
+
 		// Future configuration options can be added here:
-		// timeFormat: '24h', // '12h' or '24h'
 		// defaultView: 'month', // 'month', 'week', or 'day'
 		// showWeekNumbers: false,
 		// etc.

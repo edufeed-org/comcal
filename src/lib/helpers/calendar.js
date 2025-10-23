@@ -12,39 +12,44 @@ import { validateCalendarEvent } from './eventValidation.js';
  */
 
 /**
- * Format a date for calendar display
+ * Format a date for calendar display using configured locale
  * @param {Date} date - Date to format
- * @param {string} format - Format string ('YYYY-MM-DD', 'MM/DD', 'full', etc.)
+ * @param {string} format - Format string ('YYYY-MM-DD', 'MM/DD', 'full', 'long', 'short', 'time')
  * @returns {string} Formatted date string
  */
 export function formatCalendarDate(date, format) {
 	if (!date || !(date instanceof Date)) return '';
 
+	const locale = appConfig.calendar.locale;
+	const use24Hour = appConfig.calendar.timeFormat === '24h';
+
 	switch (format) {
 		case 'YYYY-MM-DD':
 			return date.toISOString().split('T')[0];
 		case 'MM/DD':
-			return `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`;
+			// For European format, use DD.MM
+			return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}`;
 		case 'full':
-			return date.toLocaleDateString('en-US', {
+		case 'long':
+			return date.toLocaleDateString(locale, {
 				weekday: 'long',
 				year: 'numeric',
 				month: 'long',
 				day: 'numeric'
 			});
 		case 'short':
-			return date.toLocaleDateString('en-US', {
+			return date.toLocaleDateString(locale, {
 				month: 'short',
 				day: 'numeric'
 			});
 		case 'time':
-			return date.toLocaleTimeString('en-US', {
+			return date.toLocaleTimeString(locale, {
 				hour: 'numeric',
 				minute: '2-digit',
-				hour12: true
+				hour12: !use24Hour
 			});
 		default:
-			return date.toLocaleDateString();
+			return date.toLocaleDateString(locale);
 	}
 }
 

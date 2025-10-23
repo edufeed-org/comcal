@@ -3,6 +3,7 @@
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { getProfilePicture, getProfileContent } from 'applesauce-core/helpers';
 	import { fetchProfileData } from '$lib/helpers/profile.js';
+	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import NotesTimeline from '$lib/components/notes/NotesTimeline.svelte';
 
 	/** @type {import('./$types').PageProps} */
@@ -293,7 +294,7 @@
 										<div class="flex justify-between items-center">
 											<span class="text-gray-400">Profile Created:</span>
 											<span class="text-gray-200">
-												{new Date(profileEvent.created_at * 1000).toLocaleDateString()}
+												{formatCalendarDate(new Date(profileEvent.created_at * 1000), 'short')}
 											</span>
 										</div>
 									{/if}

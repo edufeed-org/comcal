@@ -130,7 +130,7 @@
 				<div class="text-sm font-medium mb-1 {isCurrentDay ? 'text-primary' : ''}">
 					{#if viewMode === 'day'}
 						<div class="text-center mb-4">
-							<div class="text-lg font-semibold text-base-content">{date.toLocaleDateString('en-US', { weekday: 'long' })}</div>
+							<div class="text-lg font-semibold text-base-content">{formatCalendarDate(date, 'long')}</div>
 							<div class="text-3xl font-bold text-primary">{date.getDate()}</div>
 						</div>
 					{:else}

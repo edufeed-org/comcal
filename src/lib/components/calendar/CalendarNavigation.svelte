@@ -53,10 +53,7 @@
 			case 'all':
 				return 'All Events';
 			case 'month':
-				return date.toLocaleDateString('en-US', {
-					year: 'numeric',
-					month: 'long'
-				});
+				return formatCalendarDate(date, 'long');
 			case 'week':
 				// Show week range
 				const startOfWeek = new Date(date);

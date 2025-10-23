@@ -159,7 +159,9 @@
 				{event.kind === 31922 ? 'Date Event' : 'Time Event'}
 			</span>
 			{#if event.createdAt}
-				<span>Created {new Date(event.createdAt * 1000).toLocaleDateString()}</span>
+				<div class="text-xs text-base-content/50">
+					<span>Created {formatCalendarDate(new Date(event.createdAt * 1000), 'short')}</span>
+				</div>
 			{/if}
 		</div>
 	{/if}

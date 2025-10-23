@@ -1,5 +1,6 @@
 <script>
 	import { getProfilePicture } from 'applesauce-core/helpers';
+	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import { ChatIcon, RepostIcon, LightningIcon, BookmarkIcon } from '$lib/components/icons';
 	import ReactionBar from '$lib/components/reactions/ReactionBar.svelte';
 
@@ -23,7 +24,7 @@
 		if (diffHours < 24) return `${diffHours}h`;
 		if (diffDays < 7) return `${diffDays}d`;
 		
-		return date.toLocaleDateString();
+		return formatCalendarDate(date, 'short');
 	}
 
 	/**

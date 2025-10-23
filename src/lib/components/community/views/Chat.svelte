@@ -4,6 +4,7 @@
 	import { appConfig } from '$lib/config.js';
 	import { loadUserProfile } from '$lib/loaders';
 	import { getProfilePicture } from 'applesauce-core/helpers';
+	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import NostrIdentifierParser from '$lib/components/shared/NostrIdentifierParser.svelte';
 
 	/** @type {any} */
@@ -171,7 +172,7 @@
 		if (diff < 60000) return 'now'; // Less than 1 minute
 		if (diff < 3600000) return `${Math.floor(diff / 60000)}m`; // Minutes
 		if (diff < 86400000) return `${Math.floor(diff / 3600000)}h`; // Hours
-		return date.toLocaleDateString(); // Date
+		return formatCalendarDate(date, 'short'); // Date with configured locale
 	}
 
 	// Get user display name
