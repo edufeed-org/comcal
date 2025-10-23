@@ -1,5 +1,5 @@
 <script>
-	import { CalendarIcon, ChatIcon, GlobeIcon } from '$lib/components/icons';
+	import { CalendarIcon, ChatIcon, PeopleIcon } from '$lib/components/icons';
 </script>
 
 <section class="bg-base-200 py-16">
@@ -9,7 +9,7 @@
 			<div class="card bg-base-100 shadow-lg transition-all duration-300 hover:shadow-xl">
 				<div class="card-body items-center text-center">
 					<div class="mb-4 rounded-full bg-primary/10 p-4">
-						<GlobeIcon class_="h-12 w-12 text-primary" />
+						<PeopleIcon class_="h-12 w-12 text-primary" />
 					</div>
 					<h3 class="card-title text-2xl font-bold text-base-content">Communities</h3>
 					<p class="text-base-content/70">

@@ -40,3 +40,4 @@ export { default as BookmarkIcon } from './social/BookmarkIcon.svelte';
 export { default as RepostIcon } from './social/RepostIcon.svelte';
 export { default as HeartIcon } from './social/HeartIcon.svelte';
 export { default as SmilePlusIcon } from './social/SmilePlusIcon.svelte';
+export { default as PeopleIcon } from './social/People.svelte';
