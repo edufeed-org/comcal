@@ -63,14 +63,6 @@ export const appConfig = {
 			// Set to false to allow city names and organizations
 			requireAddressComponents: false,
 			
-			// Keywords that suggest a proper address (localized for Germany/English)
-			streetTypeKeywords: [
-				'straße', 'strasse', 'str.', 'str',
-				'weg', 'platz', 'allee', 'gasse',
-				'street', 'avenue', 'road', 'ave', 'rd',
-				'boulevard', 'lane', 'drive', 'way'
-			],
-			
 			// Component types accepted from OpenCage results
 			// Expanded to include cities, towns, venues, and organizations
 			acceptedComponentTypes: [

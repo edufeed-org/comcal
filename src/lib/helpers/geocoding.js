@@ -27,30 +27,6 @@ const URL_PATTERN = /https?:\/\//i;
 const BASE32 = '0123456789bcdefghjkmnpqrstuvwxyz';
 
 /**
- * Check if location contains address-like components
- * @param {string} location - Location string
- * @returns {boolean}
- */
-function hasAddressComponents(location) {
-	const lower = location.toLowerCase();
-	const config = appConfig.geocoding.validation;
-
-	// Check for street type keywords
-	const hasStreetType = config.streetTypeKeywords.some((keyword) =>
-		lower.includes(keyword)
-	);
-
-	// Check for numbers (street numbers, postal codes)
-	const hasNumber = /\d+/.test(location);
-
-	// Check for comma (typically separates address parts)
-	const hasComma = location.includes(',');
-
-	// At least one of these should be present
-	return hasStreetType || (hasNumber && hasComma);
-}
-
-/**
  * Validate if location is likely a geocodable address
  * @param {string} location - Location string
  * @returns {boolean}
@@ -60,11 +36,6 @@ function isGeocodableAddress(location) {
 
 	// Must meet minimum length
 	if (location.length < config.minAddressLength) {
-		return false;
-	}
-
-	// Must have address components if required
-	if (config.requireAddressComponents && !hasAddressComponents(location)) {
 		return false;
 	}
 
