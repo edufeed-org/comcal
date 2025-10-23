@@ -62,7 +62,6 @@
 			return;
 		}
 		
-		console.log('ReactionBar: Loading reactions for event:', event.id);
 		isLoading = true;
 		// Reset the map when event changes
 		loadedReactions.clear();
@@ -70,14 +69,12 @@
 		// Subscribe to reactions loader to fetch from relays
 		loaderSubscription = reactionsLoader(event, relays).subscribe({
 			next: (reaction) => {
-				console.log('ReactionBar: Received reaction from relay:', reaction);
 			},
 			error: (error) => {
 				console.error('ReactionBar: Error loading reactions:', error);
 				isLoading = false;
 			},
 			complete: () => {
-				console.log('ReactionBar: Reactions loading complete');
 				isLoading = false;
 			}
 		});
@@ -85,7 +82,6 @@
 		// Subscribe to ReactionsModel to get reactions from EventStore
 		// The model emits an array of reaction events directly
 		modelSubscription = eventStore.model(ReactionsModel, event).subscribe((reactionEvents) => {
-			console.log('ReactionBar: ReactionsModel emitted:', reactionEvents);
 			
 			// Create a Set of current and new reaction IDs for comparison
 			const currentIds = new Set(loadedReactions.keys());
@@ -104,7 +100,6 @@
 					loadedReactions.set(reaction.id, reaction);
 				}
 				reactions = Array.from(loadedReactions.values());
-				console.log('ReactionBar: Updated reactions array (additions or removals detected)');
 			}
 		});
 		

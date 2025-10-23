@@ -46,17 +46,14 @@
 		// Don't subscribe if we already have a subscription for this comment
 		if (modelSubscriptions.has(comment.id)) return;
 
-		console.log('CommentList: Subscribing to replies for comment:', comment.id);
 		
 		const subscription = eventStore.model(CommentsModel, comment).subscribe((replies) => {
-			console.log(`CommentList: CommentsModel for ${comment.id} emitted:`, replies);
 			
 			let hasChanges = false;
 			
 			// Process each reply
 			for (const reply of replies || []) {
 				if (!loadedComments.has(reply.id)) {
-					console.log('CommentList: New reply detected:', reply.id);
 					loadedComments.set(reply.id, reply);
 					hasChanges = true;
 					
@@ -72,7 +69,6 @@
 				// and is now missing from the replies list
 				if (existingReply.tags?.some((/** @type {any[]} */ t) => t[0] === 'e' && t[1] === comment.id)) {
 					if (!replyIds.has(id)) {
-						console.log('CommentList: Reply deleted:', id);
 						loadedComments.delete(id);
 						hasChanges = true;
 					}
@@ -81,7 +77,6 @@
 			
 			if (hasChanges) {
 				flatComments = Array.from(loadedComments.values());
-				console.log('CommentList: Updated comments array (changes detected)');
 			}
 		});
 		
@@ -92,7 +87,6 @@
 	$effect(() => {
 		if (!rootEvent || !eventAddress) return;
 
-		console.log('CommentList: Loading comments for event:', rootEvent.id);
 		isLoading = true;
 		
 		// Reset state
@@ -107,7 +101,6 @@
 		const commentLoader = createCommentLoader(eventAddress);
 		loaderSubscription = commentLoader().subscribe({
 			next: (/** @type {any} */ comment) => {
-				console.log('CommentList: Loaded comment from relay:', comment);
 				
 				// Add to our loaded comments map
 				if (!loadedComments.has(comment.id)) {
@@ -123,7 +116,6 @@
 				isLoading = false;
 			},
 			complete: () => {
-				console.log('CommentList: Comment loading complete');
 				isLoading = false;
 			}
 		});
@@ -144,8 +136,6 @@
 	 * Immediately add to UI for instant feedback
 	 */
 	function handleCommentPosted(/** @type {any} */ event) {
-		console.log('New comment posted, adding to UI immediately:', event);
-		
 		// Add to map to deduplicate (in case relay echoes it back)
 		if (!loadedComments.has(event.id)) {
 			loadedComments.set(event.id, event);

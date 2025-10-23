@@ -24,7 +24,6 @@ export function useAllCommunities() {
 			kinds: [10222]
 		}).subscribe({
 			next: (/** @type {import('nostr-tools').Event[]} */ events) => {
-				console.log('📋 AllCommunities: Loaded community events:', events.length);
 				globalCommunities = events;
 			},
 			error: (/** @type {any} */ error) => {
