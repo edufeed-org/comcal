@@ -7,13 +7,13 @@
 	import { goto } from '$app/navigation';
 	import { validateEventForm, getCurrentTimezone } from '../../helpers/calendar.js';
 	import { encodeEventToNaddr } from '../../helpers/nostrUtils.js';
-	import { autocompleteAddress } from '../../helpers/geocoding.js';
 	import { useCalendarActions } from '../../stores/calendar-actions.svelte.js';
 	import { useCalendarManagement } from '../../stores/calendar-management-store.svelte.js';
 	import { useJoinedCommunitiesList } from '../../stores/joined-communities-list.svelte.js';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import CalendarSelector from './CalendarSelector.svelte';
 	import CommunitySelector from './CommunitySelector.svelte';
+	import LocationInput from '../shared/LocationInput.svelte';
 	import { CloseIcon } from '../icons';
 
 	/**
@@ -55,12 +55,6 @@
 	let validationErrors = /** @type {string[]} */ ([]);
 	let isSubmitting = false;
 	let submitError = '';
-
-	// Autocomplete state
-	let suggestions = $state(/** @type {Array<{formatted: string, lat: number, lng: number}>} */ ([]));
-	let showSuggestions = $state(false);
-	let isLoadingSuggestions = $state(false);
-	let debounceTimer = /** @type {number | null} */ (null);
 
 	// Reactive user state
 	let activeUser = $state(manager.active);
@@ -119,8 +113,6 @@
 		validationErrors = [];
 		isSubmitting = false;
 		submitError = '';
-		suggestions = [];
-		showSuggestions = false;
 	}
 
 	/**
@@ -163,8 +155,6 @@
 		validationErrors = [];
 		isSubmitting = false;
 		submitError = '';
-		suggestions = [];
-		showSuggestions = false;
 	}
 
 	/**
@@ -174,72 +164,6 @@
 	function handleEventTypeChange(newType) {
 		formData.eventType = newType;
 		formData.isAllDay = newType === 'date';
-	}
-
-	/**
-	 * Handle location input with debounced autocomplete
-	 * @param {Event} e
-	 */
-	function handleLocationInput(e) {
-		const input = /** @type {HTMLInputElement} */ (e.target);
-		const query = input.value;
-
-		// Clear existing timer
-		if (debounceTimer !== null) {
-			clearTimeout(debounceTimer);
-		}
-
-		// Don't show suggestions for short queries
-		if (query.length < 3) {
-			showSuggestions = false;
-			suggestions = [];
-			return;
-		}
-
-		// Debounce the API call
-		isLoadingSuggestions = true;
-		debounceTimer = setTimeout(async () => {
-			try {
-				const results = await autocompleteAddress(query);
-				suggestions = results;
-				showSuggestions = results.length > 0;
-			} catch (error) {
-				console.error('Error fetching suggestions:', error);
-				suggestions = [];
-				showSuggestions = false;
-			} finally {
-				isLoadingSuggestions = false;
-			}
-		}, 400);
-	}
-
-	/**
-	 * Select a suggestion and populate the location field
-	 * @param {string} formatted
-	 */
-	function selectSuggestion(formatted) {
-		formData.location = formatted;
-		showSuggestions = false;
-		suggestions = [];
-	}
-
-	/**
-	 * Handle location field blur
-	 */
-	function handleLocationBlur() {
-		// Delay hiding to allow click on suggestion
-		setTimeout(() => {
-			showSuggestions = false;
-		}, 200);
-	}
-
-	/**
-	 * Handle location field focus
-	 */
-	function handleLocationFocus() {
-		if (suggestions.length > 0 && formData.location.length >= 3) {
-			showSuggestions = true;
-		}
 	}
 
 	/**
@@ -471,41 +395,12 @@
 					</div>
 
 					<!-- Location with Autocomplete -->
-					<div class="mb-4 relative">
-						<label for="location" class="block text-sm font-medium text-base-content mb-1">
-							Location
-						</label>
-						<input
-							id="location"
-							type="text"
-							class="input input-bordered w-full"
+					<div class="mb-4">
+						<LocationInput 
 							bind:value={formData.location}
-							oninput={handleLocationInput}
-							onfocus={handleLocationFocus}
-							onblur={handleLocationBlur}
+							label="Location"
 							placeholder="Enter location (e.g., Berlin, Germany)"
-							autocomplete="off"
 						/>
-						
-						{#if showSuggestions && suggestions.length > 0}
-							<div class="absolute z-10 w-full mt-1 bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-								{#each suggestions as suggestion}
-									<button
-										type="button"
-										class="w-full text-left px-4 py-2 hover:bg-base-200 transition-colors text-sm"
-										onclick={() => selectSuggestion(suggestion.formatted)}
-									>
-										{suggestion.formatted}
-									</button>
-								{/each}
-							</div>
-						{/if}
-						
-						{#if isLoadingSuggestions}
-							<div class="text-xs text-base-content/60 mt-1">
-								Loading suggestions...
-							</div>
-						{/if}
 					</div>
 
 					<!-- Event Image -->

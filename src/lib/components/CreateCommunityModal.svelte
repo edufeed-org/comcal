@@ -1,14 +1,18 @@
 <script>
+	import { goto } from '$app/navigation';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { SimpleSigner } from 'applesauce-signers';
 	import { SimpleAccount } from 'applesauce-accounts/accounts';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { publishEvents } from '$lib/helpers/publisher.js';
+	import { hexToNpub } from '$lib/helpers/nostrUtils.js';
 	import ChevronLeftIcon from './icons/ui/ChevronLeftIcon.svelte';
 	import ChevronRightIcon from './icons/ui/ChevronRightIcon.svelte';
 	import KeypairGenerator from './shared/KeypairGenerator.svelte';
 	import ImageUploader from './shared/ImageUploader.svelte';
 	import ProfileForm from './shared/ProfileForm.svelte';
+	import EditableList from './shared/EditableList.svelte';
+	import LocationInput from './shared/LocationInput.svelte';
 
 	let { modalId } = $props();
 
@@ -47,6 +51,8 @@
 	let communityData = $state({
 		relays: ['wss://relay.edufeed.org'],
 		blossomServers: ['blossom.edufeed.org'],
+		location: '',
+		description: '',
 		contentTypes: {
 			calendar: true,
 			chat: true,
@@ -66,18 +72,48 @@
 	function validateStep(step) {
 		errors = {};
 
-		// For new keypair flow, validate profile in step 2
-		if (!useCurrentKeypair && step === 2) {
+		// For current keypair flow, validate community settings in step 1
+		if (useCurrentKeypair && step === 1) {
+			if (communityData.relays.length === 0) {
+				errors.relays = 'At least one relay is required';
+				return false;
+			}
+
+			// Check if at least one content type is selected
+			const hasContentType = Object.values(communityData.contentTypes).some(Boolean);
+			if (!hasContentType) {
+				errors.contentTypes = 'At least one content type must be selected';
+				return false;
+			}
+		}
+
+		// For new keypair flow, validate profile in step 1
+		if (!useCurrentKeypair && step === 1) {
 			if (!userData.name.trim()) {
 				errors.name = 'Name is required';
 				return false;
 			}
 		}
 
-		// For new keypair flow, validate key download in step 3
-		if (!useCurrentKeypair && step === 3) {
+		// For new keypair flow, validate key download in step 2
+		if (!useCurrentKeypair && step === 2) {
 			if (!userData.downloadConfirmed) {
 				errors.download = 'Please download your private key before continuing';
+				return false;
+			}
+		}
+
+		// For new keypair flow, validate community settings in step 3
+		if (!useCurrentKeypair && step === 3) {
+			if (communityData.relays.length === 0) {
+				errors.relays = 'At least one relay is required';
+				return false;
+			}
+
+			// Check if at least one content type is selected
+			const hasContentType = Object.values(communityData.contentTypes).some(Boolean);
+			if (!hasContentType) {
+				errors.contentTypes = 'At least one content type must be selected';
 				return false;
 			}
 		}
@@ -88,9 +124,25 @@
 	// Get step labels based on flow
 	function getStepLabels() {
 		if (useCurrentKeypair) {
-			return ['Metadata', 'Confirm'];
+			return ['Community Settings', 'Confirm'];
 		} else {
-			return ['Profile', 'Keys', 'Metadata', 'Confirm'];
+			return ['Profile', 'Keys', 'Community Settings', 'Confirm'];
+		}
+	}
+
+	/**
+	 * Validate relay URL format
+	 * @param {string} url
+	 */
+	function validateRelayUrl(url) {
+		if (!url.startsWith('wss://') && !url.startsWith('ws://')) {
+			return 'Relay URL must start with wss:// or ws://';
+		}
+		try {
+			new URL(url);
+			return null;
+		} catch {
+			return 'Invalid URL format';
 		}
 	}
 
@@ -140,10 +192,35 @@
 					manager.addAccount(account);
 					manager.setActive(account);
 				}
+
+				// Publish kind:0 profile event for new keypair
+				const profileEvent = {
+					kind: 0,
+					created_at: Math.floor(Date.now() / 1000),
+					tags: [],
+					content: JSON.stringify({
+						name: userData.name,
+						about: userData.about,
+						picture: userData.picture,
+						website: userData.website
+					}),
+					pubkey: account.pubkey
+				};
+
+				const signedProfileEvent = await signer.signEvent(profileEvent);
+				await publishEvents([signedProfileEvent], {
+					logPrefix: 'CreateCommunityModal:Profile'
+				});
+				console.log('CreateCommunityModal: Profile event published');
 			}
 
 			if (!account || !signer) {
 				throw new Error('No account available for community creation');
+			}
+
+			// Validate at least one relay
+			if (communityData.relays.length === 0) {
+				throw new Error('At least one relay is required');
 			}
 
 			// Create community creation event (kind:10222)
@@ -158,6 +235,20 @@
 			communityData.blossomServers.forEach(server => {
 				communityTags.push(['blossom', server]);
 			});
+
+			// Add optional location
+			if (communityData.location?.trim()) {
+				communityTags.push(['location', communityData.location.trim()]);
+				// TODO: Add geohash support in the future
+				// if (communityData.geohash) {
+				//   communityTags.push(['g', communityData.geohash]);
+				// }
+			}
+
+			// Add optional community description
+			if (communityData.description?.trim()) {
+				communityTags.push(['description', communityData.description.trim()]);
+			}
 
 			// Add content types
 			if (communityData.contentTypes.calendar) {
@@ -174,7 +265,7 @@
 			if (communityData.contentTypes.articles) {
 				communityTags.push(['content', 'Articles']);
 				communityTags.push(['k', '30023']); // Long-form Content
-				communityTags.push(['k', '30040']); // Curated Publication Content
+				// communityTags.push(['k', '30040']); // Curated Publication Content
 			}
 
 			if (communityData.contentTypes.posts) {
@@ -214,7 +305,7 @@
 			// Sign the relationship event
 			const signedRelationshipEvent = await signer.signEvent(relationshipEvent);
 
-			// Publish both events
+			// Publish community and relationship events
 			const eventsToPublish = [signedCommunityEvent, signedRelationshipEvent];
 			const publishResult = await publishEvents(eventsToPublish, {
 				logPrefix: 'CreateCommunityModal'
@@ -223,15 +314,22 @@
 			if (publishResult.success) {
 				console.log('CreateCommunityModal: Successfully created community');
 
-				// Close modal and show success
-				closeModal();
+				// Navigate to the newly created community
+				const npub = hexToNpub(account.pubkey);
+				if (npub) {
+					closeModal();
+					goto(`/c/${npub}`);
+				} else {
+					console.error('Failed to convert pubkey to npub');
+					closeModal();
+				}
 			} else {
 				throw new Error('Failed to publish community to any relay');
 			}
 
 		} catch (error) {
 			console.error('Error creating community:', error);
-			errors.publishing = 'Failed to create community. Please try again.';
+			errors.publishing = error instanceof Error ? error.message : 'Failed to create community. Please try again.';
 		} finally {
 			isPublishing = false;
 		}
@@ -250,6 +348,8 @@
 		communityData = {
 			relays: ['wss://relay.edufeed.org'],
 			blossomServers: ['blossom.edufeed.org'],
+			location: '',
+			description: '',
 			contentTypes: {
 				calendar: true, chat: true, articles: true, posts: true, wikis: true
 			}
@@ -318,91 +418,163 @@
 				</div>
 
 			{:else if currentStep === 1 && useCurrentKeypair}
-				<!-- Community Metadata for Current Keypair -->
+				<!-- Community Settings for Current Keypair -->
 				<div class="space-y-6">
-					<h2 class="text-xl font-semibold mb-4">Community Information</h2>
-
-					<!-- Community Name -->
-					<div class="form-control">
-						<label class="label">
-							<span class="label-text">Community Name *</span>
-						</label>
-						<input
-							type="text"
-							bind:value={userData.name}
-							placeholder="Community name"
-							class="input input-bordered w-full"
-							class:input-error={errors.name}
-						/>
-						{#if errors.name}
-							<label class="label">
-								<span class="label-text-alt text-error">{errors.name}</span>
-							</label>
-						{/if}
+					<div class="prose max-w-none mb-4">
+						<p class="text-sm text-base-content/70">
+							Your community will use your current profile (name, picture, description). 
+							Configure community-specific settings below.
+						</p>
 					</div>
+
+					<!-- Relays -->
+					<EditableList
+						bind:items={communityData.relays}
+						label="Community Relays"
+						placeholder="wss://relay.example.com"
+						buttonText="Add Relay"
+						itemType="relay"
+						validator={validateRelayUrl}
+						minItems={1}
+						helpText="At least one relay is required"
+					/>
+
+					<!-- Blossom Servers -->
+					<EditableList
+						bind:items={communityData.blossomServers}
+						label="Blossom Servers (Optional)"
+						placeholder="blossom.example.com"
+						buttonText="Add Server"
+						itemType="server"
+					/>
+
+					<!-- Location -->
+					<LocationInput
+						bind:value={communityData.location}
+						label="Community Location (Optional)"
+						placeholder="Berlin, Germany or Online"
+					/>
 
 					<!-- Community Description -->
 					<div class="form-control">
 						<label class="label">
-							<span class="label-text">Description</span>
+							<span class="label-text">Community Description (Optional)</span>
+							<span class="label-text-alt">Overwrites your profile description</span>
 						</label>
 						<textarea
-							bind:value={userData.about}
-							placeholder="Describe your community"
+							bind:value={communityData.description}
+							placeholder="A specific description for this community (optional)"
 							class="textarea textarea-bordered h-24"
 						></textarea>
 					</div>
 
-					<!-- Community Avatar -->
-					<ImageUploader {userData} {errors} />
-
 					<!-- Content Types -->
 					<div class="form-control">
 						<label class="label">
-							<span class="label-text">Content Types</span>
+							<span class="label-text font-semibold">Content Types</span>
+							<span class="label-text-alt text-sm">Select features for your community</span>
 						</label>
-						<div class="grid grid-cols-2 gap-4">
-							<label class="label cursor-pointer">
-								<span class="label-text">Calendar</span>
-								<input
-									type="checkbox"
-									bind:checked={communityData.contentTypes.calendar}
-									class="checkbox checkbox-primary"
-								/>
-							</label>
-							<label class="label cursor-pointer">
-								<span class="label-text">Chat</span>
-								<input
-									type="checkbox"
-									bind:checked={communityData.contentTypes.chat}
-									class="checkbox checkbox-primary"
-								/>
-							</label>
-							<label class="label cursor-pointer">
-								<span class="label-text">Articles</span>
-								<input
-									type="checkbox"
-									bind:checked={communityData.contentTypes.articles}
-									class="checkbox checkbox-primary"
-								/>
-							</label>
-							<label class="label cursor-pointer">
-								<span class="label-text">Posts</span>
-								<input
-									type="checkbox"
-									bind:checked={communityData.contentTypes.posts}
-									class="checkbox checkbox-primary"
-								/>
-							</label>
-							<label class="label cursor-pointer">
-								<span class="label-text">Wikis</span>
-								<input
-									type="checkbox"
-									bind:checked={communityData.contentTypes.wikis}
-									class="checkbox checkbox-primary"
-								/>
-							</label>
+						<div class="grid grid-cols-2 gap-3">
+							<!-- Calendar Card -->
+							<button
+								type="button"
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.calendar ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.calendar = !communityData.contentTypes.calendar}
+							>
+								<div class="card-body p-4">
+									<div class="flex items-center justify-between">
+										<span class="font-medium">Calendar</span>
+										<input
+											type="checkbox"
+											checked={communityData.contentTypes.calendar}
+											class="checkbox checkbox-primary pointer-events-none"
+											tabindex="-1"
+										/>
+									</div>
+								</div>
+							</button>
+
+							<!-- Chat Card -->
+							<button
+								type="button"
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.chat ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.chat = !communityData.contentTypes.chat}
+							>
+								<div class="card-body p-4">
+									<div class="flex items-center justify-between">
+										<span class="font-medium">Chat</span>
+										<input
+											type="checkbox"
+											checked={communityData.contentTypes.chat}
+											class="checkbox checkbox-primary pointer-events-none"
+											tabindex="-1"
+										/>
+									</div>
+								</div>
+							</button>
+
+							<!-- Articles Card -->
+							<button
+								type="button"
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.articles ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.articles = !communityData.contentTypes.articles}
+							>
+								<div class="card-body p-4">
+									<div class="flex items-center justify-between">
+										<span class="font-medium">Articles</span>
+										<input
+											type="checkbox"
+											checked={communityData.contentTypes.articles}
+											class="checkbox checkbox-primary pointer-events-none"
+											tabindex="-1"
+										/>
+									</div>
+								</div>
+							</button>
+
+							<!-- Posts Card -->
+							<button
+								type="button"
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.posts ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.posts = !communityData.contentTypes.posts}
+							>
+								<div class="card-body p-4">
+									<div class="flex items-center justify-between">
+										<span class="font-medium">Posts</span>
+										<input
+											type="checkbox"
+											checked={communityData.contentTypes.posts}
+											class="checkbox checkbox-primary pointer-events-none"
+											tabindex="-1"
+										/>
+									</div>
+								</div>
+							</button>
+
+							<!-- Wikis Card -->
+							<button
+								type="button"
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.wikis ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.wikis = !communityData.contentTypes.wikis}
+							>
+								<div class="card-body p-4">
+									<div class="flex items-center justify-between">
+										<span class="font-medium">Wikis</span>
+										<input
+											type="checkbox"
+											checked={communityData.contentTypes.wikis}
+											class="checkbox checkbox-primary pointer-events-none"
+											tabindex="-1"
+										/>
+									</div>
+								</div>
+							</button>
 						</div>
+						{#if errors.contentTypes}
+							<label class="label">
+								<span class="label-text-alt text-error">{errors.contentTypes}</span>
+							</label>
+						{/if}
 					</div>
 				</div>
 
@@ -412,14 +584,30 @@
 					<h2 class="text-xl font-semibold mb-4">Confirm Community Creation</h2>
 
 					<div class="space-y-4">
-						<!-- Community Info -->
+						<!-- Profile Info -->
 						<div class="card bg-base-200">
 							<div class="card-body">
-								<h3 class="card-title">Community Details</h3>
-								<div class="space-y-2">
-									<p><strong>Name:</strong> {userData.name}</p>
-									<p><strong>Description:</strong> {userData.about || 'No description'}</p>
-									<p><strong>Public Key:</strong> <code class="text-xs">{manager.active?.pubkey.slice(0, 16)}...</code></p>
+								<h3 class="card-title">Profile (from current account)</h3>
+								<p class="text-sm text-base-content/70">Name, picture, and description from your current profile</p>
+								<p><strong>Public Key:</strong> <code class="text-xs">{manager.active?.pubkey.slice(0, 16)}...</code></p>
+							</div>
+						</div>
+
+						<!-- Community Settings -->
+						<div class="card bg-base-200">
+							<div class="card-body">
+								<h3 class="card-title">Community Settings</h3>
+								<div class="space-y-2 text-sm">
+									<p><strong>Relays:</strong> {communityData.relays.join(', ')}</p>
+									{#if communityData.blossomServers.length > 0}
+										<p><strong>Blossom Servers:</strong> {communityData.blossomServers.join(', ')}</p>
+									{/if}
+									{#if communityData.location}
+										<p><strong>Location:</strong> {communityData.location}</p>
+									{/if}
+									{#if communityData.description}
+										<p><strong>Community Description:</strong> {communityData.description}</p>
+									{/if}
 								</div>
 							</div>
 						</div>
@@ -472,57 +660,158 @@
 				<KeypairGenerator {userData} {errors} />
 
 			{:else if currentStep === 3 && !useCurrentKeypair}
-				<!-- Community Metadata for New Keypair -->
+				<!-- Community Settings for New Keypair -->
 				<div class="space-y-6">
-					<h2 class="text-xl font-semibold mb-4">Community Information</h2>
+					<h2 class="text-xl font-semibold mb-4">Community Settings</h2>
+
+					<!-- Relays -->
+					<EditableList
+						bind:items={communityData.relays}
+						label="Community Relays"
+						placeholder="wss://relay.example.com"
+						buttonText="Add Relay"
+						itemType="relay"
+						validator={validateRelayUrl}
+						minItems={1}
+						helpText="At least one relay is required"
+					/>
+
+					<!-- Blossom Servers -->
+					<EditableList
+						bind:items={communityData.blossomServers}
+						label="Blossom Servers (Optional)"
+						placeholder="blossom.example.com"
+						buttonText="Add Server"
+						itemType="server"
+					/>
+
+					<!-- Location -->
+					<LocationInput
+						bind:value={communityData.location}
+						label="Community Location (Optional)"
+						placeholder="Berlin, Germany or Online"
+					/>
+
+					<!-- Community Description -->
+					<div class="form-control">
+						<label class="label">
+							<span class="label-text">Community Description (Optional)</span>
+							<span class="label-text-alt">Overwrites your profile description</span>
+						</label>
+						<textarea
+							bind:value={communityData.description}
+							placeholder="A specific description for this community (optional)"
+							class="textarea textarea-bordered h-24"
+						></textarea>
+					</div>
 
 					<!-- Content Types -->
 					<div class="form-control">
 						<label class="label">
-							<span class="label-text">Content Types</span>
+							<span class="label-text font-semibold">Content Types</span>
+							<span class="label-text-alt text-sm">Select features for your community</span>
 						</label>
-						<div class="grid grid-cols-2 gap-4">
-							<label class="label cursor-pointer">
-								<span class="label-text">Calendar</span>
-								<input
-									type="checkbox"
-									bind:checked={communityData.contentTypes.calendar}
-									class="checkbox checkbox-primary"
-								/>
-							</label>
-							<label class="label cursor-pointer">
-								<span class="label-text">Chat</span>
-								<input
-									type="checkbox"
-									bind:checked={communityData.contentTypes.chat}
-									class="checkbox checkbox-primary"
-								/>
-							</label>
-							<label class="label cursor-pointer">
-								<span class="label-text">Articles</span>
-								<input
-									type="checkbox"
-									bind:checked={communityData.contentTypes.articles}
-									class="checkbox checkbox-primary"
-								/>
-							</label>
-							<label class="label cursor-pointer">
-								<span class="label-text">Posts</span>
-								<input
-									type="checkbox"
-									bind:checked={communityData.contentTypes.posts}
-									class="checkbox checkbox-primary"
-								/>
-							</label>
-							<label class="label cursor-pointer">
-								<span class="label-text">Wikis</span>
-								<input
-									type="checkbox"
-									bind:checked={communityData.contentTypes.wikis}
-									class="checkbox checkbox-primary"
-								/>
-							</label>
+						<div class="grid grid-cols-2 gap-3">
+							<!-- Calendar Card -->
+							<button
+								type="button"
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.calendar ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.calendar = !communityData.contentTypes.calendar}
+							>
+								<div class="card-body p-4">
+									<div class="flex items-center justify-between">
+										<span class="font-medium">Calendar</span>
+										<input
+											type="checkbox"
+											checked={communityData.contentTypes.calendar}
+											class="checkbox checkbox-primary pointer-events-none"
+											tabindex="-1"
+										/>
+									</div>
+								</div>
+							</button>
+
+							<!-- Chat Card -->
+							<button
+								type="button"
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.chat ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.chat = !communityData.contentTypes.chat}
+							>
+								<div class="card-body p-4">
+									<div class="flex items-center justify-between">
+										<span class="font-medium">Chat</span>
+										<input
+											type="checkbox"
+											checked={communityData.contentTypes.chat}
+											class="checkbox checkbox-primary pointer-events-none"
+											tabindex="-1"
+										/>
+									</div>
+								</div>
+							</button>
+
+							<!-- Articles Card -->
+							<button
+								type="button"
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.articles ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.articles = !communityData.contentTypes.articles}
+							>
+								<div class="card-body p-4">
+									<div class="flex items-center justify-between">
+										<span class="font-medium">Articles</span>
+										<input
+											type="checkbox"
+											checked={communityData.contentTypes.articles}
+											class="checkbox checkbox-primary pointer-events-none"
+											tabindex="-1"
+										/>
+									</div>
+								</div>
+							</button>
+
+							<!-- Posts Card -->
+							<button
+								type="button"
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.posts ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.posts = !communityData.contentTypes.posts}
+							>
+								<div class="card-body p-4">
+									<div class="flex items-center justify-between">
+										<span class="font-medium">Posts</span>
+										<input
+											type="checkbox"
+											checked={communityData.contentTypes.posts}
+											class="checkbox checkbox-primary pointer-events-none"
+											tabindex="-1"
+										/>
+									</div>
+								</div>
+							</button>
+
+							<!-- Wikis Card -->
+							<button
+								type="button"
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.wikis ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.wikis = !communityData.contentTypes.wikis}
+							>
+								<div class="card-body p-4">
+									<div class="flex items-center justify-between">
+										<span class="font-medium">Wikis</span>
+										<input
+											type="checkbox"
+											checked={communityData.contentTypes.wikis}
+											class="checkbox checkbox-primary pointer-events-none"
+											tabindex="-1"
+										/>
+									</div>
+								</div>
+							</button>
 						</div>
+						{#if errors.contentTypes}
+							<label class="label">
+								<span class="label-text-alt text-error">{errors.contentTypes}</span>
+							</label>
+						{/if}
 					</div>
 				</div>
 
@@ -532,14 +821,33 @@
 					<h2 class="text-xl font-semibold mb-4">Confirm Community Creation</h2>
 
 					<div class="space-y-4">
-						<!-- Community Info -->
+						<!-- Profile Info -->
 						<div class="card bg-base-200">
 							<div class="card-body">
-								<h3 class="card-title">Community Details</h3>
+								<h3 class="card-title">Profile</h3>
 								<div class="space-y-2">
 									<p><strong>Name:</strong> {userData.name}</p>
-									<p><strong>Description:</strong> {userData.about || 'No description'}</p>
+									<p><strong>About:</strong> {userData.about || 'No description'}</p>
 									<p><strong>Public Key:</strong> <code class="text-xs">{userData.npub.slice(0, 16)}...</code></p>
+								</div>
+							</div>
+						</div>
+
+						<!-- Community Settings -->
+						<div class="card bg-base-200">
+							<div class="card-body">
+								<h3 class="card-title">Community Settings</h3>
+								<div class="space-y-2 text-sm">
+									<p><strong>Relays:</strong> {communityData.relays.join(', ')}</p>
+									{#if communityData.blossomServers.length > 0}
+										<p><strong>Blossom Servers:</strong> {communityData.blossomServers.join(', ')}</p>
+									{/if}
+									{#if communityData.location}
+										<p><strong>Location:</strong> {communityData.location}</p>
+									{/if}
+									{#if communityData.description}
+										<p><strong>Community Description:</strong> {communityData.description}</p>
+									{/if}
 								</div>
 							</div>
 						</div>
@@ -595,24 +903,26 @@
 						<button class="btn">Cancel</button>
 					</form>
 
-					{#if currentStep < totalSteps()}
-						<button class="btn btn-primary" onclick={nextStep}>
-							Next
-							<ChevronRightIcon />
-						</button>
-					{:else}
-						<button
-							class="btn btn-primary"
-							onclick={createCommunity}
-							disabled={isPublishing}
-						>
-							{#if isPublishing}
-								<span class="loading loading-spinner loading-sm"></span>
-								Creating Community...
-							{:else}
-								Create Community
-							{/if}
-						</button>
+					{#if currentStep > 0}
+						{#if currentStep < totalSteps()}
+							<button class="btn btn-primary" onclick={nextStep}>
+								Next
+								<ChevronRightIcon />
+							</button>
+						{:else}
+							<button
+								class="btn btn-primary"
+								onclick={createCommunity}
+								disabled={isPublishing}
+							>
+								{#if isPublishing}
+									<span class="loading loading-spinner loading-sm"></span>
+									Creating Community...
+								{:else}
+									Create Community
+								{/if}
+							</button>
+						{/if}
 					{/if}
 
 					{#if errors.publishing}
