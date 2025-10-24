@@ -1,7 +1,9 @@
 <script>
 	import { onMount } from 'svelte';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-	import { useUserProfile } from '$lib/stores/user-profile.svelte';
+	import { ProfileModel } from 'applesauce-core/models';
+	import { profileLoader } from '$lib/loaders/profile.js';
+	import { appConfig } from '$lib/config.js';
 	import Chat from '../views/Chat.svelte';
 	import CalendarView from '$lib/components/calendar/CalendarView.svelte';
 	import HomeView from '../views/HomeView.svelte';
@@ -11,11 +13,38 @@
 	let { selectedCommunityId, selectedContentType, onKindNavigation } = $props();
 
 	let communikeyEvent = $state(/** @type {any} */ (null));
+	let communityProfile = $state(/** @type {any} */ (null));
 	let isLoading = $state(true);
 
-	// Use the established loader pattern for profile data
-	const getCommunityProfile = useUserProfile(selectedCommunityId);
-	const communityProfile = $derived(getCommunityProfile());
+	// Load community profile with proper reactivity to selectedCommunityId changes
+	$effect(() => {
+		// Reset profile when community changes
+		communityProfile = null;
+
+		if (selectedCommunityId) {
+			// 1. Trigger loader to fetch profile from relays
+			const loaderSub = profileLoader({ 
+				kind: 0, 
+				pubkey: selectedCommunityId, 
+				relays: appConfig.calendar.defaultRelays 
+			}).subscribe(() => {
+				// Loader automatically populates eventStore
+			});
+
+			// 2. Subscribe to model for reactive parsed profile from eventStore
+			const modelSub = eventStore
+				.model(ProfileModel, selectedCommunityId)
+				.subscribe((profileContent) => {
+					communityProfile = profileContent;
+				});
+
+			// Cleanup subscriptions when community changes
+			return () => {
+				loaderSub.unsubscribe();
+				modelSub.unsubscribe();
+			};
+		}
+	});
 
 	// Communikey Creation Pointer
 	$effect(() => {
@@ -27,10 +56,14 @@
 				pubkey: selectedCommunityId
 			};
 
-			eventStore.replaceable(pointer).subscribe((event) => {
+			const sub = eventStore.replaceable(pointer).subscribe((event) => {
 				communikeyEvent = event || null;
 				isLoading = false;
 			});
+
+			return () => {
+				sub.unsubscribe();
+			};
 		} else {
 			communikeyEvent = null;
 			isLoading = false;
