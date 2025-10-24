@@ -1,17 +1,22 @@
+import { npubToHex } from '$lib/helpers/nostrUtils.js';
 import { error } from '@sveltejs/kit';
-import { normalizeToHex, hexToNpub } from '$lib/helpers/nostrUtils';
 
-/** @type {import('./$types').PageLoad} */
-export function load({ params }) {
-	const hexPubkey = normalizeToHex(params.pubkey);
+/**
+ * Load function to validate and convert npub parameter
+ * @type {import('./$types').PageLoad}
+ */
+export async function load({ params }) {
+	const { pubkey } = params;
+
+	// Validate and convert npub to hex
+	const hexPubkey = npubToHex(pubkey);
 	
 	if (!hexPubkey) {
-		throw error(400, 'Invalid public key format. Please provide a valid hex pubkey or npub identifier.');
+		throw error(400, 'Invalid community identifier. Community URLs should be in the format /c/npub1...');
 	}
-	
-	return { 
+
+	return {
 		pubkey: hexPubkey,
-		npub: hexToNpub(hexPubkey),
-		originalParam: params.pubkey
+		npub: pubkey
 	};
 }

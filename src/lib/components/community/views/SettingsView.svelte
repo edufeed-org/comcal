@@ -1,8 +1,48 @@
 <script>
 	import { getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
 	import { SettingsIcon } from '$lib/components/icons';
+	import { leaveCommunity } from '$lib/helpers/community';
+	import { useCommunityMembership } from '$lib/stores/joined-communities-list.svelte.js';
+	import { useActiveUser } from '$lib/stores/accounts.svelte';
+	import { showToast } from '$lib/helpers/toast';
+	import { goto } from '$app/navigation';
 
 	let { communityId, communikeyEvent, profileEvent } = $props();
+
+	// Use the reusable community membership hook
+	const getJoined = useCommunityMembership(communityId);
+	
+	// Get active user for authentication
+	const getActiveUser = useActiveUser();
+	const activeUser = $derived(getActiveUser());
+
+	let isLeaving = $state(false);
+
+	async function handleLeaveClick() {
+		if (!activeUser) {
+			showToast('Please login to leave communities', 'error');
+			return;
+		}
+
+		if (isLeaving) return;
+
+		isLeaving = true;
+		try {
+			const result = await leaveCommunity(communityId);
+			if (result.success) {
+				showToast('Left community', 'success');
+				// Redirect to discover page after leaving
+				await goto('/discover');
+			} else {
+				showToast(result.error || 'Failed to leave community', 'error');
+			}
+		} catch (error) {
+			console.error('Error leaving community:', error);
+			showToast('An error occurred', 'error');
+		} finally {
+			isLeaving = false;
+		}
+	}
 </script>
 
 <div class="min-h-screen bg-base-100 p-6">
@@ -50,8 +90,17 @@
 					<h2 class="card-title mb-4">Actions</h2>
 					
 					<div class="space-y-3">
-						<button class="btn btn-outline btn-error w-full">
-							Leave Community
+						<button
+							onclick={handleLeaveClick}
+							disabled={isLeaving || !getJoined()}
+							class="btn btn-outline btn-error w-full"
+						>
+							{#if isLeaving}
+								<span class="loading loading-spinner loading-xs"></span>
+								Leaving...
+							{:else}
+								Leave Community
+							{/if}
 						</button>
 						<p class="text-xs text-base-content/60 text-center">
 							You can rejoin this community later if you change your mind.

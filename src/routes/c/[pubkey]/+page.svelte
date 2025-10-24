@@ -1,74 +1,172 @@
 <script>
-	import { onMount } from 'svelte';
-	import CommunikeyHeader from '$lib/components/CommunikeyHeader.svelte';
-	import Chat from '$lib/components/community/views/Chat.svelte';
-	import CalendarView from '$lib/components/calendar/CalendarView.svelte';
+	import { goto } from '$app/navigation';
+	import { useActiveUser } from '$lib/stores/accounts.svelte';
+	import { hexToNpub } from '$lib/helpers/nostrUtils.js';
+	import CommunitySidebar from '$lib/components/community/layout/CommunitySidebar.svelte';
+	import ContentNavSidebar from '$lib/components/community/layout/ContentNavSidebar.svelte';
+	import MainContentArea from '$lib/components/community/layout/MainContentArea.svelte';
+	import BottomTabBar from '$lib/components/community/layout/BottomTabBar.svelte';
+	import { MenuIcon, CloseIcon } from '$lib/components/icons';
 
 	/** @type {import('./$types').PageProps} */
 	let { data } = $props();
 
-	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-	import { getCommunityAvailableContentTypes } from '$lib/helpers/contentTypes';
+	const activeUser = useActiveUser();
 
-	let communikeyEvent = $state(/** @type {any} */ (null));
-	let profileEvent = $state(/** @type {any} */ (null));
-	let activeTab = $state(9); // Active tab by kind number (9 = Chat)
-
-	// Communikey Creation Pointer
-	const pointer = {
-		kind: 10222,
-		pubkey: data.pubkey
-	};
-
-	onMount(() => {
-		eventStore.replaceable(pointer).subscribe((event) => {
-			communikeyEvent = event || null;
-		});
-
-		eventStore.profile(data.pubkey).subscribe((event) => {
-			profileEvent = event || null;
-		});
-	});
-
-	// Get available content types (including always-available Chat & Calendar)
-	let availableContentTypes = $derived(
-		communikeyEvent ? getCommunityAvailableContentTypes(communikeyEvent) : []
-	);
+	// State management for content type navigation
+	let selectedContentType = $state('home');
+	let leftDrawerOpen = $state(false);
 
 	/**
-	 * Handle tab change
+	 * Handle community selection from sidebar
+	 * @param {string} pubkey
+	 */
+	function handleCommunitySelect(pubkey) {
+		const npub = hexToNpub(pubkey);
+		if (npub) {
+			goto(`/c/${npub}`);
+		}
+		leftDrawerOpen = false; // Close drawer on mobile after selection
+	}
+
+	/**
+	 * Handle content type selection
+	 * @param {string} type
+	 */
+	function handleContentTypeSelect(type) {
+		selectedContentType = type;
+	}
+
+	/**
+	 * Handle navigation from content type kind number
 	 * @param {number} kind - The content type kind number
 	 */
-	function handleTabChange(kind) {
-		activeTab = kind;
+	function handleKindNavigation(kind) {
+		// Map kind numbers to content types
+		const kindMap = /** @type {{ [key: number]: string }} */ ({
+			9: 'chat',
+			31923: 'calendar'
+		});
+		const contentType = kindMap[kind];
+		if (contentType) {
+			selectedContentType = contentType;
+		}
+	}
+
+	function toggleDrawer() {
+		leftDrawerOpen = !leftDrawerOpen;
 	}
 </script>
 
-{#if profileEvent && communikeyEvent}
-	<CommunikeyHeader
-		{communikeyEvent}
-		profile={profileEvent}
-		communikeyContentTypes={availableContentTypes}
-		{activeTab}
-		onTabChange={handleTabChange}
-	/>
+<!-- Desktop Layout -->
+{#if activeUser()}
+	<!-- Logged-in: Show all three sidebars -->
+	<div class="hidden lg:flex h-[calc(100vh-4rem)] pt-16">
+		<CommunitySidebar
+			currentCommunityId={data.pubkey}
+			onCommunitySelect={handleCommunitySelect}
+		/>
+		<ContentNavSidebar
+			bind:selectedContentType
+			onContentTypeSelect={handleContentTypeSelect}
+			communitySelected={true}
+		/>
+		<MainContentArea
+			selectedCommunityId={data.pubkey}
+			{selectedContentType}
+			onKindNavigation={handleKindNavigation}
+		/>
+	</div>
+{:else}
+	<!-- Logged-out: Just content nav + main -->
+	<div class="hidden lg:flex h-[calc(100vh-4rem)] pt-16">
+		<ContentNavSidebar
+			bind:selectedContentType
+			onContentTypeSelect={handleContentTypeSelect}
+			communitySelected={true}
+		/>
+		<MainContentArea
+			selectedCommunityId={data.pubkey}
+			{selectedContentType}
+			onKindNavigation={handleKindNavigation}
+		/>
+	</div>
+{/if}
 
-	<!-- Tab Content -->
-	<div class="mx-auto max-w-5xl px-4 py-6">
-		{#if activeTab === 9}
-			<Chat {communikeyEvent} />
-		{:else if activeTab === 31923}
-			<CalendarView communityPubkey={data.pubkey} communityMode={true} />
-		{:else}
-			<div class="flex items-center justify-center p-8 text-base-content/60">
-				<div class="text-center">
-					<svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-					</svg>
-					<p class="text-lg font-medium">This content type is not yet available</p>
-					<p class="mt-2">Check back soon for updates!</p>
+<!-- Mobile Layout -->
+{#if activeUser()}
+	<!-- Logged-in: Drawer + Bottom Tab Bar -->
+	<div class="lg:hidden">
+		<div class="drawer">
+			<input id="community-drawer" type="checkbox" class="drawer-toggle" bind:checked={leftDrawerOpen} />
+			<div class="drawer-content flex flex-col h-[calc(100vh-4rem)] pt-16">
+				<!-- Mobile Header with Menu Button -->
+				<div class="bg-base-200 border-b border-base-300 p-4 flex items-center justify-between">
+					<button
+						onclick={toggleDrawer}
+						class="btn btn-ghost btn-circle"
+					>
+						<MenuIcon class_="w-6 h-6" />
+					</button>
+					<h1 class="text-lg font-semibold">Communikey</h1>
+					<div class="w-10"></div> <!-- Spacer for centering -->
+				</div>
+
+				<!-- Main Content -->
+				<div class="flex-1 overflow-auto">
+					<MainContentArea
+						selectedCommunityId={data.pubkey}
+						{selectedContentType}
+						onKindNavigation={handleKindNavigation}
+					/>
+				</div>
+
+				<!-- Bottom Tab Bar -->
+				<BottomTabBar
+					bind:selectedContentType
+					onContentTypeSelect={handleContentTypeSelect}
+				/>
+			</div>
+
+			<!-- Drawer Side (Community List) -->
+			<div class="drawer-side z-50">
+				<label for="community-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+				<div class="w-80 min-h-full bg-base-200">
+					<!-- Drawer Header -->
+					<div class="flex items-center justify-between p-4 border-b border-base-300">
+						<h2 class="text-lg font-semibold">Communities</h2>
+						<button
+							onclick={toggleDrawer}
+							class="btn btn-ghost btn-circle btn-sm"
+						>
+							<CloseIcon class_="w-5 h-5" />
+						</button>
+					</div>
+
+					<!-- Community List -->
+					<div class="overflow-y-auto h-[calc(100vh-8rem)]">
+						<CommunitySidebar
+							currentCommunityId={data.pubkey}
+							onCommunitySelect={handleCommunitySelect}
+						/>
+					</div>
 				</div>
 			</div>
-		{/if}
+		</div>
+	</div>
+{:else}
+	<!-- Logged-out: Simple layout -->
+	<div class="lg:hidden h-[calc(100vh-4rem)] pt-16 flex flex-col">
+		<div class="flex-1 overflow-auto pb-16">
+			<MainContentArea
+				selectedCommunityId={data.pubkey}
+				{selectedContentType}
+				onKindNavigation={handleKindNavigation}
+			/>
+		</div>
+		<BottomTabBar
+			bind:selectedContentType
+			onContentTypeSelect={handleContentTypeSelect}
+		/>
 	</div>
 {/if}

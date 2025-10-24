@@ -5,17 +5,22 @@
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { PlusIcon } from '$lib/components/icons';
 	import { goto } from '$app/navigation';
+	import { hexToNpub } from '$lib/helpers/nostrUtils.js';
 
-	let { selectedCommunityId = $bindable(), onCommunitySelect } = $props();
+	let { currentCommunityId, onCommunitySelect } = $props();
 
 	const getJoinedCommunities = useJoinedCommunitiesList();
 	const joinedCommunities = $derived(getJoinedCommunities());
 
 	/**
-	 * Handle community selection
+	 * Handle community selection - uses route-based navigation
 	 * @param {string} pubkey
 	 */
 	function handleCommunityClick(pubkey) {
+		const npub = hexToNpub(pubkey);
+		if (npub) {
+			goto(`/c/${npub}`);
+		}
 		if (onCommunitySelect) {
 			onCommunitySelect(pubkey);
 		}
@@ -33,7 +38,7 @@
 			{@const communityPubKey = getTagValue(community, 'd') || ''}
 			{@const getCommunityProfile = useUserProfile(communityPubKey)}
 			{@const communityProfile = getCommunityProfile()}
-			{@const isActive = selectedCommunityId === communityPubKey}
+			{@const isActive = currentCommunityId === communityPubKey}
 			
 			{#if communityPubKey}
 				<div class="tooltip tooltip-right" data-tip={getDisplayName(communityProfile)}>
@@ -96,7 +101,7 @@
 			{@const communityPubKey = getTagValue(community, 'd') || ''}
 			{@const getCommunityProfile = useUserProfile(communityPubKey)}
 			{@const communityProfile = getCommunityProfile()}
-			{@const isActive = selectedCommunityId === communityPubKey}
+			{@const isActive = currentCommunityId === communityPubKey}
 			
 			{#if communityPubKey}
 				<button
