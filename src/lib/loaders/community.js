@@ -15,13 +15,31 @@ export const communikeyTimelineLoader = createTimelineLoader(
 	{ eventStore }
 );
 
-// Membership tracking loader for community relationships (kind 30382)
-export const relationshipTimelineLoader = createTimelineLoader(
-	pool,
-	appConfig.calendar.defaultRelays,
-	{
-		kinds: [30382], // Relationship events
-		limit: 100
-	},
-	{ eventStore }
-);
+// Membership tracking loader factory for community relationships (kind 30382)
+// Takes an author pubkey and returns a loader that fetches only that author's relationships
+export function createRelationshipLoader(/** @type {string} */ authorPubkey) {
+	return createTimelineLoader(
+		pool,
+		appConfig.calendar.defaultRelays,
+		{
+			kinds: [30382], // Relationship events
+			authors: [authorPubkey], // Filter by specific author
+			limit: 100
+		},
+		{ eventStore }
+	);
+}
+
+// Community members loader factory - fetches all relationship events for a specific community
+// Takes a community pubkey and returns a loader that fetches all users who have relationships with that community
+export function createCommunityMembersLoader(/** @type {string} */ communityPubkey) {
+	return createTimelineLoader(
+		pool,
+		appConfig.calendar.defaultRelays,
+		{
+			kinds: [30382], // Relationship events
+			'#d': [communityPubkey] // Filter by community ID
+		},
+		{ eventStore }
+	);
+}

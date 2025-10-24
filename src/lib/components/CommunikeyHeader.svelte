@@ -7,8 +7,11 @@
 
 	let { profile, communikeyEvent, communikeyContentTypes, activeTab, onTabChange } = $props();
 
-	// Use the reusable community membership hook
-	const getJoined = useCommunityMembership(communikeyEvent.pubkey);
+	// Create a reactive reference to the community pubkey
+	const communityPubkey = $derived(communikeyEvent?.pubkey);
+	
+	// Use the reusable community membership hook with reactive pubkey
+	const getJoined = useCommunityMembership(communityPubkey);
 
 	/**
 	 * Handle tab click

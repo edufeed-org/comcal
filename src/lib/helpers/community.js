@@ -80,14 +80,12 @@ export async function leaveCommunity(communityPubkey, options = {}) {
 	}
 
 	try {
-		// Find the relationship event to delete
+		// Use model to find the relationship event to delete
+		const { CommunityRelationshipModel } = await import('$lib/models/community-relationship');
+		
 		const relationshipEvents = await new Promise((resolve) => {
 			eventStore
-				.timeline({
-					kinds: [30382],
-					authors: [account.pubkey],
-					limit: 100
-				})
+				.model(CommunityRelationshipModel, account.pubkey)
 				.subscribe({
 					next: (events) => {
 						resolve(events);

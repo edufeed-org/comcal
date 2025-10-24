@@ -12,6 +12,9 @@
 	const getJoinedCommunities = useJoinedCommunitiesList();
 	const joinedCommunities = $derived(getJoinedCommunities());
 
+	// Create non-mutating copy to avoid Svelte 5 state mutation error
+	const sortedCommunities = $derived([...joinedCommunities]);
+
 	/**
 	 * Handle community selection - uses route-based navigation
 	 * @param {string} pubkey
@@ -34,7 +37,7 @@
 <!-- Desktop: Fixed left sidebar -->
 <div class="hidden lg:flex flex-col w-16 bg-base-200 border-r border-base-300 h-[calc(100vh-4rem)] fixed left-0 top-16 overflow-y-auto overflow-x-hidden">
 	<div class="flex flex-col items-center py-4 space-y-3">
-		{#each joinedCommunities.sort() as community}
+		{#each sortedCommunities as community}
 			{@const communityPubKey = getTagValue(community, 'd') || ''}
 			{@const getCommunityProfile = useUserProfile(communityPubKey)}
 			{@const communityProfile = getCommunityProfile()}
@@ -97,7 +100,7 @@
 	</div>
 	
 	<div class="flex-1 overflow-y-auto p-4 space-y-2">
-		{#each joinedCommunities.sort() as community}
+		{#each sortedCommunities as community}
 			{@const communityPubKey = getTagValue(community, 'd') || ''}
 			{@const getCommunityProfile = useUserProfile(communityPubKey)}
 			{@const communityProfile = getCommunityProfile()}

@@ -1,7 +1,8 @@
 <script>
 	import { UserIcon } from '$lib/components/icons';
-	import { pool } from '$lib/stores/nostr-infrastructure.svelte';
-	import { appConfig } from '$lib/config.js';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+	import { createCommunityMembersLoader } from '$lib/loaders/community';
+	import { CommunityMembersModel } from '$lib/models';
 
 	// Props
 	let { communityId } = $props();
@@ -12,10 +13,12 @@
 	let isLoading = $state(true);
 	let error = $state(null);
 
-	// Load members
+	// Load members using loader + model pattern
 	$effect(() => {
 		if (!communityId) {
 			console.log('👥 MembersStat: No communityId provided, skipping load');
+			memberPubkeys = new Set();
+			isLoading = false;
 			return;
 		}
 
@@ -26,30 +29,35 @@
 		isLoading = true;
 		error = null;
 
-		const sub = pool
-			.group(appConfig.calendar.defaultRelays)
-			.subscription({ kinds: [30382], '#d': [communityId] })
+		// 1. Bootstrap EventStore with community members loader (fetches from relays)
+		const loaderSubscription = createCommunityMembersLoader(communityId)().subscribe({
+			error: (/** @type {any} */ err) => {
+				console.error('👥 MembersStat: Loader error:', err);
+				error = err.message || 'Failed to load members';
+				isLoading = false;
+			}
+		});
+
+		// 2. Subscribe to model for reactive filtered data from EventStore
+		const modelSubscription = eventStore
+			.model(CommunityMembersModel, communityId)
 			.subscribe({
-				next: (/** @type {any} */ response) => {
-					if (response === 'EOSE') {
-						console.log('👥 MembersStat: EOSE received, members loaded:', memberPubkeys.size);
-						isLoading = false;
-					} else if (response && typeof response === 'object' && response.kind === 30382) {
-						memberPubkeys.add(response.pubkey);
-						memberPubkeys = new Set(memberPubkeys); // Trigger reactivity
-						console.log('👥 MembersStat: Member added:', response.pubkey, 'Total:', memberPubkeys.size);
-					}
+				next: (/** @type {Set<string>} */ members) => {
+					memberPubkeys = members;
+					isLoading = false;
+					console.log('👥 MembersStat: Members loaded:', members.size);
 				},
 				error: (/** @type {any} */ err) => {
-					console.error('👥 MembersStat: Error loading members:', err);
+					console.error('👥 MembersStat: Model error:', err);
 					error = err.message || 'Failed to load members';
 					isLoading = false;
 				}
 			});
 
 		return () => {
-			console.log('👥 MembersStat: Cleaning up subscription');
-			sub.unsubscribe();
+			console.log('👥 MembersStat: Cleaning up subscriptions');
+			loaderSubscription.unsubscribe();
+			modelSubscription.unsubscribe();
 		};
 	});
 

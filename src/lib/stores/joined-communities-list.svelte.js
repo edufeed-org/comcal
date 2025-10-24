@@ -1,19 +1,17 @@
 import { manager } from '$lib/stores/accounts.svelte';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { getTagValue } from 'applesauce-core/helpers';
-import { useAllCommunities } from './all-communities.svelte.js';
-import { relationshipTimelineLoader } from '$lib/loaders';
+import { createRelationshipLoader } from '$lib/loaders/community';
+import { CommunityRelationshipModel } from '$lib/models/community-relationship';
 
 /**
  * Custom hook for loading and managing joined communities list
- * Uses EventStore intelligence for efficient reactive updates
- * @returns {() => Array<import('nostr-tools').Event>} - Function returning reactive derived state with array of joined community events
+ * Uses loader + model pattern for efficient reactive updates
+ * @returns {() => Array<import('nostr-tools').Event>} - Function returning reactive array of joined community events
  */
 export function useJoinedCommunitiesList() {
 	let activeUser = $state(manager.active);
-	let relationshipEvents = $state(/** @type {import('nostr-tools').Event[]} */ ([]));
-
-	const getAllCommunities = useAllCommunities();
+	let joinedCommunities = $state(/** @type {import('nostr-tools').Event[]} */ ([]));
 
 	// Subscribe to account changes
 	$effect(() => {
@@ -23,49 +21,28 @@ export function useJoinedCommunitiesList() {
 		return () => subscription.unsubscribe();
 	});
 
-	// Load relationship events when user changes
+	// Load relationship events using loader + model pattern
 	$effect(() => {
 		if (!activeUser?.pubkey) {
-			relationshipEvents = [];
+			joinedCommunities = [];
 			return;
 		}
 
-		// Bootstrap EventStore with relationship loader (similar to CalendarView pattern)
-		const loaderSubscription = relationshipTimelineLoader().subscribe();
+		// 1. Bootstrap EventStore with author-specific relationship loader (fetches from relays)
+		const loaderSubscription = createRelationshipLoader(activeUser.pubkey)().subscribe();
 
-		// Use EventStore timeline for reactive data loading
-		const subscription = eventStore.timeline({
-			kinds: [30382], // Relationship events
-			authors: [activeUser.pubkey],
-			limit: 100
-		}).subscribe({
-			next: (/** @type {import('nostr-tools').Event[]} */ events) => {
+		// 2. Subscribe to model for reactive filtered data from EventStore
+		const modelSubscription = eventStore
+			.model(CommunityRelationshipModel, activeUser.pubkey)
+			.subscribe((events) => {
 				console.log('📋 JoinedCommunities: Loaded relationship events:', events.length);
-				relationshipEvents = events;
-			},
-			error: (/** @type {any} */ error) => {
-				console.error('📋 JoinedCommunities: Error loading relationship events:', error);
-				relationshipEvents = [];
-			}
-		});
+				joinedCommunities = events;
+			});
 
 		return () => {
-			subscription.unsubscribe();
 			loaderSubscription.unsubscribe();
+			modelSubscription.unsubscribe();
 		};
-	});
-
-	// Derive joined communities reactively - filter relationship events for 'follow' relationships
-	const joinedCommunities = $derived.by(() => {
-		if (!activeUser?.pubkey || !relationshipEvents.length) {
-			return [];
-		}
-
-		// Filter relationship events to only include 'follow' relationships
-		return relationshipEvents.filter(event => {
-			const relationship = getTagValue(event, 'n');
-			return relationship === 'follow';
-		});
 	});
 
 	// Return a function that provides reactive access to joined communities

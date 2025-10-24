@@ -23,7 +23,8 @@ export {
 // Community loaders
 export {
 	communikeyTimelineLoader,
-	relationshipTimelineLoader
+	createRelationshipLoader,
+	createCommunityMembersLoader
 } from './community.js';
 
 // Profile utilities

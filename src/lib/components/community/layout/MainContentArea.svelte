@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+	import { useUserProfile } from '$lib/stores/user-profile.svelte';
 	import Chat from '../views/Chat.svelte';
 	import CalendarView from '$lib/components/calendar/CalendarView.svelte';
 	import HomeView from '../views/HomeView.svelte';
@@ -10,8 +11,11 @@
 	let { selectedCommunityId, selectedContentType, onKindNavigation } = $props();
 
 	let communikeyEvent = $state(/** @type {any} */ (null));
-	let profileEvent = $state(/** @type {any} */ (null));
 	let isLoading = $state(true);
+
+	// Use the established loader pattern for profile data
+	const getCommunityProfile = useUserProfile(selectedCommunityId);
+	const communityProfile = $derived(getCommunityProfile());
 
 	// Communikey Creation Pointer
 	$effect(() => {
@@ -27,13 +31,8 @@
 				communikeyEvent = event || null;
 				isLoading = false;
 			});
-
-			eventStore.profile(selectedCommunityId).subscribe((event) => {
-				profileEvent = event || null;
-			});
 		} else {
 			communikeyEvent = null;
-			profileEvent = null;
 			isLoading = false;
 		}
 	});
@@ -60,7 +59,7 @@
 		<!-- Key block ensures views remount when community changes -->
 		{#key selectedCommunityId}
 			{#if selectedContentType === 'home'}
-				<HomeView {communikeyEvent} {profileEvent} communityId={selectedCommunityId} {onKindNavigation} />
+				<HomeView {communikeyEvent} profileEvent={communityProfile} communityId={selectedCommunityId} {onKindNavigation} />
 			{:else if selectedContentType === 'chat'}
 				<Chat {communikeyEvent} />
 			{:else if selectedContentType === 'calendar'}
@@ -68,7 +67,7 @@
 			{:else if selectedContentType === 'activity'}
 				<ActivityView communityId={selectedCommunityId} {communikeyEvent} />
 			{:else if selectedContentType === 'settings'}
-				<SettingsView communityId={selectedCommunityId} {communikeyEvent} {profileEvent} />
+				<SettingsView communityId={selectedCommunityId} {communikeyEvent} profileEvent={communityProfile} />
 			{/if}
 		{/key}
 	{/if}
