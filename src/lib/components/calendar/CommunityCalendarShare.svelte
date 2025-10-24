@@ -186,6 +186,7 @@
 
 	/**
 	 * Delete a community sharing event
+	 * Tries multiple lookup strategies to handle different share event formats
 	 * @param {string} communityPubkey
 	 * @returns {Promise<boolean>}
 	 */
@@ -198,7 +199,9 @@
 			throw new Error('Missing user or event data');
 		}
 
-		// Get share event from subscription
+		// Strategy 1: Try lookup by calendar event's d-tag (current format)
+		const calendarDTag = getReplaceableIdentifier(event.originalEvent);
+		
 		return new Promise((resolve) => {
 			/** @type {import('rxjs').Subscription | undefined} */
 			let sub;
@@ -206,52 +209,117 @@
 				.replaceable({
 					kind: 30222,
 					pubkey: activeUser.pubkey,
-					identifier: getReplaceableIdentifier(event.originalEvent)
+					identifier: calendarDTag
 				})
 				.subscribe(async (shareEvent) => {
 					if (sub) sub.unsubscribe();
 
-					if (!shareEvent) {
-						console.warn(
-							`🌐 CommunityCalendarShare: No share event found for community ${communityPubkey}`
-						);
-						resolve(true); // Consider it successful if already gone
+					// If found with current format, delete it
+					if (shareEvent) {
+						console.log('🌐 CommunityCalendarShare: Found share with current format (d-tag)');
+						const success = await performShareDeletion(shareEvent);
+						resolve(success);
 						return;
 					}
 
-					console.log('🌐 CommunityCalendarShare: Share event found, creating deletion event');
+					// Strategy 2: Try lookup by calendar event ID (legacy format)
+					console.log('🌐 CommunityCalendarShare: Trying legacy format lookup (event ID)...');
+					/** @type {import('rxjs').Subscription | undefined} */
+					let legacySub;
+					legacySub = eventStore
+						.replaceable({
+							kind: 30222,
+							pubkey: activeUser.pubkey,
+							identifier: event.id
+						})
+						.subscribe(async (legacyShareEvent) => {
+							if (legacySub) legacySub.unsubscribe();
 
-					// Create EventFactory for deletion
-					const factory = new EventFactory({
-						signer: activeUser.signer
-					});
+							if (legacyShareEvent) {
+								console.log('🌐 CommunityCalendarShare: Found share with legacy format (event ID)');
+								const success = await performShareDeletion(legacyShareEvent);
+								resolve(success);
+								return;
+							}
 
-					// Create deletion event (kind 5)
-					const deleteEventTemplate = await factory.delete([shareEvent]);
-					
-					// Sign the deletion event
-					const deleteEvent = await factory.sign(deleteEventTemplate);
+							// Strategy 3: Query all user's shares and find by tags
+							console.log('🌐 CommunityCalendarShare: Trying manual search through all shares...');
+							/** @type {import('rxjs').Subscription | undefined} */
+							let allSharesSub;
+							allSharesSub = eventStore
+								.timeline({
+									kinds: [30222],
+									authors: [activeUser.pubkey]
+								})
+								.subscribe(async (allShares) => {
+									if (allSharesSub) allSharesSub.unsubscribe();
 
-					// Publish deletion
-					const result = await publishEvent(deleteEvent, {
-						relays: appConfig.calendar.defaultRelays,
-						logPrefix: 'CommunityShareDelete'
-					});
+									// Find share that references this community and event
+									const matchingShare = allShares.find((share) => {
+										const pTag = share.tags.find(t => t[0] === 'p');
+										const eTag = share.tags.find(t => t[0] === 'e');
+										const aTag = share.tags.find(t => t[0] === 'a');
+										
+										const matchesCommunity = pTag?.[1] === communityPubkey;
+										const matchesEventId = eTag?.[1] === event.id;
+										const matchesEventAddress = aTag?.[1] === getReplaceableAddress(event.originalEvent);
+										
+										return matchesCommunity && (matchesEventId || matchesEventAddress);
+									});
 
-					if (result.success) {
-						// Add deletion event to EventStore immediately
-						// This triggers EventStore's automatic deletion of referenced share events
-						// and updates all subscriptions without waiting for relay roundtrip
-						eventStore.add(deleteEvent);
-						
-						console.log('✅ CommunityCalendarShare: Share deleted successfully');
-					} else {
-						console.error('❌ CommunityCalendarShare: Share deletion failed');
-					}
-
-					resolve(result.success);
+									if (matchingShare) {
+										console.log('🌐 CommunityCalendarShare: Found share through manual search');
+										const success = await performShareDeletion(matchingShare);
+										resolve(success);
+									} else {
+										console.warn(
+											`🌐 CommunityCalendarShare: No share event found for community ${communityPubkey} after all lookup strategies`
+										);
+										resolve(true); // Consider it successful if already gone
+									}
+								});
+						});
 				});
 		});
+	}
+
+	/**
+	 * Perform the actual deletion of a share event
+	 * @param {any} shareEvent - The share event to delete
+	 * @returns {Promise<boolean>}
+	 */
+	async function performShareDeletion(shareEvent) {
+		console.log('🌐 CommunityCalendarShare: Creating deletion event for share:', shareEvent.id);
+
+		// Create EventFactory for deletion
+		const factory = new EventFactory({
+			signer: activeUser.signer
+		});
+
+		// Create deletion event (kind 5)
+		const deleteEventTemplate = await factory.delete([shareEvent]);
+		
+		// Sign the deletion event
+		const deleteEvent = await factory.sign(deleteEventTemplate);
+
+		// Publish deletion
+		const result = await publishEvent(deleteEvent, {
+			relays: appConfig.calendar.defaultRelays,
+			logPrefix: 'CommunityShareDelete'
+		});
+
+		if (result.success) {
+			// Add deletion event to EventStore immediately
+			// This triggers EventStore's automatic deletion of referenced share events
+			// and updates all subscriptions without waiting for relay roundtrip
+			eventStore.add(deleteEvent);
+			
+			console.log('✅ CommunityCalendarShare: Share deleted successfully');
+		} else {
+			console.error('❌ CommunityCalendarShare: Share deletion failed');
+		}
+
+		return result.success;
 	}
 
 	/**

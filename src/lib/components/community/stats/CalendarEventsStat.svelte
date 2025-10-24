@@ -17,7 +17,6 @@
 	const eventLoaderComposable = useCalendarEventLoader({
 		onEventsUpdate: (newEvents) => {
 			events = newEvents;
-			console.log(events)
 			console.log('📊 CalendarEventsStat: Events updated, count:', newEvents.length);
 		},
 		onLoadingChange: (loading) => {

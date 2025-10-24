@@ -3,3 +3,4 @@
  * For models not provided by applesauce-core
  */
 export { CommunityRelationshipModel, CommunityMembersModel } from './community-relationship.js';
+export { CommunityCalendarEventModel } from './community-calendar-event.js';

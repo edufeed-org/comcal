@@ -10,17 +10,17 @@ import { onlyEvents } from 'applesauce-relay/operators';
 import { mapEventsToStore, mapEventsToTimeline } from 'applesauce-core/observable';
 import { map } from 'rxjs';
 import { getCalendarEventMetadata, parseAddressReference } from '$lib/helpers/eventUtils';
-import { getTagValue } from 'applesauce-core/helpers';
 import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
 import {
 	calendarTimelineLoader,
 	targetedPublicationTimelineLoader,
-	eventLoader
+	userDeletionLoader
 } from '$lib/loaders';
 import { appConfig } from '$lib/config.js';
 import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
 import { parseCalendarFilters } from '$lib/helpers/urlParams.js';
 import { SvelteMap, SvelteSet } from 'svelte/reactivity';
+import { CommunityCalendarEventModel } from '$lib/models';
 
 /**
  * @typedef {Object} LoaderOptions
@@ -51,6 +51,7 @@ export function useCalendarEventLoader(options) {
 	let relaySubscription = $state();
 	let backgroundLoaderSubscription = $state();
 	let targetedPublicationSubscription = $state();
+	let deletionSubscriptions = $state.raw(/** @type {SvelteMap<string, any>} */ (new SvelteMap()));
 
 	// Internal state
 	const eventMap = new SvelteMap();
@@ -75,6 +76,11 @@ export function useCalendarEventLoader(options) {
 		relaySubscription = cleanupSubscription(relaySubscription);
 		backgroundLoaderSubscription = cleanupSubscription(backgroundLoaderSubscription);
 		targetedPublicationSubscription = cleanupSubscription(targetedPublicationSubscription);
+		
+		// Clean up deletion subscriptions
+		deletionSubscriptions.forEach((sub) => cleanupSubscription(sub));
+		deletionSubscriptions.clear();
+		
 		eventMap.clear();
 		resolutionErrors.length = 0;
 	}
@@ -277,7 +283,7 @@ export function useCalendarEventLoader(options) {
 	}
 
 	/**
-	 * Load community events with reactive deletion handling
+	 * Load community events using the CommunityCalendarEventModel
 	 * @param {string} communityPubkey - The community's public key
 	 */
 	function loadByCommunity(communityPubkey) {
@@ -291,154 +297,56 @@ export function useCalendarEventLoader(options) {
 		options.onLoadingChange(true);
 		options.onError(null);
 		eventMap.clear();
-		resolutionErrors.length = 0;
 
 		// Clean up all subscriptions
 		cleanupAll();
 
-		// Track resolved events per share event to enable cleanup
-		const shareToEventMap = new SvelteMap(); // shareEventId -> Set of calendarEventIds
-
 		try {
-			// Load direct community events (these are always shown)
-			subscription = eventStore
-				.timeline({
-					kinds: [31922, 31923],
-					'#h': [communityPubkey],
-					limit: 100
-				})
-				.subscribe({
-					next: (/** @type {any[]} */ timeline) => {
-						console.log(`📅 EventLoader: Received ${timeline.length} direct community events`);
+			// Start loaders to populate EventStore with required data
+			// 1. Direct community events (kinds 31922, 31923 with h-tag)
+			backgroundLoaderSubscription = eventStore.timeline({
+				kinds: [31922, 31923],
+				'#h': [communityPubkey],
+				limit: 100
+			}).subscribe();
+			
+			// 2. Targeted publications (kind 30222 referencing community)
+			targetedPublicationSubscription = targetedPublicationTimelineLoader(communityPubkey)().subscribe();
+			
+			// Note: The CommunityCalendarEventModel will automatically load referenced
+			// calendar events on-demand, so no need for a global calendar loader here
 
-						timeline.forEach((event) => {
-							if (!eventMap.has(event.id)) {
-								eventMap.set(event.id, getCalendarEventMetadata(event));
-							}
-						});
-
-						options.onEventsUpdate(Array.from(eventMap.values()));
-					},
-					error: (/** @type {any} */ err) => {
-						console.error('📅 EventLoader: Error loading community events:', err);
-						options.onError('Failed to load community calendar events');
-						options.onLoadingChange(false);
-					}
-				});
-
-			// Reactively subscribe to targeted publications (share events)
-			// EventStore automatically removes deleted share events from this subscription
-			targetedPublicationSubscription = targetedPublicationTimelineLoader(
-				communityPubkey
-			)().subscribe({
-				next: (/** @type {any} */ pubEvent) => {
-					console.log('📅 EventLoader: Processing share event:', pubEvent.id);
-
-					// Clean up any previously resolved events for this share
-					if (shareToEventMap.has(pubEvent.id)) {
-						const previousEventIds = shareToEventMap.get(pubEvent.id);
-						previousEventIds?.forEach((eventId) => {
-							// Only remove if this event isn't referenced by another share or direct event
-							const isDirectEvent = eventStore.get(eventId)?.tags?.some(
-								(/** @type {any[]} */ tag) => tag[0] === 'h' && tag[1] === communityPubkey
-							);
-							if (!isDirectEvent) {
-								eventMap.delete(eventId);
-								console.log('📅 EventLoader: Removed orphaned event:', eventId);
-							}
-						});
-					}
-
-					// Initialize tracking for this share
-					shareToEventMap.set(pubEvent.id, new SvelteSet());
-
-					try {
-						const eTag = getTagValue(pubEvent, 'e');
-						const aTag = getTagValue(pubEvent, 'a');
-						
-						if (eTag) {
-							// Load referenced event by event ID
-							console.log('📅 EventLoader: Resolving e-tag reference:', eTag);
-							const loader = eventLoader({
-								id: eTag,
-								relays: appConfig.calendar.defaultRelays
-							});
-							
-							if (loader && 'subscribe' in loader) {
-								loader.subscribe({
-									next: (loadedEvent) => {
-										if (loadedEvent) {
-											const calendarEvent = getCalendarEventMetadata(loadedEvent);
-											eventMap.set(calendarEvent.id, calendarEvent);
-											shareToEventMap.get(pubEvent.id)?.add(calendarEvent.id);
-											options.onEventsUpdate(Array.from(eventMap.values()));
-											console.log('📅 EventLoader: Added event from share:', calendarEvent.id);
-										}
-									},
-									error: () => {
-										const errorMsg = `Failed to load e-tag referenced event: ${eTag}`;
-										console.warn(`📅 EventLoader: ${errorMsg}`);
-										resolutionErrors.push(errorMsg);
-										if (options.onResolutionErrors) {
-											options.onResolutionErrors([...resolutionErrors]);
-										}
-									}
-								});
-							}
-						} else if (aTag) {
-							// Load referenced event by addressable reference
-							console.log('📅 EventLoader: Resolving a-tag reference:', aTag);
-							const parsed = parseAddressReference(aTag);
-							
-							if (parsed) {
-								const loader = eventStore.addressableLoader?.({
-									kind: parsed.kind,
-									pubkey: parsed.pubkey,
-									identifier: parsed.dTag
-								});
-								
-								if (loader && 'subscribe' in loader) {
-									loader.subscribe({
-										next: (/** @type {any} */ loadedEvent) => {
-											if (loadedEvent) {
-												const calendarEvent = getCalendarEventMetadata(loadedEvent);
-												eventMap.set(calendarEvent.id, calendarEvent);
-												shareToEventMap.get(pubEvent.id)?.add(calendarEvent.id);
-												options.onEventsUpdate(Array.from(eventMap.values()));
-												console.log('📅 EventLoader: Added event from share:', calendarEvent.id);
-											}
-										},
-										error: () => {
-											const errorMsg = `Failed to load a-tag referenced event: ${aTag}`;
-											console.warn(`📅 EventLoader: ${errorMsg}`);
-											resolutionErrors.push(errorMsg);
-											if (options.onResolutionErrors) {
-												options.onResolutionErrors([...resolutionErrors]);
-											}
-										}
-									});
-								}
-							} else {
-								console.warn('📅 EventLoader: Invalid a-tag format:', aTag);
-							}
-						} else {
-							console.warn('📅 EventLoader: Targeted publication missing both e and a tags:', pubEvent.id);
-						}
-					} catch (err) {
-						const errorMsg = `Error resolving targeted publication ${pubEvent.id}: ${/** @type {Error} */ (err).message}`;
-						console.error(`📅 EventLoader: ${errorMsg}`);
-						resolutionErrors.push(errorMsg);
-						if (options.onResolutionErrors) {
-							options.onResolutionErrors([...resolutionErrors]);
-						}
-					}
-				},
-				complete: () => {
-					console.log('📅 EventLoader: Finished loading targeted publication events');
+			// Use the CommunityCalendarEventModel to reactively combine all data
+			subscription = eventStore.model(CommunityCalendarEventModel, communityPubkey).subscribe({
+				next: (events) => {
+					console.log(`📅 EventLoader: Received ${events.length} community events from model`);
+					options.onEventsUpdate(events);
 					options.onLoadingChange(false);
+					
+					// Load deletion events for all unique authors
+					// EventStore will automatically remove deleted events from all subscriptions
+					const authorPubkeys = new SvelteSet(events.map(e => e.originalEvent.pubkey));
+					
+					authorPubkeys.forEach((pubkey) => {
+						// Skip if already loading deletions for this author
+						if (deletionSubscriptions.has(pubkey)) return;
+						
+						const deletionLoader = userDeletionLoader(pubkey);
+						const loaderResult = deletionLoader();
+						
+						// Handle both Observable and Promise returns
+						const sub = loaderResult.subscribe(/** @param {any} deletionEvent */ (deletionEvent) => {
+							if (deletionEvent) {
+								eventStore.add(deletionEvent);
+							}
+						});
+						
+						deletionSubscriptions.set(pubkey, sub);
+					});
 				},
-				error: () => {
-					console.error('📅 EventLoader: Error loading targeted publication events');
+				error: (err) => {
+					console.error('📅 EventLoader: Error in community calendar model:', err);
+					options.onError('Failed to load community calendar events');
 					options.onLoadingChange(false);
 				}
 			});
