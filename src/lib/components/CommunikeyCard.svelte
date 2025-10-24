@@ -59,7 +59,7 @@
 	}
 </script>
 
-<a href={pubkey ? `/c/${hexToNpub(pubkey) || pubkey}` : '#'} class="card bg-base-100 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105 flex flex-col items-center gap-3 justify-center p-6 rounded-xl border border-base-200 hover:border-primary/20 min-w-[240px]">
+<a href={pubkey ? `/c/${hexToNpub(pubkey) || pubkey}` : '#'} class="card bg-base-100 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105 flex flex-col items-center gap-3 justify-center p-6 rounded-xl border {getJoined() ? 'border-emerald-500/30 bg-emerald-50/5 dark:bg-emerald-950/10' : 'border-base-200'} hover:border-primary/20 min-w-[240px]">
 	<div class="absolute top-3 right-3 z-10">
 		{#if getJoined()}
 			<div class="bg-emerald-500 shadow-sm border border-emerald-600/20 rounded-full w-6 h-6 flex items-center justify-center">

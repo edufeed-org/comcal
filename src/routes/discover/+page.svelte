@@ -141,16 +141,16 @@
 			});
 		}
 
-		// Sort: non-joined first, then alphabetically
+		// Sort: joined communities first, then alphabetically
 		return [...filtered].sort((a, b) => {
 			const aPubkey = getTagValue(a, 'd') || a.pubkey;
 			const bPubkey = getTagValue(b, 'd') || b.pubkey;
 			const aJoined = joinedPubkeys.has(aPubkey);
 			const bJoined = joinedPubkeys.has(bPubkey);
 
-			// Non-joined communities first
+			// Joined communities first
 			if (aJoined !== bJoined) {
-				return aJoined ? 1 : -1;
+				return aJoined ? -1 : 1;
 			}
 
 			// Then alphabetically by name
