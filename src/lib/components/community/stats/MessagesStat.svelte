@@ -32,11 +32,9 @@
 			.subscribe({
 				next: (/** @type {any} */ response) => {
 					if (response === 'EOSE') {
-						console.log('💬 MessagesStat: EOSE received, messages loaded:', messages.length);
 						isLoading = false;
 					} else if (response && typeof response === 'object' && response.kind === 9) {
 						messages = [...messages, response];
-						console.log('💬 MessagesStat: Message added, total:', messages.length);
 					}
 				},
 				error: (/** @type {any} */ err) => {
