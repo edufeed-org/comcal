@@ -136,7 +136,6 @@ export function useCalendarEventLoader(options) {
 			const filter = { kinds: [31922, 31923], limit: 50 };
 
 			subscription = eventStore.model(TimelineModel, filter).subscribe((timeline) => {
-				console.log('📅 EventLoader: Loaded', timeline.length, 'events from EventStore');
 				const mapped = timeline.map(getCalendarEventMetadata);
 				options.onEventsUpdate(mapped);
 				options.onLoadingChange(false);
