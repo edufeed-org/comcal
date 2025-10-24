@@ -6,6 +6,7 @@
 	import CalendarEventDetailsModal from './calendar/CalendarEventDetailsModal.svelte';
 	import CreateCommunityModal from './CreateCommunityModal.svelte';
 	import WebcalQRCodeModal from './calendar/WebcalQRCodeModal.svelte';
+	import EditProfileModal from './EditProfileModal.svelte';
 
 	/**
 	 * ModalManager - Centralized modal rendering component
@@ -29,6 +30,7 @@
 	const privateKeyModalId = 'global-private-key-modal';
 	const signupModalId = 'global-signup-modal';
 	const createCommunityModalId = 'create-community-modal';
+	const editProfileModalId = 'edit-profile-modal';
 
 	/**
 	 * Reactive effect to handle modal opening/closing based on store state
@@ -44,6 +46,7 @@
 			const privateKeyModal = /** @type {HTMLDialogElement} */ (document.getElementById(privateKeyModalId));
 			const signupModal = /** @type {HTMLDialogElement} */ (document.getElementById(signupModalId));
 			const createCommunityModal = /** @type {HTMLDialogElement} */ (document.getElementById(createCommunityModalId));
+			const editProfileModal = /** @type {HTMLDialogElement} */ (document.getElementById(editProfileModalId));
 
 			if (loginModal && loginModal.open) {
 				console.log('ModalManager: Closing login modal');
@@ -60,6 +63,10 @@
 			if (createCommunityModal && createCommunityModal.open) {
 				console.log('ModalManager: Closing create community modal');
 				createCommunityModal.close();
+			}
+			if (editProfileModal && editProfileModal.open) {
+				console.log('ModalManager: Closing edit profile modal');
+				editProfileModal.close();
 			}
 		} else if (currentModal === 'login') {
 			// Open login modal
@@ -88,6 +95,13 @@
 			if (createCommunityModal && !createCommunityModal.open) {
 				console.log('ModalManager: Opening create community modal');
 				createCommunityModal.showModal();
+			}
+		} else if (currentModal === 'profile') {
+			// Open edit profile modal
+			const editProfileModal = /** @type {HTMLDialogElement} */ (document.getElementById(editProfileModalId));
+			if (editProfileModal && !editProfileModal.open) {
+				console.log('ModalManager: Opening edit profile modal');
+				editProfileModal.showModal();
 			}
 		}
 	});
@@ -138,4 +152,6 @@
 	<CreateCommunityModal modalId={createCommunityModalId} />
 {:else if modal.activeModal === 'webcalQRCode'}
 	<WebcalQRCodeModal />
+{:else if modal.activeModal === 'profile'}
+	<EditProfileModal modalId={editProfileModalId} />
 {/if}

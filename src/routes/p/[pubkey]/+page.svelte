@@ -1,24 +1,53 @@
 <script>
-	import { onMount } from 'svelte';
+	import { ProfileModel } from 'applesauce-core/models';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-	import { getProfilePicture, getProfileContent } from 'applesauce-core/helpers';
-	import { fetchProfileData } from '$lib/helpers/profile.js';
+	import { getProfilePicture } from 'applesauce-core/helpers';
+	import { profileLoader } from '$lib/loaders/profile.js';
+	import { appConfig } from '$lib/config.js';
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import NotesTimeline from '$lib/components/notes/NotesTimeline.svelte';
+	import { manager, useActiveUser } from '$lib/stores/accounts.svelte.js';
+	import { modalStore } from '$lib/stores/modal.svelte.js';
 
 	/** @type {import('./$types').PageProps} */
 	let { data } = $props();
 
+	let profile = $state(/** @type {any} */ (null));
 	let profileEvent = $state(/** @type {any} */ (null));
 	let showRawData = $state(false);
 	let activeTab = $state('notes');
 	let bannerError = $state(false);
 
-	onMount(() => {
-		eventStore.profile(data.pubkey).subscribe((event) => {
-			// $inspect(profileEvent)
-			profileEvent = event || null;
+	// Use loader + model pattern
+	$effect(() => {
+		// Reset state when pubkey changes
+		profile = null;
+		profileEvent = null;
+
+		// 1. Trigger loader to fetch from relays and populate eventStore
+		const loaderSub = profileLoader({ 
+			kind: 0, 
+			pubkey: data.pubkey, 
+			relays: appConfig.calendar.defaultRelays 
+		}).subscribe((event) => {
+			// Store the raw event for developer section
+			if (event) {
+				profileEvent = event;
+			}
 		});
+
+		// 2. Subscribe to model for reactive parsed profile from eventStore
+		const modelSub = eventStore
+			.model(ProfileModel, data.pubkey)
+			.subscribe((profileContent) => {
+				profile = profileContent;
+			});
+		
+		// Cleanup both subscriptions
+		return () => {
+			loaderSub.unsubscribe();
+			modelSub.unsubscribe();
+		};
 	});
 
 	/**
@@ -59,30 +88,26 @@
 		return `${pubkey.slice(0, 16)}...${pubkey.slice(-8)}`;
 	}
 
-	let profile = $derived.by((() => {
-		if (!profileEvent) return null;
-		try {
-			// getProfileContent expects the original Nostr event object
-			$inspect("got profile event", profileEvent)
-			// const content = getProfileContent(profileEvent);
-			return profileEvent || null;
-		} catch (error) {
-			console.error('Error getting profile content:', error);
-			// Fallback to manual parsing if applesauce helper fails
-			try {
-				if (profileEvent.content) {
-					return JSON.parse(profileEvent.content);
-				}
-			} catch (parseError) {
-				console.error('Error parsing profile content manually:', parseError);
-			}
-			return null;
-		}
-	}));
 	let bannerUrl = $derived(getBannerUrl(profile));
+	
+	// Check if the current user is viewing their own profile
+	// Use reactive hook to properly track login/logout changes
+	const getActiveUser = useActiveUser();
+	let activeUser = $derived(getActiveUser());
+	let isOwnProfile = $derived(activeUser?.pubkey === data.pubkey);
+	
+	/**
+	 * Open the edit profile modal
+	 */
+	function openEditModal() {
+		modalStore.openModal('profile', { 
+			profile: profile,
+			pubkey: data.pubkey 
+		});
+	}
 </script>
 
-{#if profileEvent}
+{#if profile}
 	<!-- Main Container with Gradient Background -->
 	<div class="min-h-screen">
 		<!-- Profile Header Section -->
@@ -108,16 +133,21 @@
 					<div class="relative -mt-16 mb-4">
 						<div class="w-32 h-32 rounded-full border-4 border-white bg-gray-800 overflow-hidden">
 							<img
-								src={getProfilePicture(profileEvent) || `https://robohash.org/${data.pubkey}`}
+								src={profile?.picture || `https://robohash.org/${data.pubkey}`}
 								alt="Profile picture"
 								class="w-full h-full object-cover"
 							/>
 						</div>
 						
-						<!-- Edit Button (placeholder) -->
-						<button class="absolute top-2 right-2 bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
-							Edit
-						</button>
+						<!-- Edit Button (conditional - only show on own profile) -->
+						{#if isOwnProfile}
+							<button 
+								onclick={openEditModal}
+								class="absolute top-2 right-2 bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors"
+							>
+								Edit
+							</button>
+						{/if}
 					</div>
 
 					<!-- Profile Info -->

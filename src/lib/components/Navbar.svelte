@@ -61,7 +61,7 @@
 				</div>
 				<ul class="dropdown-content menu z-1 mt-3 w-52 menu-sm rounded-box bg-base-100 p-2 shadow">
 					<li>
-						<a href="#" class="justify-between">
+						<a href="/p/{activeAccount.pubkey}" class="justify-between">
 							Profile
 							<span class="badge">New</span>
 						</a>
