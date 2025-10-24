@@ -1,7 +1,7 @@
 <script>
 	import { useJoinedCommunitiesList } from '../../stores/joined-communities-list.svelte.js';
 	import { useUserProfile } from '../../stores/user-profile.svelte.js';
-	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+	import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
 	import { EventFactory } from 'applesauce-factory';
 	import { publishEvent } from '../../helpers/publisher.js';
 	import {
@@ -13,9 +13,7 @@
 		getReplaceableAddress
 	} from 'applesauce-core/helpers';
 	import { PlusIcon, CheckIcon, AlertIcon } from '../icons';
-	import { onDestroy } from 'svelte';
-	import { addressLoader, userDeletionLoader } from '$lib/loaders/base.js';
-	import { targetedPublicationTimelineLoader } from '$lib/loaders/calendar.js';
+	import { appConfig } from '$lib/config.js';
 
 	/**
 	 * @typedef {Object} Props
@@ -42,12 +40,8 @@
 		successful: /** @type {string[]} */ ([]),
 		failed: /** @type {string[]} */ ([])
 	});
+	let loadedShares = new Map();
 
-	// Store subscriptions for cleanup
-	/** @type {Array<import('rxjs').Subscription>} */
-	let subscriptions = [];
-
-	// TODO make this a shared helper function
 	/**
 	 * Get community name from profile
 	 * @param {string} communityPubkey
@@ -69,145 +63,69 @@
 
 	/**
 	 * Check which communities already have sharing events for this calendar event
-	 * Uses address-based d-tag format to find existing shares
-	 * Uses Applesauce EventStore subscription pattern (no promises!)
+	 * Uses loader/model pattern with proper deduplication and cleanup
 	 */
-	function checkExistingCommunityShares() {
-		console.log('🌐 CommunityCalendarShare: Starting check for existing shares');
-
+	$effect(() => {
 		if (!activeUser || !event || !joinedCommunities.length) {
-			console.log('🌐 CommunityCalendarShare: Missing requirements for checking shares');
 			communitiesWithShares = new Set();
+			isCheckingShares = false;
 			return;
 		}
 
 		isCheckingShares = true;
-
-		// Use local Set to accumulate results without triggering reactive updates
+		loadedShares.clear();
 		const shares = new Set();
-		let pendingChecks = joinedCommunities.length;
 
-		console.log(
-			`🌐 CommunityCalendarShare: Checking ${joinedCommunities.length} communities for existing shares`
-		);
+		console.log('🌐 CommunityCalendarShare: Checking for existing shares');
 
-		// Clean up any existing subscriptions
-		subscriptions.forEach((sub) => sub.unsubscribe());
-		subscriptions = [];
+		// Subscribe to all share events for this user
+		const modelSub = eventStore.timeline({
+			kinds: [30222],
+			authors: [activeUser.pubkey]
+		}).subscribe((shareEvents) => {
+			let hasNew = false;
+			for (const shareEvent of shareEvents || []) {
+				if (!loadedShares.has(shareEvent.id)) {
+					loadedShares.set(shareEvent.id, shareEvent);
+					hasNew = true;
 
-		// Check each joined community for existing share events
-		// Using EventStore's subscription pattern - reactive, no promises!
-		for (const community of joinedCommunities) {
-			const communityPubkey = getTagValue(community, 'd') || '';
-			if (!communityPubkey) {
-				console.warn('🌐 CommunityCalendarShare: Community missing pubkey');
-				pendingChecks--;
-				if (pendingChecks === 0) {
-					// Create NEW Set instance to trigger Svelte 5 reactivity
-					communitiesWithShares = new Set(shares);
-					isCheckingShares = false;
-				}
-				continue;
-			}
+					// Check if this share references our event
+					const aTag = shareEvent.tags.find(t => t[0] === 'a');
+					if (aTag) {
+						const eventPointer = getAddressPointerForEvent(event.originalEvent);
+						const sharePointer = getAddressPointerFromATag(aTag);
 
-			// Subscribe to replaceable event - reactive pattern
-			console.log('looking for share event for community:', communityPubkey);
-			const sub = targetedPublicationTimelineLoader(communityPubkey)().subscribe((shareEvent) => {
-				if (shareEvent) {
-					console.log(shareEvent);
-					isCheckingShares = false;
-					communitiesWithShares = new Set(shares);
-					console.log(communitiesWithShares);
-					const aTag = shareEvent.tags.find((t) => t[0] === 'a');
-					if (!aTag) {
-						console.log('🌐 CommunityCalendarShare: Share event has no "a" tag, skipping');
-						return; // Skip this share event
-					}
+						const idMatch = eventPointer.identifier === sharePointer.identifier;
+						const kindMatch = eventPointer.kind === sharePointer.kind;
+						const pubkeyMatch = eventPointer.pubkey === sharePointer.pubkey;
 
-					const aTagOfEvent = getAddressPointerForEvent(event.originalEvent);
-					const addressPointerOfShare = getAddressPointerFromATag(aTag);
-
-					console.log(aTagOfEvent);
-					console.log(addressPointerOfShare);
-
-					const idMatch = aTagOfEvent.identifier == addressPointerOfShare.identifier;
-					const kindMatch = aTagOfEvent.kind === addressPointerOfShare.kind;
-					const pubkeyMatch = aTagOfEvent.pubkey === addressPointerOfShare.pubkey;
-
-					console.log(aTagOfEvent.identifier);
-					console.log(addressPointerOfShare.identifier);
-
-					if (idMatch && kindMatch && pubkeyMatch) {
-						// Add the community pubkey as the canonical entry (communitiesWithShares expects pubkeys)
-						console.log(
-							`✅🌐 CommunityCalendarShare: Pointer matches -> identifier: ${idMatch}, kind: ${kindMatch}, pubkey: ${pubkeyMatch}`
-						);
-						shares.add(communityPubkey);
-					}
-
-					// check if identifier, kind and pubkey match of aTagOfEvent and addressPointerOfShare
-					// Ensure both pointers exist before comparing
-					if (!aTagOfEvent || !addressPointerOfShare) {
-						console.warn('🌐 CommunityCalendarShare: Missing address pointer for comparison', {
-							aTagOfEvent,
-							addressPointerOfShare
-						});
-					} else {
-						// Only treat this as a valid share for the community when all three fields match
 						if (idMatch && kindMatch && pubkeyMatch) {
-							// Add the community pubkey as the canonical entry (communitiesWithShares expects pubkeys)
-							shares.add(communityPubkey);
-						} else {
-							console.log(
-								`🌐 CommunityCalendarShare: Address pointer mismatch for community ${communityPubkey.slice(0, 8)} - ignoring this share event`
-							);
+							// Find which community this share is for
+							const pTag = shareEvent.tags.find(t => t[0] === 'p');
+							if (pTag?.[1]) {
+								shares.add(pTag[1]);
+								console.log(
+									`✅ CommunityCalendarShare: Found existing share for community ${pTag[1].slice(0, 8)}`
+								);
+							}
 						}
 					}
-
-					console.log(
-						`✅ CommunityCalendarShare: Found existing share for community ${communityPubkey.slice(0, 8)}`
-					);
-				} else {
-					console.log(
-						`🌐 CommunityCalendarShare: No share found for community ${communityPubkey.slice(0, 8)}...`
-					);
 				}
-
-				pendingChecks--;
-				if (pendingChecks === 0) {
-					// Create NEW Set instance to trigger Svelte 5 reactivity
-					communitiesWithShares = new Set(shares);
-					isCheckingShares = false;
-					console.log(
-						`🌐 CommunityCalendarShare: Check complete - found ${shares.size} existing shares`
-					);
-				}
-			});
-
-			subscriptions.push(sub);
-		}
-
-		// Subscribe to user's deletion events (NIP-09)
-		// EventStore automatically removes referenced events when deletion events are added
-		console.log('🌐 CommunityCalendarShare: Subscribing to deletion events');
-		const deletionLoader = userDeletionLoader(activeUser.pubkey);
-		const deletionSub = deletionLoader().subscribe((deletionEvent) => {
-			if (deletionEvent?.kind === 5) {
-				console.log('🌐 CommunityCalendarShare: Deletion event received:', deletionEvent);
-				
-				// Add to EventStore - it will automatically remove referenced share events
-				eventStore.add(deletionEvent);
-				
-				// The existing subscriptions will automatically update because
-				// EventStore removes the referenced share events
-				console.log('🌐 CommunityCalendarShare: Deletion event added to EventStore');
 			}
+			if (hasNew) {
+				communitiesWithShares = new Set(shares);
+			}
+			isCheckingShares = false;
+			console.log(
+				`🌐 CommunityCalendarShare: Check complete - found ${shares.size} existing shares`
+			);
 		});
-		
-		subscriptions.push(deletionSub);
-	}
 
-	// TODO reuse publish functionality here
+		return () => {
+			modelSub.unsubscribe();
+		};
+	});
+
 	/**
 	 * Create a community sharing event (kind 30222)
 	 * Uses addressable event reference ('a' tag) instead of event ID ('e' tag)
@@ -248,18 +166,16 @@
 		// Sign the event
 		const signedEvent = await factory.sign(shareEvent);
 
-		// Get default relays from config
-		const { appConfig } = await import('$lib/config.js');
-		const allRelays = appConfig.calendar.defaultRelays;
-
-		console.log(`🌐 CommunityCalendarShare: Publishing share to ${allRelays.length} relays`);
+		console.log(`🌐 CommunityCalendarShare: Publishing share to ${appConfig.calendar.defaultRelays.length} relays`);
 
 		const result = await publishEvent(signedEvent, {
-			relays: allRelays,
+			relays: appConfig.calendar.defaultRelays,
 			logPrefix: 'CommunityShare'
 		});
 
 		if (result.success) {
+			// Add to event store immediately for local update
+			eventStore.add(signedEvent);
 			console.log('✅ CommunityCalendarShare: Share created successfully');
 		} else {
 			console.error('❌ CommunityCalendarShare: Share creation failed');
@@ -268,10 +184,8 @@
 		return result.success;
 	}
 
-	// TODO reuse publish functionality here
 	/**
 	 * Delete a community sharing event
-	 * Uses Applesauce EventStore subscription pattern (no promises except for signing/publishing!)
 	 * @param {string} communityPubkey
 	 * @returns {Promise<boolean>}
 	 */
@@ -317,9 +231,6 @@
 					
 					// Sign the deletion event
 					const deleteEvent = await factory.sign(deleteEventTemplate);
-
-					// Get default relays from config
-					const { appConfig } = await import('$lib/config.js');
 
 					// Publish deletion
 					const result = await publishEvent(deleteEvent, {
@@ -402,8 +313,7 @@
 				communityShareError = `Failed to share with ${failedCount} community${failedCount > 1 ? 'ies' : ''}`;
 			}
 
-			// Refresh existing shares and reset selection
-			await checkExistingCommunityShares();
+			// Reset selection
 			selectedCommunityIds = [];
 
 			console.log(
@@ -455,20 +365,6 @@
 		selectedCommunityIds = [];
 		console.log('🌐 CommunityCalendarShare: Deselected all communities');
 	}
-
-	// Check existing shares when component mounts or event/user changes
-	$effect(() => {
-		if (activeUser && event && joinedCommunities.length > 0) {
-			console.log('🌐 CommunityCalendarShare: Effect triggered - checking existing shares');
-			checkExistingCommunityShares();
-		}
-	});
-
-	// Cleanup subscriptions on component destroy
-	onDestroy(() => {
-		subscriptions.forEach((sub) => sub.unsubscribe());
-		subscriptions = [];
-	});
 </script>
 
 <!-- Community Sharing UI -->
