@@ -15,6 +15,7 @@
 	let loading = $state(true);
 	let error = $state(/** @type {string | null} */ (null));
 	let isVenue = $state(false);
+	let shouldShowMap = $state(true);
 
 	// Reactive computed values
 	let hasCoordinates = $derived(coordinates !== null);
@@ -48,6 +49,7 @@
 			if (locationType === 'url') {
 				// URL detected - don't show map
 				console.log(`'${location}' detected as URL, skipping map display`);
+				shouldShowMap = false;
 				loading = false;
 				return;
 			}
@@ -72,59 +74,61 @@
 	});
 </script>
 
-<div class="event-location-map" class:compact>
-	{#if loading}
-		<div class="map-loading">
-			<span class="loading loading-spinner loading-md"></span>
-			<span class="text-sm">Loading map...</span>
-		</div>
-	{:else if error}
-		<div class="map-error">
-			<MapIcon class_="w-8 h-8 opacity-50" />
-			<span class="text-sm">{error}</span>
-		</div>
-	{:else if hasCoordinates}
-		<div class="map-container">
-			<MapLibre
-				style="https://tiles.openfreemap.org/styles/liberty"
-				{center}
-				zoom={15}
-				class="map"
-				attributionControl={false}
-			>
-				<Marker lngLat={markerLngLat}>
-					<div class="map-pin">📍</div>
-					{#if location && typeof location === 'string'}
-						<Popup openOn="hover" closeButton={false} offset={[0, -10]}>
-							<div class="popup-content" style="background: #ffffff; color: #1a1a1a;">
-								{location}
-							</div>
-						</Popup>
-					{/if}
-				</Marker>
-			</MapLibre>
-
-			<!-- Attribution and OSM link -->
-			<div class="map-footer">
-				<span class="attribution">
-					© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>
-				</span>
-				{#if osmUrl}
-					<a
-						href={osmUrl}
-						target="_blank"
-						rel="noopener noreferrer"
-						class="map-link"
-						title="Open in OpenStreetMap"
-					>
-						<MapIcon class_="w-4 h-4" />
-						<span>Open in OpenStreetMap</span>
-					</a>
-				{/if}
+{#if shouldShowMap}
+	<div class="event-location-map" class:compact>
+		{#if loading}
+			<div class="map-loading">
+				<span class="loading loading-spinner loading-md"></span>
+				<span class="text-sm">Loading map...</span>
 			</div>
-		</div>
-	{/if}
-</div>
+		{:else if error}
+			<div class="map-error">
+				<MapIcon class_="w-8 h-8 opacity-50" />
+				<span class="text-sm">{error}</span>
+			</div>
+		{:else if hasCoordinates}
+			<div class="map-container">
+				<MapLibre
+					style="https://tiles.openfreemap.org/styles/liberty"
+					{center}
+					zoom={15}
+					class="map"
+					attributionControl={false}
+				>
+					<Marker lngLat={markerLngLat}>
+						<div class="map-pin">📍</div>
+						{#if location && typeof location === 'string'}
+							<Popup openOn="hover" closeButton={false} offset={[0, -10]}>
+								<div class="popup-content" style="background: #ffffff; color: #1a1a1a;">
+									{location}
+								</div>
+							</Popup>
+						{/if}
+					</Marker>
+				</MapLibre>
+
+				<!-- Attribution and OSM link -->
+				<div class="map-footer">
+					<span class="attribution">
+						© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>
+					</span>
+					{#if osmUrl}
+						<a
+							href={osmUrl}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="map-link"
+							title="Open in OpenStreetMap"
+						>
+							<MapIcon class_="w-4 h-4" />
+							<span>Open in OpenStreetMap</span>
+						</a>
+					{/if}
+				</div>
+			</div>
+		{/if}
+	</div>
+{/if}
 
 <style>
 	.event-location-map {
