@@ -214,9 +214,9 @@
 
 			<!-- View all link -->
 			<div class="mt-8 text-center">
-				<button onclick={toggleShowAll} class="link link-primary text-lg font-medium">
+				<a href="/discover" class="link link-primary text-lg font-medium">
 					View All Communities →
-				</button>
+				</a>
 			</div>
 		{/if}
 	</div>

@@ -55,18 +55,18 @@
 
 			<!-- Call to action buttons -->
 			<div class="flex flex-col items-center justify-center gap-4 sm:flex-row">
-				<button
-					onclick={handleGetStarted}
+				<a
+					href="/calendar"
 					class="btn btn-lg bg-white text-primary hover:bg-white/90 border-none shadow-lg"
 				>
-					Get Started
-				</button>
-				<button
-					onclick={scrollToCommunities}
+					Browse Calendar
+			</a>
+				<a
+					href="/discover"
 					class="btn btn-lg btn-outline border-2 border-white text-white hover:bg-white hover:text-primary"
 				>
 					Explore Communities
-				</button>
+			</a>
 			</div>
 		</div>
 	</div>
