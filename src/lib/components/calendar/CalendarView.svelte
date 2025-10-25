@@ -57,7 +57,9 @@
 	/**
 	 * @type {import("$lib/types/calendar.js").CalendarEvent[]}
 	 */
-	let events = $state([]);
+	let allCalendarEvents = $state([]);
+	let relayFilteredEventIds = $state(/** @type {string[]} */ ([]));
+	let relayFilterActive = $state(false);
 	let loading = $state(false);
 	let error = $state(/** @type {string | null} */ (null));
 	let selectedCalendar = $state(calendarFilters.selectedCalendar);
@@ -117,7 +119,7 @@
 		modelSubscription?.unsubscribe();
 
 		loading = true;
-		events = [];
+		allCalendarEvents = [];
 		error = null;
 		resolutionErrors = [];
 
@@ -143,7 +145,7 @@
 						calendarEvents.length,
 						'community calendar events'
 					);
-					events = calendarEvents;
+					allCalendarEvents = calendarEvents;
 					loading = false;
 				});
 		} else if (globalMode) {
@@ -152,8 +154,24 @@
 			const relays = calendarFilters.selectedRelays;
 			const authors = calendarFilters.getSelectedAuthors();
 
+			// Track if relay filter is active
+			relayFilterActive = relays.length > 0;
+			relayFilteredEventIds = [];
+
+			// Temporary array to collect IDs during loader subscription
+			const trackedIds = [];
+
 			// 1. Loader: Fetch from relays → EventStore
 			loaderSubscription = createRelayFilteredCalendarLoader(relays, authors)().subscribe({
+				next: (/** @type {any} */ event) => {
+					// Track event IDs from selected relays
+					if (relayFilterActive) {
+						trackedIds.push(event.id);
+						// Trigger reactivity by reassigning
+						relayFilteredEventIds = [...trackedIds];
+						console.log('📅 CalendarView: Tracked event from relay:', event.id, `(${trackedIds.length} total)`);
+					}
+				},
 				error: (/** @type {any} */ err) => {
 					console.error('📅 CalendarView: Global calendar loader error:', err);
 					error = err.message || 'Failed to load calendar events';
@@ -165,7 +183,8 @@
 			modelSubscription = eventStore
 				.model(GlobalCalendarEventModel, authors)
 				.subscribe((/** @type {any} */ calendarEvents) => {
-					events = calendarEvents;
+					console.log('📅 CalendarView: Received', calendarEvents.length, 'global calendar events from model');
+					allCalendarEvents = calendarEvents;
 					loading = false;
 				});
 		} else if (authorPubkey) {
@@ -173,8 +192,23 @@
 			console.log('📅 CalendarView: Loading calendar events for author:', authorPubkey);
 			const relays = calendarFilters.selectedRelays;
 
+			// Track if relay filter is active
+			relayFilterActive = relays.length > 0;
+			relayFilteredEventIds = [];
+
+			// Temporary array to collect IDs during loader subscription
+			const trackedIds = /** @type {string[]} */ ([]);
+
 			// 1. Loader: Fetch from relays → EventStore
 			loaderSubscription = createRelayFilteredCalendarLoader(relays, [authorPubkey])().subscribe({
+				next: (/** @type {any} */ event) => {
+					// Track event IDs from selected relays
+					if (relayFilterActive) {
+						trackedIds.push(event.id);
+						// Trigger reactivity by reassigning
+						relayFilteredEventIds = [...trackedIds];
+					}
+				},
 				error: (/** @type {any} */ err) => {
 					console.error('📅 CalendarView: Author calendar loader error:', err);
 					error = err.message || 'Failed to load calendar events';
@@ -187,7 +221,7 @@
 				.model(GlobalCalendarEventModel, [authorPubkey])
 				.subscribe((/** @type {any} */ calendarEvents) => {
 					console.log('📅 CalendarView: Received', calendarEvents.length, 'author calendar events');
-					events = calendarEvents;
+					allCalendarEvents = calendarEvents;
 					loading = false;
 				});
 		} else if (calendar && rawCalendar) {
@@ -218,7 +252,7 @@
 				.model(PersonalCalendarEventsModel, rawCalendar)
 				.subscribe((/** @type {any} */ calendarEvents) => {
 					console.log('📅 CalendarView: Received', calendarEvents, 'calendar events');
-					events = calendarEvents;
+					allCalendarEvents = calendarEvents;
 					loading = false;
 				});
 		} else {
@@ -414,6 +448,20 @@
 	// Create derived state for proper reactivity tracking
 	let selectedTags = $derived(calendarFilters.selectedTags);
 	let searchQuery = $derived(calendarFilters.searchQuery);
+
+	// Derived state: Apply relay filtering via intersection
+	let events = $derived.by(() => {
+		if (relayFilterActive && relayFilteredEventIds.length > 0) {
+			// Filter: only show events from selected relays
+			const filtered = allCalendarEvents.filter(e => relayFilteredEventIds.includes(e.id));
+			console.log(
+				`🔗 CalendarView: Filtered ${filtered.length}/${allCalendarEvents.length} events by relay (${relayFilteredEventIds.length} IDs tracked)`
+			);
+			return filtered;
+		}
+		// No relay filter: show all events
+		return allCalendarEvents;
+	});
 
 	// Validate events once - filter out invalid events before any other processing
 	let validEvents = $derived(

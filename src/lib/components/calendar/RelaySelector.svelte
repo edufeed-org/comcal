@@ -4,7 +4,7 @@
 -->
 
 <script>
-	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
+	import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
 	import { appConfig } from '$lib/config.js';
 	import { FilterIcon, CloseIcon, PlusIcon, GlobeIcon } from '../icons';
 
@@ -87,19 +87,28 @@
 	 */
 	function applyFilters() {
 		console.log('📡 Applying relay filters:', selectedRelays);
-		calendarStore.setSelectedRelays(selectedRelays);
+		calendarFilters.setSelectedRelays(selectedRelays);
 		onApplyFilters(selectedRelays);
 	}
 
 	/**
-	 * Clear all filters (revert to default)
+	 * Reset selection (clear checkboxes but don't apply)
 	 */
-	function clearFilters() {
-		console.log('📡 Clearing relay filters');
+	function resetSelection() {
+		console.log('📡 Resetting relay selection');
+		selectedRelays = [];
+		customRelayInput = '';
+	}
+
+	/**
+	 * Clear all filters including custom relays
+	 */
+	function clearAll() {
+		console.log('📡 Clearing all relay filters');
 		selectedRelays = [];
 		customRelays = [];
 		customRelayInput = '';
-		calendarStore.clearSelectedRelays();
+		calendarFilters.clearSelectedRelays();
 		onApplyFilters([]);
 	}
 
@@ -113,6 +122,9 @@
 	// Derived state
 	let hasActiveFilters = $derived(selectedRelays.length > 0);
 	let allRelays = $derived([...defaultRelays, ...customRelays]);
+	let applyButtonText = $derived(
+		selectedRelays.length > 0 ? `Apply Filters (${selectedRelays.length})` : 'Show All Relays'
+	);
 </script>
 
 <div class="border-b border-base-300 bg-base-100">
@@ -219,36 +231,39 @@
 
 			<!-- Action Buttons -->
 			<div class="flex gap-2">
-				<button
-					class="btn btn-primary btn-sm flex-1"
-					onclick={applyFilters}
-					disabled={selectedRelays.length === 0}
-				>
-					Apply Filters
-					{#if selectedRelays.length > 0}
-						<span class="badge badge-sm">({selectedRelays.length})</span>
-					{/if}
+				<button class="btn btn-primary btn-sm flex-1" onclick={applyFilters}>
+					{applyButtonText}
 				</button>
 				<button
 					class="btn btn-ghost btn-sm"
-					onclick={clearFilters}
-					disabled={!hasActiveFilters && customRelays.length === 0}
+					onclick={resetSelection}
+					disabled={selectedRelays.length === 0}
+					title="Clear checkbox selection"
 				>
-					Clear All
+					Reset Selection
 				</button>
+				{#if customRelays.length > 0}
+					<button
+						class="btn btn-ghost btn-sm btn-error"
+						onclick={clearAll}
+						title="Remove all custom relays and reset filters"
+					>
+						Clear All
+					</button>
+				{/if}
 			</div>
 
 			<!-- Info text -->
-			{#if hasActiveFilters}
-				<p class="mt-3 text-xs text-base-content/60">
-					Showing events only from {selectedRelays.length} selected
-					{selectedRelays.length === 1 ? 'relay' : 'relays'}
-				</p>
-			{:else}
-				<p class="mt-3 text-xs text-base-content/60">
-					Select relays to filter events, or leave empty to show events from all relays
-				</p>
-			{/if}
+			<p class="mt-3 text-xs text-base-content/60">
+				{#if calendarFilters.selectedRelays.length > 0}
+					✓ Currently showing events from {calendarFilters.selectedRelays.length} selected
+					{calendarFilters.selectedRelays.length === 1 ? 'relay' : 'relays'}
+				{:else if selectedRelays.length > 0}
+					Selection ready - click "{applyButtonText}" to apply
+				{:else}
+					✓ Currently showing events from all relays
+				{/if}
+			</p>
 		</div>
 	{/if}
 </div>
