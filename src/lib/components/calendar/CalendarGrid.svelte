@@ -1,6 +1,7 @@
 <script>
 	import { getWeekDates, getMonthDates, formatCalendarDate, isToday, isCurrentMonth, getWeekdayHeaders, createDateKey, groupEventsByDate } from '../../helpers/calendar.js';
 	import CalendarEventCard from './CalendarEventCard.svelte';
+	import CalendarEventBar from './CalendarEventBar.svelte';
 	import { cEvents } from '$lib/stores/calendar-events.svelte.js';
 
 	/**
@@ -67,7 +68,8 @@
 	 */
 	function handleDateClick(e, date) {
 		// Prevent date navigation if clicking on an event
-		if (e.target && /** @type {Element} */ (e.target).closest('.calendar-event-card')) {
+		const target = /** @type {Element} */ (e.target);
+		if (target && (target.closest('.calendar-event-card') || target.closest('.calendar-event-bar'))) {
 			return;
 		}
 		onDateClick(date);
@@ -111,12 +113,10 @@
 			{@const isInCurrentMonth = viewMode !== 'month' || isCurrentMonth(date, currentDate)}
 			
 			{@const cellClasses = [
-				'min-h-24 p-2 hover:bg-base-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset cursor-pointer transition-colors duration-200',
-				viewMode === 'day' ? 'min-h-96 p-4' : viewMode === 'week' ? 'min-h-32' : '',
-				isCurrentDay ? 'bg-primary/10 border-primary' : '',
-				!isInCurrentMonth ? 'bg-base-200 text-base-content/40' : '',
-				dayEvents.length > 0 ? 'bg-info/10' : '',
-				isCurrentDay && dayEvents.length > 0 ? 'bg-primary/20' : ''
+				'p-2 hover:bg-base-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset cursor-pointer transition-colors duration-200 flex flex-col',
+				viewMode === 'day' ? 'h-96 p-4' : viewMode === 'week' ? 'h-32' : 'h-24',
+				isCurrentDay ? 'ring-2 ring-primary ring-inset' : '',
+				!isInCurrentMonth ? 'bg-base-200 text-base-content/40' : ''
 			].filter(Boolean).join(' ')}
 
 			<div
@@ -127,7 +127,7 @@
 				onkeydown={(e) => handleDateKeydown(e, date)}
 			>
 				<!-- Date Number -->
-				<div class="text-sm font-medium mb-1 {isCurrentDay ? 'text-primary' : ''}">
+				<div class="text-sm font-medium mb-1 flex-shrink-0 {isCurrentDay ? 'text-primary' : ''}">
 					{#if viewMode === 'day'}
 						<div class="text-center mb-4">
 							<div class="text-lg font-semibold text-base-content">{formatCalendarDate(date, 'long')}</div>
@@ -139,21 +139,15 @@
 				</div>
 
 				<!-- Events for this date -->
-				<div class="space-y-1 {viewMode === 'day' ? 'space-y-2' : ''}">
+				<div class="flex-1 overflow-y-auto space-y-1 {viewMode === 'day' ? 'space-y-2' : ''}">
 					{#if viewMode === 'month'}
-						<!-- Month view: Show compact event indicators -->
-						{#each dayEvents.slice(0, 3) as event}
-							<CalendarEventCard
+						<!-- Month view: Show compact event bars -->
+						{#each dayEvents as event}
+							<CalendarEventBar
 								{event}
-								compact={true}
 								onEventClick={handleEventClick}
 							/>
 						{/each}
-						{#if dayEvents.length > 3}
-							<div class="text-xs text-base-content/50 text-center py-1">
-								+{dayEvents.length - 3} more
-							</div>
-						{/if}
 					{:else}
 						<!-- Week/Day view: Show full event cards -->
 						{#each dayEvents as event}

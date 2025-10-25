@@ -393,3 +393,32 @@ export const encodeEventToNaddr = (event, relays = []) => {
     return "";
   }
 };
+
+
+/**
+ * Generate a color based on the author's pubkey
+ * Algorithm:
+ * 1. Convert HEX pubkey to Int (using first 8 chars)
+ * 2. Calculate Hue: Int % 360
+ * 3. Set Saturation: 90 for Hues 216-273, otherwise 80
+ * 4. Set Brightness: 65 for Hues 32-212, otherwise 85
+ * 
+ * @param {string} pubkey - Hex public key
+ * @returns {{ hue: number, saturation: number, lightness: number }} HSL color values
+ */
+export function generateAuthorColor(pubkey) {
+  // Use first 8 hex characters to avoid BigInt complexity
+  const hexSubset = pubkey.slice(0, 8);
+  const int = parseInt(hexSubset, 16);
+  
+  // Calculate hue (0-360)
+  const hue = int % 360;
+  
+  // Set saturation based on hue range
+  const saturation = (hue >= 216 && hue <= 273) ? 90 : 80;
+  
+  // Set lightness (brightness) based on hue range
+  const lightness = (hue >= 32 && hue <= 212) ? 65 : 85;
+  
+  return { hue, saturation, lightness };
+}
