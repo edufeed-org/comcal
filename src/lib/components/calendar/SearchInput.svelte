@@ -4,7 +4,7 @@
 -->
 
 <script>
-	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
+	import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
 
 	// Props
 	let { onSearchQueryChange = () => {} } = $props();
@@ -29,7 +29,7 @@
 		// Debounce the search - wait 300ms after user stops typing
 		debounceTimer = setTimeout(() => {
 			console.log('🔍 SearchInput: Updating search query:', searchQuery);
-			calendarStore.setSearchQuery(searchQuery);
+			calendarFilters.setSearchQuery(searchQuery);
 			onSearchQueryChange(searchQuery);
 		}, 300);
 	}
@@ -40,7 +40,7 @@
 	function clearSearch() {
 		console.log('🔍 SearchInput: Clearing search');
 		searchQuery = '';
-		calendarStore.clearSearchQuery();
+		calendarFilters.clearSearchQuery();
 		onSearchQueryChange('');
 
 		// Clear debounce timer if active

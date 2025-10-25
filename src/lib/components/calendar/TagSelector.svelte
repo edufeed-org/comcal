@@ -5,7 +5,7 @@
 
 <script>
 	import { page } from '$app/stores';
-	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
+	import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
 	import { updateQueryParams } from '$lib/helpers/urlParams.js';
 	import { FilterIcon } from '../icons';
 
@@ -13,7 +13,7 @@
 	let { events = [], onTagFilterChange = () => {} } = $props();
 
 	// Sync local state with store (which is synced from URL in CalendarView)
-	let selectedTags = $derived(calendarStore.selectedTags);
+	let selectedTags = $derived(calendarFilters.selectedTags);
 
 	/**
 	 * Get all tag counts from events
@@ -81,7 +81,7 @@
 			: [...selectedTags, tag];
 
 		// Update store
-		calendarStore.setSelectedTags(newTags);
+		calendarFilters.setSelectedTags(newTags);
 		
 		// Update URL
 		updateQueryParams($page.url.searchParams, { tags: newTags });
@@ -98,7 +98,7 @@
 		console.log('🏷️ Clearing tag filters');
 		
 		// Update store
-		calendarStore.clearSelectedTags();
+		calendarFilters.clearSelectedTags();
 		
 		// Update URL (empty array removes the parameter)
 		updateQueryParams($page.url.searchParams, { tags: [] });

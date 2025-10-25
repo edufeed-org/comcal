@@ -1,7 +1,6 @@
 <script>
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
-	import { map } from 'rxjs/operators';
 	import {
 		communityCalendarTimelineLoader,
 		createRelayFilteredCalendarLoader,
@@ -14,10 +13,9 @@
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { CommunityCalendarEventModel } from '$lib/models/community-calendar-event.js';
 	import { GlobalCalendarEventModel } from '$lib/models/global-calendar-event.js';
-	import { TimelineModel } from 'applesauce-core/models';
 	import { PersonalCalendarEventsModel } from '$lib/models';
 	import { useCalendarUrlSync } from '$lib/loaders';
-	import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
+	import { validateCalendarEvent } from '$lib/helpers/eventValidation.js';
 
 	// Import existing UI components
 	import CalendarNavigation from '$lib/components/calendar/CalendarNavigation.svelte';
@@ -31,7 +29,6 @@
 	import SimpleCalendarEventsList from './CalendarEventsList.svelte';
 	import AddToCalendarButton from './AddToCalendarButton.svelte';
 	import CalendarMapView from './CalendarMapView.svelte';
-	import { getCalendarAddressPointers } from 'applesauce-core/helpers';
 
 	/**
 	 * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
@@ -77,6 +74,9 @@
 
 	// Community mode specific state
 	let resolutionErrors = $state(/** @type {string[]} */ ([]));
+
+	// Guard to prevent effect from running before mount
+	let mounted = $state(false);
 
 	// Initialize URL sync composable
 	useCalendarUrlSync($page, (mode) => {
@@ -196,10 +196,10 @@
 
 			// 1. Loader: Fetch calendar's referenced events from relays → EventStore
 			loaderSubscription = calendarEventReferencesLoader(rawCalendar)().subscribe({
-				next: (event) => {
+				next: (/** @type {any} */ event) => {
 					console.log('📅 CalendarView: Loaded calendar event:', event);
 				},
-				error: (err) => {
+				error: (/** @type {any} */ err) => {
 					console.error('📅 CalendarView: Calendar event references loader error:', err);
 					error = err.message || 'Failed to load calendar events';
 					loading = false;
@@ -241,6 +241,9 @@
 	}
 
 	onMount(() => {
+		// Set mounted flag to allow effects to run
+		mounted = true;
+		
 		// Bootstrap EventStore with appropriate loader (unless in community mode)
 		if (communityMode && communityPubkey) {
 			// Bootstrap EventStore with community calendar loader
@@ -408,12 +411,19 @@
 		handleRefresh();
 	}
 
+	// Create derived state for proper reactivity tracking
+	let selectedTags = $derived(calendarFilters.selectedTags);
+	let searchQuery = $derived(calendarFilters.searchQuery);
+
+	// Validate events once - filter out invalid events before any other processing
+	let validEvents = $derived(
+		events.filter((event) => validateCalendarEvent(event.originalEvent || event))
+	);
+
 	// Client-side filtering with tag buttons (OR logic) + text search (AND logic)
-	// Events are filtered AFTER loading
+	// Events are filtered AFTER loading and validation
 	let displayedEvents = $derived.by(() => {
-		let filtered = events;
-		const selectedTags = calendarFilters.selectedTags;
-		const searchQuery = calendarFilters.searchQuery;
+		let filtered = validEvents; // Start with validated events
 
 		// Step 1: Apply tag filtering (OR logic)
 		if (selectedTags.length > 0) {
@@ -427,7 +437,7 @@
 				return selectedTags.some((/** @type {any} */ tag) => normalizedHashtags.includes(tag));
 			});
 			console.log(
-				`🏷️ CalendarView: Filtered ${filtered.length}/${events.length} events by tags:`,
+				`🏷️ CalendarView: Filtered ${filtered.length}/${validEvents.length} events by tags:`,
 				selectedTags
 			);
 		}
@@ -606,7 +616,7 @@
 		<SearchInput onSearchQueryChange={handleSearchQueryChange} />
 
 		<!-- Tag Selector -->
-		<TagSelector {events} onTagFilterChange={handleTagFilterChange} />
+		<TagSelector events={validEvents} onTagFilterChange={handleTagFilterChange} />
 	{/if}
 
 	<!-- Calendar Navigation -->

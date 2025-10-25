@@ -17,7 +17,7 @@ import {
 	userDeletionLoader
 } from '$lib/loaders';
 import { appConfig } from '$lib/config.js';
-import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
+import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
 import { parseCalendarFilters } from '$lib/helpers/urlParams.js';
 import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { CommunityCalendarEventModel } from '$lib/models';
@@ -335,13 +335,15 @@ export function useCalendarEventLoader(options) {
 						const loaderResult = deletionLoader();
 						
 						// Handle both Observable and Promise returns
-						const sub = loaderResult.subscribe(/** @param {any} deletionEvent */ (deletionEvent) => {
-							if (deletionEvent) {
-								eventStore.add(deletionEvent);
-							}
-						});
-						
-						deletionSubscriptions.set(pubkey, sub);
+						if (loaderResult && typeof loaderResult.subscribe === 'function') {
+							const sub = loaderResult.subscribe(/** @param {any} deletionEvent */ (deletionEvent) => {
+								if (deletionEvent) {
+									eventStore.add(deletionEvent);
+								}
+							});
+							
+							deletionSubscriptions.set(pubkey, sub);
+						}
 					});
 				},
 				error: (err) => {
@@ -437,34 +439,34 @@ export function useCalendarUrlSync(pageStore, onPresentationViewModeChange) {
 				const normalizedTags = urlFilters.tags.map((/** @type {string} */ tag) =>
 					tag.toLowerCase().trim()
 				);
-				calendarStore.setSelectedTags(normalizedTags);
+				calendarFilters.setSelectedTags(normalizedTags);
 			} else {
-				calendarStore.clearSelectedTags();
+				calendarFilters.clearSelectedTags();
 			}
 		} else {
-			calendarStore.clearSelectedTags();
+			calendarFilters.clearSelectedTags();
 		}
 
 		// Sync relays
 		if (urlFilters?.relays && Array.isArray(urlFilters.relays)) {
 			if (urlFilters.relays.length > 0) {
-				calendarStore.setSelectedRelays(urlFilters.relays);
+				calendarFilters.setSelectedRelays(urlFilters.relays);
 			} else {
-				calendarStore.setSelectedRelays([]);
+				calendarFilters.setSelectedRelays([]);
 			}
 		} else {
-			calendarStore.setSelectedRelays([]);
+			calendarFilters.setSelectedRelays([]);
 		}
 
 		// Sync authors (follow lists)
 		if (urlFilters?.authors && Array.isArray(urlFilters.authors)) {
 			if (urlFilters.authors.length > 0) {
-				calendarStore.setSelectedFollowListIds(urlFilters.authors);
+				calendarFilters.setSelectedFollowListIds(urlFilters.authors);
 			} else {
-				calendarStore.setSelectedFollowListIds([]);
+				calendarFilters.setSelectedFollowListIds([]);
 			}
 		} else {
-			calendarStore.setSelectedFollowListIds([]);
+			calendarFilters.setSelectedFollowListIds([]);
 		}
 
 		// Sync search query
@@ -473,9 +475,9 @@ export function useCalendarUrlSync(pageStore, onPresentationViewModeChange) {
 			typeof urlFilters.search === 'string' &&
 			urlFilters.search.trim()
 		) {
-			calendarStore.setSearchQuery(urlFilters.search);
+			calendarFilters.setSearchQuery(urlFilters.search);
 		} else {
-			calendarStore.setSearchQuery('');
+			calendarFilters.setSearchQuery('');
 		}
 
 		// Sync presentation view mode
