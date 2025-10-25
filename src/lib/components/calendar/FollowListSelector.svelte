@@ -4,7 +4,7 @@
 -->
 
 <script>
-	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
+	import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { loadFollowList, loadFollowSets } from '$lib/helpers/followListLoader.js';
 	import { FilterIcon, CloseIcon, UserIcon } from '../icons';
@@ -24,7 +24,7 @@
 	let userSubscription = $state();
 
 	// Get reactive reference to follow lists from store
-	let followLists = $derived(calendarStore.followLists);
+	let followLists = $derived(calendarFilters.followLists);
 	let isLoggedIn = $derived(!!activeUser);
 
 	/**
@@ -78,7 +78,7 @@
 		console.log(
 			`👥 FollowListSelector: Loaded ${nip02Lists.length} NIP-02 lists and ${nip51Lists.length} NIP-51 sets`
 		);
-		calendarStore.setFollowLists(allLists);
+		calendarFilters.setFollowLists(allLists);
 	}
 
 	/**
@@ -98,7 +98,7 @@
 	 */
 	function applyFilters() {
 		console.log('👥 FollowListSelector: Applying follow list filters:', selectedListIds);
-		calendarStore.setSelectedFollowListIds(selectedListIds);
+		calendarFilters.setSelectedFollowListIds(selectedListIds);
 		onApplyFilters(selectedListIds);
 	}
 
@@ -108,7 +108,7 @@
 	function clearFilters() {
 		console.log('👥 FollowListSelector: Clearing follow list filters');
 		selectedListIds = [];
-		calendarStore.clearSelectedFollowListIds();
+		calendarFilters.clearSelectedFollowListIds();
 		onApplyFilters([]);
 	}
 
@@ -154,7 +154,7 @@
 			loadUserFollowLists();
 		} else {
 			// User logged out, clear follow lists
-			calendarStore.clearFollowLists();
+			calendarFilters.clearFollowLists();
 			selectedListIds = [];
 		}
 	});
