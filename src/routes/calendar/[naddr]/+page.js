@@ -7,6 +7,7 @@ export async function load({ params }) {
   const calendar = rawCalendar ? getCalendarEventMetadata(rawCalendar) : null;
   
   return {
-    calendar
+    rawCalendar,  // For CalendarEventsModel (expects raw Nostr Event)
+    calendar      // For UI display (transformed CalendarEvent)
   };
 }

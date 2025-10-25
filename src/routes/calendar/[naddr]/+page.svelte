@@ -15,7 +15,7 @@
 
 <div class="container mx-auto px-4 py-8">
 	{#if data.calendar}
-		<CalendarView calendar={data.calendar} globalMode={false} />
+		<CalendarView calendar={data.calendar} rawCalendar={data.rawCalendar} globalMode={false} />
 	{:else}
 		<div class="alert alert-error">
 			<span>Calendar not found</span>

@@ -68,8 +68,9 @@
 					<li>
 						<button onclick={openLoginModal}>Switch Account</button>
 					</li>
-					<li><a href="#">Settings</a></li>
-					<li><a href="#">Logout</a></li>
+					<!-- TODO: Implement settings and logout functionality -->
+					<!-- <li><button>Settings</button></li> -->
+					<!-- <li><button>Logout</button></li> -->
 				</ul>
 			</div>
 		{:else}
