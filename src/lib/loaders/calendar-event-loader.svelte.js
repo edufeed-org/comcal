@@ -307,7 +307,7 @@ export function useCalendarEventLoader(options) {
 			backgroundLoaderSubscription = eventStore.timeline({
 				kinds: [31922, 31923],
 				'#h': [communityPubkey],
-				limit: 100
+				limit: 50
 			}).subscribe();
 			
 			// 2. Targeted publications (kind 30222 referencing community)

@@ -35,11 +35,6 @@ export function GlobalCalendarEventModel(authors = []) {
 				const calendarEvents = events.map((/** @type {any} */ event) => 
 					getCalendarEventMetadata(event)
 				);
-				console.log(
-					`📅 GlobalCalendarEventModel: Retrieved ${calendarEvents.length} calendar events${
-						authors && authors.length > 0 ? ` (filtered by ${authors.length} authors)` : ''
-					}`
-				);
 				return calendarEvents;
 			})
 		);
