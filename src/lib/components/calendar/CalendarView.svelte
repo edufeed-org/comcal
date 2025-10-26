@@ -193,11 +193,11 @@
 			modelSubscription = eventStore
 				.model(GlobalCalendarEventModel, authors)
 				.subscribe((/** @type {any} */ calendarEvents) => {
-					console.log(
-						'📅 CalendarView: Received',
-						calendarEvents.length,
-						'global calendar events from model'
-					);
+					// console.log(
+					// 	'📅 CalendarView: Received',
+					// 	calendarEvents.length,
+					// 	'global calendar events from model'
+					// );
 					allCalendarEvents = calendarEvents;
 					loading = false;
 				});
