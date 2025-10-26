@@ -25,6 +25,7 @@ export { default as BellIcon } from './ui/BellIcon.svelte';
 export { default as FilesIcon } from './ui/FilesIcon.svelte';
 export { default as MoreIcon } from './ui/MoreIcon.svelte';
 export { default as MapIcon } from './ui/MapIcon.svelte';
+export { default as RelayIcon } from './ui/RelayIcon.svelte';
 
 // Action Icons
 export { default as CopyIcon } from './actions/CopyIcon.svelte';

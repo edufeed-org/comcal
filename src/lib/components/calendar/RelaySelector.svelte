@@ -6,7 +6,7 @@
 <script>
 	import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
 	import { appConfig } from '$lib/config.js';
-	import { FilterIcon, CloseIcon, PlusIcon, GlobeIcon } from '../icons';
+	import { FilterIcon, CloseIcon, PlusIcon, RelayIcon } from '../icons';
 
 	// Props
 	let { onApplyFilters = () => {} } = $props();
@@ -138,7 +138,7 @@
 			<FilterIcon class_="h-5 w-5 text-base-content/70" />
 			<span class="font-medium text-base-content">Filter by Relays</span>
 			{#if hasActiveFilters}
-				<span class="badge badge-primary badge-sm">{selectedRelays.length}</span>
+				<span class="badge badge-sm badge-primary">{selectedRelays.length}</span>
 			{/if}
 		</div>
 		<svg
@@ -154,7 +154,7 @@
 
 	<!-- Expandable content -->
 	{#if isExpanded}
-		<div class="border-t border-base-300 bg-base-50 px-6 py-4">
+		<div class="bg-base-50 border-t border-base-300 px-6 py-4">
 			<!-- Popular Relays Section -->
 			<div class="mb-4">
 				<h4 class="mb-2 text-sm font-medium text-base-content/70">Popular Relays</h4>
@@ -168,7 +168,7 @@
 								onchange={() => toggleRelay(relay)}
 							/>
 							<div class="flex flex-1 items-center gap-2">
-								<GlobeIcon class_="h-4 w-4 text-base-content/50" />
+								<RelayIcon class_="h-4 w-4 text-base-content/50" />
 								<span class="text-sm text-base-content">{relay.replace('wss://', '')}</span>
 							</div>
 						</label>
@@ -182,7 +182,7 @@
 				<div class="flex gap-2">
 					<input
 						type="text"
-						class="input input-bordered input-sm flex-1"
+						class="input-bordered input input-sm flex-1"
 						placeholder="wss://custom.relay.com"
 						bind:value={customRelayInput}
 						onkeydown={(e) => {
@@ -193,7 +193,7 @@
 						}}
 					/>
 					<button
-						class="btn btn-primary btn-sm gap-1"
+						class="btn gap-1 btn-sm btn-primary"
 						onclick={addCustomRelay}
 						disabled={!customRelayInput.trim()}
 					>
@@ -213,7 +213,7 @@
 								class="flex items-center justify-between rounded-lg bg-base-200 px-3 py-2 text-sm"
 							>
 								<div class="flex items-center gap-2">
-									<GlobeIcon class_="h-4 w-4 text-base-content/50" />
+									<RelayIcon class_="h-4 w-4 text-base-content/50" />
 									<span>{relay.replace('wss://', '')}</span>
 								</div>
 								<button
@@ -231,7 +231,7 @@
 
 			<!-- Action Buttons -->
 			<div class="flex gap-2">
-				<button class="btn btn-primary btn-sm flex-1" onclick={applyFilters}>
+				<button class="btn flex-1 btn-sm btn-primary" onclick={applyFilters}>
 					{applyButtonText}
 				</button>
 				<button
