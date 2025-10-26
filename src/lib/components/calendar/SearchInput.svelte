@@ -71,33 +71,25 @@
 		{/if}
 	</div>
 
-	<!-- Search input -->
-	<div class="relative">
+	<!-- Search input with join pattern -->
+	<div class="join w-full">
 		<input
 			type="text"
-			class="input input-bordered w-full pr-10"
+			class="input input-bordered join-item w-full"
 			placeholder="Search by title or tag..."
 			value={searchQuery}
 			oninput={handleInput}
 			aria-label="Search calendar events"
 		/>
-
-		<!-- Clear button -->
 		{#if hasQuery}
 			<button
-				class="btn btn-ghost btn-circle btn-sm absolute right-2 top-1/2 -translate-y-1/2"
+				type="button"
+				class="btn btn-ghost join-item"
 				onclick={clearSearch}
 				aria-label="Clear search"
 				title="Clear search"
 			>
-				<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M6 18L18 6M6 6l12 12"
-					/>
-				</svg>
+				Clear
 			</button>
 		{/if}
 	</div>
