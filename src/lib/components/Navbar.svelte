@@ -10,11 +10,20 @@
 
 	// Use $state + $effect for reactive RxJS subscription bridge (Svelte 5 pattern)
 	let activeAccount = $state(/** @type {any} */ (null));
+	let accountCount = $state(0);
 
 	$effect(() => {
 		const subscription = manager.active$.subscribe((account) => {
 			activeAccount = account;
 			console.log('Navbar: Active account changed:', account);
+		});
+		return () => subscription.unsubscribe();
+	});
+
+	$effect(() => {
+		const subscription = manager.accounts$.subscribe((accounts) => {
+			accountCount = accounts.length;
+			console.log('Navbar: Account count changed:', accountCount);
 		});
 		return () => subscription.unsubscribe();
 	});
@@ -40,6 +49,45 @@
 		if (dropdownTrigger && dropdownTrigger.closest('.dropdown')) {
 			dropdownTrigger.blur();
 		}
+	}
+
+	/**
+	 * Helper to close the dropdown menu
+	 */
+	function closeDropdown() {
+		const dropdownTrigger = /** @type {HTMLElement} */ (document.activeElement);
+		if (dropdownTrigger && dropdownTrigger.closest('.dropdown')) {
+			dropdownTrigger.blur();
+		}
+	}
+
+	/**
+	 * Logout the current active account only
+	 */
+	function handleLogoutCurrent() {
+		console.log('Navbar: Logging out current account');
+		
+		if (activeAccount) {
+			manager.removeAccount(activeAccount.id);
+		}
+		
+		closeDropdown();
+	}
+
+	/**
+	 * Logout all accounts
+	 */
+	function handleLogoutAll() {
+		console.log('Navbar: Logging out all accounts');
+		
+		if (confirm('Are you sure you want to logout all accounts?')) {
+			const accounts = [...manager.accounts];
+			accounts.forEach(account => {
+				manager.removeAccount(account.id);
+			});
+		}
+		
+		closeDropdown();
 	}
 </script>
 
@@ -68,9 +116,12 @@
 					<li>
 						<button onclick={openLoginModal}>Switch Account</button>
 					</li>
-					<!-- TODO: Implement settings and logout functionality -->
+					<!-- TODO: Implement settings functionality -->
 					<!-- <li><button>Settings</button></li> -->
-					<!-- <li><button>Logout</button></li> -->
+					<li><button onclick={handleLogoutCurrent}>Logout</button></li>
+					{#if accountCount > 1}
+						<li><button onclick={handleLogoutAll}>Logout All Accounts</button></li>
+					{/if}
 				</ul>
 			</div>
 		{:else}
