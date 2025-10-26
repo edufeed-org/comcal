@@ -114,7 +114,7 @@
 			
 			{@const cellClasses = [
 				'p-2 hover:bg-base-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset cursor-pointer transition-colors duration-200 flex flex-col',
-				viewMode === 'day' ? 'h-96 p-4' : viewMode === 'week' ? 'h-32' : 'h-24',
+				viewMode === 'day' ? 'h-full p-4' : viewMode === 'week' ? 'h-96' : 'h-24',
 				isCurrentDay ? 'ring-2 ring-primary ring-inset' : '',
 				!isInCurrentMonth ? 'bg-base-200 text-base-content/40' : ''
 			].filter(Boolean).join(' ')}
@@ -140,20 +140,20 @@
 
 				<!-- Events for this date -->
 				<div class="flex-1 overflow-y-auto space-y-1 {viewMode === 'day' ? 'space-y-2' : ''}">
-					{#if viewMode === 'month'}
-						<!-- Month view: Show compact event bars -->
+					{#if viewMode === 'day'}
+						<!-- Day view: Show full event cards -->
 						{#each dayEvents as event}
-							<CalendarEventBar
+							<CalendarEventCard
 								{event}
+								compact={false}
 								onEventClick={handleEventClick}
 							/>
 						{/each}
 					{:else}
-						<!-- Week/Day view: Show full event cards -->
+						<!-- Month/Week view: Show compact event bars -->
 						{#each dayEvents as event}
-							<CalendarEventCard
+							<CalendarEventBar
 								{event}
-								compact={viewMode === 'week'}
 								onEventClick={handleEventClick}
 							/>
 						{/each}
