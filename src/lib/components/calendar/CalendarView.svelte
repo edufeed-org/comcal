@@ -81,13 +81,19 @@
 	let mounted = $state(false);
 
 	// Initialize URL sync composable
-	useCalendarUrlSync($page, (mode) => {
-		presentationViewMode = mode;
-		// If switching to calendar view and viewMode is 'all', switch to 'month'
-		if (mode === 'calendar' && viewMode === 'all') {
-			viewMode = 'month';
+	useCalendarUrlSync(
+		$page,
+		(mode) => {
+			presentationViewMode = mode;
+			// If switching to calendar view and viewMode is 'all', switch to 'month'
+			if (mode === 'calendar' && viewMode === 'all') {
+				viewMode = 'month';
+			}
+		},
+		(mode) => {
+			viewMode = mode;
 		}
-	});
+	);
 
 	// Get community profile for calendar title (when in communityMode)
 	let getCommunityProfile = $derived.by(() => {

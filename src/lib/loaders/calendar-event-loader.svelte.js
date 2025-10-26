@@ -422,11 +422,12 @@ export function useCalendarEventLoader(options) {
 
 /**
  * Hook to sync URL parameters with calendar store
- * Handles tags, relays, authors, search, and view mode synchronization
+ * Handles tags, relays, authors, search, view mode, and period synchronization
  * @param {any} pageStore - Svelte $page store
- * @param {(mode: 'calendar' | 'list' | 'map') => void} onPresentationViewModeChange - Callback for view mode changes
+ * @param {(mode: 'calendar' | 'list' | 'map') => void} onPresentationViewModeChange - Callback for presentation view mode changes
+ * @param {(mode: 'month' | 'week' | 'day' | 'all') => void} onViewModeChange - Callback for view mode (period) changes
  */
-export function useCalendarUrlSync(pageStore, onPresentationViewModeChange) {
+export function useCalendarUrlSync(pageStore, onPresentationViewModeChange, onViewModeChange) {
 	$effect(() => {
 		// This effect tracks pageStore.url and re-runs whenever the URL changes
 		const urlFilters = /** @type {any} */ (parseCalendarFilters(pageStore.url.searchParams));
@@ -480,13 +481,25 @@ export function useCalendarUrlSync(pageStore, onPresentationViewModeChange) {
 			calendarFilters.setSearchQuery('');
 		}
 
-		// Sync presentation view mode
-		if (urlFilters?.view && typeof urlFilters.view === 'string') {
-			onPresentationViewModeChange(
-				/** @type {'calendar' | 'list' | 'map'} */ (urlFilters.view)
-			);
+		// Sync presentation view mode first
+		const presentationView = urlFilters?.view && typeof urlFilters.view === 'string' 
+			? /** @type {'calendar' | 'list' | 'map'} */ (urlFilters.view)
+			: 'calendar';
+		onPresentationViewModeChange(presentationView);
+
+		// Sync view mode (period)
+		if (urlFilters?.period && typeof urlFilters.period === 'string') {
+			const period = urlFilters.period;
+			// Only apply 'all' in list or map view, not in calendar view
+			if (period === 'all' && presentationView !== 'calendar') {
+				onViewModeChange('all');
+			} else if (['month', 'week', 'day'].includes(period)) {
+				onViewModeChange(/** @type {'month' | 'week' | 'day'} */ (period));
+			} else {
+				onViewModeChange('month'); // Default period
+			}
 		} else {
-			onPresentationViewModeChange('calendar'); // Default view
+			onViewModeChange('month'); // Default period
 		}
 	});
 }

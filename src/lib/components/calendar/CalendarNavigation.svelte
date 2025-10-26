@@ -79,6 +79,12 @@
 	 */
 	function handleViewModeClick(mode) {
 		console.log('🔄 handleViewModeClick called with mode:', mode);
+		
+		// Update URL with new period
+		updateQueryParams($page.url.searchParams, { 
+			period: mode === 'month' ? null : mode // Don't include 'month' as it's the default
+		});
+		
 		onViewModeChange(mode);
 		console.log('✅ onViewModeChange callback completed');
 	}
@@ -128,27 +134,34 @@
 </script>
 
 <div class="flex items-center justify-between gap-4 border-b border-base-300 bg-base-100 p-4">
-	<!-- Date Navigation -->
-	<div class="flex items-center gap-4">
-		<button
-			class="btn btn-outline btn-sm"
-			onclick={handlePreviousClick}
-			aria-label="Previous {viewMode}"
-		>
-			<ChevronLeftIcon class_="w-5 h-5" />
-		</button>
+	<!-- Date Navigation - Hidden in 'all' mode -->
+	{#if viewMode !== 'all'}
+		<div class="flex items-center gap-4">
+			<button
+				class="btn btn-outline btn-sm"
+				onclick={handlePreviousClick}
+				aria-label="Previous {viewMode}"
+			>
+				<ChevronLeftIcon class_="w-5 h-5" />
+			</button>
 
-		<!-- Today Button -->
-		<button class="btn btn-sm btn-primary" onclick={handleTodayClick}> Today </button>
+			<!-- Today Button -->
+			<button class="btn btn-sm btn-primary" onclick={handleTodayClick}> Today </button>
 
-		<button class="btn btn-outline btn-sm" onclick={handleNextClick} aria-label="Next {viewMode}">
-			<ChevronRightIcon class_="w-5 h-5" />
-		</button>
+			<button class="btn btn-outline btn-sm" onclick={handleNextClick} aria-label="Next {viewMode}">
+				<ChevronRightIcon class_="w-5 h-5" />
+			</button>
 
-		<div class="min-w-0 text-lg font-semibold whitespace-nowrap text-base-content">
-			{displayDate}
+			<div class="min-w-0 text-lg font-semibold whitespace-nowrap text-base-content">
+				{displayDate}
+			</div>
 		</div>
-	</div>
+	{:else}
+		<!-- In 'all' mode, show a simple heading instead -->
+		<div class="flex items-center gap-4">
+			<div class="text-lg font-semibold text-base-content">All Events</div>
+		</div>
+	{/if}
 
 	<!-- Center Controls -->
 	<div class="flex items-center gap-4">

@@ -5,7 +5,7 @@
 
 <script>
 	import { modalStore } from '$lib/stores/modal.svelte.js';
-	import { CalendarIcon, AlertIcon } from '$lib/components/icons';
+	import { CalendarIcon, AlertIcon, ChevronDownIcon } from '$lib/components/icons';
 	import { getWeekDates, getMonthDates, isEventInDateRange, groupEventsByDate, createDateKey } from '$lib/helpers/calendar.js';
 	
 	// Import existing UI components
@@ -129,6 +129,21 @@
 		modalStore.openModal('eventDetails', { event });
 		console.log('📅 SimpleCalendarEventsList: Event clicked, opening details modal:', event.title);
 	}
+
+	/**
+	 * Scroll to past events section
+	 */
+	function scrollToPastEvents() {
+		const element = document.getElementById('past-events');
+		element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}
+
+	/**
+	 * Scroll back to top
+	 */
+	function scrollToTop() {
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	}
 </script>
 
 <div class="space-y-4">
@@ -159,6 +174,17 @@
 			<h3 class="text-lg font-semibold text-base-content">
 				Upcoming Events ({upcomingEvents.length})
 			</h3>
+			{#if pastEvents.length > 0}
+				<button
+					type="button"
+					onclick={scrollToPastEvents}
+					class="link link-primary link-hover flex items-center gap-1 text-sm"
+					aria-label="Jump to past events section"
+				>
+					<span>Jump to Past ({pastEvents.length})</span>
+					<ChevronDownIcon class_="h-4 w-4" />
+				</button>
+			{/if}
 		</div>
 		
 		{#if upcomingEvents.length > 0}
@@ -188,11 +214,20 @@
 	{/if}
 
 	<!-- Past Events Section -->
-	<section class="space-y-4">
+	<section id="past-events" class="space-y-4">
 		<div class="flex items-center justify-between">
 			<h3 class="text-lg font-semibold text-base-content">
 				Past Events ({pastEvents.length})
 			</h3>
+			<button
+				type="button"
+				onclick={scrollToTop}
+				class="link link-primary link-hover flex items-center gap-1 text-sm"
+				aria-label="Back to top"
+			>
+				<ChevronDownIcon class_="h-4 w-4 rotate-180" />
+				<span>Back to Top</span>
+			</button>
 		</div>
 		
 		{#if pastEvents.length > 0}

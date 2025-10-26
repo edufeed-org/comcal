@@ -73,6 +73,7 @@ export function updateQueryParams(currentParams, updates, options = {}) {
  * const filters = parseCalendarFilters($page.url.searchParams);
  * // Returns: {
  * //   view: 'list',
+ * //   period: 'month',
  * //   tags: ['bitcoin', 'nostr'],
  * //   relays: ['wss://relay.damus.io'],
  * //   authors: ['npub1...'],
@@ -82,6 +83,7 @@ export function updateQueryParams(currentParams, updates, options = {}) {
 export function parseCalendarFilters(searchParams) {
 	return {
 		view: searchParams.get('view') || 'calendar',
+		period: searchParams.get('period') || 'month',
 		tags: searchParams.getAll('tags'),
 		relays: searchParams.getAll('relays'),
 		authors: searchParams.getAll('authors'),
@@ -94,6 +96,7 @@ export function parseCalendarFilters(searchParams) {
  * 
  * @param {Object} filters - Filter parameters
  * @param {string} [filters.view] - Presentation view mode
+ * @param {string} [filters.period] - Time period (month/week/day/all)
  * @param {string[]} [filters.tags] - Tag filters
  * @param {string[]} [filters.relays] - Relay filters
  * @param {string[]} [filters.authors] - Author filters
@@ -104,10 +107,11 @@ export function parseCalendarFilters(searchParams) {
  * @example
  * const url = buildCalendarURL({
  *   view: 'list',
+ *   period: 'all',
  *   tags: ['bitcoin', 'nostr'],
  *   search: 'conference'
  * });
- * // Returns: '/calendar?view=list&tags=bitcoin&tags=nostr&search=conference'
+ * // Returns: '/calendar?view=list&period=all&tags=bitcoin&tags=nostr&search=conference'
  */
 export function buildCalendarURL(filters, basePath = '/calendar') {
 	const params = new URLSearchParams();
@@ -115,6 +119,11 @@ export function buildCalendarURL(filters, basePath = '/calendar') {
 	// Add view mode
 	if (filters.view && filters.view !== 'calendar') {
 		params.set('view', filters.view);
+	}
+
+	// Add period (time range)
+	if (filters.period && filters.period !== 'month') {
+		params.set('period', filters.period);
 	}
 
 	// Add tags (repeated keys)
@@ -153,7 +162,8 @@ export function hasActiveFilters(searchParams) {
 		searchParams.getAll('relays').length > 0 ||
 		searchParams.getAll('authors').length > 0 ||
 		(searchParams.get('search') !== null && searchParams.get('search') !== '') ||
-		(searchParams.get('view') !== null && searchParams.get('view') !== 'calendar')
+		(searchParams.get('view') !== null && searchParams.get('view') !== 'calendar') ||
+		(searchParams.get('period') !== null && searchParams.get('period') !== 'month')
 	);
 }
 
