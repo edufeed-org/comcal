@@ -44,8 +44,10 @@ export function useModal() {
 
 	/**
 	 * Close the currently active modal
+	 * Ensures proper cleanup of both store state and DOM elements
 	 */
 	function closeModal() {
+		console.log('modalStore: Closing modal, current state:', activeModal);
 		activeModal = 'none';
 		modalProps = {};
 		modalCallbacks = {};

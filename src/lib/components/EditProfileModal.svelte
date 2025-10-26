@@ -31,6 +31,29 @@
 	let submitSuccess = $state(false);
 	
 	/**
+	 * Sync modal close with store state
+	 * This effect ensures that when the dialog closes (via ESC, backdrop, etc.),
+	 * the modal store state is updated accordingly
+	 */
+	$effect(() => {
+		const dialog = /** @type {HTMLDialogElement} */ (document.getElementById(modalId));
+		if (!dialog) return;
+
+		const handleDialogClose = () => {
+			// Only update store if this modal is currently active
+			if (modalStore.activeModal === 'profile') {
+				console.log('EditProfileModal: Dialog closed, syncing with store');
+				modalStore.closeModal();
+			}
+		};
+
+		dialog.addEventListener('close', handleDialogClose);
+		return () => {
+			dialog.removeEventListener('close', handleDialogClose);
+		};
+	});
+	
+	/**
 	 * Validate form data
 	 */
 	function validate() {

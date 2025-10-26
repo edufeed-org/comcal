@@ -25,6 +25,29 @@
 	// Canvas element for QR code
 	let qrCanvas = $state(/** @type {HTMLCanvasElement | null} */ (null));
 
+	/**
+	 * Sync modal close with store state
+	 * This effect ensures that when the dialog closes (via ESC, backdrop, etc.),
+	 * the modal store state is updated accordingly
+	 */
+	$effect(() => {
+		const dialog = /** @type {HTMLDialogElement} */ (document.getElementById(modalId));
+		if (!dialog) return;
+
+		const handleDialogClose = () => {
+			// Only update store if this modal is currently active
+			if (modal.activeModal === 'webcalQRCode') {
+				console.log('WebcalQRCodeModal: Dialog closed, syncing with store');
+				modal.closeModal();
+			}
+		};
+
+		dialog.addEventListener('close', handleDialogClose);
+		return () => {
+			dialog.removeEventListener('close', handleDialogClose);
+		};
+	});
+
 	// Get props from modal store
 	let webcalUrl = $derived(
 		modal.modalProps && /** @type {WebcalQRCodeModalProps} */ (modal.modalProps).webcalUrl

@@ -44,6 +44,41 @@
 	
 	// No complex profile state needed - #await handles everything!
 
+	/**
+	 * Sync modal close with store state
+	 * This effect ensures that when the dialog closes (via ESC, backdrop, etc.),
+	 * the modal store state is updated accordingly
+	 */
+	$effect(() => {
+		const dialog = /** @type {HTMLDialogElement} */ (document.getElementById(modalId));
+		if (!dialog) return;
+
+		const handleDialogClose = () => {
+			// Only update store if this modal is currently active
+			if (modalStore.activeModal === 'signup') {
+				console.log('SignupModal: Dialog closed, syncing with store');
+				modalStore.closeModal();
+				// Reset state on close
+				currentStep = 1;
+				userData = {
+					name: '', about: '', picture: '', website: '',
+					privateKey: /** @type {Uint8Array | null} */ (null), 
+					publicKey: '', nsec: '', npub: '',
+					selectedFollows: /** @type {any[]} */ ([]), 
+					downloadConfirmed: false,
+					ncryptsecPassword: '', useEncryption: false
+				};
+				errors = {};
+				signer = null;
+			}
+		};
+
+		dialog.addEventListener('close', handleDialogClose);
+		return () => {
+			dialog.removeEventListener('close', handleDialogClose);
+		};
+	});
+
 	// Generate keypair when entering step 3
 	$effect(() => {
 		if (currentStep === 3 && !userData.privateKey) {

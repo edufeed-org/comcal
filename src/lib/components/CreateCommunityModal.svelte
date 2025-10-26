@@ -67,6 +67,47 @@
 	let errors = $state(/** @type {Record<string, string>} */ ({}));
 
 	/**
+	 * Sync modal close with store state
+	 * This effect ensures that when the dialog closes (via ESC, backdrop, etc.),
+	 * the modal store state is updated accordingly
+	 */
+	$effect(() => {
+		const dialog = /** @type {HTMLDialogElement} */ (document.getElementById(modalId));
+		if (!dialog) return;
+
+		const handleDialogClose = () => {
+			// Only update store if this modal is currently active
+			if (modalStore.activeModal === 'createCommunity') {
+				console.log('CreateCommunityModal: Dialog closed, syncing with store');
+				modalStore.closeModal();
+				// Reset state on close
+				currentStep = 0;
+				useCurrentKeypair = false;
+				userData = {
+					name: '', about: '', picture: '', website: '',
+					privateKey: /** @type {Uint8Array | null} */ (null), publicKey: '', nsec: '', npub: '',
+					downloadConfirmed: false, ncryptsecPassword: '', useEncryption: false
+				};
+				communityData = {
+					relays: ['wss://relay.edufeed.org'],
+					blossomServers: ['blossom.edufeed.org'],
+					location: '',
+					description: '',
+					contentTypes: {
+						calendar: true, chat: true, articles: true, posts: true, wikis: true
+					}
+				};
+				errors = {};
+			}
+		};
+
+		dialog.addEventListener('close', handleDialogClose);
+		return () => {
+			dialog.removeEventListener('close', handleDialogClose);
+		};
+	});
+
+	/**
 	 * @param {number} step
 	 */
 	function validateStep(step) {

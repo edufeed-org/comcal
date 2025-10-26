@@ -92,21 +92,21 @@ function isValidTimezone(value) {
 function validateKind31922(event) {
 	const eventId = event.id || 'unknown';
 	
-	// Check required tags
-	if (!hasTag(event, 'd')) {
-		console.warn(`📅 Validation: Event ${eventId} missing required 'd' tag (identifier)`);
-		return false;
-	}
+	// // Check required tags
+	// if (!hasTag(event, 'd')) {
+	// 	// console.warn(`📅 Validation: Event ${eventId} missing required 'd' tag (identifier)`);
+	// 	return false;
+	// }
 	
-	const title = getTagValue(event, 'title');
-	if (!title || title.trim().length === 0) {
-		console.warn(`📅 Validation: Event ${eventId} missing or empty 'title' tag`);
-		return false;
-	}
+	// const title = getTagValue(event, 'title');
+	// if (!title || title.trim().length === 0) {
+	// 	// console.warn(`📅 Validation: Event ${eventId} missing or empty 'title' tag`);
+	// 	return false;
+	// }
 	
 	const start = getTagValue(event, 'start');
 	if (!isValidTimestamp(start)) {
-		console.warn(`📅 Validation: Event ${eventId} has invalid 'start' timestamp:`, start);
+		// console.warn(`📅 Validation: Event ${eventId} has invalid 'start' timestamp:`, start);
 		return false;
 	}
 	
@@ -114,7 +114,7 @@ function validateKind31922(event) {
 	const end = getTagValue(event, 'end');
 	if (end !== undefined) {
 		if (!isValidTimestamp(end)) {
-			console.warn(`📅 Validation: Event ${eventId} has invalid 'end' timestamp:`, end);
+			// console.warn(`📅 Validation: Event ${eventId} has invalid 'end' timestamp:`, end);
 			return false;
 		}
 		// End should be >= start
@@ -122,36 +122,36 @@ function validateKind31922(event) {
 			const startNum = parseInt(start, 10);
 			const endNum = parseInt(end, 10);
 			if (endNum < startNum) {
-				console.warn(`📅 Validation: Event ${eventId} has 'end' before 'start'`);
+				// console.warn(`📅 Validation: Event ${eventId} has 'end' before 'start'`);
 				return false;
 			}
 		}
 	}
 	
-	// Validate optional string fields (if present, must not be empty)
-	const summary = getTagValue(event, 'summary');
-	if (summary !== undefined && summary.trim().length === 0) {
-		console.warn(`📅 Validation: Event ${eventId} has empty 'summary' tag`);
-		return false;
-	}
+	// // Validate optional string fields (if present, must not be empty)
+	// const summary = getTagValue(event, 'summary');
+	// if (summary !== undefined && summary.trim().length === 0) {
+	// 	console.warn(`📅 Validation: Event ${eventId} has empty 'summary' tag`);
+	// 	return false;
+	// }
 	
-	const image = getTagValue(event, 'image');
-	if (image !== undefined && image.trim().length === 0) {
-		console.warn(`📅 Validation: Event ${eventId} has empty 'image' tag`);
-		return false;
-	}
+	// const image = getTagValue(event, 'image');
+	// if (image !== undefined && image.trim().length === 0) {
+	// 	// console.warn(`📅 Validation: Event ${eventId} has empty 'image' tag`);
+	// 	return false;
+	// }
 	
-	const location = getTagValue(event, 'location');
-	if (location !== undefined && location.trim().length === 0) {
-		console.warn(`📅 Validation: Event ${eventId} has empty 'location' tag`);
-		return false;
-	}
+	// const location = getTagValue(event, 'location');
+	// if (location !== undefined && location.trim().length === 0) {
+	// 	console.warn(`📅 Validation: Event ${eventId} has empty 'location' tag`);
+	// 	return false;
+	// }
 	
-	const geohash = getTagValue(event, 'g');
-	if (geohash !== undefined && geohash.trim().length === 0) {
-		console.warn(`📅 Validation: Event ${eventId} has empty 'g' (geohash) tag`);
-		return false;
-	}
+	// const geohash = getTagValue(event, 'g');
+	// if (geohash !== undefined && geohash.trim().length === 0) {
+	// 	// console.warn(`📅 Validation: Event ${eventId} has empty 'g' (geohash) tag`);
+	// 	return false;
+	// }
 	
 	return true;
 }

@@ -45,6 +45,29 @@
 	// Generate unique modal ID
 	const modalId = 'event-details-modal';
 
+	/**
+	 * Sync modal close with store state
+	 * This effect ensures that when the dialog closes (via ESC, backdrop, etc.),
+	 * the modal store state is updated accordingly
+	 */
+	$effect(() => {
+		const dialog = /** @type {HTMLDialogElement} */ (document.getElementById(modalId));
+		if (!dialog) return;
+
+		const handleDialogClose = () => {
+			// Only update store if this modal is currently active
+			if (modal.activeModal === 'eventDetails') {
+				console.log('CalendarEventDetailsModal: Dialog closed, syncing with store');
+				modal.closeModal();
+			}
+		};
+
+		dialog.addEventListener('close', handleDialogClose);
+		return () => {
+			dialog.removeEventListener('close', handleDialogClose);
+		};
+	});
+
 	// Reactive effect to handle modal opening/closing
 	$effect(() => {
 		const currentModal = modal.activeModal;
@@ -126,14 +149,12 @@
 
 <!-- Event Details Modal -->
 {#if modal.activeModal === 'eventDetails' && event}
-	<div
-		class="modal-open modal"
+	<dialog
+		id={modalId}
+		class="modal"
 		onclick={handleBackdropClick}
 		onkeydown={handleKeydown}
-		role="dialog"
-		aria-modal="true"
 		aria-labelledby="event-title"
-		tabindex="0"
 	>
 		<div class="modal-box max-h-screen w-full max-w-2xl overflow-y-auto">
 			<!-- Modal Header -->
@@ -338,5 +359,5 @@
 				<button class="btn btn-outline" onclick={handleClose}> Close </button>
 			</div>
 		</div>
-	</div>
+	</dialog>
 {/if}

@@ -9,6 +9,29 @@
 
 	let inputNSEC = $state('');
 
+	/**
+	 * Sync modal close with store state
+	 * This effect ensures that when the dialog closes (via ESC, backdrop, etc.),
+	 * the modal store state is updated accordingly
+	 */
+	$effect(() => {
+		const dialog = /** @type {HTMLDialogElement} */ (document.getElementById(modalId));
+		if (!dialog) return;
+
+		const handleDialogClose = () => {
+			// Only update store if this modal is currently active
+			if (modalStore.activeModal === 'privateKey') {
+				console.log('LoginWithPrivateKey: Dialog closed, syncing with store');
+				modalStore.closeModal();
+			}
+		};
+
+		dialog.addEventListener('close', handleDialogClose);
+		return () => {
+			dialog.removeEventListener('close', handleDialogClose);
+		};
+	});
+
 	async function handleLoginWithPrivateKey() {
 		let privateKey;
 		try {
