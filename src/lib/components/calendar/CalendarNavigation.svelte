@@ -234,7 +234,7 @@
 			Day
 		</button>
 	</div>
-	{#if !communityMode}
+	{#if !communityMode && !$page.url.pathname.endsWith('/calendar')}
 		<AddToCalendarButton />
 	{/if}
 </div>

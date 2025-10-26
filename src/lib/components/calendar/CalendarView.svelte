@@ -175,7 +175,11 @@
 						trackedIds.push(event.id);
 						// Trigger reactivity by reassigning
 						relayFilteredEventIds = [...trackedIds];
-						console.log('📅 CalendarView: Tracked event from relay:', event.id, `(${trackedIds.length} total)`);
+						console.log(
+							'📅 CalendarView: Tracked event from relay:',
+							event.id,
+							`(${trackedIds.length} total)`
+						);
 					}
 				},
 				error: (/** @type {any} */ err) => {
@@ -189,7 +193,11 @@
 			modelSubscription = eventStore
 				.model(GlobalCalendarEventModel, authors)
 				.subscribe((/** @type {any} */ calendarEvents) => {
-					console.log('📅 CalendarView: Received', calendarEvents.length, 'global calendar events from model');
+					console.log(
+						'📅 CalendarView: Received',
+						calendarEvents.length,
+						'global calendar events from model'
+					);
 					allCalendarEvents = calendarEvents;
 					loading = false;
 				});
@@ -283,7 +291,7 @@
 	onMount(() => {
 		// Set mounted flag to allow effects to run
 		mounted = true;
-		
+
 		// Bootstrap EventStore with appropriate loader (unless in community mode)
 		if (communityMode && communityPubkey) {
 			// Bootstrap EventStore with community calendar loader
@@ -459,7 +467,7 @@
 	let events = $derived.by(() => {
 		if (relayFilterActive && relayFilteredEventIds.length > 0) {
 			// Filter: only show events from selected relays
-			const filtered = allCalendarEvents.filter(e => relayFilteredEventIds.includes(e.id));
+			const filtered = allCalendarEvents.filter((e) => relayFilteredEventIds.includes(e.id));
 			console.log(
 				`🔗 CalendarView: Filtered ${filtered.length}/${allCalendarEvents.length} events by relay (${relayFilteredEventIds.length} IDs tracked)`
 			);
@@ -530,36 +538,6 @@
 				{/if}
 			</div>
 			<div class="flex items-center gap-3">
-				<!-- Add to Calendar Button (community mode only) -->
-				{#if communityMode && communityPubkey}
-					<AddToCalendarButton
-						calendarId={communityPubkey}
-						calendarTitle={communityCalendarTitle}
-					/>
-				{/if}
-
-				<button
-					class="btn btn-ghost btn-sm"
-					onclick={() => handleRefresh()}
-					disabled={loading}
-					aria-label="Refresh calendar"
-				>
-					<svg
-						class="h-5 w-5"
-						class:animate-spin={loading}
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-						/>
-					</svg>
-				</button>
-
 				{#if !globalMode && !calendar && manager.active}
 					<button class="btn gap-2 btn-sm btn-primary" onclick={handleCreateEvent}>
 						<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -572,6 +550,14 @@
 						</svg>
 						Create Event
 					</button>
+				{/if}
+
+				<!-- Add to Calendar Button (community mode only) -->
+				{#if communityMode && communityPubkey}
+					<AddToCalendarButton
+						calendarId={communityPubkey}
+						calendarTitle={communityCalendarTitle}
+					/>
 				{/if}
 			</div>
 		</div>
