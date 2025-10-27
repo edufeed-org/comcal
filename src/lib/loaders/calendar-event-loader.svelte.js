@@ -481,25 +481,27 @@ export function useCalendarUrlSync(pageStore, onPresentationViewModeChange, onVi
 			calendarFilters.setSearchQuery('');
 		}
 
-		// Sync presentation view mode first
+		// Determine presentation view mode and period from URL
 		const presentationView = urlFilters?.view && typeof urlFilters.view === 'string' 
 			? /** @type {'calendar' | 'list' | 'map'} */ (urlFilters.view)
 			: 'calendar';
-		onPresentationViewModeChange(presentationView);
-
-		// Sync view mode (period)
-		if (urlFilters?.period && typeof urlFilters.period === 'string') {
-			const period = urlFilters.period;
-			// Only apply 'all' in list or map view, not in calendar view
-			if (period === 'all' && presentationView !== 'calendar') {
-				onViewModeChange('all');
-			} else if (['month', 'week', 'day'].includes(period)) {
-				onViewModeChange(/** @type {'month' | 'week' | 'day'} */ (period));
-			} else {
-				onViewModeChange('month'); // Default period
-			}
-		} else {
-			onViewModeChange('month'); // Default period
+		
+		let period = urlFilters?.period && typeof urlFilters.period === 'string'
+			? urlFilters.period
+			: 'month';
+		
+		// Validate period value - calendar view doesn't support 'all'
+		// If we're in calendar view and period is 'all', adjust to 'month'
+		if (presentationView === 'calendar' && period === 'all') {
+			console.log('📅 URLSync: Calendar view does not support "all" period, switching to "month"');
+			period = 'month';
+		} else if (!['month', 'week', 'day', 'all'].includes(period)) {
+			console.log('📅 URLSync: Invalid period value, defaulting to "month"');
+			period = 'month';
 		}
+		
+		// Now apply the coordinated values to the component state
+		onPresentationViewModeChange(presentationView);
+		onViewModeChange(/** @type {'month' | 'week' | 'day' | 'all'} */ (period));
 	});
 }

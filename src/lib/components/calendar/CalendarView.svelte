@@ -14,7 +14,7 @@
 	import { CommunityCalendarEventModel } from '$lib/models/community-calendar-event.js';
 	import { GlobalCalendarEventModel } from '$lib/models/global-calendar-event.js';
 	import { PersonalCalendarEventsModel } from '$lib/models';
-	import { useCalendarUrlSync } from '$lib/loaders';
+	import { useCalendarUrlSync, useCalendarEventLoader } from '$lib/loaders';
 	import { validateCalendarEvent } from '$lib/helpers/eventValidation.js';
 
 	// Import existing UI components
@@ -58,14 +58,16 @@
 	 * @type {import("$lib/types/calendar.js").CalendarEvent[]}
 	 */
 	let allCalendarEvents = $state([]);
-	let processedEvents = $state(/** @type {import("$lib/types/calendar.js").CalendarEvent[]} */ ([]));
+	let processedEvents = $state(
+		/** @type {import("$lib/types/calendar.js").CalendarEvent[]} */ ([])
+	);
 	let relayFilteredEventIds = $state(/** @type {string[]} */ ([]));
 	let relayFilterActive = $state(false);
 	let loading = $state(false);
 	let processing = $state(false); // New state for background processing
 	let error = $state(/** @type {string | null} */ (null));
 	let selectedCalendar = $state(calendarFilters.selectedCalendar);
-	
+
 	// Validation cache to avoid re-validating same events
 	const validationCache = new Map();
 	let processingTimeout = /** @type {ReturnType<typeof setTimeout> | null} */ (null);
@@ -85,6 +87,36 @@
 
 	// Guard to prevent effect from running before mount
 	let mounted = $state(false);
+
+	// Track previous community pubkey to detect actual changes
+	let previousCommunityPubkey = $state('');
+
+	// Initialize event loader composable for community mode
+	const communityEventLoader = useCalendarEventLoader({
+		onEventsUpdate: (events) => {
+			console.log('📅 CalendarView: Community events updated:', events.length);
+			allCalendarEvents = events;
+		},
+		onLoadingChange: (isLoading) => {
+			loading = isLoading;
+		},
+		onError: (errorMsg) => {
+			error = errorMsg;
+		}
+	});
+
+	// Watch for communityPubkey changes and reload events
+	$effect(() => {
+		if (mounted && communityMode && communityPubkey) {
+			// Only reload if the community actually changed
+			if (communityPubkey !== previousCommunityPubkey) {
+				console.log('📅 CalendarView: Community changed from', previousCommunityPubkey, 'to:', communityPubkey);
+				previousCommunityPubkey = communityPubkey;
+				// Use the event loader composable for community mode
+				communityEventLoader.loadByCommunity(communityPubkey);
+			}
+		}
+	});
 
 	// Initialize URL sync composable
 	useCalendarUrlSync(
@@ -136,30 +168,9 @@
 		resolutionErrors = [];
 
 		if (communityMode && communityPubkey) {
-			// Community mode: Load events for specific community
-			console.log('📅 CalendarView: Loading community calendar events for:', communityPubkey);
-
-			// 1. Loader: Fetch from relays → EventStore
-			loaderSubscription = communityCalendarTimelineLoader(communityPubkey)().subscribe({
-				error: (/** @type {any} */ err) => {
-					console.error('📅 CalendarView: Community calendar loader error:', err);
-					error = err.message || 'Failed to load calendar events';
-					loading = false;
-				}
-			});
-
-			// 2. Model: Transform and provide reactive updates from EventStore
-			modelSubscription = eventStore
-				.model(CommunityCalendarEventModel, communityPubkey)
-				.subscribe((calendarEvents) => {
-					console.log(
-						'📅 CalendarView: Received',
-						calendarEvents.length,
-						'community calendar events'
-					);
-					allCalendarEvents = calendarEvents;
-					loading = false;
-				});
+			// Community mode: Use the event loader composable
+			console.log('📅 CalendarView: Loading community calendar events using composable for:', communityPubkey);
+			communityEventLoader.loadByCommunity(communityPubkey);
 		} else if (globalMode) {
 			// Global mode: Load all events from relays
 			console.log('📅 CalendarView: Loading global calendar events');
@@ -327,6 +338,7 @@
 			calendarSubscription?.unsubscribe();
 			loaderSubscription?.unsubscribe();
 			modelSubscription?.unsubscribe();
+			communityEventLoader.cleanup();
 		};
 	});
 
@@ -473,38 +485,38 @@
 		if (processingTimeout) {
 			clearTimeout(processingTimeout);
 		}
-		
+
 		// UI is immediately responsive - set loading to false
 		loading = false;
 		processing = true;
-		
+
 		// Process events in chunks
 		const CHUNK_SIZE = 20;
 		let currentIndex = 0;
 		const validatedEvents = /** @type {import("$lib/types/calendar.js").CalendarEvent[]} */ ([]);
-		
+
 		function processNextChunk() {
 			const end = Math.min(currentIndex + CHUNK_SIZE, events.length);
-			
+
 			for (let i = currentIndex; i < end; i++) {
 				const event = events[i];
-				
+
 				// Check cache first
 				if (!validationCache.has(event.id)) {
 					const isValid = validateCalendarEvent(event.originalEvent || event);
 					validationCache.set(event.id, isValid);
 				}
-				
+
 				if (validationCache.get(event.id)) {
 					validatedEvents.push(event);
 				}
 			}
-			
+
 			// Update processed events
 			processedEvents = [...validatedEvents];
-			
+
 			currentIndex = end;
-			
+
 			if (currentIndex < events.length) {
 				// Schedule next chunk
 				processingTimeout = setTimeout(processNextChunk, 0);
@@ -514,11 +526,11 @@
 				console.log(`📅 CalendarView: Processed ${validatedEvents.length}/${events.length} events`);
 			}
 		}
-		
+
 		// Start processing
 		processNextChunk();
 	}
-	
+
 	// Derived state: Apply relay filtering via intersection
 	let events = $derived.by(() => {
 		if (relayFilterActive && relayFilteredEventIds.length > 0) {
@@ -532,7 +544,7 @@
 		// No relay filter: show all events
 		return allCalendarEvents;
 	});
-	
+
 	// Watch for changes to events and trigger chunked processing
 	$effect(() => {
 		if (events.length > 0) {
