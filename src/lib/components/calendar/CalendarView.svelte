@@ -58,11 +58,17 @@
 	 * @type {import("$lib/types/calendar.js").CalendarEvent[]}
 	 */
 	let allCalendarEvents = $state([]);
+	let processedEvents = $state(/** @type {import("$lib/types/calendar.js").CalendarEvent[]} */ ([]));
 	let relayFilteredEventIds = $state(/** @type {string[]} */ ([]));
 	let relayFilterActive = $state(false);
 	let loading = $state(false);
+	let processing = $state(false); // New state for background processing
 	let error = $state(/** @type {string | null} */ (null));
 	let selectedCalendar = $state(calendarFilters.selectedCalendar);
+	
+	// Validation cache to avoid re-validating same events
+	const validationCache = new Map();
+	let processingTimeout = /** @type {ReturnType<typeof setTimeout> | null} */ (null);
 
 	// Modal state
 	let isEventModalOpen = $state(false);
@@ -165,7 +171,7 @@
 			relayFilteredEventIds = [];
 
 			// Temporary array to collect IDs during loader subscription
-			const trackedIds = [];
+			const trackedIds = /** @type {string[]} */ ([]);
 
 			// 1. Loader: Fetch from relays → EventStore
 			loaderSubscription = createRelayFilteredCalendarLoader(relays, authors)().subscribe({
@@ -193,11 +199,6 @@
 			modelSubscription = eventStore
 				.model(GlobalCalendarEventModel, authors)
 				.subscribe((/** @type {any} */ calendarEvents) => {
-					// console.log(
-					// 	'📅 CalendarView: Received',
-					// 	calendarEvents.length,
-					// 	'global calendar events from model'
-					// );
 					allCalendarEvents = calendarEvents;
 					loading = false;
 				});
@@ -463,6 +464,61 @@
 	let selectedTags = $derived(calendarFilters.selectedTags);
 	let searchQuery = $derived(calendarFilters.searchQuery);
 
+	/**
+	 * Process events in chunks to avoid blocking the UI
+	 * @param {import("$lib/types/calendar.js").CalendarEvent[]} events
+	 */
+	function processEventsInChunks(events) {
+		// Clear any existing processing timeout
+		if (processingTimeout) {
+			clearTimeout(processingTimeout);
+		}
+		
+		// UI is immediately responsive - set loading to false
+		loading = false;
+		processing = true;
+		
+		// Process events in chunks
+		const CHUNK_SIZE = 20;
+		let currentIndex = 0;
+		const validatedEvents = /** @type {import("$lib/types/calendar.js").CalendarEvent[]} */ ([]);
+		
+		function processNextChunk() {
+			const end = Math.min(currentIndex + CHUNK_SIZE, events.length);
+			
+			for (let i = currentIndex; i < end; i++) {
+				const event = events[i];
+				
+				// Check cache first
+				if (!validationCache.has(event.id)) {
+					const isValid = validateCalendarEvent(event.originalEvent || event);
+					validationCache.set(event.id, isValid);
+				}
+				
+				if (validationCache.get(event.id)) {
+					validatedEvents.push(event);
+				}
+			}
+			
+			// Update processed events
+			processedEvents = [...validatedEvents];
+			
+			currentIndex = end;
+			
+			if (currentIndex < events.length) {
+				// Schedule next chunk
+				processingTimeout = setTimeout(processNextChunk, 0);
+			} else {
+				// Processing complete
+				processing = false;
+				console.log(`📅 CalendarView: Processed ${validatedEvents.length}/${events.length} events`);
+			}
+		}
+		
+		// Start processing
+		processNextChunk();
+	}
+	
 	// Derived state: Apply relay filtering via intersection
 	let events = $derived.by(() => {
 		if (relayFilterActive && relayFilteredEventIds.length > 0) {
@@ -476,11 +532,19 @@
 		// No relay filter: show all events
 		return allCalendarEvents;
 	});
+	
+	// Watch for changes to events and trigger chunked processing
+	$effect(() => {
+		if (events.length > 0) {
+			processEventsInChunks(events);
+		} else {
+			processedEvents = [];
+			processing = false;
+		}
+	});
 
-	// Validate events once - filter out invalid events before any other processing
-	let validEvents = $derived(
-		events.filter((event) => validateCalendarEvent(event.originalEvent || event))
-	);
+	// Use processed events for validation (now cached and processed in chunks)
+	let validEvents = $derived(processedEvents);
 
 	// Client-side filtering with tag buttons (OR logic) + text search (AND logic)
 	// Events are filtered AFTER loading and validation
@@ -701,6 +765,15 @@
 					{:else}
 						Loading more events... ({events.length} loaded)
 					{/if}
+				</div>
+			</div>
+		</div>
+	{:else if processing}
+		<div class="border-b border-base-300 px-6 py-3 text-center">
+			<div class="flex items-center justify-center gap-3">
+				<div class="loading loading-sm loading-spinner"></div>
+				<div class="text-sm text-base-content/70">
+					Processing events... ({validEvents.length}/{events.length})
 				</div>
 			</div>
 		</div>
