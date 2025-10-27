@@ -21,26 +21,11 @@ export async function GET() {
 }
 
 /** @type {import('./$types').RequestHandler} */
-export async function PROPFIND() {
-	// Return 404 with proper DAV headers to indicate no CardDAV support
-	return new Response(
-		'<?xml version="1.0" encoding="utf-8"?><error xmlns="DAV:">CardDAV not supported.</error>',
-		{
-			status: 404,
-			headers: {
-				'Content-Type': 'application/xml; charset=utf-8',
-				'DAV': '1',
-			}
-		}
-	);
-}
-
-/** @type {import('./$types').RequestHandler} */
 export async function OPTIONS() {
 	return new Response(null, {
 		status: 204,
 		headers: {
-			'Allow': 'GET, PROPFIND, OPTIONS',
+			'Allow': 'GET, OPTIONS',
 			'DAV': '1',
 		}
 	});
