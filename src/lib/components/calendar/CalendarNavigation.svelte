@@ -137,120 +137,254 @@
 	}
 </script>
 
-<div class="flex items-center justify-between gap-4 border-b border-base-300 bg-base-100 p-4">
-	<!-- Mobile Filter Button (visible only on mobile, hidden in community mode) -->
-	{#if !communityMode}
-		<button
-			class="btn btn-square btn-sm lg:hidden"
-			onclick={onFilterButtonClick}
-			title="Open filters"
-			aria-label="Open filters"
-		>
-			<FilterIcon class_="h-5 w-5" />
-		</button>
-	{/if}
+<div class="border-b border-base-300 bg-base-100">
+	<!-- Mobile Layout (< lg) -->
+	<div class="flex flex-col gap-3 p-3 lg:hidden">
+		<!-- Row 1: Filter button, Date navigation and current date -->
+		<div class="flex items-center gap-2">
+			<!-- Mobile Filter Button (hidden in community mode) -->
+			{#if !communityMode}
+				<button
+					class="btn btn-square"
+					onclick={onFilterButtonClick}
+					title="Open filters"
+					aria-label="Open filters"
+				>
+					<FilterIcon class_="h-5 w-5" />
+				</button>
+			{/if}
 
-	<!-- Date Navigation - Hidden in 'all' mode -->
-	{#if viewMode !== 'all'}
-		<div class="flex items-center gap-4">
-			<button
-				class="btn btn-outline btn-sm"
-				onclick={handlePreviousClick}
-				aria-label="Previous {viewMode}"
-			>
-				<ChevronLeftIcon class_="w-5 h-5" />
-			</button>
+			<!-- Date Navigation - Hidden in 'all' mode -->
+			{#if viewMode !== 'all'}
+				<div class="flex flex-1 items-center justify-between gap-2">
+					<button
+						class="btn btn-outline btn-sm"
+						onclick={handlePreviousClick}
+						aria-label="Previous {viewMode}"
+					>
+						<ChevronLeftIcon class_="w-5 h-5" />
+					</button>
 
-			<!-- Today Button -->
-			<button class="btn btn-sm btn-primary" onclick={handleTodayClick}> Today </button>
+					<button class="btn btn-sm btn-primary" onclick={handleTodayClick}>Today</button>
 
-			<button class="btn btn-outline btn-sm" onclick={handleNextClick} aria-label="Next {viewMode}">
-				<ChevronRightIcon class_="w-5 h-5" />
-			</button>
+					<button
+						class="btn btn-outline btn-sm"
+						onclick={handleNextClick}
+						aria-label="Next {viewMode}"
+					>
+						<ChevronRightIcon class_="w-5 h-5" />
+					</button>
+				</div>
+			{:else}
+				<div class="flex-1 text-center text-lg font-semibold text-base-content">All Events</div>
+			{/if}
 
-			<div class="min-w-0 text-lg font-semibold whitespace-nowrap text-base-content">
+			<!-- Add Calendar Button -->
+			{#if !communityMode && !$page.url.pathname.endsWith('/calendar')}
+				<AddToCalendarButton />
+			{/if}
+		</div>
+
+		<!-- Row 2: Current Date Display (only if not in 'all' mode) -->
+		{#if viewMode !== 'all'}
+			<div class="text-center text-base font-semibold text-base-content">
 				{displayDate}
 			</div>
-		</div>
-	{:else}
-		<!-- In 'all' mode, show a simple heading instead -->
-		<div class="flex items-center gap-4">
-			<div class="text-lg font-semibold text-base-content">All Events</div>
-		</div>
-	{/if}
+		{/if}
 
-	<!-- Center Controls -->
-	<div class="flex items-center gap-4">
-		<!-- Presentation View Selector -->
-		<div class="join">
-			<button
-				class="btn join-item btn-sm"
-				class:btn-outline={presentationViewMode !== 'calendar'}
-				class:btn-primary={presentationViewMode === 'calendar'}
-				onclick={() => handlePresentationViewModeClick('calendar')}
-				title="Calendar Grid View"
-			>
-				<CalendarIcon class_="w-4 h-4" />
-			</button>
-			<button
-				class="btn join-item btn-sm"
-				class:btn-outline={presentationViewMode !== 'list'}
-				class:btn-primary={presentationViewMode === 'list'}
-				onclick={() => handlePresentationViewModeClick('list')}
-				title="List View"
-			>
-				<MenuIcon class_="w-4 h-4" />
-			</button>
-			<button
-				class="btn join-item btn-sm"
-				class:btn-outline={presentationViewMode !== 'map'}
-				class:btn-primary={presentationViewMode === 'map'}
-				onclick={() => handlePresentationViewModeClick('map')}
-				title="Map View"
-			>
-				<LocationIcon class_="w-4 h-4" />
-			</button>
+		<!-- Row 3: View Mode Selectors -->
+		<div class="flex items-center justify-center gap-2">
+			<!-- Presentation View Selector -->
+			<div class="join join-horizontal">
+				<button
+					class="btn join-item btn-sm"
+					class:btn-outline={presentationViewMode !== 'calendar'}
+					class:btn-primary={presentationViewMode === 'calendar'}
+					onclick={(e) => handlePresentationViewModeClick('calendar')}
+					title="Calendar Grid View"
+				>
+					<CalendarIcon class_="w-4 h-4" />
+				</button>
+				<button
+					class="btn join-item btn-sm"
+					class:btn-outline={presentationViewMode !== 'list'}
+					class:btn-primary={presentationViewMode === 'list'}
+					onclick={(e) => handlePresentationViewModeClick('list')}
+					title="List View"
+				>
+					<MenuIcon class_="w-4 h-4" />
+				</button>
+				<button
+					class="btn join-item btn-sm"
+					class:btn-outline={presentationViewMode !== 'map'}
+					class:btn-primary={presentationViewMode === 'map'}
+					onclick={(e) => handlePresentationViewModeClick('map')}
+					title="Map View"
+				>
+					<LocationIcon class_="w-4 h-4" />
+				</button>
+			</div>
+
+			<!-- Calendar View Mode Selector -->
+			<div class="join join-horizontal">
+				{#if presentationViewMode === 'list'}
+					<button
+						class="btn join-item btn-sm"
+						class:btn-outline={viewMode !== 'all'}
+						class:btn-primary={viewMode === 'all'}
+						onclick={() => handleViewModeClick('all')}
+					>
+						All
+					</button>
+				{/if}
+				<button
+					class="btn join-item btn-sm"
+					class:btn-outline={viewMode !== 'month'}
+					class:btn-primary={viewMode === 'month'}
+					onclick={() => handleViewModeClick('month')}
+				>
+					Month
+				</button>
+				<button
+					class="btn join-item btn-sm"
+					class:btn-outline={viewMode !== 'week'}
+					class:btn-primary={viewMode === 'week'}
+					onclick={() => handleViewModeClick('week')}
+				>
+					Week
+				</button>
+				<button
+					class="btn join-item btn-sm"
+					class:btn-outline={viewMode !== 'day'}
+					class:btn-primary={viewMode === 'day'}
+					onclick={() => handleViewModeClick('day')}
+				>
+					Day
+				</button>
+			</div>
 		</div>
 	</div>
 
-	<!-- Calendar View Mode Selector -->
-	<div class="join">
-		{#if presentationViewMode === 'list'}
+	<!-- Desktop Layout (>= lg) -->
+	<div class="hidden items-center justify-between gap-4 p-4 lg:flex">
+		<!-- Mobile Filter Button (visible only on mobile, hidden in community mode) -->
+		{#if !communityMode}
 			<button
-				class="btn join-item btn-sm"
-				class:btn-outline={viewMode !== 'all'}
-				class:btn-primary={viewMode === 'all'}
-				onclick={() => handleViewModeClick('all')}
+				class="btn btn-square btn-sm lg:hidden"
+				onclick={onFilterButtonClick}
+				title="Open filters"
+				aria-label="Open filters"
 			>
-				All
+				<FilterIcon class_="h-5 w-5" />
 			</button>
 		{/if}
-		<button
-			class="btn join-item btn-sm"
-			class:btn-outline={viewMode !== 'month'}
-			class:btn-primary={viewMode === 'month'}
-			onclick={() => handleViewModeClick('month')}
-		>
-			Month
-		</button>
-		<button
-			class="btn join-item btn-sm"
-			class:btn-outline={viewMode !== 'week'}
-			class:btn-primary={viewMode === 'week'}
-			onclick={() => handleViewModeClick('week')}
-		>
-			Week
-		</button>
-		<button
-			class="btn join-item btn-sm"
-			class:btn-outline={viewMode !== 'day'}
-			class:btn-primary={viewMode === 'day'}
-			onclick={() => handleViewModeClick('day')}
-		>
-			Day
-		</button>
+
+		<!-- Date Navigation - Hidden in 'all' mode -->
+		{#if viewMode !== 'all'}
+			<div class="flex items-center gap-4">
+				<button
+					class="btn btn-outline btn-sm"
+					onclick={handlePreviousClick}
+					aria-label="Previous {viewMode}"
+				>
+					<ChevronLeftIcon class_="w-5 h-5" />
+				</button>
+
+				<!-- Today Button -->
+				<button class="btn btn-sm btn-primary" onclick={handleTodayClick}> Today </button>
+
+				<button
+					class="btn btn-outline btn-sm"
+					onclick={handleNextClick}
+					aria-label="Next {viewMode}"
+				>
+					<ChevronRightIcon class_="w-5 h-5" />
+				</button>
+
+				<div class="min-w-0 whitespace-nowrap text-lg font-semibold text-base-content">
+					{displayDate}
+				</div>
+			</div>
+		{:else}
+			<!-- In 'all' mode, show a simple heading instead -->
+			<div class="flex items-center gap-4">
+				<div class="text-lg font-semibold text-base-content">All Events</div>
+			</div>
+		{/if}
+
+		<!-- Center Controls -->
+		<div class="flex items-center gap-4">
+			<!-- Presentation View Selector -->
+			<div class="join">
+				<button
+					class="btn join-item btn-sm"
+					class:btn-outline={presentationViewMode !== 'calendar'}
+					class:btn-primary={presentationViewMode === 'calendar'}
+					onclick={(e) => handlePresentationViewModeClick('calendar')}
+					title="Calendar Grid View"
+				>
+					<CalendarIcon class_="w-4 h-4" />
+				</button>
+				<button
+					class="btn join-item btn-sm"
+					class:btn-outline={presentationViewMode !== 'list'}
+					class:btn-primary={presentationViewMode === 'list'}
+					onclick={(e) => handlePresentationViewModeClick('list')}
+					title="List View"
+				>
+					<MenuIcon class_="w-4 h-4" />
+				</button>
+				<button
+					class="btn join-item btn-sm"
+					class:btn-outline={presentationViewMode !== 'map'}
+					class:btn-primary={presentationViewMode === 'map'}
+					onclick={(e) => handlePresentationViewModeClick('map')}
+					title="Map View"
+				>
+					<LocationIcon class_="w-4 h-4" />
+				</button>
+			</div>
+		</div>
+
+		<!-- Calendar View Mode Selector -->
+		<div class="join">
+			{#if presentationViewMode === 'list'}
+				<button
+					class="btn join-item btn-sm"
+					class:btn-outline={viewMode !== 'all'}
+					class:btn-primary={viewMode === 'all'}
+					onclick={() => handleViewModeClick('all')}
+				>
+					All
+				</button>
+			{/if}
+			<button
+				class="btn join-item btn-sm"
+				class:btn-outline={viewMode !== 'month'}
+				class:btn-primary={viewMode === 'month'}
+				onclick={() => handleViewModeClick('month')}
+			>
+				Month
+			</button>
+			<button
+				class="btn join-item btn-sm"
+				class:btn-outline={viewMode !== 'week'}
+				class:btn-primary={viewMode === 'week'}
+				onclick={() => handleViewModeClick('week')}
+			>
+				Week
+			</button>
+			<button
+				class="btn join-item btn-sm"
+				class:btn-outline={viewMode !== 'day'}
+				class:btn-primary={viewMode === 'day'}
+				onclick={() => handleViewModeClick('day')}
+			>
+				Day
+			</button>
+		</div>
+		{#if !communityMode && !$page.url.pathname.endsWith('/calendar')}
+			<AddToCalendarButton />
+		{/if}
 	</div>
-	{#if !communityMode && !$page.url.pathname.endsWith('/calendar')}
-		<AddToCalendarButton />
-	{/if}
 </div>
