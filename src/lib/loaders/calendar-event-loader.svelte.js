@@ -421,65 +421,81 @@ export function useCalendarEventLoader(options) {
 }
 
 /**
- * Hook to sync URL parameters with calendar store
- * Handles tags, relays, authors, search, view mode, and period synchronization
- * @param {any} pageStore - Svelte $page store
- * @param {(mode: 'calendar' | 'list' | 'map') => void} onPresentationViewModeChange - Callback for presentation view mode changes
- * @param {(mode: 'month' | 'week' | 'day' | 'all') => void} onViewModeChange - Callback for view mode (period) changes
+ * Helper function to sync URL filters to calendar filters store
+ * @param {any} urlFilters - Parsed URL filters
  */
-export function useCalendarUrlSync(pageStore, onPresentationViewModeChange, onViewModeChange) {
-	$effect(() => {
-		// This effect tracks pageStore.url and re-runs whenever the URL changes
-		const urlFilters = /** @type {any} */ (parseCalendarFilters(pageStore.url.searchParams));
-		console.log('📅 URLSync: URL changed, syncing filters:', urlFilters);
-
-		// Sync tags - normalize to lowercase for consistent filtering
-		if (urlFilters?.tags && Array.isArray(urlFilters.tags)) {
-			if (urlFilters.tags.length > 0) {
-				// Normalize tags to lowercase to match filter logic
-				const normalizedTags = urlFilters.tags.map((/** @type {string} */ tag) =>
-					tag.toLowerCase().trim()
-				);
-				calendarFilters.setSelectedTags(normalizedTags);
-			} else {
-				calendarFilters.clearSelectedTags();
-			}
+function syncFiltersToStore(urlFilters) {
+	// Sync tags - normalize to lowercase for consistent filtering
+	if (urlFilters?.tags && Array.isArray(urlFilters.tags)) {
+		if (urlFilters.tags.length > 0) {
+			const normalizedTags = urlFilters.tags.map((/** @type {string} */ tag) =>
+				tag.toLowerCase().trim()
+			);
+			calendarFilters.setSelectedTags(normalizedTags);
 		} else {
 			calendarFilters.clearSelectedTags();
 		}
+	} else {
+		calendarFilters.clearSelectedTags();
+	}
 
-		// Sync relays
-		if (urlFilters?.relays && Array.isArray(urlFilters.relays)) {
-			if (urlFilters.relays.length > 0) {
-				calendarFilters.setSelectedRelays(urlFilters.relays);
-			} else {
-				calendarFilters.setSelectedRelays([]);
-			}
+	// Sync relays
+	if (urlFilters?.relays && Array.isArray(urlFilters.relays)) {
+		if (urlFilters.relays.length > 0) {
+			calendarFilters.setSelectedRelays(urlFilters.relays);
 		} else {
 			calendarFilters.setSelectedRelays([]);
 		}
+	} else {
+		calendarFilters.setSelectedRelays([]);
+	}
 
-		// Sync authors (follow lists)
-		if (urlFilters?.authors && Array.isArray(urlFilters.authors)) {
-			if (urlFilters.authors.length > 0) {
-				calendarFilters.setSelectedFollowListIds(urlFilters.authors);
-			} else {
-				calendarFilters.setSelectedFollowListIds([]);
-			}
+	// Sync authors (follow lists)
+	if (urlFilters?.authors && Array.isArray(urlFilters.authors)) {
+		if (urlFilters.authors.length > 0) {
+			calendarFilters.setSelectedFollowListIds(urlFilters.authors);
 		} else {
 			calendarFilters.setSelectedFollowListIds([]);
 		}
+	} else {
+		calendarFilters.setSelectedFollowListIds([]);
+	}
 
-		// Sync search query
-		if (
-			urlFilters?.search &&
-			typeof urlFilters.search === 'string' &&
-			urlFilters.search.trim()
-		) {
-			calendarFilters.setSearchQuery(urlFilters.search);
-		} else {
-			calendarFilters.setSearchQuery('');
+	// Sync search query
+	if (
+		urlFilters?.search &&
+		typeof urlFilters.search === 'string' &&
+		urlFilters.search.trim()
+	) {
+		calendarFilters.setSearchQuery(urlFilters.search);
+	} else {
+		calendarFilters.setSearchQuery('');
+	}
+}
+
+/**
+ * Creates a URL sync handler for use with afterNavigate
+ * The component must call afterNavigate with the returned callback
+ * @param {(mode: 'calendar' | 'list' | 'map') => void} onPresentationViewModeChange - Callback for presentation view mode changes
+ * @param {(mode: 'month' | 'week' | 'day' | 'all') => void} onViewModeChange - Callback for view mode (period) changes
+ * @returns {(navigation: any) => void} Handler function for afterNavigate
+ */
+export function createUrlSyncHandler(onPresentationViewModeChange, onViewModeChange) {
+	return (navigation) => {
+		// Guard against null navigation.to
+		if (!navigation.to) {
+			console.warn('📅 URLSync: Navigation.to is null, skipping sync');
+			return;
 		}
+		
+		console.log('📅 URLSync: Navigation completed to:', navigation.to.url.href);
+		
+		// Parse filters from the new URL
+		const urlFilters = /** @type {any} */ (parseCalendarFilters(navigation.to.url.searchParams));
+		console.log('📅 URLSync: Parsed filters:', urlFilters);
+
+		// Sync filters to store
+		syncFiltersToStore(urlFilters);
 
 		// Determine presentation view mode and period from URL
 		const presentationView = urlFilters?.view && typeof urlFilters.view === 'string' 
@@ -491,7 +507,6 @@ export function useCalendarUrlSync(pageStore, onPresentationViewModeChange, onVi
 			: 'month';
 		
 		// Validate period value - calendar view doesn't support 'all'
-		// If we're in calendar view and period is 'all', adjust to 'month'
 		if (presentationView === 'calendar' && period === 'all') {
 			console.log('📅 URLSync: Calendar view does not support "all" period, switching to "month"');
 			period = 'month';
@@ -500,8 +515,44 @@ export function useCalendarUrlSync(pageStore, onPresentationViewModeChange, onVi
 			period = 'month';
 		}
 		
-		// Now apply the coordinated values to the component state
+		// Apply the coordinated values to the component state
 		onPresentationViewModeChange(presentationView);
 		onViewModeChange(/** @type {'month' | 'week' | 'day' | 'all'} */ (period));
-	});
+	};
+}
+
+/**
+ * Syncs initial URL state on component mount
+ * @param {URLSearchParams} searchParams - URL search params from $page.url.searchParams
+ * @param {(mode: 'calendar' | 'list' | 'map') => void} onPresentationViewModeChange - Callback for presentation view mode changes
+ * @param {(mode: 'month' | 'week' | 'day' | 'all') => void} onViewModeChange - Callback for view mode (period) changes
+ */
+export function syncInitialUrlState(searchParams, onPresentationViewModeChange, onViewModeChange) {
+	const urlFilters = /** @type {any} */ (parseCalendarFilters(searchParams));
+	console.log('📅 URLSync: Initial mount, parsed filters:', urlFilters);
+
+	// Sync filters to store
+	syncFiltersToStore(urlFilters);
+
+	// Determine presentation view mode and period from URL
+	const presentationView = urlFilters?.view && typeof urlFilters.view === 'string' 
+		? /** @type {'calendar' | 'list' | 'map'} */ (urlFilters.view)
+		: 'calendar';
+	
+	let period = urlFilters?.period && typeof urlFilters.period === 'string'
+		? urlFilters.period
+		: 'month';
+	
+	// Validate period value
+	if (presentationView === 'calendar' && period === 'all') {
+		console.log('📅 URLSync: Initial - Calendar view does not support "all" period, switching to "month"');
+		period = 'month';
+	} else if (!['month', 'week', 'day', 'all'].includes(period)) {
+		console.log('📅 URLSync: Initial - Invalid period value, defaulting to "month"');
+		period = 'month';
+	}
+	
+	// Apply the coordinated values to the component state
+	onPresentationViewModeChange(presentationView);
+	onViewModeChange(/** @type {'month' | 'week' | 'day' | 'all'} */ (period));
 }

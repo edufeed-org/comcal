@@ -1,5 +1,6 @@
 <script>
 	import { onMount, onDestroy } from 'svelte';
+	import { afterNavigate } from '$app/navigation';
 	import { page } from '$app/stores';
 	import {
 		communityCalendarTimelineLoader,
@@ -14,7 +15,7 @@
 	import { CommunityCalendarEventModel } from '$lib/models/community-calendar-event.js';
 	import { GlobalCalendarEventModel } from '$lib/models/global-calendar-event.js';
 	import { PersonalCalendarEventsModel } from '$lib/models';
-	import { useCalendarUrlSync, useCalendarEventLoader } from '$lib/loaders';
+	import { createUrlSyncHandler, syncInitialUrlState, useCalendarEventLoader } from '$lib/loaders';
 	import { validateCalendarEvent } from '$lib/helpers/eventValidation.js';
 
 	// Import existing UI components
@@ -118,20 +119,26 @@
 		}
 	});
 
-	// Initialize URL sync composable
-	useCalendarUrlSync(
-		$page,
-		(mode) => {
+	// Sync initial URL state on mount
+	syncInitialUrlState(
+		$page.url.searchParams,
+		(/** @type {'calendar' | 'list' | 'map'} */ mode) => {
 			presentationViewMode = mode;
-			// If switching to calendar view and viewMode is 'all', switch to 'month'
-			if (mode === 'calendar' && viewMode === 'all') {
-				viewMode = 'month';
-			}
 		},
-		(mode) => {
+		(/** @type {CalendarViewMode} */ mode) => {
 			viewMode = mode;
 		}
 	);
+
+	// Set up navigation listener - runs after every navigation
+	afterNavigate(createUrlSyncHandler(
+		(/** @type {'calendar' | 'list' | 'map'} */ mode) => {
+			presentationViewMode = mode;
+		},
+		(/** @type {CalendarViewMode} */ mode) => {
+			viewMode = mode;
+		}
+	));
 
 	// Get community profile for calendar title (when in communityMode)
 	let getCommunityProfile = $derived.by(() => {
@@ -389,15 +396,10 @@
 	 * @param {'calendar' | 'list' | 'map'} newPresentationViewMode
 	 */
 	function handlePresentationViewModeChange(newPresentationViewMode) {
+		// NOTE: This function is no longer called from CalendarNavigation
+		// All state updates now flow through URL → useCalendarUrlSync → callbacks
+		// Keeping this function for backwards compatibility with other potential callers
 		presentationViewMode = newPresentationViewMode;
-
-		// If switching to calendar view and viewMode is 'all', switch to 'month'
-		// since 'all' is only available in list view
-		if (newPresentationViewMode === 'calendar' && viewMode === 'all') {
-			viewMode = 'month';
-			console.log('📅 CalendarView: Switched from "all" to "month" for calendar view');
-		}
-
 		console.log('📅 CalendarView: Presentation view mode changed to:', newPresentationViewMode);
 	}
 

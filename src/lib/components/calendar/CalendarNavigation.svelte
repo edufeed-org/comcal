@@ -80,13 +80,14 @@
 	function handleViewModeClick(mode) {
 		console.log('🔄 handleViewModeClick called with mode:', mode);
 		
-		// Update URL with new period
+		// Update URL with new period - let useCalendarUrlSync handle state updates
 		updateQueryParams($page.url.searchParams, { 
 			period: mode === 'month' ? null : mode // Don't include 'month' as it's the default
 		});
 		
-		onViewModeChange(mode);
-		console.log('✅ onViewModeChange callback completed');
+		// NOTE: Don't call onViewModeChange here - let URL sync effect handle it
+		// This prevents race conditions between async URL updates and sync callbacks
+		console.log('✅ URL updated, waiting for sync effect');
 	}
 
 	/**
@@ -123,13 +124,14 @@
 	function handlePresentationViewModeClick(mode) {
 		console.log('🔄 handlePresentationViewModeClick called with mode:', mode);
 		
-		// Update URL with new view mode
+		// Update URL with new view mode - let useCalendarUrlSync handle state updates
 		updateQueryParams($page.url.searchParams, { 
 			view: mode === 'calendar' ? null : mode // Don't include 'calendar' as it's the default
 		});
 		
-		onPresentationViewModeChange(mode);
-		console.log('✅ onPresentationViewModeChange callback completed');
+		// NOTE: Don't call onPresentationViewModeChange here - let URL sync effect handle it
+		// This prevents race conditions between async URL updates and sync callbacks
+		console.log('✅ URL updated, waiting for sync effect');
 	}
 </script>
 
