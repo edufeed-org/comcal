@@ -377,6 +377,92 @@ export function getWeekdayHeaders() {
 }
 
 /**
+ * Filter events based on view mode and current date
+ * @param {CalendarEvent[]} events - Array of calendar events
+ * @param {'all' | 'day' | 'week' | 'month'} viewMode - Current view mode
+ * @param {Date} currentDate - Current reference date
+ * @returns {CalendarEvent[]} Filtered and sorted events
+ */
+export function filterEventsByViewMode(events, viewMode, currentDate) {
+	// If viewMode is 'all', return all events sorted
+	if (viewMode === 'all') {
+		// Sort by start date/time (chronological order) - create copy before sorting
+		return [...events].sort((a, b) => (a.start || 0) - (b.start || 0));
+	}
+	
+	if (!currentDate) return events;
+	
+	// For day view, use the same date-key approach as CalendarGrid for timezone consistency
+	if (viewMode === 'day') {
+		const groupedEvents = groupEventsByDate(events);
+		const dateKey = createDateKey(currentDate);
+		const dayEvents = groupedEvents.get(dateKey) || [];
+		// Already sorted by groupEventsByDate
+		return dayEvents;
+	}
+	
+	// Calculate date range based on viewMode (for week/month)
+	let startDate, endDate;
+	
+	switch (viewMode) {
+		case 'week': {
+			// Get week dates in local time
+			const weekDates = getWeekDates(currentDate);
+			
+			// Convert first day to UTC start
+			const firstDay = weekDates[0];
+			startDate = new Date(Date.UTC(
+				firstDay.getFullYear(),
+				firstDay.getMonth(),
+				firstDay.getDate(),
+				0, 0, 0, 0
+			));
+			
+			// Convert last day to UTC end
+			const lastDay = weekDates[weekDates.length - 1];
+			endDate = new Date(Date.UTC(
+				lastDay.getFullYear(),
+				lastDay.getMonth(),
+				lastDay.getDate(),
+				23, 59, 59, 999
+			));
+			break;
+		}
+		case 'month': {
+			// Get month dates in local time
+			const monthDates = getMonthDates(currentDate);
+			
+			// Convert first day to UTC start
+			const firstDay = monthDates[0];
+			startDate = new Date(Date.UTC(
+				firstDay.getFullYear(),
+				firstDay.getMonth(),
+				firstDay.getDate(),
+				0, 0, 0, 0
+			));
+			
+			// Convert last day to UTC end
+			const lastDay = monthDates[monthDates.length - 1];
+			endDate = new Date(Date.UTC(
+				lastDay.getFullYear(),
+				lastDay.getMonth(),
+				lastDay.getDate(),
+				23, 59, 59, 999
+			));
+			break;
+		}
+		default:
+			return events;
+	}
+	
+	// Filter events that fall within the date range
+	const filtered = events.filter((event) => isEventInDateRange(event, startDate, endDate));
+	
+	// Sort by start date/time (chronological order) - filtered array is already a new array from .filter()
+	return filtered.sort((a, b) => (a.start || 0) - (b.start || 0));
+}
+
+/**
  * Detect calendar identifier type
  * @param {string} identifier - Calendar identifier (naddr, npub, or hex pubkey)
  * @returns {'naddr' | 'pubkey' | 'unknown'} Identifier type

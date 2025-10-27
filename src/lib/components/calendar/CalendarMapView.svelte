@@ -8,14 +8,15 @@
 	import { MapLibre, Marker, Popup } from 'svelte-maplibre';
 	import { parseLocation } from '$lib/helpers/geocoding.js';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
-	import { formatCalendarDate } from '$lib/helpers/calendar.js';
+	import { formatCalendarDate, filterEventsByViewMode } from '$lib/helpers/calendar.js';
 	import { MapIcon, CalendarIcon, ClockIcon } from '$lib/components/icons';
 
 	/**
 	 * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
+	 * @typedef {import('$lib/types/calendar.js').CalendarViewMode} CalendarViewMode
 	 */
 
-	let { events = [], viewMode = 'month' } = $props();
+	let { events = [], viewMode = /** @type {CalendarViewMode} */ ('month'), currentDate = new Date() } = $props();
 
 	/** @type {{ event: CalendarEvent, coordinates: { lat: number, lng: number } }[]} */
 	let eventsWithCoordinates = $state([]);
@@ -26,6 +27,9 @@
 	let mapCenter = $state(/** @type {[number, number]} */ ([0, 0]));
 	let mapZoom = $state(2);
 	let mapBounds = $state(/** @type {[[number, number], [number, number]] | null} */ (null));
+
+	// Filter events based on current view mode and date using shared helper
+	let filteredEvents = $derived.by(() => filterEventsByViewMode(events, viewMode, currentDate));
 
 	/**
 	 * Format event date and time for display
@@ -82,7 +86,7 @@
 	}
 
 	/**
-	 * Extract coordinates from all events
+	 * Extract coordinates from filtered events
 	 */
 	async function processEventLocations() {
 		loading = true;
@@ -91,7 +95,7 @@
 		/** @type {{ event: CalendarEvent, coordinates: { lat: number, lng: number } }[]} */
 		const processed = [];
 
-		for (const event of events) {
+		for (const event of filteredEvents) {
 			try {
 				const coords = await parseLocation(event.location, event.geohash);
 				if (coords) {
@@ -109,10 +113,10 @@
 		calculateMapBounds(processed);
 		loading = false;
 
-		console.log(`📍 CalendarMapView: Processed ${processed.length}/${events.length} events with locations`);
+		console.log(`📍 CalendarMapView: Processed ${processed.length}/${filteredEvents.length} events with locations (${filteredEvents.length}/${events.length} in view)`);
 	}
 
-	// Process events when they change
+	// Process filtered events when they change
 	$effect(() => {
 		processEventLocations();
 	});

@@ -6,7 +6,7 @@
 <script>
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { CalendarIcon, AlertIcon, ChevronDownIcon } from '$lib/components/icons';
-	import { getWeekDates, getMonthDates, isEventInDateRange, groupEventsByDate, createDateKey } from '$lib/helpers/calendar.js';
+	import { filterEventsByViewMode } from '$lib/helpers/calendar.js';
 	
 	// Import existing UI components
 	import CalendarEventCard from '$lib/components/calendar/CalendarEventCard.svelte';
@@ -25,85 +25,8 @@
 		error = /** @type {string | null} */ (null)
 	} = $props();
 
-	// Filter events based on current view mode and date
-	let filteredEvents = $derived.by(() => {
-		// If viewMode is 'all', return all events sorted
-		if (viewMode === 'all') {
-			// Sort by start date/time (chronological order) - create copy before sorting
-			return [...events].sort((/** @type {CalendarEvent} */ a, /** @type {CalendarEvent} */ b) => (a.start || 0) - (b.start || 0));
-		}
-		
-		if (!currentDate) return events;
-		
-		// For day view, use the same date-key approach as CalendarGrid for timezone consistency
-		if (viewMode === 'day') {
-			const groupedEvents = groupEventsByDate(events);
-			const dateKey = createDateKey(currentDate);
-			const dayEvents = groupedEvents.get(dateKey) || [];
-			// Already sorted by groupEventsByDate
-			return dayEvents;
-		}
-		
-		// Calculate date range based on viewMode (for week/month)
-		let startDate, endDate;
-		
-		switch (viewMode) {
-			case 'week': {
-				// Get week dates in local time
-				const weekDates = getWeekDates(currentDate);
-				
-				// Convert first day to UTC start
-				const firstDay = weekDates[0];
-				startDate = new Date(Date.UTC(
-					firstDay.getFullYear(),
-					firstDay.getMonth(),
-					firstDay.getDate(),
-					0, 0, 0, 0
-				));
-				
-				// Convert last day to UTC end
-				const lastDay = weekDates[weekDates.length - 1];
-				endDate = new Date(Date.UTC(
-					lastDay.getFullYear(),
-					lastDay.getMonth(),
-					lastDay.getDate(),
-					23, 59, 59, 999
-				));
-				break;
-			}
-			case 'month': {
-				// Get month dates in local time
-				const monthDates = getMonthDates(currentDate);
-				
-				// Convert first day to UTC start
-				const firstDay = monthDates[0];
-				startDate = new Date(Date.UTC(
-					firstDay.getFullYear(),
-					firstDay.getMonth(),
-					firstDay.getDate(),
-					0, 0, 0, 0
-				));
-				
-				// Convert last day to UTC end
-				const lastDay = monthDates[monthDates.length - 1];
-				endDate = new Date(Date.UTC(
-					lastDay.getFullYear(),
-					lastDay.getMonth(),
-					lastDay.getDate(),
-					23, 59, 59, 999
-				));
-				break;
-			}
-			default:
-				return events;
-		}
-		
-		// Filter events that fall within the date range
-		const filtered = events.filter((/** @type {CalendarEvent} */ event) => isEventInDateRange(event, startDate, endDate));
-		
-		// Sort by start date/time (chronological order) - filtered array is already a new array from .filter()
-		return filtered.sort((/** @type {CalendarEvent} */ a, /** @type {CalendarEvent} */ b) => (a.start || 0) - (b.start || 0));
-	});
+	// Filter events based on current view mode and date using shared helper
+	let filteredEvents = $derived.by(() => filterEventsByViewMode(events, viewMode, currentDate));
 
 	// Current timestamp for comparison
 	let now = $derived(Date.now());

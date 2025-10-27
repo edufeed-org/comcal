@@ -765,7 +765,7 @@
 		<SimpleCalendarEventsList events={displayedEvents} {viewMode} {currentDate} {loading} {error} />
 	{:else if presentationViewMode === 'map'}
 		<!-- Map View -->
-		<CalendarMapView events={displayedEvents} {viewMode} />
+		<CalendarMapView events={displayedEvents} {viewMode} {currentDate} />
 	{/if}
 
 	<!-- Loading indicator with progress -->
