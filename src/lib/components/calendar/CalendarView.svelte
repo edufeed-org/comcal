@@ -23,10 +23,7 @@
 	import CalendarGrid from '$lib/components/calendar/CalendarGrid.svelte';
 	import CalendarEventModal from '$lib/components/calendar/CalendarEventModal.svelte';
 	import CalendarDropdown from './CalendarDropdown.svelte';
-	import RelaySelector from './RelaySelector.svelte';
-	import FollowListSelector from './FollowListSelector.svelte';
-	import SearchInput from './SearchInput.svelte';
-	import TagSelector from './TagSelector.svelte';
+	import CalendarFilterSidebar from './CalendarFilterSidebar.svelte';
 	import SimpleCalendarEventsList from './CalendarEventsList.svelte';
 	import AddToCalendarButton from './AddToCalendarButton.svelte';
 	import CalendarMapView from './CalendarMapView.svelte';
@@ -53,6 +50,10 @@
 	let currentDate = $state(new Date());
 	let viewMode = $state(/** @type {CalendarViewMode} */ ('month'));
 	let presentationViewMode = $state(/** @type {'calendar' | 'list' | 'map'} */ ('calendar'));
+	
+	// Sidebar state
+	let sidebarExpanded = $state(false); // Desktop sidebar collapsed by default
+	let drawerOpen = $state(false); // Mobile drawer open state
 
 	// Local component state (loader/model pattern)
 	/**
@@ -604,9 +605,25 @@
 	});
 </script>
 
-<div class="overflow-hidden rounded-lg border border-base-300 bg-base-100 shadow-sm">
-	<!-- Calendar Header -->
-	<div class="border-b border-base-300 bg-base-200 px-6 py-4">
+<!-- Main layout with flex for sidebar + content -->
+<div class="flex">
+	<!-- Filter Sidebar (only if not community mode) -->
+	{#if !communityMode}
+		<CalendarFilterSidebar
+			bind:isExpanded={sidebarExpanded}
+			bind:isDrawerOpen={drawerOpen}
+			{validEvents}
+			onRelayFilterChange={handleRelayFilterChange}
+			onFollowListFilterChange={handleFollowListFilterChange}
+			onSearchQueryChange={handleSearchQueryChange}
+			onTagFilterChange={handleTagFilterChange}
+		/>
+	{/if}
+
+	<!-- Main content area -->
+	<div class="flex-1 overflow-hidden rounded-lg border border-base-300 bg-base-100 shadow-sm">
+		<!-- Calendar Header -->
+		<div class="border-b border-base-300 bg-base-200 px-6 py-4">
 		<div class="flex items-center justify-between">
 			<div class="flex items-center gap-4">
 				{#if communityMode}
@@ -722,22 +739,7 @@
 		</div>
 	{/if}
 
-	<!-- Filters (hidden in community mode) -->
-	{#if !communityMode}
-		<!-- Relay Selector -->
-		<RelaySelector onApplyFilters={handleRelayFilterChange} />
-
-		<!-- Follow List Selector -->
-		<FollowListSelector onApplyFilters={handleFollowListFilterChange} />
-
-		<!-- Search Input -->
-		<SearchInput onSearchQueryChange={handleSearchQueryChange} />
-
-		<!-- Tag Selector -->
-		<TagSelector events={validEvents} onTagFilterChange={handleTagFilterChange} />
-	{/if}
-
-	<!-- Calendar Navigation -->
+		<!-- Calendar Navigation -->
 	<CalendarNavigation
 		{currentDate}
 		{viewMode}
@@ -748,6 +750,7 @@
 		onToday={handleToday}
 		onViewModeChange={handleViewModeChange}
 		onPresentationViewModeChange={handlePresentationViewModeChange}
+		onFilterButtonClick={() => { drawerOpen = true; }}
 	/>
 
 	<!-- Content based on presentation view mode -->
@@ -822,12 +825,13 @@
 		</div>
 	{/if}
 
-	<!-- Event Creation Modal -->
-	<CalendarEventModal
-		isOpen={isEventModalOpen}
-		{communityPubkey}
-		selectedDate={selectedDateForNewEvent}
-		onClose={handleEventModalClose}
-		onEventCreated={handleEventCreated}
-	/>
+		<!-- Event Creation Modal -->
+		<CalendarEventModal
+			isOpen={isEventModalOpen}
+			{communityPubkey}
+			selectedDate={selectedDateForNewEvent}
+			onClose={handleEventModalClose}
+			onEventCreated={handleEventCreated}
+		/>
+	</div>
 </div>

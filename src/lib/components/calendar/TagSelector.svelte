@@ -7,7 +7,7 @@
 	import { page } from '$app/stores';
 	import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
 	import { updateQueryParams } from '$lib/helpers/urlParams.js';
-	import { FilterIcon } from '../icons';
+	import { TagIcon } from '../icons';
 
 	// Props
 	let { events = [], onTagFilterChange = () => {} } = $props();
@@ -116,7 +116,7 @@
 <div class="border-b border-base-300 bg-base-100 px-6 py-4">
 	<!-- Header -->
 	<div class="mb-3 flex items-center gap-3">
-		<FilterIcon class_="h-5 w-5 text-base-content/70" />
+		<TagIcon class="h-4 w-4 text-base-content/70" />
 		<span class="font-medium text-base-content">Filter by Tags</span>
 		{#if hasActiveTags}
 			<span class="badge badge-primary badge-sm">{selectedTags.length}</span>

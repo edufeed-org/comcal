@@ -14,7 +14,8 @@
 		ChevronRightIcon,
 		CalendarIcon,
 		MenuIcon,
-		LocationIcon
+		LocationIcon,
+		FilterIcon
 	} from '../icons';
 
 	/**
@@ -32,7 +33,8 @@
 		onNext,
 		onToday,
 		onViewModeChange,
-		onPresentationViewModeChange = () => {}
+		onPresentationViewModeChange = () => {},
+		onFilterButtonClick = () => {}
 	} = $props();
 
 	// Debug: Inspect prop changes
@@ -136,6 +138,18 @@
 </script>
 
 <div class="flex items-center justify-between gap-4 border-b border-base-300 bg-base-100 p-4">
+	<!-- Mobile Filter Button (visible only on mobile, hidden in community mode) -->
+	{#if !communityMode}
+		<button
+			class="btn btn-square btn-sm lg:hidden"
+			onclick={onFilterButtonClick}
+			title="Open filters"
+			aria-label="Open filters"
+		>
+			<FilterIcon class_="h-5 w-5" />
+		</button>
+	{/if}
+
 	<!-- Date Navigation - Hidden in 'all' mode -->
 	{#if viewMode !== 'all'}
 		<div class="flex items-center gap-4">
