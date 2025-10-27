@@ -11,11 +11,10 @@ export const appConfig = {
 		// Default relays for calendar filtering
 		defaultRelays: [
 			'wss://relay-rpi.edufeed.org',
-			'wss://relay.damus.io',
-			'wss://nos.lol',
-			'wss://relay.nostr.band',
-			'wss://nostr.wine',
-			'wss://relay.snort.social'
+			// 'wss://relay.damus.io',
+			// 'wss://nos.lol',
+			// 'wss://relay.nostr.band',
+			// 'wss://nostr.wine',
 		],
 
 		// Date and time formatting (European format)
