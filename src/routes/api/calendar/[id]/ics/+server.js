@@ -7,6 +7,25 @@ import {
 } from '$lib/helpers/calendar';
 import { nip19 } from 'nostr-tools';
 
+/**
+ * Safely encode filename for Content-Disposition header
+ * Uses RFC 5987 encoding to support Unicode characters
+ * @param {string} filename - Original filename
+ * @returns {string} - Encoded Content-Disposition value
+ */
+function encodeFilename(filename) {
+  // Remove file extension for processing
+  const name = filename.replace(/\.ics$/, '');
+  
+  // Create ASCII-safe fallback (remove non-ASCII chars)
+  const asciiFallback = name.replace(/[^\x20-\x7E]/g, '').trim() || 'calendar';
+  
+  // Encode for RFC 5987 (UTF-8 percent encoding)
+  const encoded = encodeURIComponent(name).replace(/['()]/g, escape);
+  
+  return `attachment; filename="${asciiFallback}.ics"; filename*=UTF-8''${encoded}.ics`;
+}
+
 /** @type {import('./$types').RequestHandler} */
 export async function GET({ url, params }) {
   const { id: calendarIdentifier } = params ?? null;
@@ -64,7 +83,7 @@ async function handleNIP52Calendar(naddr, url) {
   return new Response(icsContent, {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${calendarMetadata.title || "edufeed-calendar"}.ics"`,
+      "Content-Disposition": encodeFilename(calendarMetadata.title || "edufeed-calendar"),
       "Cache-Control": "no-cache, must-revalidate",
       "X-Published-TTL": "PT1H", // Refresh every hour
     },
@@ -117,7 +136,7 @@ async function handleCommunityCalendar(pubkeyOrNpub, url) {
     return new Response(icsContent, {
       headers: {
         "Content-Type": "text/calendar; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${metadata.title || "community-calendar"}.ics"`,
+        "Content-Disposition": encodeFilename(metadata.title || "community-calendar"),
         "Cache-Control": "no-cache, must-revalidate",
         "X-Published-TTL": "PT1H", // Refresh every hour
       },
