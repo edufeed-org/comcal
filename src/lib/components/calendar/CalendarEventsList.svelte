@@ -111,7 +111,7 @@
 		</div>
 		
 		{#if upcomingEvents.length > 0}
-			<div class="grid gap-4">
+			<div class="flex flex-col gap-4 max-w-full overflow-hidden">
 				{#each upcomingEvents as event (event.id)}
 					<CalendarEventCard 
 						{event} 
@@ -154,7 +154,7 @@
 		</div>
 		
 		{#if pastEvents.length > 0}
-			<div class="grid gap-4">
+			<div class="flex flex-col gap-4 max-w-full overflow-hidden">
 				{#each pastEvents as event (event.id)}
 					<CalendarEventCard 
 						{event} 

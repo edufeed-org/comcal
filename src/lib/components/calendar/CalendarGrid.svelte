@@ -139,7 +139,7 @@
 				</div>
 
 				<!-- Events for this date -->
-				<div class="flex-1 overflow-y-auto space-y-1 {viewMode === 'day' ? 'space-y-2' : ''}">
+				<div class="flex-1 overflow-y-auto overflow-x-hidden space-y-1 {viewMode === 'day' ? 'space-y-2' : ''}">
 					{#if viewMode === 'day'}
 						<!-- Day view: Show full event cards -->
 						{#each dayEvents as event}

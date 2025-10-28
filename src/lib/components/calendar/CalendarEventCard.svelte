@@ -49,9 +49,9 @@
 </script>
 
 <div
-	class="calendar-event-card bg-base-100 border border-base-300 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 {compact
+	class="calendar-event-card w-full max-w-full bg-base-100 border border-base-300 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 {compact
 		? 'p-2 text-sm'
-		: 'p-4'} {isAllDay ? 'border-l-4 border-l-info' : ''} {isMultiDay
+		: 'p-3 lg:p-4'} {isAllDay ? 'border-l-4 border-l-info' : ''} {isMultiDay
 		? 'border-l-4 border-l-secondary'
 		: ''}"
 	role="button"
@@ -59,21 +59,23 @@
 	onclick={handleClick}
 	onkeydown={handleKeydown}
 >
-	<div class="flex gap-3">
+	<div class="flex flex-col lg:flex-row gap-3 overflow-hidden">
 		<!-- Event Image (full mode only) -->
 		{#if event.image && !compact}
-			<div class="flex-shrink-0">
-				<img
-					src={event.image}
-					alt={event.title}
-					loading="lazy"
-					class="w-20 h-20 object-cover rounded-lg"
-				/>
+			<div class="w-full lg:w-auto lg:flex-shrink-0">
+				<div class="w-full aspect-[5/2] lg:aspect-square lg:w-20">
+			<img
+				src={event.image}
+				alt={event.title}
+				loading="lazy"
+				class="w-full h-full max-w-full object-cover rounded-lg"
+			/>
+				</div>
 			</div>
 		{/if}
 
 		<!-- Content area -->
-		<div class="flex-1 min-w-0">
+		<div class="flex-1 min-w-0 overflow-hidden">
 			<!-- Event Title -->
 			<div
 				class="font-semibold text-base-content {compact
@@ -85,7 +87,37 @@
 
 	<!-- Event Date and Time -->
 	{#if !compact}
-		<div class="flex items-center gap-4 text-sm text-base-content/70 mb-2">
+		<!-- Mobile: Stacked layout -->
+		<div class="flex flex-col gap-1 text-sm text-base-content/70 mb-2 lg:hidden">
+			<!-- Date -->
+			<div class="flex items-center gap-1">
+				<span class="text-xs">📅</span>
+				<span>
+					{formatCalendarDate(startDate, 'short')}
+					{#if isMultiDay && endDate}
+						- {formatCalendarDate(endDate, 'short')}
+					{/if}
+				</span>
+			</div>
+
+			<!-- Time -->
+			<div class="flex items-center gap-1">
+				<span class="text-xs">🕐</span>
+				<span>
+					{#if isAllDay}
+						All Day
+					{:else}
+						{formatCalendarDate(startDate, 'time')}
+						{#if endDate}
+							- {formatCalendarDate(endDate, 'time')}
+						{/if}
+					{/if}
+				</span>
+			</div>
+		</div>
+
+		<!-- Desktop: Horizontal layout -->
+		<div class="hidden lg:flex items-center gap-4 text-sm text-base-content/70 mb-2">
 			<!-- Date -->
 			<div class="flex items-center gap-1">
 				<span class="text-xs">📅</span>
@@ -136,25 +168,27 @@
 
 	<!-- Event Location -->
 	{#if event.locations && event.locations.length > 0 && !compact}
-		<div class="text-sm text-base-content/70 mb-2 flex items-center gap-1">
-			<span class="text-xs">📍</span>
-			<LocationLink location={event.locations[0]} />
+		<div class="text-sm text-base-content/70 mb-2 flex items-center gap-1 overflow-hidden">
+			<span class="text-xs flex-shrink-0">📍</span>
+			<div class="min-w-0 flex-1">
+				<LocationLink location={event.locations[0]} />
+			</div>
 			{#if event.locations.length > 1}
-				<span class="text-xs text-base-content/40 ml-1">+{event.locations.length - 1}</span>
+				<span class="text-xs text-base-content/40 ml-1 flex-shrink-0">+{event.locations.length - 1}</span>
 			{/if}
 		</div>
 	{/if}
 
 	<!-- Event Summary (full mode only) -->
 	{#if event.summary && !compact}
-		<div class="text-sm text-base-content/80 mb-3 line-clamp-2">
+		<div class="text-sm text-base-content/80 mb-3 line-clamp-2 break-words">
 			{event.summary}
 		</div>
 	{/if}
 
 	<!-- Event Type Badge and Creation Date (full mode only) -->
 	{#if !compact}
-		<div class="flex items-center gap-2 text-xs text-base-content/60 mb-2">
+		<div class="flex flex-wrap items-center gap-2 text-xs text-base-content/60 mb-2">
 			<span class="badge badge-outline badge-xs">
 				{event.kind === 31922 ? 'Date Event' : 'Time Event'}
 			</span>
@@ -168,7 +202,7 @@
 
 	<!-- Event Tags (clickable) - Only show in full mode -->
 	{#if event.hashtags && event.hashtags.length > 0 && !compact}
-		<div class="mb-2">
+		<div class="mb-2 overflow-hidden">
 			<EventTags 
 				tags={event.hashtags} 
 				size="sm"

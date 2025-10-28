@@ -126,9 +126,11 @@
 </script>
 
 {#if event?.id}
-	<div class="flex items-center gap-2 flex-wrap">
+	<div class="flex items-center gap-2 flex-wrap min-h-[32px]">
 		{#if isLoading && reactions.length === 0}
-			<span class="text-gray-500 text-sm">Loading reactions...</span>
+			<!-- Skeleton loader to reserve space and prevent layout shift -->
+			<div class="skeleton h-8 w-16 rounded-lg"></div>
+			<div class="skeleton h-8 w-16 rounded-lg"></div>
 		{:else}
 			<!-- Display reaction buttons -->
 			{#each Array.from(aggregated.entries()) as [emoji, summary]}

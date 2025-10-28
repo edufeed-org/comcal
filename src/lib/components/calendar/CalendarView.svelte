@@ -606,7 +606,7 @@
 </script>
 
 <!-- Main layout with flex for sidebar + content -->
-<div class="flex">
+<div class="flex w-full max-w-full">
 	<!-- Filter Sidebar (only if not community mode) -->
 	{#if !communityMode}
 		<CalendarFilterSidebar
@@ -621,7 +621,7 @@
 	{/if}
 
 	<!-- Main content area -->
-	<div class="flex-1 overflow-hidden rounded-lg border border-base-300 bg-base-100 shadow-sm">
+	<div class="flex-1 min-w-0 overflow-hidden rounded-lg border border-base-300 bg-base-100 shadow-sm">
 		<!-- Calendar Header -->
 		<div class="border-b border-base-300 bg-base-200 px-6 py-4">
 		<div class="flex items-center justify-between">
