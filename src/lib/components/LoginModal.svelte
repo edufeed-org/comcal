@@ -9,6 +9,7 @@
 	import AccountProfile from './AccountProfile.svelte';
 	import { useAccounts } from '$lib/stores/accounts.svelte.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
+	import SignupButton from './shared/SignupButton.svelte';
 
 	import LoginWithPrivateKey from './LoginWithPrivateKey.svelte';
 
@@ -72,23 +73,34 @@
 <dialog id={modalId} class="modal">
 	<div class="modal-box">
 		<h1 class="text-lg font-bold">Add an Account</h1>
-		<p class="py-4">Press ESC key or click the button below to close</p>
-		<div class="join flex flex-col">
-			<button onclick={() => createSigner('Extension')} class="btn join-item">Extension</button>
-			<button onclick={() => createSigner('NSEC')} class="btn join-item">NSEC</button>
-			<button disabled onclick={() => createSigner('Bunker')} class="btn join-item">Bunker</button>
+		<p class="py-4">Choose how you want to login</p>
+		
+		<div class="space-y-4">
+			<div class="join flex flex-col">
+				<button onclick={() => createSigner('Extension')} class="btn join-item">Extension</button>
+				<button onclick={() => createSigner('NSEC')} class="btn join-item">NSEC / NCRYPTSEC</button>
+				<button disabled onclick={() => createSigner('Bunker')} class="btn join-item">Bunker</button>
+			</div>
+
+			<div class="divider">OR</div>
+
+			<div class="text-center">
+				<h2 class="text-lg font-bold mb-2">Don't have an account yet?</h2>
+				<SignupButton class="w-full" />
+			</div>
+
+			{#if getAccounts().length > 0}
+				<div class="divider">Available Accounts</div>
+				<ul class="space-y-2">
+					{#each getAccounts() as account}
+						<AccountProfile {account} />
+					{/each}
+				</ul>
+			{/if}
 		</div>
-		<h1 class="mt-4 text-lg font-bold">Don't have an account yet?</h1>
-		<button class="btn btn-primary" onclick={() => modalStore.openModal('signup')}>Sign Up!</button>
-		<h1>Available Accounts</h1>
-		<ul>
-			{#each getAccounts() as account}
-				<AccountProfile {account} />
-			{/each}
-		</ul>
+		
 		<div class="modal-action">
 			<form method="dialog">
-				<!-- if there is a button in form, it will close the modal -->
 				<button class="btn">Close</button>
 			</form>
 		</div>

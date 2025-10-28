@@ -3,11 +3,18 @@
 	import { SimpleSigner } from 'applesauce-signers';
 	import { SimpleAccount } from 'applesauce-accounts/accounts';
 	import { nip19 } from 'nostr-tools';
+	import * as nip49 from 'nostr-tools/nip49';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
+	import SignupButton from './shared/SignupButton.svelte';
 
 	let { modalId, onAccountCreated } = $props();
 
 	let inputNSEC = $state('');
+	let password = $state('');
+	let errorMessage = $state('');
+	
+	// Detect if input is ncryptsec format
+	let isNcryptsec = $derived(inputNSEC.trim().startsWith('ncryptsec1'));
 
 	/**
 	 * Sync modal close with store state
@@ -34,14 +41,41 @@
 
 	async function handleLoginWithPrivateKey() {
 		let privateKey;
+		errorMessage = '';
+		
 		try {
-			const decoded = nip19.decode(inputNSEC);
-			if (decoded.type !== 'nsec') throw new Error('Invalid nsec');
+			const trimmedInput = inputNSEC.trim();
 			
-      privateKey = decoded.data;
+			// Check if it's an encrypted key (ncryptsec)
+			if (trimmedInput.startsWith('ncryptsec1')) {
+				if (!password) {
+					errorMessage = 'Password is required for encrypted keys';
+					return;
+				}
+				
+				try {
+					// Decrypt the ncryptsec with the provided password
+					privateKey = nip49.decrypt(trimmedInput, password);
+					console.log('Successfully decrypted ncryptsec');
+				} catch (decryptError) {
+					console.error('Decryption error:', decryptError);
+					errorMessage = 'Failed to decrypt key. Please check your password and try again.';
+					return;
+				}
+			} else {
+				// Try to decode as regular nsec
+				const decoded = nip19.decode(trimmedInput);
+				if (decoded.type !== 'nsec') {
+					errorMessage = 'Invalid key format. Please enter a valid nsec or ncryptsec key.';
+					return;
+				}
+				privateKey = decoded.data;
+			}
+			
+			// Create signer and account with the private key
 			const simpleSigner = new SimpleSigner(privateKey);
 			const pk = await simpleSigner.getPublicKey();
-      console.log('Public Key:', pk);
+			console.log('Public Key:', pk);
 			const account = new SimpleAccount(pk, simpleSigner);
 
 			if (!manager.getAccountForPubkey(pk)) {
@@ -65,7 +99,7 @@
 			if (modal) modal.close();
 		} catch (error) {
 			console.error('Error logging in with private key:', error);
-			alert('Failed to log in. Please check your private key and try again.');
+			errorMessage = 'Failed to log in. Please check your key and try again.';
 		}
 	}
 </script>
@@ -73,22 +107,64 @@
 <dialog id={modalId} class="modal">
 	<div class="modal-box">
 		<h1 class="text-lg font-bold">Add an Account</h1>
-		<p class="py-4">Press ESC key or click the button below to close</p>
-		<div class="join flex flex-col">
-			<input
-				bind:value={inputNSEC}
-				type="text"
-				placeholder="Enter your NSEC"
-				class="input-bordered input join-item w-full"
-			/>
-			<button class="btn join-item" onclick={handleLoginWithPrivateKey}>Login</button>
+		<p class="py-4">Enter your private key (nsec) or encrypted key (ncryptsec)</p>
+		
+		<div class="space-y-4">
+			<!-- Private Key Input -->
+			<div class="form-control">
+				<label class="label">
+					<span class="label-text">Private Key</span>
+				</label>
+				<input
+					bind:value={inputNSEC}
+					type="text"
+					placeholder="nsec1... or ncryptsec1..."
+					class="input input-bordered w-full"
+					class:input-error={errorMessage}
+				/>
+			</div>
+
+			<!-- Password Input (shown only for ncryptsec) -->
+			{#if isNcryptsec}
+				<div class="form-control">
+					<label class="label">
+						<span class="label-text">Password</span>
+					</label>
+					<input
+						bind:value={password}
+						type="password"
+						placeholder="Enter decryption password"
+						class="input input-bordered w-full"
+						class:input-error={errorMessage}
+					/>
+					<label class="label">
+						<span class="label-text-alt">Encrypted key detected - password required</span>
+					</label>
+				</div>
+			{/if}
+
+			<!-- Error Message -->
+			{#if errorMessage}
+				<div class="alert alert-error">
+					<span>{errorMessage}</span>
+				</div>
+			{/if}
+
+			<!-- Login Button -->
+			<button class="btn btn-primary w-full" onclick={handleLoginWithPrivateKey}>
+				Login
+			</button>
 		</div>
-		<h1 class="mt-4 text-lg font-bold">Don't have an account yet?</h1>
-		<button class="btn btn-primary" onclick={() => modalStore.openModal('signup')}>Sign Up!</button>
+
+		<div class="divider">OR</div>
+
+		<div class="text-center">
+			<h2 class="text-lg font-bold mb-2">Don't have an account yet?</h2>
+			<SignupButton class="w-full" />
+		</div>
 		
 		<div class="modal-action">
 			<form method="dialog">
-				<!-- if there is a button in form, it will close the modal -->
 				<button class="btn">Close</button>
 			</form>
 		</div>
