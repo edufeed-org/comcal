@@ -17,6 +17,7 @@
 		RefreshIcon,
 		LockIcon
 	} from '$lib/components/icons';
+	import ChevronDownIcon from '$lib/components/icons/ui/ChevronDownIcon.svelte';
 	import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
 	import { TimelineModel } from 'applesauce-core/models';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils';
@@ -166,24 +167,32 @@
 
 <!-- Show dropdown only when logged in, otherwise show static title -->
 <div class="flex-none">
-	<ul class="menu menu-horizontal px-1">
+	<ul class="menu menu-horizontal px-0 md:px-1">
 		<li>
 			{#if activeUser}
-				<!-- Logged in: Show interactive dropdown -->
-				<details class="dropdown">
-					<summary class="btn gap-2 text-xl font-semibold text-base-content btn-ghost">
-						<!-- Calendar Icon -->
-						<CalendarIcon class_="h-5 w-5" />
-						{displayName}
-					</summary>
+				<!-- Logged in: Show interactive dropdown using Popover API -->
+				<button 
+					class="btn btn-sm md:btn-md gap-1 md:gap-2 px-2 md:px-4 py-1 md:py-2 text-sm md:text-xl font-semibold text-base-content btn-ghost"
+					popovertarget="calendar-popover"
+					style="anchor-name:--calendar-anchor"
+				>
+					<!-- Calendar Icon -->
+					<CalendarIcon class_="h-4 w-4 md:h-5 md:w-5" />
+					<span class="leading-tight">{displayName}</span>
+					<ChevronDownIcon class_="h-4 w-4 md:h-5 md:w-5" />
+				</button>
+
 				<ul
-					class="dropdown-content menu z-[1] rounded-box border border-base-300 bg-base-100 p-2 shadow-lg"
+					id="calendar-popover"
+					popover="auto"
+					style="position-anchor:--calendar-anchor"
+					class="dropdown menu z-[1] w-80 max-w-[calc(100vw-2rem)] max-h-[70vh] md:max-h-[80vh] overflow-y-auto rounded-box border border-base-300 bg-base-100 p-2 shadow-lg scroll-smooth"
 				>
 					<!-- Global Calendar Option (always available) -->
 					<li>
 						<a
 							href="/calendar"
-							class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-base-200"
+							class="flex items-center gap-2 md:gap-3 rounded-lg px-2 md:px-3 py-2 md:py-2 transition-colors hover:bg-base-200 min-h-[44px]"
 							class:active={!selectedCalendarId && isOnGlobalRoute}
 							onclick={(e) => {
 								e.preventDefault();
@@ -191,10 +200,10 @@
 								goto('/calendar');
 							}}
 						>
-							<GlobeIcon class_="h-4 w-4 text-primary" />
+							<GlobeIcon class_="h-4 w-4 text-primary flex-shrink-0" />
 							<div class="min-w-0 flex-1">
 								<div class="text-sm font-medium">Global Calendar</div>
-								<div class="text-xs text-base-content/60">All community events</div>
+								<div class="hidden sm:block text-xs text-base-content/60">All community events</div>
 							</div>
 							{#if !selectedCalendarId && isOnGlobalRoute}
 								<CheckIcon class_="h-4 w-4 text-primary" />
@@ -208,7 +217,7 @@
 						<li>
 							<a
 								href={manager.active ? `/calendar/author/${nip19.npubEncode(manager.active.pubkey)}` : '#'}
-								class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-base-200"
+								class="flex items-center gap-2 md:gap-3 rounded-lg px-2 md:px-3 py-2 md:py-2 transition-colors hover:bg-base-200 min-h-[44px]"
 								class:active={$page.url.pathname.startsWith('/calendar/author/') && manager.active && $page.url.pathname.includes(nip19.npubEncode(manager.active.pubkey))}
 								onclick={(e) => {
 									if (manager.active) {
@@ -217,11 +226,11 @@
 									}
 								}}
 							>
-								<UserIcon class_="h-4 w-4 text-primary" />
-								<div class="min-w-0 flex-1">
-									<div class="text-sm font-medium">My Events</div>
-									<div class="text-xs text-base-content/60">Events I created</div>
-								</div>
+							<UserIcon class_="h-4 w-4 text-primary flex-shrink-0" />
+							<div class="min-w-0 flex-1">
+								<div class="text-sm font-medium">My Events</div>
+								<div class="hidden sm:block text-xs text-base-content/60">Events I created</div>
+							</div>
 								{#if $page.url.pathname.startsWith('/calendar/author/') && manager.active && $page.url.pathname.includes(nip19.npubEncode(manager.active.pubkey))}
 									<CheckIcon class_="h-4 w-4 text-primary" />
 								{/if}
@@ -237,7 +246,7 @@
 								<li>
 									<a
 										href={`/calendar/${encodeEventToNaddr(calendar.originalEvent)}`}
-										class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-base-200"
+										class="flex items-center gap-2 md:gap-3 rounded-lg px-2 md:px-3 py-2 md:py-2 transition-colors hover:bg-base-200 min-h-[44px]"
 										class:active={currentCalendar?.id === calendar.id}
 										onclick={(e) => {
 											e.preventDefault();
@@ -245,15 +254,15 @@
 											goto(`/calendar/${encodeEventToNaddr(calendar.originalEvent)}`);
 										}}
 									>
-										<CalendarIcon class_="h-4 w-4 text-primary" />
-										<div class="min-w-0 flex-1">
-											<div class="truncate text-sm font-medium">{calendar.title}</div>
-											{#if calendar.summary}
-												<div class="truncate text-xs text-base-content/60">
-													{calendar.summary}
-												</div>
-											{/if}
-										</div>
+									<CalendarIcon class_="h-4 w-4 text-primary flex-shrink-0" />
+									<div class="min-w-0 flex-1">
+										<div class="truncate text-sm font-medium">{calendar.title}</div>
+										{#if calendar.summary}
+											<div class="hidden sm:block truncate text-xs text-base-content/60">
+												{calendar.summary}
+											</div>
+										{/if}
+									</div>
 										{#if currentCalendar?.id === calendar.id}
 											<CheckIcon class_="h-4 w-4 text-primary" />
 										{/if}
@@ -287,13 +296,13 @@
 						<li>
 							<a
 								href="#"
-								class="flex items-center gap-3 rounded-lg px-3 py-2 text-primary transition-colors hover:bg-base-200"
+								class="flex items-center gap-2 md:gap-3 rounded-lg px-2 md:px-3 py-2 md:py-2 text-primary transition-colors hover:bg-base-200 min-h-[44px]"
 								onclick={(e) => {
 									e.preventDefault();
 									handleCreateCalendar();
 								}}
 							>
-								<PlusIcon class_="h-4 w-4" />
+								<PlusIcon class_="h-4 w-4 flex-shrink-0" />
 								<span class="font-medium">Create New Calendar</span>
 							</a>
 						</li>
@@ -302,9 +311,9 @@
 						<li>
 							<a
 								href="/calendar/manage"
-								class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-base-200"
+								class="flex items-center gap-2 md:gap-3 rounded-lg px-2 md:px-3 py-2 md:py-2 transition-colors hover:bg-base-200 min-h-[44px]"
 							>
-								<SettingsIcon class_="h-4 w-4" />
+								<SettingsIcon class_="h-4 w-4 flex-shrink-0" />
 								<span class="font-medium">Manage Calendars</span>
 							</a>
 						</li>
@@ -315,7 +324,7 @@
 							<li>
 								<a
 									href="#"
-									class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-base-200"
+									class="flex items-center gap-2 md:gap-3 rounded-lg px-2 md:px-3 py-2 md:py-2 transition-colors hover:bg-base-200 min-h-[44px]"
 									class:opacity-50={loading}
 									class:pointer-events-none={loading}
 									onclick={(e) => {
@@ -325,7 +334,7 @@
 										}
 									}}
 								>
-									<RefreshIcon class_={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+									<RefreshIcon class_={`h-4 w-4 flex-shrink-0 ${loading ? 'animate-spin' : ''}`} />
 									<span class="text-sm">Refresh Calendars</span>
 								</a>
 							</li>
@@ -342,12 +351,11 @@
 						</li>
 					{/if}
 					</ul>
-				</details>
 			{:else}
 				<!-- Not logged in: Show static title (no dropdown) -->
-				<div class="flex gap-2 px-4 py-2 text-xl font-semibold text-base-content">
-					<CalendarIcon class_="h-5 w-5" />
-					<span>{displayName}</span>
+				<div class="flex items-start gap-1 md:gap-2 px-2 md:px-4 py-1 md:py-2 text-sm md:text-xl font-semibold text-base-content max-w-[250px] sm:max-w-none">
+					<CalendarIcon class_="h-4 w-4 md:h-5 md:w-5 flex-shrink-0 mt-0.5 md:mt-0" />
+					<span class="leading-tight">{displayName}</span>
 				</div>
 			{/if}
 		</li>
