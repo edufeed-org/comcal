@@ -1,0 +1,31 @@
+services:
+  cocmal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cocmal
+    restart: unless-stopped
+    
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - ORIGIN=${ORIGIN}
+    
+    networks:
+      - traefik_web
+    
+    labels:
+      # Enable Traefik for this service
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_web"
+      # Service
+      - "traefik.http.services.cocmal.loadbalancer.server.port=3000"
+
+      # HTTP Router
+      - "traefik.http.routers.cocmal.rule=Host(`your-domain.com`)"
+      - "traefik.http.routers.cocmal.entrypoints=web,websecure"
+      - "traefik.http.routers.cocmal.tls.certresolver=myresolver"
+
+networks:
+  traefik_web:
+    external: true
