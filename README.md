@@ -13,8 +13,7 @@ Comcal is a decentralized community management and calendar platform built on th
 - [Development Guide](#development-guide)
 - [Deployment](#deployment)
 - [Architecture](#architecture)
-- [Troubleshooting](#troubleshooting)
-- [Resources & Support](#resources--support)
+- [Resources](#resources)
 
 ---
 
