@@ -1,9 +1,9 @@
 services:
-  cocmal:
+  comcal:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: cocmal
+    container_name: comcal
     restart: unless-stopped
     
     environment:
@@ -19,12 +19,12 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik_web"
       # Service
-      - "traefik.http.services.cocmal.loadbalancer.server.port=3000"
+      - "traefik.http.services.comcal.loadbalancer.server.port=3000"
 
       # HTTP Router
-      - "traefik.http.routers.cocmal.rule=Host(`your-domain.com`)"
-      - "traefik.http.routers.cocmal.entrypoints=web,websecure"
-      - "traefik.http.routers.cocmal.tls.certresolver=myresolver"
+      - "traefik.http.routers.comcal.rule=Host(`your-domain.com`)"
+      - "traefik.http.routers.comcal.entrypoints=web,websecure"
+      - "traefik.http.routers.comcal.tls.certresolver=myresolver"
 
 networks:
   traefik_web:
