@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils';
 	import { showToast } from '$lib/helpers/toast.js';
-	import { CalendarIcon } from '../icons';
 	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import DownloadIcon from '../icons/actions/DownloadIcon.svelte';
