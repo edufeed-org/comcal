@@ -42,7 +42,7 @@
 	const generateWebcalUrl = () => {
 		const baseUrl = window.location.origin;
 		const id = getCalendarId();
-		return `webcal://${baseUrl.replace(/^https?:\/\//, '')}/api/calendar/${id}/ics`;
+		return `https://${baseUrl.replace(/^https?:\/\//, '')}/api/calendar/${id}/ics`;
 	};
 
 	// Generate ICS download URL
