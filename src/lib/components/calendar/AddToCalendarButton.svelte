@@ -38,10 +38,14 @@
 	};
 
 	// Generate webcal URL for calendar subscription
+	// Uses webcals:// for HTTPS (production) and webcal:// for HTTP (local dev)
+	// This ensures Thunderbird can subscribe without hitting Traefik's HTTP->HTTPS redirect
 	const generateWebcalUrl = () => {
 		const baseUrl = window.location.origin;
 		const id = getCalendarId();
-		return `https://${baseUrl.replace(/^https?:\/\//, '')}/api/calendar/${id}/ics`;
+		const isSecure = baseUrl.startsWith('https://');
+		const protocol = isSecure ? 'webcals://' : 'webcal://';
+		return `${protocol}${baseUrl.replace(/^https?:\/\//, '')}/api/calendar/${id}/ics`;
 	};
 
 	// Generate ICS download URL
