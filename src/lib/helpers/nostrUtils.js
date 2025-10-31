@@ -1,7 +1,7 @@
 import { nip19 } from "nostr-tools";
 import { eventLoader, addressLoader } from "$lib/loaders";
 import { firstValueFrom } from "rxjs";
-import { getCalendarEventStart } from "applesauce-core/helpers";
+import { getCalendarEventStart, getSeenRelays } from "applesauce-core/helpers";
 
 
 /**
@@ -163,12 +163,22 @@ export const fetchEventById = async (
         const decoded = nip19.decode(identifier);
         if (decoded.type === "naddr") {
           const data = decoded.data;
-          // Use addressLoader for addressable events
-          const event$ = addressLoader({
+          
+          // Create address pointer with relay hints
+          /** @type {{ kind: number; pubkey: string; identifier: string; relays?: string[] }} */
+          const addressPointer = {
             kind: data.kind,
             pubkey: data.pubkey,
             identifier: data.identifier
-          });
+          };
+          
+          // Include relay hints if present (addressLoader will prioritize them)
+          if (data.relays && data.relays.length > 0) {
+            addressPointer.relays = data.relays;
+          }
+          
+          // Use addressLoader for addressable events
+          const event$ = addressLoader(addressPointer);
           const event = await firstValueFrom(event$, { defaultValue: null });
           return event || null;
         } else {
@@ -374,6 +384,16 @@ export const encodeEventToNaddr = (event, relays = []) => {
     // Extract d tag for the identifier
     const dTag = event.tags.find((t) => t[0] === "d")?.[1] || "";
 
+    // Get relay hints from seen relays if not explicitly provided
+    let relayHints = relays;
+    if (!relayHints || relayHints.length === 0) {
+      const seenRelays = getSeenRelays(event);
+      if (seenRelays && seenRelays.size > 0) {
+        // Convert Set to Array and limit to 3 relays (NIP-19 recommendation)
+        relayHints = Array.from(seenRelays).slice(0, 3);
+      }
+    }
+
     // Build naddr data with optional relays
     /** @type {{ identifier: string; pubkey: string; kind: number; relays?: string[] }} */
     const naddrData = {
@@ -382,9 +402,9 @@ export const encodeEventToNaddr = (event, relays = []) => {
       kind: event.kind,
     };
 
-    // Add relays if provided
-    if (relays && relays.length > 0) {
-      naddrData.relays = relays;
+    // Add relays if we have any
+    if (relayHints && relayHints.length > 0) {
+      naddrData.relays = relayHints;
     }
 
     return nip19.naddrEncode(naddrData);
