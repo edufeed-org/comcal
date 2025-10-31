@@ -17,6 +17,15 @@ export const appConfig = {
 			// 'wss://nostr.wine',
 		],
 
+		// Fallback relays for event discovery when event not found
+		// on default relays or when naddr contains no relay hints
+		fallbackRelays: [
+			'wss://relay.damus.io',
+			'wss://nos.lol',
+			'wss://relay.nostr.band',
+			'wss://nostr.wine',
+		],
+
 		// Date and time formatting (European format)
 		locale: 'de-DE', // German locale for European date/time formatting
 		timeFormat: '24h', // '12h' or '24h'
