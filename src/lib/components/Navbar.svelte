@@ -1,9 +1,8 @@
 <script>
-	import { getProfilePicture } from 'applesauce-core/helpers';
-	import { useUserProfile } from '$lib/stores/user-profile.svelte';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { CalendarIcon } from './icons';
+	import ProfileAvatar from './shared/ProfileAvatar.svelte';
 
 	// Use the modal store for opening modals
 	const modal = modalStore;
@@ -26,14 +25,6 @@
 			console.log('Navbar: Account count changed:', accountCount);
 		});
 		return () => subscription.unsubscribe();
-	});
-
-	// Use the enhanced hook without pubkey - it will automatically use manager.active
-	const getProfile = useUserProfile();
-
-	// Debug: Log profile changes
-	$effect(() => {
-		console.log('Navbar: Profile updated:', getProfile());
 	});
 
 	/**
@@ -102,10 +93,8 @@
 		</a>
 		{#if activeAccount}
 			<div class="dropdown dropdown-end">
-				<div tabindex="0" role="button" class="btn avatar btn-circle btn-ghost">
-					<div class="w-10 rounded-full">
-						<img alt="" src={getProfilePicture(getProfile()) || `https://robohash.org/${activeAccount.pubkey}`} />
-					</div>
+				<div tabindex="0" role="button" class="btn btn-circle btn-ghost">
+					<ProfileAvatar pubkey={activeAccount.pubkey} size="md" fallbackType="robohash" />
 				</div>
 				<ul class="dropdown-content menu z-1 mt-3 w-52 menu-sm rounded-box bg-base-100 p-2 shadow">
 					<li>

@@ -15,7 +15,8 @@
 		ClockIcon,
 		LocationIcon,
 		ExternalLinkIcon,
-		CopyIcon
+		CopyIcon,
+		UserIcon
 	} from '$lib/components/icons';
 	import EventDebugInfo from './EventDebugInfo.svelte';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
@@ -24,6 +25,7 @@
 	import PersonalCalendarShare from './PersonalCalendarShare.svelte';
 	import CommunityCalendarShare from './CommunityCalendarShare.svelte';
 	import ReactionBar from '../reactions/ReactionBar.svelte';
+	import ProfileCard from '../shared/ProfileCard.svelte';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
@@ -200,6 +202,12 @@
 					/>
 				</div>
 			{/if}
+
+			<!-- Event Author -->
+			<div class="mb-6">
+				<h3 class="mb-3 text-lg font-semibold text-base-content">Event Author</h3>
+				<ProfileCard pubkey={event.pubkey} onClose={handleClose} />
+			</div>
 
 			<!-- Event Description -->
 			{#if event.summary}

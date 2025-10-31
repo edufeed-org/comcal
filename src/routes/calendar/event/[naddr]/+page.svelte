@@ -4,8 +4,6 @@
 	import { appConfig } from '$lib/config.js';
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import { encodeEventToNaddr, hexToNpub } from '$lib/helpers/nostrUtils';
-	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
-	import { getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
 	import { EventFactory } from 'applesauce-factory';
 	import { publishEvent } from '$lib/helpers/publisher.js';
 	import { showToast } from '$lib/helpers/toast.js';
@@ -26,6 +24,7 @@ import {
 	import LocationLink from '$lib/components/shared/LocationLink.svelte';
 	import MarkdownRenderer from '$lib/components/shared/MarkdownRenderer.svelte';
 	import EventLocationMap from '$lib/components/calendar/EventLocationMap.svelte';
+	import ProfileCard from '$lib/components/shared/ProfileCard.svelte';
 
 	/** @type {import('./$types').PageProps} */
 	let { data } = $props();
@@ -347,6 +346,19 @@ import {
 			</div>
 		</div>
 
+		<!-- Event Author Card -->
+		<div class="card mb-8 bg-base-200 shadow-lg">
+			<div class="card-body">
+				<h2 class="card-title text-2xl">
+					<UserIcon class_="w-6 h-6" />
+					Event Author
+				</h2>
+				<div class="mt-4">
+					<ProfileCard pubkey={event.pubkey} size="lg" class="bg-base-100" />
+				</div>
+			</div>
+		</div>
+
 		<!-- Location Card -->
 		{#if event.location}
 			<div class="card mb-8 bg-base-200 shadow-lg">
@@ -453,41 +465,26 @@ import {
 					<!-- Attendee List -->
 					<div class="mt-6 space-y-2">
 						{#each event.rsvps as rsvp}
-							{@const getUserProfile = useUserProfile(rsvp.pubkey)}
-							{@const profile = getUserProfile()}
 							{@const status = /** @type {any} */ (rsvp).status}
-							<a
-								href="/p/{hexToNpub(rsvp.pubkey) || rsvp.pubkey}"
-								class="flex items-center gap-3 rounded-lg bg-base-100 p-3 transition hover:bg-base-300"
-							>
-								<div class="avatar">
-									<div class="w-10 rounded-full">
-										{#if getProfilePicture(profile)}
-											<img src={getProfilePicture(profile)} alt={getDisplayName(profile)} />
-										{:else}
-											<div
-												class="flex h-full w-full items-center justify-center bg-primary text-sm font-semibold text-primary-content"
-											>
-												{getDisplayName(profile)?.charAt(0).toUpperCase() || '?'}
-											</div>
-										{/if}
-									</div>
+							<div class="flex items-center gap-3 rounded-lg bg-base-100 p-3">
+								<a href="/p/{rsvp.pubkey}" class="flex flex-1 items-center gap-3">
+									<ProfileCard 
+										pubkey={rsvp.pubkey} 
+										showNpub={false} 
+										showIcon={false}
+										class="bg-transparent p-0"
+									/>
+								</a>
+								<div class="text-sm text-base-content/60">
+									{#if status === 'accepted'}
+										<span class="text-success">✓ Accepted</span>
+									{:else if status === 'tentative'}
+										<span class="text-warning">? Maybe</span>
+									{:else if status === 'declined'}
+										<span class="text-error">✗ Declined</span>
+									{/if}
 								</div>
-								<div class="flex-1">
-									<div class="font-medium">
-										{getDisplayName(profile) || `${rsvp.pubkey.slice(0, 8)}...${rsvp.pubkey.slice(-4)}`}
-									</div>
-									<div class="text-sm text-base-content/60">
-										{#if status === 'accepted'}
-											<span class="text-success">✓ Accepted</span>
-										{:else if status === 'tentative'}
-											<span class="text-warning">? Maybe</span>
-										{:else if status === 'declined'}
-											<span class="text-error">✗ Declined</span>
-										{/if}
-									</div>
-								</div>
-							</a>
+							</div>
 						{/each}
 					</div>
 				</div>
