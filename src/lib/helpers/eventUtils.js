@@ -12,7 +12,7 @@ import { getCalendarTitle, getCalendarEventImage } from 'applesauce-core/helpers
 export function getCalendarEventMetadata(event) {
 
   const tagMap = new Map();
-  event.tags.forEach((tag) => {
+  event.tags.forEach((/** @type {any[]} */ tag) => {
     const [key, ...values] = tag;
     if (!tagMap.has(key)) {
       tagMap.set(key, []);
@@ -20,8 +20,8 @@ export function getCalendarEventMetadata(event) {
     tagMap.get(key).push(...values);
   });
 
-  const getTagValue = (tagName) => tagMap.get(tagName)?.[0];
-  const getTagValues = (tagName) => tagMap.get(tagName) || [];
+  const getTagValue = (/** @type {string} */ tagName) => tagMap.get(tagName)?.[0];
+  const getTagValues = (/** @type {string} */ tagName) => tagMap.get(tagName) || [];
 
 
   // Convert timestamp strings to numbers with validation
@@ -39,6 +39,17 @@ export function getCalendarEventMetadata(event) {
     console.warn('Invalid end timestamp:', endValue, 'for event:', event.id);
   }
 
+  // Parse participants from p tags according to NIP-52
+  // Format: ["p", "<pubkey>", "<optional relay>", "<optional role>"]
+  const participants = event.tags
+    .filter((/** @type {any[]} */ tag) => tag[0] === 'p')
+    .map((/** @type {any[]} */ tag) => ({
+      pubkey: tag[1],
+      relay: tag[2] || undefined,
+      role: tag[3] || undefined
+    }))
+    .filter((/** @type {any} */ p) => p.pubkey); // Only include if pubkey exists
+
   return {
     id: event.id,
     pubkey: event.pubkey,
@@ -51,7 +62,7 @@ export function getCalendarEventMetadata(event) {
     start,
     end,
     location: getTagValue('location'),
-    participants: getTagValues('p'),
+    participants,
     hashtags: getTagValues('t'),
     references: getTagValues('r'),
     eventReferences: getTagValues('a'),

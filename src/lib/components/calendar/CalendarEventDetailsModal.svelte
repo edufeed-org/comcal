@@ -294,23 +294,20 @@
 					</h3>
 					<div class="space-y-2">
 						{#each event.participants as participant}
-							<div class="flex items-center gap-3 rounded-lg bg-base-200 p-3">
-								<div
-									class="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-content"
-								>
-									{participant.pubkey?.slice(0, 2).toUpperCase()}
-								</div>
-								<div class="flex-1">
-									<div class="font-medium text-base-content">
-										{participant.pubkey?.slice(0, 8)}...{participant.pubkey?.slice(-4)}
+							<div class="rounded-lg bg-base-200 p-3">
+								<ProfileCard 
+									pubkey={participant.pubkey}
+									showNpub={false}
+									onClose={handleClose}
+								/>
+								{#if participant.role}
+									<div class="mt-2 flex items-center gap-2">
+										<span class="badge badge-primary badge-sm">{participant.role}</span>
 									</div>
-									{#if participant.role}
-										<div class="text-xs text-base-content/60">{participant.role}</div>
-									{/if}
-								</div>
+								{/if}
 								{#if participant.relay}
-									<div class="text-xs text-base-content/50">
-										{participant.relay}
+									<div class="mt-1 text-xs text-base-content/50">
+										Relay: {participant.relay}
 									</div>
 								{/if}
 							</div>

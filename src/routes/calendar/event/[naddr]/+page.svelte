@@ -454,13 +454,46 @@ import {
 			</div>
 		</div>
 
+		<!-- Event Participants -->
+		{#if event.participants && event.participants.length > 0}
+			<div class="card mb-8 bg-base-200 shadow-lg">
+				<div class="card-body">
+					<h2 class="card-title text-2xl">
+						<UserIcon class_="w-6 h-6" />
+						Participant{#if event.participants.length > 1}s{/if}
+					</h2>
+					<div class="mt-4 space-y-2">
+						{#each event.participants as participant}
+							<div class="rounded-lg bg-base-100 p-3">
+								<ProfileCard 
+									pubkey={participant.pubkey}
+									showNpub={false}
+									class="bg-transparent p-0"
+								/>
+								{#if participant.role}
+									<div class="mt-2 flex items-center gap-2">
+										<span class="badge badge-primary badge-sm">{participant.role}</span>
+									</div>
+								{/if}
+								{#if participant.relay}
+									<div class="mt-1 text-xs text-base-content/50">
+										Relay: {participant.relay}
+									</div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				</div>
+			</div>
+		{/if}
+
 		<!-- Attendees/RSVP Section -->
 		{#if event.rsvps && event.rsvps.length > 0}
 			<div class="card mb-8 bg-base-200 shadow-lg">
 				<div class="card-body">
 					<h2 class="card-title text-2xl">
 						<UserIcon class_="w-6 h-6" />
-						Attendees
+						Attendees (RSVPs)
 					</h2>
 
 					<!-- RSVP Counts -->
