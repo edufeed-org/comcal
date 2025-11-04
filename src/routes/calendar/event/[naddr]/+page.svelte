@@ -16,7 +16,8 @@ import {
 	UserIcon,
 	EditIcon,
 	TrashIcon,
-	CopyIcon
+	CopyIcon,
+	ExternalLinkIcon
 } from '$lib/components/icons';
 	import AddToCalendarDropdown from '$lib/components/calendar/AddToCalendarDropdown.svelte';
 	import EventTags from '$lib/components/calendar/EventTags.svelte';
@@ -395,6 +396,28 @@ import {
 					<h2 class="card-title text-2xl">Tags</h2>
 					<div class="mt-4">
 						<EventTags tags={event.hashtags} size="lg" />
+					</div>
+				</div>
+			</div>
+		{/if}
+
+		<!-- Further Links -->
+		{#if event.references && event.references.length > 0}
+			<div class="card mb-8 bg-base-200 shadow-lg">
+				<div class="card-body">
+					<h2 class="card-title text-2xl">Further Links</h2>
+					<div class="mt-4 space-y-2">
+						{#each event.references as reference}
+							<a
+								href={reference}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="flex items-center gap-2 rounded-lg bg-base-100 p-4 transition hover:bg-base-300"
+							>
+								<ExternalLinkIcon class_="w-5 h-5 text-base-content/60" />
+								<span class="break-all text-base-content/80">{reference}</span>
+							</a>
+						{/each}
 					</div>
 				</div>
 			</div>

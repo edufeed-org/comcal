@@ -337,6 +337,26 @@
 				</div>
 			{/if}
 
+			<!-- Further Links -->
+			{#if event.references && event.references.length > 0}
+				<div class="mb-6">
+					<h3 class="mb-3 text-lg font-semibold text-base-content">Further Links</h3>
+					<div class="space-y-2">
+						{#each event.references as reference}
+							<a
+								href={reference}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="flex items-center gap-2 rounded-lg bg-base-200 p-3 transition hover:bg-base-300"
+							>
+								<ExternalLinkIcon class_="w-5 h-5 text-base-content/60" />
+								<span class="break-all text-base-content/80">{reference}</span>
+							</a>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
 			<!-- Reactions -->
 			<div class="mb-6">
 				<h3 class="mb-3 text-lg font-semibold text-base-content">Reactions</h3>
