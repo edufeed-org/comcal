@@ -20,8 +20,16 @@
  * @typedef {Object} CalendarEventRSVP
  * @property {string} id - RSVP event ID
  * @property {string} pubkey - RSVP creator's public key
- * @property {number} created_at - RSVP creation timestamp
+ * @property {'accepted' | 'tentative' | 'declined'} status - RSVP status
  * @property {string} [content] - Optional RSVP message
+ * @property {string} [eventId] - Referenced event ID (e tag)
+ * @property {string} [hostPubkey] - Event host pubkey (p tag)
+ * @property {string} [freeBusy] - Free/busy status (fb tag)
+ * @property {number} createdAt - RSVP creation timestamp
+ * @property {Object} [profile] - Loaded profile data for the attendee
+ * @property {string} [profile.name] - Profile display name
+ * @property {string} [profile.picture] - Profile picture URL
+ * @property {string} [profile.about] - Profile about text
  */
 
 /**
@@ -117,6 +125,7 @@
  * @property {function(string): Promise<void>} deleteEvent - Delete event
  * @property {function(string, string): Promise<void>} createTargetedPublication - Create targeted publication
  * @property {function(string, string=): Promise<any>} createCalendar - Create new calendar (returns full event object)
+ * @property {function(any, 'accepted' | 'declined' | 'tentative', string=, 'free' | 'busy'=): Promise<any>} createRsvp - Create or update RSVP for calendar event
  * @property {function(string): Promise<CalendarEvent[]>} loadEvents - Load community events
  */
 

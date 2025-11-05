@@ -10,6 +10,11 @@
 	import LocationLink from '../shared/LocationLink.svelte';
 	import MarkdownRenderer from '../shared/MarkdownRenderer.svelte';
 	import ReactionBar from '../reactions/ReactionBar.svelte';
+	import AttendeeIndicator from './AttendeeIndicator.svelte';
+	import InlineRsvp from './InlineRsvp.svelte';
+	import { useCalendarEventRsvps } from '$lib/stores/calendar-event-rsvps.svelte.js';
+	import { manager } from '$lib/stores/accounts.svelte';
+	import { transformRsvps } from '$lib/helpers/rsvpUtils.js';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
@@ -20,6 +25,15 @@
 		compact = false,
 		onEventClick = () => {}
 	} = $props();
+
+	// Load RSVPs for this event
+	const rsvpData = $derived(event.originalEvent ? useCalendarEventRsvps(event.originalEvent) : { rsvps: [], loading: false });
+	
+	// Get current user pubkey
+	const userPubkey = $derived(manager.active?.pubkey || null);
+	
+	// Transform raw RSVPs into grouped data using helper
+	const transformedRsvps = $derived(transformRsvps(rsvpData.rsvps, userPubkey));
 
 	// Format event times for display
 	// event.start and event.end are now UNIX timestamps (seconds) from applesauce helpers
@@ -210,16 +224,29 @@
 		</div>
 	{/if}
 
-	<!-- RSVP Count -->
-	{#if (event.rsvpCount || (event.rsvps && event.rsvps.length > 0)) && !compact}
-		<div class="flex items-center gap-1 mb-2">
-			<span class="text-xs">👥</span>
-			<span class="text-sm text-base-content/70">
-				{event.rsvpCount || event.rsvps.length} RSVP{(event.rsvpCount || event.rsvps.length) !==
-				1
-					? 's'
-					: ''}
-			</span>
+	<!-- Attendee Indicator (replaces old RSVP count) -->
+	{#if !compact && transformedRsvps.totalCount > 0}
+		<div class="mb-3">
+			<AttendeeIndicator
+				accepted={transformedRsvps.accepted}
+				tentative={transformedRsvps.tentative}
+				declined={transformedRsvps.declined}
+				totalCount={transformedRsvps.totalCount}
+				compact={true}
+			/>
+		</div>
+	{/if}
+
+	<!-- Inline RSVP -->
+	{#if !compact}
+		<div class="mb-3">
+			<InlineRsvp
+				calendarEvent={event.originalEvent || event}
+				userRsvpStatus={transformedRsvps.userRsvp?.status || null}
+				communityPubkey={event.communityPubkey || ''}
+				compact={true}
+				size="sm"
+			/>
 		</div>
 	{/if}
 

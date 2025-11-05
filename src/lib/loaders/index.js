@@ -42,3 +42,6 @@ export { createCommentLoader } from './comments.js';
 
 // Reactions loader
 export { reactionsLoader } from './reactions.js';
+
+// RSVP loader
+export { calendarEventRsvpLoader } from './rsvp.js';

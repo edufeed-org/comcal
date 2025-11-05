@@ -4,7 +4,7 @@
  */
 
 import { EventFactory } from 'applesauce-factory';
-import { pool } from '$lib/stores/nostr-infrastructure.svelte';
+import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { manager } from '$lib/stores/accounts.svelte';
 import { appConfig } from '$lib/config.js';
 import { validateEventForm, convertFormDataToEvent, createEventTargetingTags } from '../helpers/calendar.js';
@@ -390,6 +390,88 @@ export function createCalendarActions(communityPubkey) {
 				console.error('Error creating calendar:', error);
 				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 				throw new Error(`Failed to create calendar: ${errorMessage}`);
+			}
+		},
+
+		/**
+		 * Create or update an RSVP for a calendar event
+		 * @param {any} calendarEvent - Calendar event to RSVP to
+		 * @param {'accepted' | 'declined' | 'tentative'} status - RSVP status
+		 * @param {string} [content=''] - Optional RSVP message/note
+		 * @param {'free' | 'busy'} [freeBusy] - Optional free/busy status (ignored if declined)
+		 * @returns {Promise<any>} Created RSVP event
+		 */
+		async createRsvp(calendarEvent, status, content = '', freeBusy) {
+			// Validate status
+			if (!['accepted', 'declined', 'tentative'].includes(status)) {
+				throw new Error('Invalid RSVP status. Must be accepted, declined, or tentative');
+			}
+
+			// Get current account
+			const currentAccount = manager.active;
+			if (!currentAccount) {
+				throw new Error('No account selected. Please log in to RSVP.');
+			}
+
+			try {
+				// Extract event coordinates for the 'a' tag
+				const eventKind = calendarEvent.kind;
+				const eventPubkey = calendarEvent.pubkey;
+				const dTag = calendarEvent.tags?.find(t => t[0] === 'd')?.[1];
+
+				if (!dTag) {
+					throw new Error('Cannot RSVP: calendar event missing d-tag');
+				}
+
+				// Build event coordinate (NIP-33 format)
+				const eventCoordinate = `${eventKind}:${eventPubkey}:${dTag}`;
+
+				// Generate unique d-tag for the RSVP (allows user to update their RSVP)
+				const rsvpDTag = `rsvp-${eventCoordinate}`;
+
+				// Create the RSVP event using EventFactory (NIP-52 kind 31925)
+				const eventFactory = new EventFactory();
+
+				// Build RSVP tags according to NIP-52
+				const tags = [
+					['d', rsvpDTag], // Unique identifier (same for updates)
+					['a', eventCoordinate], // Required: reference to calendar event
+					['status', status] // Required: accepted/declined/tentative
+				];
+
+				// Add optional event ID reference
+				if (calendarEvent.id) {
+					tags.push(['e', calendarEvent.id]);
+				}
+
+				// Add optional free/busy status (ignored if declined)
+				if (freeBusy && status !== 'declined') {
+					tags.push(['fb', freeBusy]);
+				}
+
+				// Add optional reference to event author
+				tags.push(['p', eventPubkey]);
+
+				// Build and sign the RSVP event
+				const eventTemplate = await eventFactory.build({
+					kind: 31925,
+					content: content,
+					tags: tags
+				});
+
+				const rsvpEvent = await currentAccount.signEvent(eventTemplate);
+				await pool.publish(appConfig.calendar.defaultRelays, rsvpEvent);
+
+				// Add to eventStore for immediate UI update
+				eventStore.add(rsvpEvent);
+				console.log('✅ RSVP created successfully:', rsvpEvent.id, 'Status:', status);
+
+				return rsvpEvent;
+
+			} catch (error) {
+				console.error('Error creating RSVP:', error);
+				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+				throw new Error(`Failed to create RSVP: ${errorMessage}`);
 			}
 		},
 

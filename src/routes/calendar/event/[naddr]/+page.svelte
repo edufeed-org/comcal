@@ -26,6 +26,11 @@ import {
 	import MarkdownRenderer from '$lib/components/shared/MarkdownRenderer.svelte';
 	import EventLocationMap from '$lib/components/calendar/EventLocationMap.svelte';
 	import ProfileCard from '$lib/components/shared/ProfileCard.svelte';
+	import InlineRsvp from '$lib/components/calendar/InlineRsvp.svelte';
+	import AttendeeIndicator from '$lib/components/calendar/AttendeeIndicator.svelte';
+	import { useCalendarEventRsvps } from '$lib/stores/calendar-event-rsvps.svelte.js';
+	import { manager } from '$lib/stores/accounts.svelte';
+	import { transformRsvps } from '$lib/helpers/rsvpUtils.js';
 
 	/** @type {import('./$types').PageProps} */
 	let { data } = $props();
@@ -64,6 +69,15 @@ import {
 		}
 		return `${event.kind}:${event.pubkey}:${event.id}`;
 	});
+
+	// Load RSVPs for this event
+	const rsvpData = $derived(rawEvent ? useCalendarEventRsvps(rawEvent) : { rsvps: [], loading: false });
+	
+	// Get current user pubkey
+	const userPubkey = $derived(manager.active?.pubkey || null);
+	
+	// Transform raw RSVPs into grouped data using helper
+	const transformedRsvps = $derived(transformRsvps(rsvpData.rsvps, userPubkey));
 
 	// Subscribe to featured calendars
 	$effect(() => {
@@ -487,62 +501,40 @@ import {
 			</div>
 		{/if}
 
-		<!-- Attendees/RSVP Section -->
-		{#if event.rsvps && event.rsvps.length > 0}
+		<!-- RSVP Section -->
+		<div class="card mb-8 bg-base-200 shadow-lg">
+			<div class="card-body">
+				<h2 class="card-title text-2xl">
+					<UserIcon class_="w-6 h-6" />
+					RSVP to Event
+				</h2>
+				<div class="mt-4">
+					<InlineRsvp
+						calendarEvent={rawEvent || event}
+						userRsvpStatus={transformedRsvps.userRsvp?.status || null}
+						communityPubkey={event?.communityPubkey || ''}
+						size="lg"
+						showNote={false}
+						compact={false}
+					/>
+					<p class="mt-3 text-sm text-base-content/60">
+						Let the organizer and other attendees know if you're coming
+					</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- Attendees/RSVP Section (New) -->
+		{#if transformedRsvps.totalCount > 0}
 			<div class="card mb-8 bg-base-200 shadow-lg">
 				<div class="card-body">
-					<h2 class="card-title text-2xl">
-						<UserIcon class_="w-6 h-6" />
-						Attendees (RSVPs)
-					</h2>
-
-					<!-- RSVP Counts -->
-					<div class="mt-4 flex gap-4">
-						<div class="stat bg-success/10 rounded-lg">
-							<div class="stat-title">Accepted</div>
-							<div class="stat-value text-success">
-								{event.rsvps.filter((/** @type {any} */ r) => r.status === 'accepted').length}
-							</div>
-						</div>
-						<div class="stat bg-warning/10 rounded-lg">
-							<div class="stat-title">Tentative</div>
-							<div class="stat-value text-warning">
-								{event.rsvps.filter((/** @type {any} */ r) => r.status === 'tentative').length}
-							</div>
-						</div>
-						<div class="stat bg-error/10 rounded-lg">
-							<div class="stat-title">Declined</div>
-							<div class="stat-value text-error">
-								{event.rsvps.filter((/** @type {any} */ r) => r.status === 'declined').length}
-							</div>
-						</div>
-					</div>
-
-					<!-- Attendee List -->
-					<div class="mt-6 space-y-2">
-						{#each event.rsvps as rsvp}
-							{@const status = /** @type {any} */ (rsvp).status}
-							<div class="flex items-center gap-3 rounded-lg bg-base-100 p-3">
-								<a href="/p/{rsvp.pubkey}" class="flex flex-1 items-center gap-3">
-									<ProfileCard 
-										pubkey={rsvp.pubkey} 
-										showNpub={false} 
-										showIcon={false}
-										class="bg-transparent p-0"
-									/>
-								</a>
-								<div class="text-sm text-base-content/60">
-									{#if status === 'accepted'}
-										<span class="text-success">✓ Accepted</span>
-									{:else if status === 'tentative'}
-										<span class="text-warning">? Maybe</span>
-									{:else if status === 'declined'}
-										<span class="text-error">✗ Declined</span>
-									{/if}
-								</div>
-							</div>
-						{/each}
-					</div>
+					<AttendeeIndicator
+						accepted={transformedRsvps.accepted}
+						tentative={transformedRsvps.tentative}
+						declined={transformedRsvps.declined}
+						totalCount={transformedRsvps.totalCount}
+						compact={false}
+					/>
 				</div>
 			</div>
 		{/if}
