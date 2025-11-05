@@ -511,7 +511,6 @@ import {
 				<div class="mt-4">
 					<InlineRsvp
 						calendarEvent={rawEvent || event}
-						userRsvpStatus={transformedRsvps.userRsvp?.status || null}
 						communityPubkey={event?.communityPubkey || ''}
 						size="lg"
 						showNote={false}

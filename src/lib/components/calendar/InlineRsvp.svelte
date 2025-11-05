@@ -4,14 +4,17 @@
 -->
 
 <script>
-	import { manager } from '$lib/stores/accounts.svelte';
+	import { useActiveUser } from '$lib/stores/accounts.svelte';
 	import { useCalendarActions } from '$lib/stores/calendar-actions.svelte';
 	import { showToast } from '$lib/helpers/toast.js';
 	import CalendarIcon from '$lib/components/icons/calendar/CalendarIcon.svelte';
+	import { CalendarEventRSVPsModel } from 'applesauce-core/models';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+	import { calendarEventRsvpLoader } from '$lib/loaders/rsvp.js';
+	import { getTagValue } from 'applesauce-core/helpers';
 
 	let {
 		calendarEvent,
-		userRsvpStatus = null,
 		communityPubkey = '',
 		size = 'md',
 		showNote = false,
@@ -20,32 +23,76 @@
 
 	// Local state
 	let isSubmitting = $state(false);
-	let submittingStatus = $state(null);
+	let submittingStatus = $state(/** @type {'accepted' | 'tentative' | 'declined' | null} */ (null));
 	let showNoteField = $state(showNote);
 	let rsvpNote = $state('');
 	let error = $state('');
 
+	// RSVP data management
+	/** @type {any} */
+	let loaderSubscription = $state(null);
+	/** @type {any} */
+	let modelSubscription = $state(null);
+	/** @type {any[]} */
+	let rsvps = $state([]);
+
 	// Get calendar actions
 	const calendarActions = useCalendarActions(communityPubkey);
 
-	// Reactive user state
-	let activeUser = $state(manager.active);
-	$effect(() => {
-		const subscription = manager.active$.subscribe((user) => {
-			activeUser = user;
-		});
-		return () => subscription.unsubscribe();
+	// Use reactive getter for active user to ensure proper reactivity on login/logout
+	const getActiveUser = useActiveUser();
+	const isLoggedIn = $derived(!!getActiveUser());
+
+	// Derive user's RSVP status reactively from rsvps array
+	let userRsvpStatus = $derived.by(() => {
+		const currentUser = getActiveUser();
+		if (!currentUser) return null;
+
+		// Find user's most recent RSVP (handle duplicates)
+		const userRsvp = rsvps
+			.filter((r) => r.pubkey === currentUser.pubkey)
+			.sort((a, b) => b.created_at - a.created_at)[0];
+
+		if (!userRsvp) return null;
+
+		// Extract status tag
+		return getTagValue(userRsvp, 'status') || 'accepted';
 	});
 
-	// Check if user is logged in
-	const isLoggedIn = $derived(!!activeUser);
-
-	// Current status for reactive display
-	let currentStatus = $state(/** @type {'accepted' | 'tentative' | 'declined' | null} */ (userRsvpStatus));
-
-	// Update current status when prop changes
+	// Load RSVPs reactively when calendarEvent changes
 	$effect(() => {
-		currentStatus = /** @type {'accepted' | 'tentative' | 'declined' | null} */ (userRsvpStatus);
+		if (!calendarEvent?.id) {
+			return;
+		}
+
+		// Subscribe to loader (fetches RSVPs from relays → EventStore)
+		loaderSubscription = calendarEventRsvpLoader(calendarEvent)().subscribe({
+			next: () => {
+				// Loader handles fetching
+			},
+			error: (/** @type {any} */ err) => {
+				console.error('Error loading RSVPs from relays:', err);
+			}
+		});
+
+		// Subscribe to CalendarEventRSVPsModel (reactively watches EventStore)
+		modelSubscription = eventStore
+			.model(CalendarEventRSVPsModel, calendarEvent)
+			.subscribe((rsvpEvents) => {
+				rsvps = rsvpEvents || [];
+			});
+
+		// Cleanup subscriptions
+		return () => {
+			if (loaderSubscription) {
+				loaderSubscription.unsubscribe();
+				loaderSubscription = null;
+			}
+			if (modelSubscription) {
+				modelSubscription.unsubscribe();
+				modelSubscription = null;
+			}
+		};
 	});
 
 	/**
@@ -63,11 +110,6 @@
 			return;
 		}
 
-		// Store previous status for rollback on error
-		const previousStatus = currentStatus;
-
-		// Optimistic update
-		currentStatus = /** @type {'accepted' | 'tentative' | 'declined' | null} */ (status);
 		isSubmitting = true;
 		submittingStatus = status;
 		error = '';
@@ -93,8 +135,6 @@
 			}
 		} catch (err) {
 			console.error('Error creating RSVP:', err);
-			// Rollback optimistic update
-			currentStatus = previousStatus;
 			const errorMsg = err instanceof Error ? err.message : 'Failed to update RSVP';
 			error = errorMsg;
 			showToast(errorMsg, 'error');
@@ -138,18 +178,18 @@
 					onclick={() => handleRsvp('accepted')}
 					disabled={isSubmitting}
 					class="btn {btnClass} flex-1 transition-all
-						{currentStatus === 'accepted'
-						? 'btn-success text-white'
-						: 'btn-outline btn-success hover:btn-success hover:text-white'}
+						{userRsvpStatus === 'accepted'
+						? 'btn-success text-white font-bold shadow-lg ring-2 ring-success ring-offset-2 ring-offset-base-100'
+						: 'btn-outline btn-success hover:btn-success hover:text-white hover:font-semibold'}
 						{isSubmitting && submittingStatus === 'accepted' ? 'loading' : ''}"
 					aria-label="RSVP as Going"
-					aria-pressed={currentStatus === 'accepted'}
+					aria-pressed={userRsvpStatus === 'accepted'}
 				>
 					{#if isSubmitting && submittingStatus === 'accepted'}
 						<span class="loading loading-spinner loading-xs"></span>
 					{:else}
-						<span class="flex items-center gap-1">
-							<span>✓</span>
+						<span class="flex items-center gap-1 {userRsvpStatus === 'accepted' ? 'font-bold' : ''}">
+							<span class="text-lg">{userRsvpStatus === 'accepted' ? '✓' : '✓'}</span>
 							<span>Going</span>
 						</span>
 					{/if}
@@ -161,18 +201,18 @@
 					onclick={() => handleRsvp('tentative')}
 					disabled={isSubmitting}
 					class="btn {btnClass} flex-1 transition-all
-						{currentStatus === 'tentative'
-						? 'btn-warning text-white'
-						: 'btn-outline btn-warning hover:btn-warning hover:text-white'}
+						{userRsvpStatus === 'tentative'
+						? 'btn-warning text-white font-bold shadow-lg ring-2 ring-warning ring-offset-2 ring-offset-base-100'
+						: 'btn-outline btn-warning hover:btn-warning hover:text-white hover:font-semibold'}
 						{isSubmitting && submittingStatus === 'tentative' ? 'loading' : ''}"
 					aria-label="RSVP as Maybe"
-					aria-pressed={currentStatus === 'tentative'}
+					aria-pressed={userRsvpStatus === 'tentative'}
 				>
 					{#if isSubmitting && submittingStatus === 'tentative'}
 						<span class="loading loading-spinner loading-xs"></span>
 					{:else}
-						<span class="flex items-center gap-1">
-							<span>?</span>
+						<span class="flex items-center gap-1 {userRsvpStatus === 'tentative' ? 'font-bold' : ''}">
+							<span class="text-lg">{userRsvpStatus === 'tentative' ? '?' : '?'}</span>
 							<span>Maybe</span>
 						</span>
 					{/if}
@@ -184,18 +224,18 @@
 					onclick={() => handleRsvp('declined')}
 					disabled={isSubmitting}
 					class="btn {btnClass} flex-1 transition-all
-						{currentStatus === 'declined'
-						? 'btn-error text-white'
-						: 'btn-outline btn-error hover:btn-error hover:text-white'}
+						{userRsvpStatus === 'declined'
+						? 'btn-error text-white font-bold shadow-lg ring-2 ring-error ring-offset-2 ring-offset-base-100'
+						: 'btn-outline btn-error hover:btn-error hover:text-white hover:font-semibold'}
 						{isSubmitting && submittingStatus === 'declined' ? 'loading' : ''}"
 					aria-label="RSVP as Not Going"
-					aria-pressed={currentStatus === 'declined'}
+					aria-pressed={userRsvpStatus === 'declined'}
 				>
 					{#if isSubmitting && submittingStatus === 'declined'}
 						<span class="loading loading-spinner loading-xs"></span>
 					{:else}
-						<span class="flex items-center gap-1">
-							<span>✗</span>
+						<span class="flex items-center gap-1 {userRsvpStatus === 'declined' ? 'font-bold' : ''}">
+							<span class="text-lg">{userRsvpStatus === 'declined' ? '✗' : '✗'}</span>
 							<span>No</span>
 						</span>
 					{/if}
