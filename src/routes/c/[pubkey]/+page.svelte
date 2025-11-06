@@ -8,6 +8,10 @@
 	import BottomTabBar from '$lib/components/community/layout/BottomTabBar.svelte';
 	import { MenuIcon, CloseIcon } from '$lib/components/icons';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+	import { ProfileModel } from 'applesauce-core/models';
+	import { profileLoader } from '$lib/loaders/profile.js';
+	import { getProfilePicture } from 'applesauce-core/helpers';
+	import { appConfig } from '$lib/config.js';
 
 	/** @type {import('./$types').PageProps} */
 	let { data } = $props();
@@ -18,6 +22,7 @@
 	let selectedContentType = $state('home');
 	let leftDrawerOpen = $state(false);
 	let communikeyEvent = $state(/** @type {any} */ (null));
+	let communityProfile = $state(/** @type {any} */ (null));
 
 	// Load community's kind:10222 event for content type configuration
 	$effect(() => {
@@ -38,6 +43,45 @@
 			communikeyEvent = null;
 		}
 	});
+
+	// Load community profile for header display
+	$effect(() => {
+		// Reset profile when community changes
+		communityProfile = null;
+
+		if (data.pubkey) {
+			// 1. Trigger loader to fetch profile from relays
+			const loaderSub = profileLoader({ 
+				kind: 0, 
+				pubkey: data.pubkey, 
+				relays: appConfig.calendar.defaultRelays 
+			}).subscribe(() => {
+				// Loader automatically populates eventStore
+			});
+
+			// 2. Subscribe to model for reactive parsed profile from eventStore
+			const modelSub = eventStore
+				.model(ProfileModel, data.pubkey)
+				.subscribe((profileContent) => {
+					communityProfile = profileContent;
+				});
+
+			// Cleanup subscriptions when community changes
+			return () => {
+				loaderSub.unsubscribe();
+				modelSub.unsubscribe();
+			};
+		}
+	});
+
+	// Derive display name and avatar for mobile header
+	let displayName = $derived(
+		communityProfile?.name || 
+		communityProfile?.display_name || 
+		'Community'
+	);
+	
+	let avatarUrl = $derived(getProfilePicture(communityProfile));
 
 	/**
 	 * Handle community selection from sidebar
@@ -130,8 +174,24 @@
 					>
 						<MenuIcon class_="w-6 h-6" />
 					</button>
-					<h1 class="text-lg font-semibold">Communikey</h1>
-					<div class="w-10"></div> <!-- Spacer for centering -->
+					
+					<!-- Community Identity -->
+					{#if communityProfile}
+						<div class="flex items-center gap-2 flex-1 min-w-0 mx-3">
+							<div class="avatar">
+								<div class="w-8 rounded-full ring-1 ring-base-300">
+									<img src={avatarUrl} alt={displayName} class="object-cover" />
+								</div>
+							</div>
+							<h1 class="text-base font-semibold text-base-content truncate">
+								{displayName}
+							</h1>
+						</div>
+					{:else}
+						<h1 class="text-lg font-semibold">Communikey</h1>
+					{/if}
+					
+					<div class="w-10"></div> <!-- Spacer for balance -->
 				</div>
 
 				<!-- Main Content -->

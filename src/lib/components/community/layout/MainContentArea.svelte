@@ -94,11 +94,11 @@
 			{#if selectedContentType === 'home'}
 				<HomeView {communikeyEvent} profileEvent={communityProfile} communityId={selectedCommunityId} {onKindNavigation} />
 			{:else if selectedContentType === 'chat'}
-				<Chat {communikeyEvent} />
+				<Chat {communikeyEvent} communityProfile={communityProfile} communityPubkey={selectedCommunityId} />
 			{:else if selectedContentType === 'calendar'}
-				<CalendarView communityPubkey={selectedCommunityId} communityMode={true} />
+				<CalendarView communityPubkey={selectedCommunityId} communityMode={true} communityProfile={communityProfile} />
 			{:else if selectedContentType === 'activity'}
-				<ActivityView communityId={selectedCommunityId} {communikeyEvent} />
+				<ActivityView communityId={selectedCommunityId} {communikeyEvent} communityProfile={communityProfile} communityPubkey={selectedCommunityId} />
 			{:else if selectedContentType === 'settings'}
 				<SettingsView communityId={selectedCommunityId} {communikeyEvent} profileEvent={communityProfile} />
 			{/if}

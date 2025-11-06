@@ -1,20 +1,27 @@
 <script>
 	import { getDisplayName } from 'applesauce-core/helpers';
 	import { BellIcon } from '$lib/components/icons';
+	import CompactCommunityHeader from '$lib/components/community/layout/CompactCommunityHeader.svelte';
 
-	let { communityId, communikeyEvent } = $props();
+	let { communityId, communikeyEvent, communityProfile = null, communityPubkey = '' } = $props();
 
 	// TODO: Load actual activity data
 	/** @type {any[]} */
 	const activities = [];
 </script>
 
-<div class="min-h-screen bg-base-100 p-6">
-	<div class="container mx-auto max-w-4xl">
-		<div class="flex items-center gap-3 mb-6">
-			<BellIcon class_="w-6 h-6 text-primary" />
-			<h1 class="text-2xl font-bold">Community Activity</h1>
-		</div>
+<div class="min-h-screen bg-base-100">
+	<!-- Community Context Header -->
+	{#if communityProfile && communityPubkey}
+		<CompactCommunityHeader {communityProfile} {communityPubkey} />
+	{/if}
+
+	<div class="p-6">
+		<div class="container mx-auto max-w-4xl">
+			<div class="flex items-center gap-3 mb-6">
+				<BellIcon class_="w-6 h-6 text-primary" />
+				<h1 class="text-2xl font-bold">Community Activity</h1>
+			</div>
 
 		{#if activities.length === 0}
 			<div class="card bg-base-200 shadow-xl">
@@ -40,5 +47,6 @@
 				{/each}
 			</div>
 		{/if}
+		</div>
 	</div>
 </div>

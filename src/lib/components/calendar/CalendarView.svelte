@@ -27,6 +27,7 @@
 	import SimpleCalendarEventsList from './CalendarEventsList.svelte';
 	import AddToCalendarButton from './AddToCalendarButton.svelte';
 	import CalendarMapView from './CalendarMapView.svelte';
+	import CompactCommunityHeader from '$lib/components/community/layout/CompactCommunityHeader.svelte';
 
 	/**
 	 * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
@@ -40,7 +41,8 @@
 		calendar = null,
 		rawCalendar = null,
 		authorPubkey = '',
-		communityMode = false
+		communityMode = false,
+		communityProfile = null
 	} = $props();
 
 	// Use runes store for reactive state
@@ -622,6 +624,11 @@
 
 	<!-- Main content area -->
 	<div class="flex-1 min-w-0 overflow-hidden rounded-lg border border-base-300 bg-base-100 shadow-sm">
+		<!-- Community Context Header (community mode only) -->
+		{#if communityMode && communityProfile && communityPubkey}
+			<CompactCommunityHeader {communityProfile} {communityPubkey} />
+		{/if}
+
 		<!-- Calendar Header -->
 		<div class="border-b border-base-300 bg-base-200 px-6 py-4">
 		<div class="flex items-center justify-between">

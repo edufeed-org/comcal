@@ -6,6 +6,7 @@
 	import { useActiveUser } from '$lib/stores/accounts.svelte';
 	import { showToast } from '$lib/helpers/toast';
 	import { goto } from '$app/navigation';
+	import CompactCommunityHeader from '$lib/components/community/layout/CompactCommunityHeader.svelte';
 
 	let { communityId, communikeyEvent, profileEvent } = $props();
 
@@ -45,12 +46,18 @@
 	}
 </script>
 
-<div class="min-h-screen bg-base-100 p-6">
-	<div class="container mx-auto max-w-4xl">
-		<div class="flex items-center gap-3 mb-6">
-			<SettingsIcon class_="w-6 h-6 text-primary" />
-			<h1 class="text-2xl font-bold">Community Settings</h1>
-		</div>
+<div class="min-h-screen bg-base-100">
+	<!-- Community Context Header -->
+	{#if profileEvent && communityId}
+		<CompactCommunityHeader communityProfile={profileEvent} communityPubkey={communityId} />
+	{/if}
+
+	<div class="p-6">
+		<div class="container mx-auto max-w-4xl">
+			<div class="flex items-center gap-3 mb-6">
+				<SettingsIcon class_="w-6 h-6 text-primary" />
+				<h1 class="text-2xl font-bold">Community Settings</h1>
+			</div>
 
 		{#if profileEvent && communikeyEvent}
 			<!-- Community Information -->
@@ -116,5 +123,6 @@
 				<div class="loading loading-spinner loading-lg text-primary"></div>
 			</div>
 		{/if}
+		</div>
 	</div>
 </div>

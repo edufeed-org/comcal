@@ -6,9 +6,10 @@
 	import { getProfilePicture } from 'applesauce-core/helpers';
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import NostrIdentifierParser from '$lib/components/shared/NostrIdentifierParser.svelte';
+	import CompactCommunityHeader from '$lib/components/community/layout/CompactCommunityHeader.svelte';
 
 	/** @type {any} */
-	let { communikeyEvent } = $props();
+	let { communikeyEvent, communityProfile = null, communityPubkey = '' } = $props();
 
 	// Reactive state
 	/** @type {any[]} */
@@ -21,12 +22,8 @@
 	let isLoading = $state(true);
 	let isSending = $state(false);
 
-	// Get community pubkey from communikey event
-	let communityPubkey = $state(/** @type {string} */ (''));
-
-	$effect(() => {
-		communityPubkey = communikeyEvent?.pubkey || '';
-	});
+	// Derive community pubkey from communikey event if not provided as prop
+	let derivedCommunityPubkey = $derived(communityPubkey || communikeyEvent?.pubkey || '');
 
 	// Subscribe to active user
 	$effect(() => {
@@ -38,7 +35,7 @@
 
 	// Subscribe to chat messages
 	$effect(() => {
-		if (!communityPubkey) return;
+		if (!derivedCommunityPubkey) return;
 
 		isLoading = true;
 		let initialLoadComplete = false;
@@ -46,7 +43,7 @@
 		// Create a persistent subscription that continues after EOSE
 		const subscription = pool
 			.group(appConfig.calendar.defaultRelays)
-			.subscription({ kinds: [9], '#h': [communityPubkey] })
+			.subscription({ kinds: [9], '#h': [derivedCommunityPubkey] })
 			.subscribe({
 				next: (response) => {
 					if (response === 'EOSE') {
@@ -114,7 +111,7 @@
 	async function sendMessage(event) {
 		event.preventDefault();
 
-		if (!activeUser || !newMessage.trim() || !communityPubkey) return;
+		if (!activeUser || !newMessage.trim() || !derivedCommunityPubkey) return;
 
 		isSending = true;
 
@@ -123,7 +120,7 @@
 			const chatEvent = {
 				kind: 9,
 				content: newMessage.trim(),
-				tags: [['h', communityPubkey]],
+				tags: [['h', derivedCommunityPubkey]],
 				created_at: Math.floor(Date.now() / 1000),
 				pubkey: activeUser.pubkey
 			};
@@ -212,8 +209,13 @@
 </script>
 
 <div class="flex flex-col rounded-lg border bg-base-100" style="height: calc(100vh - 20rem);">
+	<!-- Community Context Header -->
+	{#if communityProfile && communityPubkey}
+		<CompactCommunityHeader {communityProfile} {communityPubkey} />
+	{/if}
+
 	<!-- Chat header -->
-	<div class="rounded-t-lg border-b bg-base-200 px-4 py-2">
+	<div class="border-b bg-base-200 px-4 py-2">
 		<h3 class="font-semibold text-base-content">Community Chat</h3>
 		{#if isLoading}
 			<div class="text-sm text-base-content/70">Loading messages...</div>
