@@ -8,10 +8,8 @@
 	import { formatCalendarDate } from '../../helpers/calendar.js';
 	import EventTags from './EventTags.svelte';
 	import LocationLink from '../shared/LocationLink.svelte';
-	import MarkdownRenderer from '../shared/MarkdownRenderer.svelte';
 	import ReactionBar from '../reactions/ReactionBar.svelte';
 	import AttendeeIndicator from './AttendeeIndicator.svelte';
-	import InlineRsvp from './InlineRsvp.svelte';
 	import { useCalendarEventRsvps } from '$lib/stores/calendar-event-rsvps.svelte.js';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { transformRsvps } from '$lib/helpers/rsvpUtils.js';
@@ -237,18 +235,6 @@
 		</div>
 	{/if}
 
-	<!-- Inline RSVP -->
-	{#if !compact}
-		<div class="mb-3">
-			<InlineRsvp
-				calendarEvent={event.originalEvent || event}
-				userRsvpStatus={transformedRsvps.userRsvp?.status || null}
-				communityPubkey={event.communityPubkey || ''}
-				compact={true}
-				size="sm"
-			/>
-		</div>
-	{/if}
 
 	<!-- Reactions -->
 	{#if !compact}
