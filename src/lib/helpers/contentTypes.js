@@ -71,6 +71,14 @@ export const CONTENT_TYPE_CONFIG = {
 		component: null,
 		description: 'Long-form articles'
 	},
+	30040: {
+		kind: 30040,
+		name: 'Publications',
+		icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
+		supported: false,
+		component: null,
+		description: 'Curated publications (books, journals, courses)'
+	},
 	11: {
 		kind: 11,
 		name: 'Forum',
@@ -110,13 +118,17 @@ export function getCommunityAvailableContentTypes(communikeyEvent) {
 	// Process defined content types from the community
 	for (const contentType of definedContentTypes) {
 		for (const kind of contentType.kinds) {
+			// Skip if already processed (prevent duplicates)
 			if (processedKinds.has(kind)) continue;
-			processedKinds.add(kind);
-
+			
 			// Skip calendar kinds - they'll be represented by a single Calendar tab
 			if (CALENDAR_KINDS.includes(kind)) {
+				processedKinds.add(kind);
 				continue;
 			}
+
+			// Mark as processed before adding to result
+			processedKinds.add(kind);
 
 			const config = CONTENT_TYPE_CONFIG[kind];
 			if (config) {
@@ -129,20 +141,22 @@ export function getCommunityAvailableContentTypes(communikeyEvent) {
 					description: config.description,
 					exclusive: contentType.exclusive,
 					fee: contentType.fee,
-					roles: contentType.roles
+					roles: contentType.roles,
+					communityName: contentType.name
 				});
 			} else {
-				// Unknown content type - show as disabled
+				// Unknown content type - use generic name to avoid duplicates
 				result.push({
 					kind,
-					name: contentType.name || `Kind ${kind}`,
+					name: `Kind ${kind}`,
 					icon: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z', // Info icon
 					supported: false,
 					enabled: false,
 					description: `Content type (kind ${kind}) is not yet supported`,
 					exclusive: contentType.exclusive,
 					fee: contentType.fee,
-					roles: contentType.roles
+					roles: contentType.roles,
+					communityName: contentType.name
 				});
 			}
 		}
@@ -151,6 +165,7 @@ export function getCommunityAvailableContentTypes(communikeyEvent) {
 	// Add always-available types if not already present
 	for (const kind of alwaysAvailable) {
 		if (!processedKinds.has(kind)) {
+			processedKinds.add(kind);
 			const config = CONTENT_TYPE_CONFIG[kind];
 			result.push({
 				kind,
@@ -163,7 +178,7 @@ export function getCommunityAvailableContentTypes(communikeyEvent) {
 		}
 	}
 
-	// Add calendar (kind 31923) if any calendar kinds are present
+	// Add consolidated calendar tab if any calendar kinds are present
 	if (hasCalendarKinds) {
 		const config = CONTENT_TYPE_CONFIG[31923];
 		result.push({
