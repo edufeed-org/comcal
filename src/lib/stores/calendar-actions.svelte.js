@@ -98,10 +98,10 @@ export function createCalendarActions(communityPubkey) {
 					});
 				}
 
-				// Add references
+				// Add references (web links, documents, etc.)
 				if (eventData.references) {
 					eventData.references.forEach(reference => {
-						if (reference) tags.push(['e', reference]);
+						if (reference) tags.push(['r', reference]);
 					});
 				}
 
@@ -223,10 +223,10 @@ export function createCalendarActions(communityPubkey) {
 					});
 				}
 
-				// Add references
+				// Add references (web links, documents, etc.)
 				if (eventData.references) {
 					eventData.references.forEach(reference => {
-						if (reference) tags.push(['e', reference]);
+						if (reference) tags.push(['r', reference]);
 					});
 				}
 

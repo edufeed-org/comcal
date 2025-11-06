@@ -90,6 +90,7 @@
  * @property {string} location - Event location
  * @property {boolean} isAllDay - Whether event is all day
  * @property {EventType} eventType - Event type (date or time)
+ * @property {string[]} [references] - Optional array of reference URLs (r tags)
  */
 
 /**

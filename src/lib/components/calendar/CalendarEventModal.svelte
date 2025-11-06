@@ -14,6 +14,7 @@
 	import CalendarSelector from './CalendarSelector.svelte';
 	import CommunitySelector from './CommunitySelector.svelte';
 	import LocationInput from '../shared/LocationInput.svelte';
+	import EditableList from '../shared/EditableList.svelte';
 	import { CloseIcon } from '../icons';
 
 	/**
@@ -49,7 +50,8 @@
 		endTimezone: getCurrentTimezone(),
 		location: '',
 		isAllDay: false,
-		eventType: 'date'
+		eventType: 'date',
+		references: []
 	});
 
 	let validationErrors = /** @type {string[]} */ ([]);
@@ -107,7 +109,8 @@
 			endTimezone: getCurrentTimezone(),
 			location: '',
 			isAllDay: false,
-			eventType: 'date'
+			eventType: 'date',
+			references: []
 		};
 
 		validationErrors = [];
@@ -149,12 +152,27 @@
 			endTimezone: existingEvent.endTimezone || getCurrentTimezone(),
 			location: location,
 			isAllDay: isAllDay,
-			eventType: eventType
+			eventType: eventType,
+			references: existingEvent.references || []
 		};
 
 		validationErrors = [];
 		isSubmitting = false;
 		submitError = '';
+	}
+
+	/**
+	 * Validate URL format
+	 * @param {string} url
+	 * @returns {string | null} Error message or null if valid
+	 */
+	function validateUrl(url) {
+		try {
+			new URL(url);
+			return null;
+		} catch {
+			return 'Please enter a valid URL (e.g., https://example.com)';
+		}
 	}
 
 	/**
@@ -412,6 +430,19 @@
 							class="input input-bordered w-full"
 							bind:value={formData.image}
 							placeholder="https://example.com/image.jpg"
+						/>
+					</div>
+
+					<!-- Reference Links (Optional) -->
+					<div class="mb-4">
+						<EditableList
+							bind:items={formData.references}
+							label="Reference Links (Optional)"
+							placeholder="https://example.com/event-info"
+							buttonText="Add Link"
+							itemType="link"
+							validator={validateUrl}
+							helpText="Add links to web pages, documents, video calls, etc."
 						/>
 					</div>
 
