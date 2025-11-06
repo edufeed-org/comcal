@@ -7,6 +7,7 @@
 	import MainContentArea from '$lib/components/community/layout/MainContentArea.svelte';
 	import BottomTabBar from '$lib/components/community/layout/BottomTabBar.svelte';
 	import { MenuIcon, CloseIcon } from '$lib/components/icons';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 
 	/** @type {import('./$types').PageProps} */
 	let { data } = $props();
@@ -16,6 +17,27 @@
 	// State management for content type navigation
 	let selectedContentType = $state('home');
 	let leftDrawerOpen = $state(false);
+	let communikeyEvent = $state(/** @type {any} */ (null));
+
+	// Load community's kind:10222 event for content type configuration
+	$effect(() => {
+		if (data.pubkey) {
+			const pointer = {
+				kind: 10222,
+				pubkey: data.pubkey
+			};
+
+			const sub = eventStore.replaceable(pointer).subscribe((event) => {
+				communikeyEvent = event || null;
+			});
+
+			return () => {
+				sub.unsubscribe();
+			};
+		} else {
+			communikeyEvent = null;
+		}
+	});
 
 	/**
 	 * Handle community selection from sidebar
@@ -125,6 +147,7 @@
 				<BottomTabBar
 					bind:selectedContentType
 					onContentTypeSelect={handleContentTypeSelect}
+					communityEvent={communikeyEvent}
 				/>
 			</div>
 
@@ -167,6 +190,7 @@
 		<BottomTabBar
 			bind:selectedContentType
 			onContentTypeSelect={handleContentTypeSelect}
+			communityEvent={communikeyEvent}
 		/>
 	</div>
 {/if}
