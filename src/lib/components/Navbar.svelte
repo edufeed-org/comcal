@@ -73,7 +73,7 @@
 	function handleLogoutAll() {
 		console.log('Navbar: Logging out all accounts');
 		
-		if (confirm(m["navbar.logoutAllConfirm"]())) {
+		if (confirm(m.navbar_logout_all_confirm())) {
 			const accounts = [...manager.accounts];
 			accounts.forEach(account => {
 				manager.removeAccount(account.id);
@@ -86,12 +86,12 @@
 
 <div class="navbar bg-base-100 shadow-sm ">
 	<div class="flex-1">
-		<a href="/" class="btn text-xl btn-ghost">{m["navbar.brand"]()}</a>
+		<a href="/" class="btn text-xl btn-ghost">{m.navbar_brand()}</a>
 	</div>
 	<div class="flex gap-2 items-center">
 		<a href="/calendar" class="btn btn-ghost btn">
 			<CalendarIcon class_="w-5 h-5" />
-			{m["navbar.calendar"]()}
+			{m.navbar_calendar()}
 		</a>
 		<LanguageSwitcher />
 		{#if activeAccount}
@@ -102,22 +102,22 @@
 				<ul class="dropdown-content menu z-1 mt-3 w-52 menu-sm rounded-box bg-base-100 p-2 shadow">
 					<li>
 						<a href="/p/{activeAccount.pubkey}" class="justify-between">
-							{m["common.profile"]()}
+							{m.common_profile()}
 						</a>
 					</li>
 					<li>
-						<button onclick={openLoginModal}>{m["navbar.switchAccount"]()}</button>
+						<button onclick={openLoginModal}>{m.navbar_switch_account()}</button>
 					</li>
 					<!-- TODO: Implement settings functionality -->
 					<!-- <li><button>{m["common.settings"]()}</button></li> -->
-					<li><button onclick={handleLogoutCurrent}>{m["navbar.logoutCurrent"]()}</button></li>
+					<li><button onclick={handleLogoutCurrent}>{m.navbar_logout_current()}</button></li>
 					{#if accountCount > 1}
-						<li><button onclick={handleLogoutAll}>{m["navbar.logoutAll"]()}</button></li>
+						<li><button onclick={handleLogoutAll}>{m.navbar_logout_all()}</button></li>
 					{/if}
 				</ul>
 			</div>
 		{:else}
-			<button onclick={openLoginModal} class="btn btn-ghost">{m["common.login"]()}</button>
+			<button onclick={openLoginModal} class="btn btn-ghost">{m.common_login()}</button>
 		{/if}
 	</div>
 </div>

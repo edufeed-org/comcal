@@ -54,7 +54,7 @@
 	function getDisplayDate(date, mode) {
 		switch (mode) {
 			case 'all':
-				return m["calendar.navigation.allEvents"]();
+				return m.calendar_navigation_all_events();
 			case 'month':
 				return formatCalendarDate(date, 'long');
 			case 'week':
@@ -166,7 +166,7 @@
 						<ChevronLeftIcon class_="w-5 h-5" />
 					</button>
 
-					<button class="btn btn-sm btn-primary" onclick={handleTodayClick}>{m["common.today"]()}</button>
+					<button class="btn btn-sm btn-primary" onclick={handleTodayClick}>{m.common_today()}</button>
 
 					<button
 						class="btn btn-outline btn-sm"
@@ -177,7 +177,7 @@
 					</button>
 				</div>
 			{:else}
-				<div class="flex-1 text-center text-lg font-semibold text-base-content">{m["calendar.navigation.allEvents"]()}</div>
+				<div class="flex-1 text-center text-lg font-semibold text-base-content">{m.calendar_navigation_all_events()}</div>
 			{/if}
 
 			<!-- Add Calendar Button -->
@@ -292,7 +292,7 @@
 				</button>
 
 				<!-- Today Button -->
-				<button class="btn btn-sm btn-primary" onclick={handleTodayClick}>{m["common.today"]()}</button>
+				<button class="btn btn-sm btn-primary" onclick={handleTodayClick}>{m.common_today()}</button>
 
 				<button
 					class="btn btn-outline btn-sm"
@@ -309,7 +309,7 @@
 		{:else}
 			<!-- In 'all' mode, show a simple heading instead -->
 			<div class="flex items-center gap-4">
-				<div class="text-lg font-semibold text-base-content">{m["calendar.navigation.allEvents"]()}</div>
+				<div class="text-lg font-semibold text-base-content">{m.calendar_navigation_all_events()}</div>
 			</div>
 		{/if}
 
@@ -356,7 +356,7 @@
 					class:btn-primary={viewMode === 'all'}
 					onclick={() => handleViewModeClick('all')}
 				>
-					{m["common.all"]()}
+					{m.common_all()}
 				</button>
 			{/if}
 			<button
@@ -365,7 +365,7 @@
 				class:btn-primary={viewMode === 'month'}
 					onclick={() => handleViewModeClick('month')}
 				>
-					{m["common.month"]()}
+					{m.common_month()}
 				</button>
 				<button
 					class="btn join-item btn-sm"
@@ -373,7 +373,7 @@
 					class:btn-primary={viewMode === 'week'}
 					onclick={() => handleViewModeClick('week')}
 				>
-					{m["common.week"]()}
+					{m.common_week()}
 				</button>
 				<button
 					class="btn join-item btn-sm"
@@ -381,7 +381,7 @@
 					class:btn-primary={viewMode === 'day'}
 					onclick={() => handleViewModeClick('day')}
 				>
-					{m["common.day"]()}
+					{m.common_day()}
 				</button>
 		</div>
 		{#if !communityMode && !$page.url.pathname.endsWith('/calendar')}

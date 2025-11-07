@@ -35,10 +35,10 @@
 </script>
 
 <svelte:head>
-	<title>{m["landing.meta.title"]()}</title>
+	<title>{m.landing_meta_title()}</title>
 	<meta
 		name="description"
-		content={m["landing.meta.description"]()}
+		content={m.landing_meta_description()}
 	/>
 </svelte:head>
 

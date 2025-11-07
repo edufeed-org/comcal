@@ -25,32 +25,32 @@
 		<!-- Main headline -->
 		<div class="mx-auto max-w-4xl text-center">
 			<h1 class="mb-6 text-4xl font-bold leading-tight md:text-5xl lg:text-6xl">
-				{m["landing.hero.title"]()}
+				{m.landing_hero_title()}
 			</h1>
 			<p class="mb-8 text-lg opacity-90 md:text-xl lg:text-2xl">
-				{m["landing.hero.subtitle"]()}
+				{m.landing_hero_subtitle()}
 			</p>
 
 		<!-- Feature badges -->
 		<div class="mb-10 flex flex-wrap justify-center gap-4">
 			<div class="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 backdrop-blur-sm">
 				<span class="text-2xl">🏘️</span>
-				<span class="font-medium">{m["landing.features.communities"]()}</span>
+				<span class="font-medium">{m.landing_features_communities()}</span>
 			</div>
 			<div class="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 backdrop-blur-sm">
 				<span class="text-2xl">💬</span>
-				<span class="font-medium">{m["landing.features.chat"]()}</span>
+				<span class="font-medium">{m.landing_features_chat()}</span>
 			</div>
 			<a 
 				href="/calendar"
 				class="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 backdrop-blur-sm transition-opacity hover:opacity-80 cursor-pointer"
 			>
 				<span class="text-2xl">📅</span>
-				<span class="font-medium">{m["landing.features.calendar"]()}</span>
+				<span class="font-medium">{m.landing_features_calendar()}</span>
 			</a>
 			<div class="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 backdrop-blur-sm">
 				<span class="text-2xl">✨</span>
-				<span class="font-medium">{m["landing.features.moreToCome"]()}</span>
+				<span class="font-medium">{m.landing_features_more_to_come()}</span>
 			</div>
 		</div>
 
@@ -60,13 +60,13 @@
 					href="/calendar"
 					class="btn btn-lg bg-white text-primary hover:bg-white/90 border-none shadow-lg"
 				>
-					{m["landing.hero.browseCalendar"]()}
+					{m.landing_hero_browse_calendar()}
 			</a>
 				<a
 					href="/discover"
 					class="btn btn-lg btn-outline border-2 border-white text-white hover:bg-white hover:text-primary"
 				>
-					{m["landing.hero.exploreCommunities"]()}
+					{m.landing_hero_explore_communities()}
 			</a>
 			</div>
 		</div>
