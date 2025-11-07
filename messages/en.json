@@ -1,0 +1,241 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "common": {
+    "login": "Login",
+    "logout": "Logout",
+    "profile": "Profile",
+    "settings": "Settings",
+    "calendar": "Calendar",
+    "today": "Today",
+    "all": "All",
+    "month": "Month",
+    "week": "Week",
+    "day": "Day",
+    "yes": "Yes",
+    "no": "No",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "close": "Close",
+    "loading": "Loading",
+    "error": "Error",
+    "success": "Success",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "search": "Search",
+    "filter": "Filter",
+    "share": "Share",
+    "copy": "Copy",
+    "copied": "Copied"
+  },
+  "navbar": {
+    "brand": "Communikey",
+    "calendar": "Calendar",
+    "switchAccount": "Switch Account",
+    "logoutCurrent": "Logout",
+    "logoutAll": "Logout All Accounts",
+    "logoutAllConfirm": "Are you sure you want to logout all accounts?"
+  },
+  "landing": {
+    "hero": {
+      "title": "Connect, Organize, and Collaborate in Decentralized Communities",
+      "subtitle": "Join topic-based communities, coordinate events, and engage in real-time discussions—all powered by the Nostr protocol",
+      "browseCalendar": "Browse Calendar",
+      "exploreCommunities": "Explore Communities"
+    },
+    "features": {
+      "communities": "Communities",
+      "chat": "Chat",
+      "calendar": "Calendar",
+      "moreToCome": "More to come"
+    },
+    "meta": {
+      "title": "Communikey - Decentralized Communities on Nostr",
+      "description": "Connect, organize, and collaborate in decentralized communities powered by Nostr protocol"
+    }
+  },
+  "calendar": {
+    "title": "Calendar",
+    "navigation": {
+      "today": "Today",
+      "previous": "Previous {viewMode}",
+      "next": "Next {viewMode}",
+      "allEvents": "All Events",
+      "openFilters": "Open filters",
+      "calendarGridView": "Calendar Grid View",
+      "listView": "List View", 
+      "mapView": "Map View"
+    },
+    "viewMode": {
+      "all": "All",
+      "month": "Month",
+      "week": "Week",
+      "day": "Day"
+    },
+    "event": {
+      "title": "Event Title",
+      "description": "Description",
+      "location": "Location",
+      "start": "Start",
+      "end": "End",
+      "create": "Create Event",
+      "edit": "Edit Event",
+      "delete": "Delete Event",
+      "details": "Event Details",
+      "noEvents": "No events",
+      "attending": "Attending",
+      "notAttending": "Not Attending",
+      "maybe": "Maybe",
+      "rsvp": "RSVP",
+      "addToCalendar": "Add to Calendar",
+      "tags": "Tags",
+      "organizer": "Organizer",
+      "attendees": "Attendees",
+      "noLocation": "No location specified",
+      "noDescription": "No description",
+      "allDay": "All day"
+    },
+    "filters": {
+      "title": "Filters",
+      "communities": "Communities",
+      "calendars": "Calendars",
+      "tags": "Tags",
+      "clear": "Clear Filters",
+      "apply": "Apply",
+      "showAll": "Show All"
+    },
+    "creation": {
+      "title": "Create Calendar",
+      "name": "Calendar Name",
+      "description": "Description",
+      "create": "Create Calendar",
+      "cancel": "Cancel"
+    },
+    "management": {
+      "title": "Manage Calendar",
+      "edit": "Edit Calendar",
+      "delete": "Delete Calendar",
+      "share": "Share Calendar"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Login",
+      "withPrivateKey": "Login with Private Key",
+      "withExtension": "Login with Extension",
+      "privateKey": "Private Key",
+      "enterPrivateKey": "Enter your private key",
+      "privateKeyPlaceholder": "nsec...",
+      "submit": "Login",
+      "noAccount": "Don't have an account?",
+      "signup": "Sign up"
+    },
+    "signup": {
+      "title": "Sign Up",
+      "createAccount": "Create Account",
+      "generateKeys": "Generate Keys",
+      "userName": "User Name",
+      "displayName": "Display Name",
+      "about": "About",
+      "submit": "Create Account",
+      "haveAccount": "Already have an account?",
+      "login": "Login",
+      "saveKeys": "Save your keys safely!",
+      "privateKeyWarning": "Keep your private key safe. You'll need it to login."
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "edit": "Edit Profile",
+    "displayName": "Display Name",
+    "userName": "User Name",
+    "about": "About",
+    "website": "Website",
+    "picture": "Profile Picture",
+    "banner": "Banner",
+    "nip05": "NIP-05 Identifier",
+    "save": "Save Profile",
+    "cancel": "Cancel",
+    "follow": "Follow",
+    "unfollow": "Unfollow",
+    "following": "Following",
+    "followers": "Followers",
+    "notes": "Notes",
+    "copied": "Copied to clipboard"
+  },
+  "community": {
+    "title": "Community",
+    "explore": "Explore Communities",
+    "join": "Join",
+    "leave": "Leave",
+    "joined": "Joined",
+    "members": "Members",
+    "events": "Events",
+    "about": "About",
+    "create": "Create Community",
+    "edit": "Edit Community",
+    "name": "Community Name",
+    "description": "Description",
+    "picture": "Picture",
+    "noCommunities": "No communities found",
+    "search": "Search communities",
+    "tags": "Tags"
+  },
+  "comments": {
+    "title": "Comments",
+    "add": "Add Comment",
+    "reply": "Reply",
+    "edit": "Edit",
+    "delete": "Delete",
+    "noComments": "No comments yet",
+    "writeComment": "Write a comment...",
+    "post": "Post",
+    "cancel": "Cancel"
+  },
+  "reactions": {
+    "like": "Like",
+    "love": "Love",
+    "laugh": "Laugh",
+    "wow": "Wow",
+    "sad": "Sad",
+    "angry": "Angry",
+    "addReaction": "Add Reaction"
+  },
+  "modal": {
+    "close": "Close",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
+  "form": {
+    "required": "Required",
+    "optional": "Optional",
+    "invalidEmail": "Invalid email",
+    "invalidUrl": "Invalid URL",
+    "tooShort": "Too short",
+    "tooLong": "Too long"
+  },
+  "error": {
+    "generic": "Something went wrong",
+    "notFound": "Not found",
+    "unauthorized": "Unauthorized",
+    "networkError": "Network error",
+    "tryAgain": "Try again"
+  },
+  "toast": {
+    "success": "Success!",
+    "error": "Error!",
+    "copied": "Copied to clipboard",
+    "saved": "Saved successfully",
+    "deleted": "Deleted successfully",
+    "created": "Created successfully"
+  },
+  "discover": {
+    "title": "Discover Communities",
+    "search": "Search communities...",
+    "noResults": "No communities found",
+    "loadMore": "Load More"
+  }
+}

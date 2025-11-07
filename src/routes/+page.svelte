@@ -1,4 +1,5 @@
 <script>
+	import * as m from '$lib/paraglide/messages';
 	import { goto } from '$app/navigation';
 	import { useActiveUser } from '$lib/stores/accounts.svelte';
 	import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte.js';
@@ -34,10 +35,10 @@
 </script>
 
 <svelte:head>
-	<title>Communikey - Decentralized Communities on Nostr</title>
+	<title>{m["landing.meta.title"]()}</title>
 	<meta
 		name="description"
-		content="Connect, organize, and collaborate in decentralized communities powered by Nostr protocol"
+		content={m["landing.meta.description"]()}
 	/>
 </svelte:head>
 

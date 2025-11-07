@@ -1,0 +1,241 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "common": {
+    "login": "Anmelden",
+    "logout": "Abmelden",
+    "profile": "Profil",
+    "settings": "Einstellungen",
+    "calendar": "Kalender",
+    "today": "Heute",
+    "all": "Alle",
+    "month": "Monat",
+    "week": "Woche",
+    "day": "Tag",
+    "yes": "Ja",
+    "no": "Nein",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "create": "Erstellen",
+    "close": "Schließen",
+    "loading": "Lädt",
+    "error": "Fehler",
+    "success": "Erfolg",
+    "back": "Zurück",
+    "next": "Weiter",
+    "previous": "Zurück",
+    "search": "Suchen",
+    "filter": "Filter",
+    "share": "Teilen",
+    "copy": "Kopieren",
+    "copied": "Kopiert"
+  },
+  "navbar": {
+    "brand": "Communikey",
+    "calendar": "Kalender",
+    "switchAccount": "Konto wechseln",
+    "logoutCurrent": "Abmelden",
+    "logoutAll": "Alle Konten abmelden",
+    "logoutAllConfirm": "Möchten Sie wirklich alle Konten abmelden?"
+  },
+  "landing": {
+    "hero": {
+      "title": "Verbinden, Organisieren und Zusammenarbeiten in dezentralen Communities",
+      "subtitle": "Treten Sie themenbasierten Communities bei, koordinieren Sie Veranstaltungen und nehmen Sie an Echtzeit-Diskussionen teil – alles angetrieben vom Nostr-Protokoll",
+      "browseCalendar": "Kalender durchsuchen",
+      "exploreCommunities": "Communities erkunden"
+    },
+    "features": {
+      "communities": "Communities",
+      "chat": "Chat",
+      "calendar": "Kalender",
+      "moreToCome": "Mehr kommt bald"
+    },
+    "meta": {
+      "title": "Communikey - Dezentrale Communities auf Nostr",
+      "description": "Verbinden, organisieren und zusammenarbeiten in dezentralen Communities, angetrieben vom Nostr-Protokoll"
+    }
+  },
+  "calendar": {
+    "title": "Kalender",
+    "navigation": {
+      "today": "Heute",
+      "previous": "Vorherige {viewMode}",
+      "next": "Nächste {viewMode}",
+      "allEvents": "Alle Veranstaltungen",
+      "openFilters": "Filter öffnen",
+      "calendarGridView": "Kalenderansicht",
+      "listView": "Listenansicht",
+      "mapView": "Kartenansicht"
+    },
+    "viewMode": {
+      "all": "Alle",
+      "month": "Monat",
+      "week": "Woche",
+      "day": "Tag"
+    },
+    "event": {
+      "title": "Veranstaltungstitel",
+      "description": "Beschreibung",
+      "location": "Ort",
+      "start": "Beginn",
+      "end": "Ende",
+      "create": "Veranstaltung erstellen",
+      "edit": "Veranstaltung bearbeiten",
+      "delete": "Veranstaltung löschen",
+      "details": "Veranstaltungsdetails",
+      "noEvents": "Keine Veranstaltungen",
+      "attending": "Nehme teil",
+      "notAttending": "Nehme nicht teil",
+      "maybe": "Vielleicht",
+      "rsvp": "Zusagen",
+      "addToCalendar": "Zum Kalender hinzufügen",
+      "tags": "Tags",
+      "organizer": "Organisator",
+      "attendees": "Teilnehmer",
+      "noLocation": "Kein Ort angegeben",
+      "noDescription": "Keine Beschreibung",
+      "allDay": "Ganztägig"
+    },
+    "filters": {
+      "title": "Filter",
+      "communities": "Communities",
+      "calendars": "Kalender",
+      "tags": "Tags",
+      "clear": "Filter zurücksetzen",
+      "apply": "Anwenden",
+      "showAll": "Alle anzeigen"
+    },
+    "creation": {
+      "title": "Kalender erstellen",
+      "name": "Kalendername",
+      "description": "Beschreibung",
+      "create": "Kalender erstellen",
+      "cancel": "Abbrechen"
+    },
+    "management": {
+      "title": "Kalender verwalten",
+      "edit": "Kalender bearbeiten",
+      "delete": "Kalender löschen",
+      "share": "Kalender teilen"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Anmelden",
+      "withPrivateKey": "Mit privatem Schlüssel anmelden",
+      "withExtension": "Mit Erweiterung anmelden",
+      "privateKey": "Privater Schlüssel",
+      "enterPrivateKey": "Geben Sie Ihren privaten Schlüssel ein",
+      "privateKeyPlaceholder": "nsec...",
+      "submit": "Anmelden",
+      "noAccount": "Haben Sie noch kein Konto?",
+      "signup": "Registrieren"
+    },
+    "signup": {
+      "title": "Registrieren",
+      "createAccount": "Konto erstellen",
+      "generateKeys": "Schlüssel generieren",
+      "userName": "Benutzername",
+      "displayName": "Anzeigename",
+      "about": "Über mich",
+      "submit": "Konto erstellen",
+      "haveAccount": "Haben Sie bereits ein Konto?",
+      "login": "Anmelden",
+      "saveKeys": "Bewahren Sie Ihre Schlüssel sicher auf!",
+      "privateKeyWarning": "Bewahren Sie Ihren privaten Schlüssel sicher auf. Sie benötigen ihn zum Anmelden."
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "edit": "Profil bearbeiten",
+    "displayName": "Anzeigename",
+    "userName": "Benutzername",
+    "about": "Über mich",
+    "website": "Webseite",
+    "picture": "Profilbild",
+    "banner": "Banner",
+    "nip05": "NIP-05 Identifikator",
+    "save": "Profil speichern",
+    "cancel": "Abbrechen",
+    "follow": "Folgen",
+    "unfollow": "Nicht mehr folgen",
+    "following": "Folge ich",
+    "followers": "Follower",
+    "notes": "Notizen",
+    "copied": "In die Zwischenablage kopiert"
+  },
+  "community": {
+    "title": "Community",
+    "explore": "Communities erkunden",
+    "join": "Beitreten",
+    "leave": "Verlassen",
+    "joined": "Beigetreten",
+    "members": "Mitglieder",
+    "events": "Veranstaltungen",
+    "about": "Über",
+    "create": "Community erstellen",
+    "edit": "Community bearbeiten",
+    "name": "Community-Name",
+    "description": "Beschreibung",
+    "picture": "Bild",
+    "noCommunities": "Keine Communities gefunden",
+    "search": "Communities suchen",
+    "tags": "Tags"
+  },
+  "comments": {
+    "title": "Kommentare",
+    "add": "Kommentar hinzufügen",
+    "reply": "Antworten",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "noComments": "Noch keine Kommentare",
+    "writeComment": "Schreiben Sie einen Kommentar...",
+    "post": "Posten",
+    "cancel": "Abbrechen"
+  },
+  "reactions": {
+    "like": "Gefällt mir",
+    "love": "Liebe",
+    "laugh": "Lachen",
+    "wow": "Wow",
+    "sad": "Traurig",
+    "angry": "Verärgert",
+    "addReaction": "Reaktion hinzufügen"
+  },
+  "modal": {
+    "close": "Schließen",
+    "confirm": "Bestätigen",
+    "cancel": "Abbrechen"
+  },
+  "form": {
+    "required": "Erforderlich",
+    "optional": "Optional",
+    "invalidEmail": "Ungültige E-Mail",
+    "invalidUrl": "Ungültige URL",
+    "tooShort": "Zu kurz",
+    "tooLong": "Zu lang"
+  },
+  "error": {
+    "generic": "Etwas ist schief gelaufen",
+    "notFound": "Nicht gefunden",
+    "unauthorized": "Nicht autorisiert",
+    "networkError": "Netzwerkfehler",
+    "tryAgain": "Erneut versuchen"
+  },
+  "toast": {
+    "success": "Erfolg!",
+    "error": "Fehler!",
+    "copied": "In die Zwischenablage kopiert",
+    "saved": "Erfolgreich gespeichert",
+    "deleted": "Erfolgreich gelöscht",
+    "created": "Erfolgreich erstellt"
+  },
+  "discover": {
+    "title": "Communities entdecken",
+    "search": "Communities suchen...",
+    "noResults": "Keine Communities gefunden",
+    "loadMore": "Mehr laden"
+  }
+}

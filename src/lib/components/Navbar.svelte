@@ -1,8 +1,10 @@
 <script>
+	import * as m from '$lib/paraglide/messages';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { CalendarIcon } from './icons';
 	import ProfileAvatar from './shared/ProfileAvatar.svelte';
+	import LanguageSwitcher from './LanguageSwitcher.svelte';
 
 	// Use the modal store for opening modals
 	const modal = modalStore;
@@ -71,7 +73,7 @@
 	function handleLogoutAll() {
 		console.log('Navbar: Logging out all accounts');
 		
-		if (confirm('Are you sure you want to logout all accounts?')) {
+		if (confirm(m["navbar.logoutAllConfirm"]())) {
 			const accounts = [...manager.accounts];
 			accounts.forEach(account => {
 				manager.removeAccount(account.id);
@@ -84,13 +86,14 @@
 
 <div class="navbar bg-base-100 shadow-sm ">
 	<div class="flex-1">
-		<a href="/" class="btn text-xl btn-ghost">Communikey</a>
+		<a href="/" class="btn text-xl btn-ghost">{m["navbar.brand"]()}</a>
 	</div>
 	<div class="flex gap-2 items-center">
 		<a href="/calendar" class="btn btn-ghost btn">
 			<CalendarIcon class_="w-5 h-5" />
-			Calendar
+			{m["navbar.calendar"]()}
 		</a>
+		<LanguageSwitcher />
 		{#if activeAccount}
 			<div class="dropdown dropdown-end">
 				<div tabindex="0" role="button" class="btn btn-circle btn-ghost">
@@ -99,22 +102,22 @@
 				<ul class="dropdown-content menu z-1 mt-3 w-52 menu-sm rounded-box bg-base-100 p-2 shadow">
 					<li>
 						<a href="/p/{activeAccount.pubkey}" class="justify-between">
-							Profile
+							{m["common.profile"]()}
 						</a>
 					</li>
 					<li>
-						<button onclick={openLoginModal}>Switch Account</button>
+						<button onclick={openLoginModal}>{m["navbar.switchAccount"]()}</button>
 					</li>
 					<!-- TODO: Implement settings functionality -->
-					<!-- <li><button>Settings</button></li> -->
-					<li><button onclick={handleLogoutCurrent}>Logout</button></li>
+					<!-- <li><button>{m["common.settings"]()}</button></li> -->
+					<li><button onclick={handleLogoutCurrent}>{m["navbar.logoutCurrent"]()}</button></li>
 					{#if accountCount > 1}
-						<li><button onclick={handleLogoutAll}>Logout All Accounts</button></li>
+						<li><button onclick={handleLogoutAll}>{m["navbar.logoutAll"]()}</button></li>
 					{/if}
 				</ul>
 			</div>
 		{:else}
-			<button onclick={openLoginModal} class="btn btn-ghost">Login</button>
+			<button onclick={openLoginModal} class="btn btn-ghost">{m["common.login"]()}</button>
 		{/if}
 	</div>
 </div>

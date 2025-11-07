@@ -4,6 +4,7 @@
 -->
 
 <script>
+	import * as m from '$lib/paraglide/messages';
 	import { page } from '$app/stores';
 	import { formatCalendarDate } from '../../helpers/calendar.js';
 	import { updateQueryParams } from '../../helpers/urlParams.js';
@@ -53,7 +54,7 @@
 	function getDisplayDate(date, mode) {
 		switch (mode) {
 			case 'all':
-				return 'All Events';
+				return m["calendar.navigation.allEvents"]();
 			case 'month':
 				return formatCalendarDate(date, 'long');
 			case 'week':
@@ -165,7 +166,7 @@
 						<ChevronLeftIcon class_="w-5 h-5" />
 					</button>
 
-					<button class="btn btn-sm btn-primary" onclick={handleTodayClick}>Today</button>
+					<button class="btn btn-sm btn-primary" onclick={handleTodayClick}>{m["common.today"]()}</button>
 
 					<button
 						class="btn btn-outline btn-sm"
@@ -176,7 +177,7 @@
 					</button>
 				</div>
 			{:else}
-				<div class="flex-1 text-center text-lg font-semibold text-base-content">All Events</div>
+				<div class="flex-1 text-center text-lg font-semibold text-base-content">{m["calendar.navigation.allEvents"]()}</div>
 			{/if}
 
 			<!-- Add Calendar Button -->
@@ -291,7 +292,7 @@
 				</button>
 
 				<!-- Today Button -->
-				<button class="btn btn-sm btn-primary" onclick={handleTodayClick}> Today </button>
+				<button class="btn btn-sm btn-primary" onclick={handleTodayClick}>{m["common.today"]()}</button>
 
 				<button
 					class="btn btn-outline btn-sm"
@@ -308,7 +309,7 @@
 		{:else}
 			<!-- In 'all' mode, show a simple heading instead -->
 			<div class="flex items-center gap-4">
-				<div class="text-lg font-semibold text-base-content">All Events</div>
+				<div class="text-lg font-semibold text-base-content">{m["calendar.navigation.allEvents"]()}</div>
 			</div>
 		{/if}
 
@@ -355,33 +356,33 @@
 					class:btn-primary={viewMode === 'all'}
 					onclick={() => handleViewModeClick('all')}
 				>
-					All
+					{m["common.all"]()}
 				</button>
 			{/if}
 			<button
 				class="btn join-item btn-sm"
 				class:btn-outline={viewMode !== 'month'}
 				class:btn-primary={viewMode === 'month'}
-				onclick={() => handleViewModeClick('month')}
-			>
-				Month
-			</button>
-			<button
-				class="btn join-item btn-sm"
-				class:btn-outline={viewMode !== 'week'}
-				class:btn-primary={viewMode === 'week'}
-				onclick={() => handleViewModeClick('week')}
-			>
-				Week
-			</button>
-			<button
-				class="btn join-item btn-sm"
-				class:btn-outline={viewMode !== 'day'}
-				class:btn-primary={viewMode === 'day'}
-				onclick={() => handleViewModeClick('day')}
-			>
-				Day
-			</button>
+					onclick={() => handleViewModeClick('month')}
+				>
+					{m["common.month"]()}
+				</button>
+				<button
+					class="btn join-item btn-sm"
+					class:btn-outline={viewMode !== 'week'}
+					class:btn-primary={viewMode === 'week'}
+					onclick={() => handleViewModeClick('week')}
+				>
+					{m["common.week"]()}
+				</button>
+				<button
+					class="btn join-item btn-sm"
+					class:btn-outline={viewMode !== 'day'}
+					class:btn-primary={viewMode === 'day'}
+					onclick={() => handleViewModeClick('day')}
+				>
+					{m["common.day"]()}
+				</button>
 		</div>
 		{#if !communityMode && !$page.url.pathname.endsWith('/calendar')}
 			<AddToCalendarButton />

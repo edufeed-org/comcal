@@ -14,4 +14,3 @@
 <Navbar />
 <ModalManager />
 {@render children?.()}
-

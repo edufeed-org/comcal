@@ -7,7 +7,10 @@ const config = {
 			out: 'build',
 			precompress: false,
 			envPrefix: ''
-		})
+		}),
+		alias: {
+			$paraglide: './src/lib/paraglide'
+		}
 	}
 };
 
