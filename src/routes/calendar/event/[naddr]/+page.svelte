@@ -4,20 +4,17 @@
 	import { appConfig } from '$lib/config.js';
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import { encodeEventToNaddr, hexToNpub } from '$lib/helpers/nostrUtils';
-	import { deleteCalendarEvent } from '$lib/helpers/eventDeletion.js';
 	import { showToast } from '$lib/helpers/toast.js';
 	import CommentList from '$lib/components/comments/CommentList.svelte';
 	import ReactionBar from '$lib/components/reactions/ReactionBar.svelte';
-import {
-	CalendarIcon,
-	ClockIcon,
-	LocationIcon,
-	UserIcon,
-	EditIcon,
-	TrashIcon,
-	CopyIcon,
-	ExternalLinkIcon
-} from '$lib/components/icons';
+	import {
+		CalendarIcon,
+		ClockIcon,
+		LocationIcon,
+		UserIcon,
+		CopyIcon,
+		ExternalLinkIcon
+	} from '$lib/components/icons';
 	import AddToCalendarDropdown from '$lib/components/calendar/AddToCalendarDropdown.svelte';
 	import EventTags from '$lib/components/calendar/EventTags.svelte';
 	import CalendarEventModal from '$lib/components/calendar/CalendarEventModal.svelte';
@@ -30,6 +27,7 @@ import {
 	import { useCalendarEventRsvps } from '$lib/stores/calendar-event-rsvps.svelte.js';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { transformRsvps } from '$lib/helpers/rsvpUtils.js';
+	import EventManagementActions from '$lib/components/calendar/EventManagementActions.svelte';
 
 	/** @type {import('./$types').PageProps} */
 	let { data } = $props();
@@ -42,8 +40,6 @@ import {
 	let featuredCalendars = $state(/** @type {any[]} */ ([]));
 	let isLoadingCalendars = $state(true);
 	let isEditModalOpen = $state(false);
-	let isDeletingEvent = $state(false);
-	let showDeleteConfirmation = $state(false);
 
 	// Get event from data
 	let event = $derived(data.event);
@@ -162,30 +158,17 @@ import {
 	}
 
 	/**
-	 * Handle event deletion with NIP-09
+	 * Handle edit action - open edit modal
 	 */
-	async function handleDeleteEvent() {
-		if (!activeUser || !event) return;
+	function handleEdit() {
+		isEditModalOpen = true;
+	}
 
-		isDeletingEvent = true;
-
-		try {
-			const result = await deleteCalendarEvent(event, activeUser);
-
-			if (result.success) {
-				showToast('Event deleted successfully', 'success');
-				// Navigate back to previous page
-				window.history.back();
-			} else {
-				showToast(result.error || 'Failed to delete event', 'error');
-			}
-		} catch (error) {
-			console.error('Failed to delete event:', error);
-			showToast('An error occurred while deleting the event', 'error');
-		} finally {
-			isDeletingEvent = false;
-			showDeleteConfirmation = false;
-		}
+	/**
+	 * Handle delete success - navigate back
+	 */
+	function handleDeleteSuccess() {
+		window.history.back();
 	}
 </script>
 
@@ -240,25 +223,12 @@ import {
 			<div class="flex flex-shrink-0 items-center gap-2">
 				<AddToCalendarDropdown event={event} disabled={!activeUser} />
 				{#if isUserEvent}
-					<div class="dropdown dropdown-end">
-						<button tabindex="0" class="btn btn-ghost btn-sm btn-square" role="button" title="Manage event">
-							<EditIcon />
-						</button>
-					<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow-lg border border-base-300">
-						<li>
-							<button onclick={() => isEditModalOpen = true} class="flex items-center gap-2">
-								<EditIcon class="w-4 h-4" />
-								<span>Edit Event</span>
-							</button>
-						</li>
-						<li>
-							<button onclick={() => showDeleteConfirmation = true} class="flex items-center gap-2 text-error hover:bg-error/10">
-								<TrashIcon class="w-4 h-4" />
-								<span>Delete Event</span>
-							</button>
-						</li>
-					</ul>
-					</div>
+					<EventManagementActions
+						{event}
+						{activeUser}
+						onEdit={handleEdit}
+						onDeleteSuccess={handleDeleteSuccess}
+					/>
 				{/if}
 			</div>
 		</div>
@@ -547,39 +517,4 @@ import {
 			window.location.reload();
 		}}
 	/>
-{/if}
-
-<!-- Delete Confirmation Modal -->
-{#if showDeleteConfirmation && event}
-	<div class="modal modal-open">
-		<div class="modal-box">
-			<h3 class="text-lg font-bold">Delete Event?</h3>
-			<p class="py-4">
-				Are you sure you want to delete <strong>{event.title}</strong>?
-				<br />
-				This action cannot be undone.
-			</p>
-			<div class="modal-action">
-				<button 
-					class="btn" 
-					onclick={() => showDeleteConfirmation = false}
-					disabled={isDeletingEvent}
-				>
-					Cancel
-				</button>
-				<button 
-					class="btn btn-error" 
-					onclick={handleDeleteEvent}
-					disabled={isDeletingEvent}
-				>
-					{#if isDeletingEvent}
-						<span class="loading loading-spinner loading-sm"></span>
-						Deleting...
-					{:else}
-						Delete Event
-					{/if}
-				</button>
-			</div>
-		</div>
-	</div>
 {/if}
