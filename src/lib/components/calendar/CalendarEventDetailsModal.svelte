@@ -288,19 +288,6 @@
 					</button>
 				</div>
 
-				<!-- Author Info -->
-				<div class="flex items-center gap-2 text-sm text-base-content/70">
-					<UserIcon class_="w-4 h-4" />
-					<span>Event by</span>
-					<div class="inline-flex">
-						<ProfileCard 
-							pubkey={event.pubkey} 
-							onClose={handleClose}
-						/>
-					</div>
-				</div>
-			</div>
-
 			<!-- Event Image -->
 			{#if event.image}
 				<div class="mb-6">
