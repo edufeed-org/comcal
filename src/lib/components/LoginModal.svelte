@@ -1,6 +1,7 @@
 <script>
 	let { modalId, onNSECTransition } = $props();
 
+	import * as m from '$lib/paraglide/messages';
 	import { ExtensionSigner } from 'applesauce-signers';
 	import { signer } from '$lib/stores/accounts.svelte';
 
@@ -72,25 +73,25 @@
 
 <dialog id={modalId} class="modal">
 	<div class="modal-box">
-		<h1 class="text-lg font-bold">Add an Account</h1>
-		<p class="py-4">Choose how you want to login</p>
+		<h1 class="text-lg font-bold">{m.auth_login_modal_add_account()}</h1>
+		<p class="py-4">{m.auth_login_modal_choose_method()}</p>
 		
 		<div class="space-y-4">
 			<div class="join flex flex-col">
-				<button onclick={() => createSigner('Extension')} class="btn join-item">Extension</button>
-				<button onclick={() => createSigner('NSEC')} class="btn join-item">NSEC / NCRYPTSEC</button>
-				<button disabled onclick={() => createSigner('Bunker')} class="btn join-item">Bunker</button>
+				<button onclick={() => createSigner('Extension')} class="btn join-item">{m.auth_login_modal_extension()}</button>
+				<button onclick={() => createSigner('NSEC')} class="btn join-item">{m.auth_login_modal_nsec()}</button>
+				<button disabled onclick={() => createSigner('Bunker')} class="btn join-item">{m.auth_login_modal_bunker()}</button>
 			</div>
 
-			<div class="divider">OR</div>
+			<div class="divider">{m.auth_login_modal_or()}</div>
 
 			<div class="text-center">
-				<h2 class="text-lg font-bold mb-2">Don't have an account yet?</h2>
+				<h2 class="text-lg font-bold mb-2">{m.auth_login_modal_no_account()}</h2>
 				<SignupButton class="w-full" />
 			</div>
 
 			{#if getAccounts().length > 0}
-				<div class="divider">Available Accounts</div>
+				<div class="divider">{m.auth_login_modal_available_accounts()}</div>
 				<ul class="space-y-2">
 					{#each getAccounts() as account}
 						<AccountProfile {account} />
@@ -101,7 +102,7 @@
 		
 		<div class="modal-action">
 			<form method="dialog">
-				<button class="btn">Close</button>
+				<button class="btn">{m.common_close()}</button>
 			</form>
 		</div>
 	</div>

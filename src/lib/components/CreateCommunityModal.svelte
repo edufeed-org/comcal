@@ -1,4 +1,5 @@
 <script>
+	import * as m from '$lib/paraglide/messages';
 	import { goto } from '$app/navigation';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { SimpleSigner } from 'applesauce-signers';
@@ -116,14 +117,14 @@
 		// For current keypair flow, validate community settings in step 1
 		if (useCurrentKeypair && step === 1) {
 			if (communityData.relays.length === 0) {
-				errors.relays = 'At least one relay is required';
+				errors.relays = m.create_community_modal_error_relays_required();
 				return false;
 			}
 
 			// Check if at least one content type is selected
 			const hasContentType = Object.values(communityData.contentTypes).some(Boolean);
 			if (!hasContentType) {
-				errors.contentTypes = 'At least one content type must be selected';
+				errors.contentTypes = m.create_community_modal_error_content_types_required();
 				return false;
 			}
 		}
@@ -131,7 +132,7 @@
 		// For new keypair flow, validate profile in step 1
 		if (!useCurrentKeypair && step === 1) {
 			if (!userData.name.trim()) {
-				errors.name = 'Name is required';
+				errors.name = m.create_community_modal_error_name_required();
 				return false;
 			}
 		}
@@ -139,7 +140,7 @@
 		// For new keypair flow, validate key download in step 2
 		if (!useCurrentKeypair && step === 2) {
 			if (!userData.downloadConfirmed) {
-				errors.download = 'Please download your private key before continuing';
+				errors.download = m.create_community_modal_error_download_required();
 				return false;
 			}
 		}
@@ -147,14 +148,14 @@
 		// For new keypair flow, validate community settings in step 3
 		if (!useCurrentKeypair && step === 3) {
 			if (communityData.relays.length === 0) {
-				errors.relays = 'At least one relay is required';
+				errors.relays = m.create_community_modal_error_relays_required();
 				return false;
 			}
 
 			// Check if at least one content type is selected
 			const hasContentType = Object.values(communityData.contentTypes).some(Boolean);
 			if (!hasContentType) {
-				errors.contentTypes = 'At least one content type must be selected';
+				errors.contentTypes = m.create_community_modal_error_content_types_required();
 				return false;
 			}
 		}
@@ -165,9 +166,9 @@
 	// Get step labels based on flow
 	function getStepLabels() {
 		if (useCurrentKeypair) {
-			return ['Community Settings', 'Confirm'];
+			return [m.create_community_modal_step_community_settings(), m.create_community_modal_step_confirm()];
 		} else {
-			return ['Profile', 'Keys', 'Community Settings', 'Confirm'];
+			return [m.create_community_modal_step_profile(), m.create_community_modal_step_keys(), m.create_community_modal_step_community_settings(), m.create_community_modal_step_confirm()];
 		}
 	}
 
@@ -177,13 +178,13 @@
 	 */
 	function validateRelayUrl(url) {
 		if (!url.startsWith('wss://') && !url.startsWith('ws://')) {
-			return 'Relay URL must start with wss:// or ws://';
+			return m.create_community_modal_relays_validation();
 		}
 		try {
 			new URL(url);
 			return null;
 		} catch {
-			return 'Invalid URL format';
+			return m.create_community_modal_error_invalid_url();
 		}
 	}
 
@@ -223,7 +224,7 @@
 			if (!useCurrentKeypair) {
 				// Create new account for the community
 				if (!userData.privateKey) {
-					throw new Error('Private key not available');
+					throw new Error(m.create_community_modal_error_private_key());
 				}
 				signer = new SimpleSigner(userData.privateKey);
 				account = new SimpleAccount(userData.publicKey, signer);
@@ -256,12 +257,12 @@
 			}
 
 			if (!account || !signer) {
-				throw new Error('No account available for community creation');
+				throw new Error(m.create_community_modal_error_no_account());
 			}
 
 			// Validate at least one relay
 			if (communityData.relays.length === 0) {
-				throw new Error('At least one relay is required');
+				throw new Error(m.create_community_modal_error_relay_required());
 			}
 
 			// Create community creation event (kind:10222)
@@ -365,12 +366,12 @@
 					closeModal();
 				}
 			} else {
-				throw new Error('Failed to publish community to any relay');
+				throw new Error(m.create_community_modal_error_publish_failed());
 			}
 
 		} catch (error) {
 			console.error('Error creating community:', error);
-			errors.publishing = error instanceof Error ? error.message : 'Failed to create community. Please try again.';
+			errors.publishing = error instanceof Error ? error.message : m.create_community_modal_error_failed();
 		} finally {
 			isPublishing = false;
 		}
@@ -403,7 +404,7 @@
 	<div class="modal-box max-w-2xl">
 		<!-- Header with steps -->
 		<div class="mb-6">
-			<h1 class="text-2xl font-bold mb-4">Create New Community</h1>
+			<h1 class="text-2xl font-bold mb-4">{m.create_community_modal_title()}</h1>
 
 			<!-- Step indicator - only show after keypair selection -->
 			{#if currentStep > 0}
@@ -420,22 +421,22 @@
 			{#if currentStep === 0}
 				<!-- Keypair Selection Step -->
 				<div class="space-y-4">
-					<h2 class="text-xl font-semibold mb-4">Choose Keypair for Community</h2>
+					<h2 class="text-xl font-semibold mb-4">{m.create_community_modal_keypair_selection_title()}</h2>
 
 					<div class="space-y-4">
 						<!-- Use Current Keypair Option -->
 						<div class="card bg-base-200">
 							<div class="card-body">
-								<h3 class="card-title">Use Current Keypair</h3>
+								<h3 class="card-title">{m.create_community_modal_current_keypair_title()}</h3>
 								<p class="text-sm opacity-70">
-									Create the community using your currently active account. No additional signup required.
+									{m.create_community_modal_current_keypair_description()}
 								</p>
 								<div class="card-actions justify-end mt-4">
 									<button
 										class="btn btn-primary"
 										onclick={selectCurrentKeypair}
 									>
-										Use Current Keypair
+										{m.create_community_modal_current_keypair_button()}
 									</button>
 								</div>
 							</div>
@@ -444,13 +445,13 @@
 						<!-- Create New Keypair Option -->
 						<div class="card bg-base-200">
 							<div class="card-body">
-								<h3 class="card-title">Create New Keypair</h3>
+								<h3 class="card-title">{m.create_community_modal_new_keypair_title()}</h3>
 								<p class="text-sm opacity-70">
-									Generate a new keypair specifically for this community. You'll need to create a profile and download keys.
+									{m.create_community_modal_new_keypair_description()}
 								</p>
 								<div class="card-actions justify-end mt-4">
 									<button class="btn btn-secondary" onclick={selectNewKeypair}>
-										Create New Keypair
+										{m.create_community_modal_new_keypair_button()}
 									</button>
 								</div>
 							</div>
@@ -463,48 +464,47 @@
 				<div class="space-y-6">
 					<div class="prose max-w-none mb-4">
 						<p class="text-sm text-base-content/70">
-							Your community will use your current profile (name, picture, description). 
-							Configure community-specific settings below.
+							{m.create_community_modal_current_settings_info()}
 						</p>
 					</div>
 
 					<!-- Relays -->
 					<EditableList
 						bind:items={communityData.relays}
-						label="Community Relays"
-						placeholder="wss://relay.example.com"
-						buttonText="Add Relay"
+						label={m.create_community_modal_relays_label()}
+						placeholder={m.create_community_modal_relays_placeholder()}
+						buttonText={m.create_community_modal_relays_button()}
 						itemType="relay"
 						validator={validateRelayUrl}
 						minItems={1}
-						helpText="At least one relay is required"
+						helpText={m.create_community_modal_relays_help()}
 					/>
 
 					<!-- Blossom Servers -->
 					<EditableList
 						bind:items={communityData.blossomServers}
-						label="Blossom Servers (Optional)"
-						placeholder="blossom.example.com"
-						buttonText="Add Server"
+						label={m.create_community_modal_blossom_label()}
+						placeholder={m.create_community_modal_blossom_placeholder()}
+						buttonText={m.create_community_modal_blossom_button()}
 						itemType="server"
 					/>
 
 					<!-- Location -->
 					<LocationInput
 						bind:value={communityData.location}
-						label="Community Location (Optional)"
-						placeholder="Berlin, Germany or Online"
+						label={m.create_community_modal_location_label()}
+						placeholder={m.create_community_modal_location_placeholder()}
 					/>
 
 					<!-- Community Description -->
 					<div class="form-control">
 						<label class="label">
-							<span class="label-text">Community Description (Optional)</span>
-							<span class="label-text-alt">Overwrites your profile description</span>
+							<span class="label-text">{m.create_community_modal_description_label()}</span>
+							<span class="label-text-alt">{m.create_community_modal_description_alt()}</span>
 						</label>
 						<textarea
 							bind:value={communityData.description}
-							placeholder="A specific description for this community (optional)"
+							placeholder={m.create_community_modal_description_placeholder()}
 							class="textarea textarea-bordered h-24"
 						></textarea>
 					</div>
@@ -512,8 +512,8 @@
 					<!-- Content Types -->
 					<div class="form-control">
 						<label class="label">
-							<span class="label-text font-semibold">Content Types</span>
-							<span class="label-text-alt text-sm">Select features for your community</span>
+							<span class="label-text font-semibold">{m.create_community_modal_content_types_label()}</span>
+							<span class="label-text-alt text-sm">{m.create_community_modal_content_types_alt()}</span>
 						</label>
 						<div class="grid grid-cols-2 gap-3">
 							<!-- Calendar Card -->
@@ -524,7 +524,7 @@
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
-										<span class="font-medium">Calendar</span>
+										<span class="font-medium">{m.create_community_modal_content_calendar()}</span>
 										<input
 											type="checkbox"
 											checked={communityData.contentTypes.calendar}
@@ -543,7 +543,7 @@
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
-										<span class="font-medium">Chat</span>
+										<span class="font-medium">{m.create_community_modal_content_chat()}</span>
 										<input
 											type="checkbox"
 											checked={communityData.contentTypes.chat}
@@ -562,7 +562,7 @@
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
-										<span class="font-medium">Articles</span>
+										<span class="font-medium">{m.create_community_modal_content_articles()}</span>
 										<input
 											type="checkbox"
 											checked={communityData.contentTypes.articles}
@@ -581,7 +581,7 @@
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
-										<span class="font-medium">Posts</span>
+										<span class="font-medium">{m.create_community_modal_content_posts()}</span>
 										<input
 											type="checkbox"
 											checked={communityData.contentTypes.posts}
@@ -600,7 +600,7 @@
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
-										<span class="font-medium">Wikis</span>
+										<span class="font-medium">{m.create_community_modal_content_wikis()}</span>
 										<input
 											type="checkbox"
 											checked={communityData.contentTypes.wikis}
@@ -622,32 +622,32 @@
 			{:else if currentStep === 2 && useCurrentKeypair}
 				<!-- Confirmation for Current Keypair -->
 				<div class="space-y-6">
-					<h2 class="text-xl font-semibold mb-4">Confirm Community Creation</h2>
+					<h2 class="text-xl font-semibold mb-4">{m.create_community_modal_confirm_title()}</h2>
 
 					<div class="space-y-4">
 						<!-- Profile Info -->
 						<div class="card bg-base-200">
 							<div class="card-body">
-								<h3 class="card-title">Profile (from current account)</h3>
-								<p class="text-sm text-base-content/70">Name, picture, and description from your current profile</p>
-								<p><strong>Public Key:</strong> <code class="text-xs">{manager.active?.pubkey.slice(0, 16)}...</code></p>
+								<h3 class="card-title">{m.create_community_modal_confirm_profile_current()}</h3>
+								<p class="text-sm text-base-content/70">{m.create_community_modal_confirm_profile_current_info()}</p>
+								<p><strong>{m.create_community_modal_confirm_pubkey()}</strong> <code class="text-xs">{manager.active?.pubkey.slice(0, 16)}...</code></p>
 							</div>
 						</div>
 
 						<!-- Community Settings -->
 						<div class="card bg-base-200">
 							<div class="card-body">
-								<h3 class="card-title">Community Settings</h3>
+								<h3 class="card-title">{m.create_community_modal_confirm_settings_section()}</h3>
 								<div class="space-y-2 text-sm">
-									<p><strong>Relays:</strong> {communityData.relays.join(', ')}</p>
+									<p><strong>{m.create_community_modal_confirm_relays()}</strong> {communityData.relays.join(', ')}</p>
 									{#if communityData.blossomServers.length > 0}
-										<p><strong>Blossom Servers:</strong> {communityData.blossomServers.join(', ')}</p>
+										<p><strong>{m.create_community_modal_confirm_blossom()}</strong> {communityData.blossomServers.join(', ')}</p>
 									{/if}
 									{#if communityData.location}
-										<p><strong>Location:</strong> {communityData.location}</p>
+										<p><strong>{m.create_community_modal_confirm_location()}</strong> {communityData.location}</p>
 									{/if}
 									{#if communityData.description}
-										<p><strong>Community Description:</strong> {communityData.description}</p>
+										<p><strong>{m.create_community_modal_confirm_description()}</strong> {communityData.description}</p>
 									{/if}
 								</div>
 							</div>
@@ -656,22 +656,22 @@
 						<!-- Content Types -->
 						<div class="card bg-base-200">
 							<div class="card-body">
-								<h3 class="card-title">Content Types</h3>
+								<h3 class="card-title">{m.create_community_modal_confirm_content_types_section()}</h3>
 								<div class="flex flex-wrap gap-2">
 									{#if communityData.contentTypes.calendar}
-										<span class="badge badge-primary">Calendar</span>
+										<span class="badge badge-primary">{m.create_community_modal_content_calendar()}</span>
 									{/if}
 									{#if communityData.contentTypes.chat}
-										<span class="badge badge-primary">Chat</span>
+										<span class="badge badge-primary">{m.create_community_modal_content_chat()}</span>
 									{/if}
 									{#if communityData.contentTypes.articles}
-										<span class="badge badge-primary">Articles</span>
+										<span class="badge badge-primary">{m.create_community_modal_content_articles()}</span>
 									{/if}
 									{#if communityData.contentTypes.posts}
-										<span class="badge badge-primary">Posts</span>
+										<span class="badge badge-primary">{m.create_community_modal_content_posts()}</span>
 									{/if}
 									{#if communityData.contentTypes.wikis}
-										<span class="badge badge-primary">Wikis</span>
+										<span class="badge badge-primary">{m.create_community_modal_content_wikis()}</span>
 									{/if}
 								</div>
 							</div>
@@ -684,10 +684,10 @@
 				<div class="space-y-6">
 					<div class="prose max-w-none">
 						<h2 class="text-xl font-semibold mb-4">
-							Create Profile for {userData.name || 'Your Community'}
+							{m.create_community_modal_profile_title({ name: userData.name || 'Your Community' })}
 						</h2>
 						<p class="mb-4">
-							Your community needs its own Nostr profile. This will be the identity that manages the community.
+							{m.create_community_modal_profile_description()}
 						</p>
 					</div>
 
@@ -703,45 +703,45 @@
 			{:else if currentStep === 3 && !useCurrentKeypair}
 				<!-- Community Settings for New Keypair -->
 				<div class="space-y-6">
-					<h2 class="text-xl font-semibold mb-4">Community Settings</h2>
+					<h2 class="text-xl font-semibold mb-4">{m.create_community_modal_step_community_settings()}</h2>
 
 					<!-- Relays -->
 					<EditableList
 						bind:items={communityData.relays}
-						label="Community Relays"
-						placeholder="wss://relay.example.com"
-						buttonText="Add Relay"
+						label={m.create_community_modal_relays_label()}
+						placeholder={m.create_community_modal_relays_placeholder()}
+						buttonText={m.create_community_modal_relays_button()}
 						itemType="relay"
 						validator={validateRelayUrl}
 						minItems={1}
-						helpText="At least one relay is required"
+						helpText={m.create_community_modal_relays_help()}
 					/>
 
 					<!-- Blossom Servers -->
 					<EditableList
 						bind:items={communityData.blossomServers}
-						label="Blossom Servers (Optional)"
-						placeholder="blossom.example.com"
-						buttonText="Add Server"
+						label={m.create_community_modal_blossom_label()}
+						placeholder={m.create_community_modal_blossom_placeholder()}
+						buttonText={m.create_community_modal_blossom_button()}
 						itemType="server"
 					/>
 
 					<!-- Location -->
 					<LocationInput
 						bind:value={communityData.location}
-						label="Community Location (Optional)"
-						placeholder="Berlin, Germany or Online"
+						label={m.create_community_modal_location_label()}
+						placeholder={m.create_community_modal_location_placeholder()}
 					/>
 
 					<!-- Community Description -->
 					<div class="form-control">
 						<label class="label">
-							<span class="label-text">Community Description (Optional)</span>
-							<span class="label-text-alt">Overwrites your profile description</span>
+							<span class="label-text">{m.create_community_modal_description_label()}</span>
+							<span class="label-text-alt">{m.create_community_modal_description_alt()}</span>
 						</label>
 						<textarea
 							bind:value={communityData.description}
-							placeholder="A specific description for this community (optional)"
+							placeholder={m.create_community_modal_description_placeholder()}
 							class="textarea textarea-bordered h-24"
 						></textarea>
 					</div>
@@ -749,8 +749,8 @@
 					<!-- Content Types -->
 					<div class="form-control">
 						<label class="label">
-							<span class="label-text font-semibold">Content Types</span>
-							<span class="label-text-alt text-sm">Select features for your community</span>
+							<span class="label-text font-semibold">{m.create_community_modal_content_types_label()}</span>
+							<span class="label-text-alt text-sm">{m.create_community_modal_content_types_alt()}</span>
 						</label>
 						<div class="grid grid-cols-2 gap-3">
 							<!-- Calendar Card -->
@@ -761,7 +761,7 @@
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
-										<span class="font-medium">Calendar</span>
+										<span class="font-medium">{m.create_community_modal_content_calendar()}</span>
 										<input
 											type="checkbox"
 											checked={communityData.contentTypes.calendar}
@@ -780,7 +780,7 @@
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
-										<span class="font-medium">Chat</span>
+										<span class="font-medium">{m.create_community_modal_content_chat()}</span>
 										<input
 											type="checkbox"
 											checked={communityData.contentTypes.chat}
@@ -799,7 +799,7 @@
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
-										<span class="font-medium">Articles</span>
+										<span class="font-medium">{m.create_community_modal_content_articles()}</span>
 										<input
 											type="checkbox"
 											checked={communityData.contentTypes.articles}
@@ -818,7 +818,7 @@
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
-										<span class="font-medium">Posts</span>
+										<span class="font-medium">{m.create_community_modal_content_posts()}</span>
 										<input
 											type="checkbox"
 											checked={communityData.contentTypes.posts}
@@ -837,7 +837,7 @@
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
-										<span class="font-medium">Wikis</span>
+										<span class="font-medium">{m.create_community_modal_content_wikis()}</span>
 										<input
 											type="checkbox"
 											checked={communityData.contentTypes.wikis}
@@ -859,17 +859,17 @@
 			{:else if currentStep === 4 && !useCurrentKeypair}
 				<!-- Confirmation for New Keypair -->
 				<div class="space-y-6">
-					<h2 class="text-xl font-semibold mb-4">Confirm Community Creation</h2>
+					<h2 class="text-xl font-semibold mb-4">{m.create_community_modal_confirm_title()}</h2>
 
 					<div class="space-y-4">
 						<!-- Profile Info -->
 						<div class="card bg-base-200">
 							<div class="card-body">
-								<h3 class="card-title">Profile</h3>
+								<h3 class="card-title">{m.create_community_modal_confirm_profile_section()}</h3>
 								<div class="space-y-2">
-									<p><strong>Name:</strong> {userData.name}</p>
-									<p><strong>About:</strong> {userData.about || 'No description'}</p>
-									<p><strong>Public Key:</strong> <code class="text-xs">{userData.npub.slice(0, 16)}...</code></p>
+									<p><strong>{m.create_community_modal_confirm_name()}</strong> {userData.name}</p>
+									<p><strong>{m.create_community_modal_confirm_about()}</strong> {userData.about || m.create_community_modal_confirm_about_none()}</p>
+									<p><strong>{m.create_community_modal_confirm_pubkey()}</strong> <code class="text-xs">{userData.npub.slice(0, 16)}...</code></p>
 								</div>
 							</div>
 						</div>
@@ -877,17 +877,17 @@
 						<!-- Community Settings -->
 						<div class="card bg-base-200">
 							<div class="card-body">
-								<h3 class="card-title">Community Settings</h3>
+								<h3 class="card-title">{m.create_community_modal_confirm_settings_section()}</h3>
 								<div class="space-y-2 text-sm">
-									<p><strong>Relays:</strong> {communityData.relays.join(', ')}</p>
+									<p><strong>{m.create_community_modal_confirm_relays()}</strong> {communityData.relays.join(', ')}</p>
 									{#if communityData.blossomServers.length > 0}
-										<p><strong>Blossom Servers:</strong> {communityData.blossomServers.join(', ')}</p>
+										<p><strong>{m.create_community_modal_confirm_blossom()}</strong> {communityData.blossomServers.join(', ')}</p>
 									{/if}
 									{#if communityData.location}
-										<p><strong>Location:</strong> {communityData.location}</p>
+										<p><strong>{m.create_community_modal_confirm_location()}</strong> {communityData.location}</p>
 									{/if}
 									{#if communityData.description}
-										<p><strong>Community Description:</strong> {communityData.description}</p>
+										<p><strong>{m.create_community_modal_confirm_description()}</strong> {communityData.description}</p>
 									{/if}
 								</div>
 							</div>
@@ -896,22 +896,22 @@
 						<!-- Content Types -->
 						<div class="card bg-base-200">
 							<div class="card-body">
-								<h3 class="card-title">Content Types</h3>
+								<h3 class="card-title">{m.create_community_modal_confirm_content_types_section()}</h3>
 								<div class="flex flex-wrap gap-2">
 									{#if communityData.contentTypes.calendar}
-										<span class="badge badge-primary">Calendar</span>
+										<span class="badge badge-primary">{m.create_community_modal_content_calendar()}</span>
 									{/if}
 									{#if communityData.contentTypes.chat}
-										<span class="badge badge-primary">Chat</span>
+										<span class="badge badge-primary">{m.create_community_modal_content_chat()}</span>
 									{/if}
 									{#if communityData.contentTypes.articles}
-										<span class="badge badge-primary">Articles</span>
+										<span class="badge badge-primary">{m.create_community_modal_content_articles()}</span>
 									{/if}
 									{#if communityData.contentTypes.posts}
-										<span class="badge badge-primary">Posts</span>
+										<span class="badge badge-primary">{m.create_community_modal_content_posts()}</span>
 									{/if}
 									{#if communityData.contentTypes.wikis}
-										<span class="badge badge-primary">Wikis</span>
+										<span class="badge badge-primary">{m.create_community_modal_content_wikis()}</span>
 									{/if}
 								</div>
 							</div>
@@ -922,7 +922,7 @@
 			{:else}
 				<!-- Fallback -->
 				<div class="alert alert-error">
-					<span>Invalid state reached. Please start over.</span>
+					<span>{m.create_community_modal_error_invalid_state()}</span>
 				</div>
 			{/if}
 		</div>
@@ -934,20 +934,20 @@
 					{#if currentStep > 1}
 						<button class="btn btn-ghost" onclick={prevStep}>
 							<ChevronLeftIcon />
-							Back
+							{m.create_community_modal_button_back()}
 						</button>
 					{/if}
 				</div>
 
 				<div class="flex gap-2">
 					<form method="dialog">
-						<button class="btn">Cancel</button>
+						<button class="btn">{m.create_community_modal_button_cancel()}</button>
 					</form>
 
 					{#if currentStep > 0}
 						{#if currentStep < totalSteps()}
 							<button class="btn btn-primary" onclick={nextStep}>
-								Next
+								{m.create_community_modal_button_next()}
 								<ChevronRightIcon />
 							</button>
 						{:else}
@@ -958,9 +958,9 @@
 							>
 								{#if isPublishing}
 									<span class="loading loading-spinner loading-sm"></span>
-									Creating Community...
+									{m.create_community_modal_button_creating()}
 								{:else}
-									Create Community
+									{m.create_community_modal_button_create()}
 								{/if}
 							</button>
 						{/if}

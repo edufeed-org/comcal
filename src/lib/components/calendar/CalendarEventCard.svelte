@@ -5,6 +5,7 @@
 -->
 
 <script>
+	import * as m from '$lib/paraglide/messages';
 	import { formatCalendarDate } from '../../helpers/calendar.js';
 	import EventTags from './EventTags.svelte';
 	import LocationLink from '../shared/LocationLink.svelte';
@@ -117,7 +118,7 @@
 				<span class="text-xs">🕐</span>
 				<span>
 					{#if isAllDay}
-						All Day
+						{m.event_card_all_day()}
 					{:else}
 						{formatCalendarDate(startDate, 'time')}
 						{#if endDate}
@@ -146,7 +147,7 @@
 				<span class="text-xs">🕐</span>
 				<span>
 					{#if isAllDay}
-						All Day
+						{m.event_card_all_day()}
 					{:else}
 						{formatCalendarDate(startDate, 'time')}
 						{#if endDate}
@@ -202,11 +203,11 @@
 	{#if !compact}
 		<div class="flex flex-wrap items-center gap-2 text-xs text-base-content/60 mb-2">
 			<span class="badge badge-outline badge-xs">
-				{event.kind === 31922 ? 'Date Event' : 'Time Event'}
+				{event.kind === 31922 ? m.event_card_date_event() : m.event_card_time_event()}
 			</span>
 			{#if event.createdAt}
 				<div class="text-xs text-base-content/50">
-					<span>Created {formatCalendarDate(new Date(event.createdAt * 1000), 'short')}</span>
+					<span>{m.event_card_created()} {formatCalendarDate(new Date(event.createdAt * 1000), 'short')}</span>
 				</div>
 			{/if}
 		</div>

@@ -4,6 +4,7 @@
 -->
 
 <script>
+	import * as m from '$lib/paraglide/messages';
 	/**
 	 * @typedef {Object} EventTagsProps
 	 * @property {string[]} tags - Array of tag strings to display
@@ -46,14 +47,14 @@
 				href="/calendar?view=list&tags={encodeURIComponent(tag)}"
 				class="badge badge-outline badge-{size} transition-colors hover:badge-primary focus:badge-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
 				onclick={(e) => handleTagClick(e, tag)}
-				title="View all events with #{tag}"
+				title={m.event_tags_view_all_tooltip({ tag })}
 			>
 				#{tag}
 			</a>
 		{/each}
 		{#if showCount && remainingCount > 0}
 			<span class="badge badge-ghost badge-{size} text-base-content/40">
-				+{remainingCount} more
+				{m.event_tags_more_count({ count: remainingCount })}
 			</span>
 		{/if}
 	</div>

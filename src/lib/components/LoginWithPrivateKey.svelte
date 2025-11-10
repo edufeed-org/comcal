@@ -6,6 +6,7 @@
 	import * as nip49 from 'nostr-tools/nip49';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import SignupButton from './shared/SignupButton.svelte';
+	import * as m from '$lib/paraglide/messages';
 
 	let { modalId, onAccountCreated } = $props();
 
@@ -49,7 +50,7 @@
 			// Check if it's an encrypted key (ncryptsec)
 			if (trimmedInput.startsWith('ncryptsec1')) {
 				if (!password) {
-					errorMessage = 'Password is required for encrypted keys';
+					errorMessage = m.auth_login_private_key_error_password_required();
 					return;
 				}
 				
@@ -59,14 +60,14 @@
 					console.log('Successfully decrypted ncryptsec');
 				} catch (decryptError) {
 					console.error('Decryption error:', decryptError);
-					errorMessage = 'Failed to decrypt key. Please check your password and try again.';
+					errorMessage = m.auth_login_private_key_error_decrypt_failed();
 					return;
 				}
 			} else {
 				// Try to decode as regular nsec
 				const decoded = nip19.decode(trimmedInput);
 				if (decoded.type !== 'nsec') {
-					errorMessage = 'Invalid key format. Please enter a valid nsec or ncryptsec key.';
+					errorMessage = m.auth_login_private_key_error_invalid_format();
 					return;
 				}
 				privateKey = decoded.data;
@@ -99,26 +100,26 @@
 			if (modal) modal.close();
 		} catch (error) {
 			console.error('Error logging in with private key:', error);
-			errorMessage = 'Failed to log in. Please check your key and try again.';
+			errorMessage = m.auth_login_private_key_error_login_failed();
 		}
 	}
 </script>
 
 <dialog id={modalId} class="modal">
 	<div class="modal-box">
-		<h1 class="text-lg font-bold">Add an Account</h1>
-		<p class="py-4">Enter your private key (nsec) or encrypted key (ncryptsec)</p>
+		<h1 class="text-lg font-bold">{m.auth_login_private_key_title()}</h1>
+		<p class="py-4">{m.auth_login_private_key_description()}</p>
 		
 		<div class="space-y-4">
 			<!-- Private Key Input -->
 			<div class="form-control">
 				<label class="label">
-					<span class="label-text">Private Key</span>
+					<span class="label-text">{m.auth_login_private_key_label()}</span>
 				</label>
 				<input
 					bind:value={inputNSEC}
 					type="text"
-					placeholder="nsec1... or ncryptsec1..."
+					placeholder={m.auth_login_private_key_placeholder()}
 					class="input input-bordered w-full"
 					class:input-error={errorMessage}
 				/>
@@ -128,17 +129,17 @@
 			{#if isNcryptsec}
 				<div class="form-control">
 					<label class="label">
-						<span class="label-text">Password</span>
+						<span class="label-text">{m.auth_login_private_key_password_label()}</span>
 					</label>
 					<input
 						bind:value={password}
 						type="password"
-						placeholder="Enter decryption password"
+						placeholder={m.auth_login_private_key_password_placeholder()}
 						class="input input-bordered w-full"
 						class:input-error={errorMessage}
 					/>
 					<label class="label">
-						<span class="label-text-alt">Encrypted key detected - password required</span>
+						<span class="label-text-alt">{m.auth_login_private_key_password_help()}</span>
 					</label>
 				</div>
 			{/if}
@@ -152,20 +153,20 @@
 
 			<!-- Login Button -->
 			<button class="btn btn-primary w-full" onclick={handleLoginWithPrivateKey}>
-				Login
+				{m.auth_login_private_key_login_button()}
 			</button>
 		</div>
 
-		<div class="divider">OR</div>
+		<div class="divider">{m.auth_login_modal_or()}</div>
 
 		<div class="text-center">
-			<h2 class="text-lg font-bold mb-2">Don't have an account yet?</h2>
+			<h2 class="text-lg font-bold mb-2">{m.auth_login_private_key_no_account()}</h2>
 			<SignupButton class="w-full" />
 		</div>
 		
 		<div class="modal-action">
 			<form method="dialog">
-				<button class="btn">Close</button>
+				<button class="btn">{m.common_close()}</button>
 			</form>
 		</div>
 	</div>

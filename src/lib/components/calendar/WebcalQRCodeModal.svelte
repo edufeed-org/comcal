@@ -9,6 +9,7 @@
 	import { modalStore } from '../../stores/modal.svelte.js';
 	import { CloseIcon } from '$lib/components/icons';
 	import { showToast } from '$lib/helpers/toast.js';
+	import * as m from '$lib/paraglide/messages';
 
 	/**
 	 * @typedef {Object} WebcalQRCodeModalProps
@@ -99,7 +100,7 @@
 			});
 		} catch (error) {
 			console.error('Error generating QR code:', error);
-			showToast('Failed to generate QR code', 'error');
+			showToast(m.webcal_qr_modal_toast_qr_failed(), 'error');
 		}
 	}
 
@@ -129,10 +130,10 @@
 	async function handleCopyUrl() {
 		try {
 			await navigator.clipboard.writeText(webcalUrl);
-			showToast('Webcal link copied to clipboard', 'success');
+			showToast(m.webcal_qr_modal_toast_copied(), 'success');
 		} catch (error) {
 			console.error('Error copying URL:', error);
-			showToast('Failed to copy link', 'error');
+			showToast(m.webcal_qr_modal_toast_copy_failed(), 'error');
 		}
 	}
 
@@ -146,7 +147,7 @@
 			// Convert canvas to blob and download
 			qrCanvas.toBlob((blob) => {
 				if (!blob) {
-					showToast('Failed to generate QR code image', 'error');
+					showToast(m.webcal_qr_modal_toast_image_failed(), 'error');
 					return;
 				}
 
@@ -159,11 +160,11 @@
 				document.body.removeChild(link);
 				URL.revokeObjectURL(url);
 				
-				showToast('QR code downloaded', 'success');
+				showToast(m.webcal_qr_modal_toast_downloaded(), 'success');
 			});
 		} catch (error) {
 			console.error('Error downloading QR code:', error);
-			showToast('Failed to download QR code', 'error');
+			showToast(m.webcal_qr_modal_toast_download_failed(), 'error');
 		}
 	}
 
@@ -188,7 +189,7 @@
 			<!-- Modal Header -->
 			<div class="mb-6 flex items-center justify-between">
 				<h2 id="qr-modal-title" class="text-2xl font-bold text-base-content">
-					Scan QR Code
+					{m.webcal_qr_modal_title()}
 				</h2>
 				<button
 					class="btn btn-circle btn-ghost btn-sm"
@@ -201,12 +202,12 @@
 
 			<!-- Instructions -->
 			<div class="mb-4 rounded-lg bg-info/10 p-4 text-sm text-base-content">
-				<p class="mb-2 font-semibold">📱 Subscribe to calendar on mobile:</p>
+				<p class="mb-2 font-semibold">{m.webcal_qr_modal_instructions_header()}</p>
 				<ol class="ml-4 list-decimal space-y-1">
-					<li>Open your phone's camera app</li>
-					<li>Point it at the QR code below</li>
-					<li>Tap the notification to open the subscription link</li>
-					<li>Add to your calendar app</li>
+					<li>{m.webcal_qr_modal_step_1()}</li>
+					<li>{m.webcal_qr_modal_step_2()}</li>
+					<li>{m.webcal_qr_modal_step_3()}</li>
+					<li>{m.webcal_qr_modal_step_4()}</li>
 				</ol>
 			</div>
 
@@ -222,7 +223,7 @@
 			<!-- Webcal URL Display -->
 			<div class="mb-6">
 				<label class="mb-2 block text-sm font-semibold text-base-content">
-					Calendar Subscription URL
+					{m.webcal_qr_modal_url_label()}
 				</label>
 				<div class="flex gap-2">
 					<input
@@ -235,8 +236,8 @@
 					<button
 						class="btn btn-square btn-outline btn-sm"
 						onclick={handleCopyUrl}
-						aria-label="Copy URL to clipboard"
-						title="Copy URL"
+						aria-label={m.webcal_qr_modal_copy_button()}
+						title={m.webcal_qr_modal_copy_button()}
 					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -255,13 +256,13 @@
 					</button>
 				</div>
 				<p class="mt-2 text-xs text-base-content/60">
-					You can also manually copy and paste this URL into your calendar app
+					{m.webcal_qr_modal_help_text()}
 				</p>
 			</div>
 
 			<!-- Action Buttons -->
 			<div class="flex justify-end gap-3">
-				<button class="btn btn-outline" onclick={handleClose}> Close </button>
+				<button class="btn btn-outline" onclick={handleClose}> {m.common_close()} </button>
 				<button class="btn btn-primary" onclick={handleDownloadQR}>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -277,7 +278,7 @@
 							d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
 						/>
 					</svg>
-					Download QR Code
+					{m.webcal_qr_modal_download_button()}
 				</button>
 			</div>
 		</div>

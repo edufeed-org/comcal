@@ -3,6 +3,7 @@
 	import { SimpleAccount } from 'applesauce-accounts/accounts';
 	import { merge, Subject, Subscription } from 'rxjs';
 	import { manager } from '$lib/stores/accounts.svelte';
+	import * as m from '$lib/paraglide/messages';
 
 	let accounts = [];
 	let activeAccount = null;
@@ -100,15 +101,15 @@
 	 */
 	function createNewAccount() {
 		const acct = SimpleAccount.generateNew();
-		acct.metadata = { name: `Account ${accounts.length + 1}` };
+		acct.metadata = { name: m.account_manager_generated_name({ number: accounts.length + 1 }) };
 		manager.addAccount(acct);
 	}
 </script>
 
 <div class="container mx-auto my-8 p-4">
 	<div class="mb-6 flex items-center justify-between">
-		<h1 class="text-2xl font-bold">Account Manager</h1>
-		<button class="btn btn-primary" on:click={createNewAccount}>Create New Account</button>
+		<h1 class="text-2xl font-bold">{m.account_manager_title()}</h1>
+		<button class="btn btn-primary" on:click={createNewAccount}>{m.account_manager_create_button()}</button>
 	</div>
 
 	<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -131,7 +132,7 @@
 						type="text"
 						class="input-bordered input w-full"
 						bind:value={names[account.id]}
-						placeholder="Account name"
+						placeholder={m.account_manager_name_placeholder()}
 						on:blur={() => saveName(account.id)}
 					/>
 
@@ -145,10 +146,10 @@
 							on:click={() => setActive(account.id)}
 							disabled={activeAccount && activeAccount.id === account.id}
 						>
-							Set Active
+							{m.account_manager_set_active_button()}
 						</button>
 						<button class="btn btn-error" on:click={() => removeAccount(account.id)}>
-							Remove
+							{m.account_manager_remove_button()}
 						</button>
 					</div>
 				</div>
@@ -158,7 +159,7 @@
 
 	{#if accounts.length === 0}
 		<div class="py-12 text-center text-base-content/70">
-			No accounts yet. Create one to get started!
+			{m.account_manager_empty_state()}
 		</div>
 	{/if}
 </div>

@@ -4,6 +4,7 @@
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { getProfilePicture } from 'applesauce-core/helpers';
 	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
+	import * as m from '$lib/paraglide/messages';
 
 	const getProfile = useUserProfile(account.pubkey);
 
@@ -32,7 +33,7 @@
 		{getProfile()?.name || account.pubkey.slice(0, 8) + '...'}
 
 		{#if account === activeAccount}
-			(active)
+			{m.account_profile_active_status()}
 		{/if}
 	</li>
 	<button
@@ -40,6 +41,6 @@
 		disabled={account === activeAccount}
 		onclick={() => manager.setActive(account)}
 	>
-		{account === activeAccount ? 'Active' : 'Set Active'}
+		{account === activeAccount ? m.account_profile_active_button() : m.account_profile_set_active_button()}
 	</button>
 </div>

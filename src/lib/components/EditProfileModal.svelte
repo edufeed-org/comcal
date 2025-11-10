@@ -5,6 +5,7 @@
 	import AvatarUploader from './shared/AvatarUploader.svelte';
 	import { publishEvent } from '$lib/helpers/publisher.js';
 	import { appConfig } from '$lib/config.js';
+	import * as m from '$lib/paraglide/messages';
 	
 	let { modalId = 'edit-profile-modal' } = $props();
 	
@@ -60,7 +61,7 @@
 		errors = {};
 		
 		if (!userData.name?.trim()) {
-			errors.name = 'Name is required';
+			errors.name = m.profile_edit_modal_error_name_required();
 			return false;
 		}
 		
@@ -69,7 +70,7 @@
 			try {
 				new URL(userData.website);
 			} catch {
-				errors.website = 'Please enter a valid URL';
+				errors.website = m.profile_edit_modal_error_invalid_url();
 				return false;
 			}
 		}
@@ -78,7 +79,7 @@
 			try {
 				new URL(userData.picture);
 			} catch {
-				errors.picture = 'Please enter a valid image URL';
+				errors.picture = m.profile_edit_modal_error_invalid_image_url();
 				return false;
 			}
 		}
@@ -87,7 +88,7 @@
 			try {
 				new URL(userData.banner);
 			} catch {
-				errors.banner = 'Please enter a valid image URL';
+				errors.banner = m.profile_edit_modal_error_invalid_image_url();
 				return false;
 			}
 		}
@@ -109,13 +110,13 @@
 		
 		// Check if user is logged in
 		if (!manager.active) {
-			submitError = 'You must be logged in to edit your profile';
+			submitError = m.profile_edit_modal_error_must_login();
 			return;
 		}
 		
 		// Verify ownership
 		if (manager.active.pubkey !== pubkey) {
-			submitError = 'You can only edit your own profile';
+			submitError = m.profile_edit_modal_error_ownership();
 			return;
 		}
 		
@@ -166,7 +167,7 @@
 			
 		} catch (error) {
 			console.error('Error updating profile:', error);
-			submitError = error instanceof Error ? error.message : 'Failed to update profile';
+			submitError = error instanceof Error ? error.message : m.profile_edit_modal_error_failed();
 		} finally {
 			isSubmitting = false;
 		}
@@ -186,7 +187,7 @@
 	<div class="modal-box max-w-2xl">
 		<!-- Modal Header -->
 		<div class="flex items-center justify-between mb-6">
-			<h3 class="font-bold text-2xl">Edit Profile</h3>
+			<h3 class="font-bold text-2xl">{m.profile_edit_modal_title()}</h3>
 			<button 
 				onclick={handleClose}
 				class="btn btn-sm btn-circle btn-ghost"
@@ -202,7 +203,7 @@
 				<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
 				</svg>
-				<span>Profile updated successfully!</span>
+				<span>{m.profile_edit_modal_success()}</span>
 			</div>
 		{/if}
 		
@@ -242,7 +243,7 @@
 				class="btn btn-ghost"
 				disabled={isSubmitting}
 			>
-				Cancel
+				{m.profile_edit_modal_cancel_button()}
 			</button>
 			<button 
 				onclick={handleSubmit}
@@ -251,9 +252,9 @@
 			>
 				{#if isSubmitting}
 					<span class="loading loading-spinner loading-sm"></span>
-					Saving...
+					{m.profile_edit_modal_saving()}
 				{:else}
-					Save Profile
+					{m.profile_edit_modal_save_button()}
 				{/if}
 			</button>
 		</div>

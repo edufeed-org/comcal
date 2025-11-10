@@ -4,6 +4,7 @@
 -->
 
 <script>
+	import * as m from '$lib/paraglide/messages';
 	import { formatCalendarDate } from '../../helpers/calendar.js';
 	import { modalStore } from '../../stores/modal.svelte.js';
 	import { registerCalendarEventsRefreshCallback } from '../../stores/calendar-management-store.svelte.js';
@@ -168,15 +169,15 @@
 					<button
 						class="btn btn-circle btn-ghost btn-sm"
 						onclick={copyNaddr}
-						aria-label="Copy event address"
-						title="Copy naddr"
+						aria-label={m.event_details_copy_address()}
+						title={m.event_details_copy_address()}
 					>
 						<CopyIcon class_="w-5 h-5" />
 					</button>
 					<a
 						href={eventDetailUrl}
 						class="btn btn-circle btn-ghost btn-sm"
-						aria-label="Open event details page"
+						aria-label={m.event_details_open_page()}
 						onclick={handleClose}
 					>
 						<ExternalLinkIcon class_="w-6 h-6" />
@@ -184,7 +185,7 @@
 					<button
 						class="btn btn-circle btn-ghost btn-sm"
 						onclick={handleClose}
-						aria-label="Close modal"
+						aria-label={m.event_details_close()}
 					>
 						<CloseIcon class_="w-6 h-6" />
 					</button>
@@ -205,26 +206,26 @@
 
 			<!-- Event Author -->
 			<div class="mb-6">
-				<h3 class="mb-3 text-lg font-semibold text-base-content">Event Author</h3>
+				<h3 class="mb-3 text-lg font-semibold text-base-content">{m.event_details_event_author()}</h3>
 				<ProfileCard pubkey={event.pubkey} onClose={handleClose} />
 			</div>
 
 			<!-- Event Description -->
 			{#if event.summary}
 				<div class="mb-6">
-					<h3 class="mb-2 text-lg font-semibold text-base-content">Description</h3>
+					<h3 class="mb-2 text-lg font-semibold text-base-content">{m.calendar_event_description()}</h3>
 					<MarkdownRenderer content={event.summary} class="prose max-w-none" />
 				</div>
 			{/if}
 
 			<!-- Event Date and Time -->
 			<div class="mb-6">
-				<h3 class="mb-3 text-lg font-semibold text-base-content">Date & Time</h3>
+				<h3 class="mb-3 text-lg font-semibold text-base-content">{m.event_details_date_time()}</h3>
 				<div class="rounded-lg bg-base-200 p-4">
 					{#if isAllDay}
 						<div class="mb-2 flex items-center gap-2">
 							<CalendarIcon class_="w-5 h-5 text-info" />
-							<span class="font-medium text-base-content">All Day Event</span>
+							<span class="font-medium text-base-content">{m.event_details_all_day_event()}</span>
 						</div>
 						<div class="ml-7 text-base-content/70">
 							{isMultiDay && endDate && startDate
@@ -238,7 +239,7 @@
 							{#if startDate}
 								<div class="flex items-center gap-2">
 									<ClockIcon class_="w-5 h-5 text-primary" />
-									<span class="font-medium text-base-content">Start:</span>
+									<span class="font-medium text-base-content">{m.event_details_start()}</span>
 									<span class="text-base-content/80">
 										{formatCalendarDate(startDate, 'long')} at {formatCalendarDate(
 											startDate,
@@ -253,7 +254,7 @@
 							{#if endDate}
 								<div class="flex items-center gap-2">
 									<ClockIcon class_="w-5 h-5 text-secondary" />
-									<span class="font-medium text-base-content">End:</span>
+									<span class="font-medium text-base-content">{m.event_details_end()}</span>
 									<span class="text-base-content/80">
 										{formatCalendarDate(endDate, 'long')} at {formatCalendarDate(endDate, 'time')}
 										{#if event.endTimezone}
@@ -271,7 +272,7 @@
 			{#if event.locations && event.locations.length > 0}
 				<div class="mb-6">
 					<h3 class="mb-3 text-lg font-semibold text-base-content">
-						Location{#if event.locations.length > 1}s{/if}
+						{event.locations.length > 1 ? m.event_details_locations() : m.event_details_location()}
 					</h3>
 					<div class="space-y-2">
 						{#each event.locations as location}
@@ -290,7 +291,7 @@
 			{#if event.participants && event.participants.length > 0}
 				<div class="mb-6">
 					<h3 class="mb-3 text-lg font-semibold text-base-content">
-						Participant{#if event.participants.length > 1}s{/if}
+						{event.participants.length > 1 ? m.event_details_participants() : m.event_details_participant()}
 					</h3>
 					<div class="space-y-2">
 						{#each event.participants as participant}
@@ -307,7 +308,7 @@
 								{/if}
 								{#if participant.relay}
 									<div class="mt-1 text-xs text-base-content/50">
-										Relay: {participant.relay}
+										{m.event_details_relay()} {participant.relay}
 									</div>
 								{/if}
 							</div>
@@ -319,13 +320,13 @@
 			<!-- Event Tags -->
 			{#if event.hashtags && event.hashtags.length > 0}
 				<div class="mb-6">
-					<h3 class="mb-3 text-lg font-semibold text-base-content">Tags</h3>
+					<h3 class="mb-3 text-lg font-semibold text-base-content">{m.calendar_event_tags()}</h3>
 					<div class="flex flex-wrap gap-2">
 						{#each event.hashtags as tag}
 							<a
 								href="/calendar?view=list&tags={encodeURIComponent(tag)}"
 								class="badge badge-outline badge-lg transition-colors hover:badge-primary"
-								title="View all events with #{tag}"
+								title={m.event_details_view_events_with_tag()}
 							>
 								#{tag}
 							</a>
@@ -337,7 +338,7 @@
 			<!-- Further Links -->
 			{#if event.references && event.references.length > 0}
 				<div class="mb-6">
-					<h3 class="mb-3 text-lg font-semibold text-base-content">Further Links</h3>
+					<h3 class="mb-3 text-lg font-semibold text-base-content">{m.event_details_further_links()}</h3>
 					<div class="space-y-2">
 						{#each event.references as reference}
 							<a
@@ -356,14 +357,14 @@
 
 			<!-- Reactions -->
 			<div class="mb-6">
-				<h3 class="mb-3 text-lg font-semibold text-base-content">Reactions</h3>
+				<h3 class="mb-3 text-lg font-semibold text-base-content">{m.event_details_reactions()}</h3>
 				<ReactionBar event={event?.originalEvent || event} />
 			</div>
 
 			<!-- Personal Calendar Sharing Section -->
 			{#if activeUser}
 				<div class="mb-4 border-t border-base-300 pt-4">
-					<h3 class="mb-3 text-lg font-semibold text-base-content">Manage Calendar Events</h3>
+					<h3 class="mb-3 text-lg font-semibold text-base-content">{m.event_details_manage_calendar()}</h3>
 					<PersonalCalendarShare {event} {activeUser} />
 				</div>
 			{/if}
@@ -371,7 +372,7 @@
 			<!-- Community Sharing Section -->
 			{#if activeUser}
 				<div class="mb-4 border-t border-base-300 pt-4">
-					<h3 class="mb-3 text-lg font-semibold text-base-content">Share with Communities</h3>
+					<h3 class="mb-3 text-lg font-semibold text-base-content">{m.event_details_share_communities()}</h3>
 					<CommunityCalendarShare {event} {activeUser} />
 				</div>
 			{/if}
@@ -381,7 +382,7 @@
 
 			<!-- Modal Actions -->
 			<div class="flex justify-end gap-3 border-t border-base-300 pt-6">
-				<button class="btn btn-outline" onclick={handleClose}> Close </button>
+				<button class="btn btn-outline" onclick={handleClose}>{m.event_details_close()}</button>
 			</div>
 		</div>
 	</dialog>

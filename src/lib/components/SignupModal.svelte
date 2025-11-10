@@ -1,5 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
+	import * as m from '$lib/paraglide/messages';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { SimpleSigner } from 'applesauce-signers';
 	import { SimpleAccount } from 'applesauce-accounts/accounts';
@@ -316,14 +317,14 @@
 	<div class="modal-box max-w-2xl">
 		<!-- Header with steps -->
 		<div class="mb-6">
-			<h1 class="text-2xl font-bold mb-4">Join Nostr</h1>
+			<h1 class="text-2xl font-bold mb-4">{m.auth_signup_modal_title()}</h1>
 			
 			<!-- Step indicator -->
 			<ul class="steps w-full">
-				<li class="step {currentStep >= 1 ? 'step-primary' : ''}">Introduction</li>
-				<li class="step {currentStep >= 2 ? 'step-primary' : ''}">Profile</li>
-				<li class="step {currentStep >= 3 ? 'step-primary' : ''}">Keys</li>
-				<li class="step {currentStep >= 4 ? 'step-primary' : ''}">Follow</li>
+				<li class="step {currentStep >= 1 ? 'step-primary' : ''}">{m.auth_signup_modal_step_introduction()}</li>
+				<li class="step {currentStep >= 2 ? 'step-primary' : ''}">{m.auth_signup_modal_step_profile()}</li>
+				<li class="step {currentStep >= 3 ? 'step-primary' : ''}">{m.auth_signup_modal_step_keys()}</li>
+				<li class="step {currentStep >= 4 ? 'step-primary' : ''}">{m.auth_signup_modal_step_follow()}</li>
 			</ul>
 		</div>
 
@@ -333,20 +334,20 @@
 				<!-- Introduction Step -->
 				<div class="prose max-w-none">
 					<p class="text-lg mb-4">
-						To join Nostr you need a profile, but it is not the usual one that a company generates and manages for you. You create it yourself, no permissions are required.
+						{m.auth_signup_modal_intro_p1()}
 					</p>
 					<p class="mb-4">
-						Nostr is a different experience from the beginning: because there is no central authority taking care of who is who, each user is identified by a cryptographic keypair; don't worry about the tech slang, it is just a strong password that you will have to keep safe.
+						{m.auth_signup_modal_intro_p2()}
 					</p>
 					<p class="mb-6">
-						This wizard is used by Jumble to let you create your new profile and safely manage it, in a few steps.
+						{m.auth_signup_modal_intro_p3()}
 					</p>
 				</div>
 
 			{:else if currentStep === 2}
 				<!-- Profile Creation Step -->
 				<div class="space-y-6">
-					<h2 class="text-xl font-semibold mb-6 text-center">Create Your Profile</h2>
+					<h2 class="text-xl font-semibold mb-6 text-center">{m.auth_signup_modal_create_profile_title()}</h2>
 					
 					<!-- Avatar URL Input (centered) -->
 					<div class="flex flex-col items-center gap-4">
@@ -377,16 +378,16 @@
 						<!-- URL Input Field -->
 						<div class="form-control w-full max-w-md flex flex-col">
 							<label class="label">
-								<span class="label-text text-center w-full">Profile Picture URL</span>
+								<span class="label-text text-center w-full">{m.auth_signup_modal_profile_picture_url()}</span>
 							</label>
 							<input
 								type="url"
 								bind:value={userData.picture}
-								placeholder="https://example.com/avatar.jpg"
+								placeholder={m.auth_signup_modal_profile_picture_placeholder()}
 								class="input input-bordered w-full text-center"
 							/>
 							<label class="label">
-								<span class="label-text-alt text-center w-full opacity-70">Paste an image URL for your avatar</span>
+								<span class="label-text-alt text-center w-full opacity-70">{m.auth_signup_modal_profile_picture_hint()}</span>
 							</label>
 						</div>
 					</div>
@@ -397,12 +398,12 @@
 							<!-- Name -->
 							<div class="form-control flex flex-col">
 								<label class="label">
-									<span class="label-text text-center w-full">Name *</span>
+									<span class="label-text text-center w-full">{m.auth_signup_modal_name_label()}</span>
 								</label>
 								<input
 									type="text"
 									bind:value={userData.name}
-									placeholder="Your name or nickname"
+									placeholder={m.auth_signup_modal_name_placeholder()}
 									class="input input-bordered w-full"
 									class:input-error={errors.name}
 								/>
@@ -416,11 +417,11 @@
 							<!-- About -->
 							<div class="form-control flex flex-col">
 								<label class="label">
-									<span class="label-text text-center w-full">About</span>
+									<span class="label-text text-center w-full">{m.auth_signup_modal_about_label()}</span>
 								</label>
 								<textarea
 									bind:value={userData.about}
-									placeholder="Tell us something about yourself"
+									placeholder={m.auth_signup_modal_about_placeholder()}
 									class="textarea textarea-bordered h-24 w-full"
 								></textarea>
 							</div>
@@ -428,12 +429,12 @@
 							<!-- Website -->
 							<div class="form-control flex flex-col">
 								<label class="label">
-									<span class="label-text text-center w-full">Website</span>
+									<span class="label-text text-center w-full">{m.auth_signup_modal_website_label()}</span>
 								</label>
 								<input
 									type="url"
 									bind:value={userData.website}
-									placeholder="https://your-website.com"
+									placeholder={m.auth_signup_modal_website_placeholder()}
 									class="input input-bordered w-full"
 								/>
 							</div>
@@ -446,29 +447,29 @@
 				<div class="space-y-6">
 					<div class="prose max-w-none">
 						<h2 class="text-xl font-semibold mb-4">
-							Well done {userData.name}, your Nostr profile is ready! Yes, it was that easy.
+							{m.auth_signup_modal_keys_title({ name: userData.name })}
 						</h2>
 						<p class="mb-4">
-							On Nostr your keypair is identified by a unique string that starts with npub. This is your public profile code you can share with anyone.
+							{m.auth_signup_modal_keys_p1()}
 						</p>
 						<p class="mb-6">
-							Then there is the private key. It starts with nsec, and is used to control your profile and to publish notes. This must be kept absolutely secret.
+							{m.auth_signup_modal_keys_p2()}
 						</p>
 						<p class="mb-6 font-semibold text-warning">
-							Now please download your nsec (it's a text file) and save it in a safe place, for example your password manager.
+							{m.auth_signup_modal_keys_warning()}
 						</p>
 					</div>
 
 					{#if isGeneratingKeys}
 						<div class="flex items-center justify-center py-8">
 							<span class="loading loading-spinner loading-lg"></span>
-							<span class="ml-2">Generating your keys...</span>
+							<span class="ml-2">{m.auth_signup_modal_generating_keys()}</span>
 						</div>
 					{:else}
 						<!-- Public Key Display -->
 						<div class="card bg-base-200">
 							<div class="card-body">
-								<h3 class="card-title text-sm">Your Public Key (npub)</h3>
+								<h3 class="card-title text-sm">{m.auth_signup_modal_public_key_label()}</h3>
 								<div class="flex items-center gap-2">
 									<code class="text-xs break-all flex-1 p-2 bg-base-300 rounded">
 										{userData.npub}
@@ -486,7 +487,7 @@
 						<!-- Private Key Download -->
 						<div class="card bg-base-200">
 							<div class="card-body">
-								<h3 class="card-title text-sm">Download Your Private Key</h3>
+								<h3 class="card-title text-sm">{m.auth_signup_modal_private_key_download_title()}</h3>
 								
 								<div class="space-y-4">
 									<!-- Plain nsec download -->
@@ -498,9 +499,9 @@
 										>
 											{#if userData.downloadConfirmed}
 												<CheckIcon />
-												Downloaded
+												{m.auth_signup_modal_downloaded()}
 											{:else}
-												Download NSEC
+												{m.auth_signup_modal_download_nsec()}
 											{/if}
 										</button>
 									</div>
@@ -510,13 +511,13 @@
 									
 									<div class="space-y-2">
 										<label class="label">
-											<span class="label-text">Create encrypted backup with password:</span>
+											<span class="label-text">{m.auth_signup_modal_encrypted_backup_label()}</span>
 										</label>
 										<div class="flex gap-2">
 											<input
 												type="password"
 												bind:value={userData.ncryptsecPassword}
-												placeholder="Enter password for encryption"
+												placeholder={m.auth_signup_modal_password_placeholder()}
 												class="input input-bordered flex-1"
 												class:input-error={errors.password}
 											/>
@@ -527,9 +528,9 @@
 											>
 												{#if userData.downloadConfirmed}
 													<CheckIcon />
-													Downloaded
+													{m.auth_signup_modal_downloaded()}
 												{:else}
-													Download NCRYPTSEC
+													{m.auth_signup_modal_download_ncryptsec()}
 												{/if}
 											</button>
 										</div>
@@ -554,9 +555,9 @@
 			{:else if currentStep === 4}
 				<!-- Follow Suggestions Step -->
 				<div class="space-y-4">
-					<h2 class="text-xl font-semibold mb-4">Follow Some Interesting People</h2>
+					<h2 class="text-xl font-semibold mb-4">{m.auth_signup_modal_follow_title()}</h2>
 					<p class="text-sm opacity-70 mb-6">
-						Here are some suggested users to follow. You can skip this step if you prefer.
+						{m.auth_signup_modal_follow_description()}
 					</p>
 
 					<div class="space-y-3">
@@ -611,8 +612,8 @@
 												</div>
 											</div>
 											<div class="flex-1">
-												<h3 class="font-semibold text-gray-500">Failed to load profile</h3>
-												<p class="text-sm text-gray-400">Could not fetch profile data</p>
+												<h3 class="font-semibold text-gray-500">{m.auth_signup_modal_profile_load_failed()}</h3>
+												<p class="text-sm text-gray-400">{m.auth_signup_modal_profile_fetch_error()}</p>
 											</div>
 										</div>
 									</div>
@@ -623,7 +624,7 @@
 
 					{#if userData.selectedFollows.length > 0}
 						<div class="alert alert-info">
-							<span>You've selected {userData.selectedFollows.length} user{userData.selectedFollows.length === 1 ? '' : 's'} to follow.</span>
+							<span>{m.auth_signup_modal_selected_count({ count: userData.selectedFollows.length, plural: userData.selectedFollows.length === 1 ? '' : 's' })}</span>
 						</div>
 					{/if}
 				</div>
@@ -637,19 +638,19 @@
 					{#if currentStep > 1}
 						<button class="btn btn-ghost" onclick={prevStep}>
 							<ChevronLeftIcon />
-							Back
+							{m.common_back()}
 						</button>
 					{/if}
 				</div>
 
 				<div class="flex gap-2">
 					<form method="dialog">
-						<button class="btn">Cancel</button>
+						<button class="btn">{m.common_cancel()}</button>
 					</form>
 
 					{#if currentStep < totalSteps}
 						<button class="btn btn-primary" onclick={nextStep}>
-							Next
+							{m.common_next()}
 							<ChevronRightIcon />
 						</button>
 					{:else}
@@ -660,9 +661,9 @@
 						>
 							{#if isPublishing}
 								<span class="loading loading-spinner loading-sm"></span>
-								Creating Account...
+								{m.auth_signup_modal_creating_account()}
 							{:else}
-								Finish & Create Account
+								{m.auth_signup_modal_finish()}
 							{/if}
 						</button>
 					{/if}

@@ -6,6 +6,7 @@
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { CloseIcon, AlertIcon } from '$lib/components/icons';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils';
+	import * as m from '$lib/paraglide/messages';
 
 	/**
 	 * @typedef {Object} Props
@@ -33,12 +34,12 @@
 	 */
 	async function handleSubmit() {
 		if (!title.trim()) {
-			error = 'Calendar title is required';
+			error = m.calendar_creation_modal_error_title_required();
 			return;
 		}
 
 		if (!calendarActions) {
-			error = 'No active account found';
+			error = m.calendar_creation_modal_error_no_account();
 			return;
 		}
 
@@ -74,11 +75,11 @@
 				// Navigate to the calendar page
 				await goto(`/calendar/${naddr}`);
 			} else {
-				error = 'Failed to create calendar';
+				error = m.calendar_creation_modal_error_failed();
 			}
 		} catch (err) {
 			console.error('Error creating calendar:', err);
-			error = err instanceof Error ? err.message : 'Failed to create calendar';
+			error = err instanceof Error ? err.message : m.calendar_creation_modal_error_failed();
 		} finally {
 			isSubmitting = false;
 		}
@@ -122,7 +123,7 @@
 		<div class="modal-box max-w-md">
 		<!-- Modal Header -->
 		<div class="flex items-center justify-between mb-6">
-			<h3 class="text-lg font-bold text-base-content">Create New Calendar</h3>
+			<h3 class="text-lg font-bold text-base-content">{m.calendar_creation_modal_title()}</h3>
 			<button
 				class="btn btn-sm btn-circle btn-ghost"
 				onclick={handleClose}
@@ -145,12 +146,12 @@
 			<!-- Title Field -->
 			<div class="form-control">
 				<label class="label" for="calendar-title">
-					<span class="label-text font-medium">Calendar Title *</span>
+					<span class="label-text font-medium">{m.calendar_creation_modal_name_label()}</span>
 				</label>
 				<input
 					id="calendar-title"
 					type="text"
-					placeholder="e.g., Work Calendar, Personal Events"
+					placeholder={m.calendar_creation_modal_name_placeholder()}
 					class="input input-bordered w-full"
 					bind:value={title}
 					required
@@ -162,11 +163,11 @@
 			<!-- Description Field -->
 			<div class="form-control">
 				<label class="label" for="calendar-description">
-					<span class="label-text font-medium">Description</span>
+					<span class="label-text font-medium">{m.calendar_creation_modal_description_label()}</span>
 				</label>
 				<textarea
 					id="calendar-description"
-					placeholder="Optional description of your calendar..."
+					placeholder={m.calendar_creation_modal_description_placeholder()}
 					class="textarea textarea-bordered w-full resize-none"
 					rows="3"
 					bind:value={description}
@@ -182,7 +183,7 @@
 					onclick={handleClose}
 					disabled={isSubmitting}
 				>
-					Cancel
+					{m.calendar_creation_modal_cancel_button()}
 				</button>
 				<button
 					type="submit"
@@ -191,9 +192,9 @@
 				>
 					{#if isSubmitting}
 						<span class="loading loading-spinner loading-sm"></span>
-						Creating...
+						{m.calendar_creation_modal_creating()}
 					{:else}
-						Create Calendar
+						{m.calendar_creation_modal_create_button()}
 					{/if}
 				</button>
 			</div>

@@ -8,6 +8,7 @@
 	import { MapLibre, Marker, Popup } from 'svelte-maplibre';
 	import { parseLocation, detectLocationType } from '$lib/helpers/geocoding.js';
 	import { MapIcon } from '$lib/components/icons';
+	import * as m from '$lib/paraglide/messages';
 
 	let { location = '', geohash = null, compact = true } = $props();
 
@@ -79,12 +80,12 @@
 		{#if loading}
 			<div class="map-loading">
 				<span class="loading loading-spinner loading-md"></span>
-				<span class="text-sm">Loading map...</span>
+				<span class="text-sm">{m.event_location_map_loading()}</span>
 			</div>
 		{:else if error}
 			<div class="map-error">
 				<MapIcon class_="w-8 h-8 opacity-50" />
-				<span class="text-sm">{error}</span>
+				<span class="text-sm">{m.event_location_map_error()}</span>
 			</div>
 		{:else if hasCoordinates}
 			<div class="map-container">
@@ -118,10 +119,10 @@
 							target="_blank"
 							rel="noopener noreferrer"
 							class="map-link"
-							title="Open in OpenStreetMap"
+							title={m.event_location_map_open_osm()}
 						>
 							<MapIcon class_="w-4 h-4" />
-							<span>Open in OpenStreetMap</span>
+							<span>{m.event_location_map_open_osm()}</span>
 						</a>
 					{/if}
 				</div>

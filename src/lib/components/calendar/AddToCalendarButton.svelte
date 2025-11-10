@@ -5,6 +5,7 @@
 	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import DownloadIcon from '../icons/actions/DownloadIcon.svelte';
+	import * as m from '$lib/paraglide/messages';
 
 	// Props for explicit calendar ID (for community calendars)
 	let { calendarId = null, calendarTitle = null } = $props();
@@ -34,7 +35,7 @@
 	// Get calendar title (from prop or selectedCalendar)
 	const getCalendarTitle = () => {
 		if (calendarTitle) return calendarTitle;
-		return selectedCalendar?.title || 'Calendar';
+		return selectedCalendar?.title || m.add_to_calendar_fallback_title();
 	};
 
 	// Generate webcal URL for calendar subscription
@@ -70,7 +71,7 @@
 		try {
 			const webcalUrl = generateWebcalUrl();
 			window.open(webcalUrl, '_blank');
-			showToast('calendar subscription added', 'success');
+			showToast(m.add_to_calendar_toast_subscription_added(), 'success');
 		} catch (error) {
 			console.error('Error opening webcal link:', error);
 			showToast('calendar link error', 'error');
@@ -86,7 +87,7 @@
 			document.body.appendChild(link);
 			link.click();
 			document.body.removeChild(link);
-			showToast('calendar download success', 'success');
+			showToast(m.add_to_calendar_toast_download_success(), 'success');
 		} catch (error) {
 			console.error('Error downloading ICS:', error);
 			showToast('calendar link error', 'error');
@@ -96,37 +97,37 @@
 	const handleShowQRCode = () => {
 		try {
 			const webcalUrl = generateWebcalUrl();
-			const calendarTitle = selectedCalendar?.title || 'Calendar';
+			const calendarTitle = selectedCalendar?.title || m.add_to_calendar_fallback_title();
 			modalStore.openModal('webcalQRCode', { webcalUrl, calendarTitle });
 		} catch (error) {
 			console.error('Error opening QR code modal:', error);
-			showToast('Failed to open QR code', 'error');
+			showToast(m.add_to_calendar_toast_qr_failed(), 'error');
 		}
 	};
 
 	const actions = [
 		{
 			icon: '📅',
-			name: 'Subscribe to Calendar',
-			tooltip: 'Auto-updates with new events',
+			name: m.add_to_calendar_action_subscribe(),
+			tooltip: m.add_to_calendar_action_subscribe_tooltip(),
 			onClick: handleSubscribeToCalendar
 		},
 		{
 			icon: '⬇️',
-			name: 'Download Calendar',
-			tooltip: 'One-time ics download',
+			name: m.add_to_calendar_action_download(),
+			tooltip: m.add_to_calendar_action_download_tooltip(),
 			onClick: handleDownloadIcs
 		},
 		{
 			icon: '🔗',
-			name: 'Copy Webcal Link',
-			tooltip: 'Copy subscription link',
+			name: m.add_to_calendar_action_copy_link(),
+			tooltip: m.add_to_calendar_action_copy_link_tooltip(),
 			onClick: handleCopyWebcalLink
 		},
 		{
 			icon: '📱',
-			name: 'Show QR Code',
-			tooltip: 'Scan with mobile to subscribe',
+			name: m.add_to_calendar_action_qr_code(),
+			tooltip: m.add_to_calendar_action_qr_code_tooltip(),
 			onClick: handleShowQRCode
 		}
 	];

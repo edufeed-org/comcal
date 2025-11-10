@@ -7,6 +7,7 @@
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { CalendarIcon, AlertIcon, ChevronDownIcon } from '$lib/components/icons';
 	import { filterEventsByViewMode } from '$lib/helpers/calendar.js';
+	import * as m from '$lib/paraglide/messages';
 	
 	// Import existing UI components
 	import CalendarEventCard from '$lib/components/calendar/CalendarEventCard.svelte';
@@ -73,7 +74,7 @@
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<h2 class="text-lg font-semibold text-base-content">
-			Calendar Events ({filteredEvents.length})
+			{m.events_list_header({ count: filteredEvents.length })}
 		</h2>
 	</div>
 
@@ -86,7 +87,7 @@
 				class="btn btn-ghost btn-xs"
 				onclick={() => (error = null)}
 			>
-				Dismiss
+				{m.events_list_dismiss()}
 			</button>
 		</div>
 	{/if}
@@ -95,7 +96,7 @@
 	<section class="space-y-4">
 		<div class="flex items-center justify-between">
 			<h3 class="text-lg font-semibold text-base-content">
-				Upcoming Events ({upcomingEvents.length})
+				{m.events_list_upcoming_header({ count: upcomingEvents.length })}
 			</h3>
 			{#if pastEvents.length > 0}
 				<button
@@ -104,7 +105,7 @@
 					class="link link-primary link-hover flex items-center gap-1 text-sm"
 					aria-label="Jump to past events section"
 				>
-					<span>Jump to Past ({pastEvents.length})</span>
+					<span>{m.events_list_jump_to_past({ count: pastEvents.length })}</span>
 					<ChevronDownIcon class_="h-4 w-4" />
 				</button>
 			{/if}
@@ -126,7 +127,7 @@
 				<div class="mb-3 text-base-content/30">
 					<CalendarIcon class_="h-12 w-12 mx-auto" />
 				</div>
-				<p class="text-base-content/60">No upcoming events scheduled</p>
+				<p class="text-base-content/60">{m.events_list_upcoming_empty()}</p>
 			</div>
 		{/if}
 	</section>
@@ -140,7 +141,7 @@
 	<section id="past-events" class="space-y-4">
 		<div class="flex items-center justify-between">
 			<h3 class="text-lg font-semibold text-base-content">
-				Past Events ({pastEvents.length})
+				{m.events_list_past_header({ count: pastEvents.length })}
 			</h3>
 			<button
 				type="button"
@@ -149,7 +150,7 @@
 				aria-label="Back to top"
 			>
 				<ChevronDownIcon class_="h-4 w-4 rotate-180" />
-				<span>Back to Top</span>
+				<span>{m.events_list_back_to_top()}</span>
 			</button>
 		</div>
 		
@@ -169,7 +170,7 @@
 				<div class="mb-3 text-base-content/30">
 					<CalendarIcon class_="h-12 w-12 mx-auto" />
 				</div>
-				<p class="text-base-content/60">No past events found</p>
+				<p class="text-base-content/60">{m.events_list_past_empty()}</p>
 			</div>
 		{/if}
 	</section>
@@ -180,8 +181,8 @@
 			<div class="mb-4 text-base-content/30">
 				<CalendarIcon class_="h-16 w-16 mx-auto" />
 			</div>
-			<h3 class="text-lg font-medium text-base-content mb-2">No calendar events found</h3>
-			<p class="text-base-content/60">No calendar events found from connected relays.</p>
+			<h3 class="text-lg font-medium text-base-content mb-2">{m.events_list_global_empty_title()}</h3>
+			<p class="text-base-content/60">{m.events_list_global_empty_description()}</p>
 		</div>
 	{/if}
 
@@ -189,7 +190,7 @@
 	{#if loading && filteredEvents.length === 0}
 		<div class="text-center py-12">
 			<span class="loading loading-lg loading-spinner text-primary"></span>
-			<p class="mt-4 text-base-content/60">Loading calendar events...</p>
+			<p class="mt-4 text-base-content/60">{m.events_list_loading()}</p>
 		</div>
 	{/if}
 </div>

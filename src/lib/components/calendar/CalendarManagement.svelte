@@ -1,4 +1,5 @@
 <script>
+	import * as m from '$lib/paraglide/messages';
 	import { useCalendarManagement } from '$lib/stores/calendar-management-store.svelte.js';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import CalendarCreationModal from '$lib/components/calendar/CalendarCreationModal.svelte';
@@ -333,16 +334,16 @@
 </script>
 
 <svelte:head>
-	<title>Manage Calendars - Communikey</title>
-	<meta name="description" content="Manage your personal calendars on Nostr" />
+	<title>{m.calendar_management_page_title()}</title>
+	<meta name="description" content={m.calendar_management_page_description()} />
 </svelte:head>
 
 <div class="container mx-auto max-w-4xl px-4 py-8">
 	<!-- Header -->
 	<div class="mb-8 flex items-center justify-between">
 		<div>
-			<h1 class="text-3xl font-bold text-base-content">Manage Calendars</h1>
-			<p class="mt-2 text-base-content/60">Create, edit, and organize your personal calendars</p>
+			<h1 class="text-3xl font-bold text-base-content">{m.calendar_management_header_title()}</h1>
+			<p class="mt-2 text-base-content/60">{m.calendar_management_header_subtitle()}</p>
 		</div>
 
 		<!-- Action buttons -->
@@ -364,7 +365,7 @@
 						/>
 					</svg>
 				{/if}
-				Refresh
+				{m.calendar_management_refresh_button()}
 			</button>
 
 			<button class="btn btn-primary" onclick={handleCreateCalendar}>
@@ -376,7 +377,7 @@
 						d="M12 6v6m0 0v6m0-6h6m-6 0H6"
 					/>
 				</svg>
-				New Calendar
+				{m.calendar_management_new_calendar_button()}
 			</button>
 		</div>
 	</div>
@@ -401,7 +402,7 @@
 		<div class="flex items-center justify-center py-12">
 			<div class="text-center">
 				<span class="loading loading-lg loading-spinner text-primary"></span>
-				<p class="mt-4 text-base-content/60">Loading your calendars...</p>
+				<p class="mt-4 text-base-content/60">{m.calendar_management_loading()}</p>
 			</div>
 		</div>
 	{:else if !activeUser}
@@ -422,10 +423,9 @@
 							d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
 						/>
 					</svg>
-					<h2 class="mt-6 text-2xl font-bold text-base-content">Login Required</h2>
+					<h2 class="mt-6 text-2xl font-bold text-base-content">{m.calendar_management_not_logged_in_title()}</h2>
 					<p class="mt-4 text-base-content/60">
-						You need to be logged in to manage your calendars. Please log in to access your calendar
-						management tools.
+						{m.calendar_management_not_logged_in_description()}
 					</p>
 				</div>
 			</div>
@@ -448,10 +448,9 @@
 							d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
 						/>
 					</svg>
-					<h2 class="mt-6 text-2xl font-bold text-base-content">No Calendars Yet</h2>
+					<h2 class="mt-6 text-2xl font-bold text-base-content">{m.calendar_management_empty_title()}</h2>
 					<p class="mt-4 text-base-content/60">
-						Create your first calendar to start organizing your events. Calendars help you group and
-						manage your calendar events on Nostr.
+						{m.calendar_management_empty_description()}
 					</p>
 					<button class="btn mt-6 btn-primary" onclick={handleCreateCalendar}>
 						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -462,7 +461,7 @@
 								d="M12 6v6m0 0v6m0-6h6m-6 0H6"
 							/>
 						</svg>
-						Create Your First Calendar
+						{m.calendar_management_empty_create_button()}
 					</button>
 				</div>
 			</div>
@@ -487,13 +486,13 @@
 									<div class="space-y-4">
 										<input
 											type="text"
-											placeholder="Calendar title"
+											placeholder={m.calendar_management_edit_title_placeholder()}
 											class="input-bordered input w-full"
 											bind:value={editTitle}
 											disabled={isUpdating}
 										/>
 										<textarea
-											placeholder="Calendar description (optional)"
+											placeholder={m.calendar_management_edit_description_placeholder()}
 											class="textarea-bordered textarea w-full resize-none"
 											rows="3"
 											bind:value={editDescription}
@@ -515,14 +514,14 @@
 												{#if isUpdating}
 													<span class="loading loading-sm loading-spinner"></span>
 												{/if}
-												Save
+												{m.calendar_management_edit_save_button()}
 											</button>
 											<button
 												class="btn btn-ghost btn-sm"
 												onclick={cancelEditing}
 												disabled={isUpdating}
 											>
-												Cancel
+												{m.calendar_management_edit_cancel_button()}
 											</button>
 										</div>
 									</div>
@@ -575,7 +574,7 @@
 														d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
 													/>
 												</svg>
-												View Calendar
+												{m.calendar_management_menu_view_calendar()}
 											</a>
 										</li>
 										<li>
@@ -594,7 +593,7 @@
 														d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
 													/>
 												</svg>
-												Copy Calendar Link
+												{m.calendar_management_menu_copy_link()}
 											</a>
 										</li>
 										<li>
@@ -613,7 +612,7 @@
 														d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
 													/>
 												</svg>
-												Edit Calendar
+												{m.calendar_management_menu_edit_calendar()}
 											</a>
 										</li>
 										<li>
@@ -633,7 +632,7 @@
 														d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
 													/>
 												</svg>
-												Delete Calendar
+												{m.calendar_management_menu_delete_calendar()}
 											</a>
 										</li>
 									</ul>
@@ -653,7 +652,7 @@
 											d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
 										/>
 									</svg>
-									<span>{calendar.eventReferences.length} events</span>
+									<span>{m.calendar_management_event_count({ count: calendar.eventReferences.length })}</span>
 								</div>
 								<div class="flex items-center gap-1">
 									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -664,7 +663,7 @@
 											d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
 										/>
 									</svg>
-									<span>Created {formatCalendarDate(new Date(calendar.createdAt * 1000), 'short')}</span>
+									<span>{m.calendar_management_created_date({ date: formatCalendarDate(new Date(calendar.createdAt * 1000), 'short') })}</span>
 								</div>
 							</div>
 						{/if}
@@ -687,10 +686,9 @@
 										/>
 									</svg>
 									<div class="flex-1">
-										<h4 class="font-semibold text-error">Delete Calendar</h4>
+										<h4 class="font-semibold text-error">{m.calendar_management_delete_title()}</h4>
 										<p class="mt-1 text-sm text-base-content/70">
-											Are you sure you want to delete "{calendar.title}"? This action cannot be
-											undone and will remove the calendar from all relays.
+											{m.calendar_management_delete_confirmation({ title: calendar.title })}
 										</p>
 
 										{#if deleteError}
@@ -708,14 +706,14 @@
 												{#if isDeleting}
 													<span class="loading loading-sm loading-spinner"></span>
 												{/if}
-												Delete
+												{m.calendar_management_delete_button()}
 											</button>
 											<button
 												class="btn btn-ghost btn-sm"
 												onclick={cancelDeleting}
 												disabled={isDeleting}
 											>
-												Cancel
+												{m.calendar_management_delete_cancel_button()}
 											</button>
 										</div>
 									</div>

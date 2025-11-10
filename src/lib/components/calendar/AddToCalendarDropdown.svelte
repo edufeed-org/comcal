@@ -10,6 +10,7 @@
 	import { PlusIcon, ChevronDownIcon } from '../icons';
 	import PersonalCalendarShare from './PersonalCalendarShare.svelte';
 	import CommunityCalendarShare from './CommunityCalendarShare.svelte';
+	import * as m from '$lib/paraglide/messages';
 
 	/** @type {{ event: any, disabled?: boolean }} */
 	let { event, disabled = false } = $props();
@@ -73,7 +74,7 @@
 			disabled={disabled}
 		>
 			<PlusIcon class_="w-4 h-4" />
-			Add to Calendar
+			{m.add_to_calendar_dropdown_button_label()}
 			<ChevronDownIcon class_="w-4 h-4" />
 		</button>
 
@@ -89,7 +90,7 @@
 				<CommunityCalendarShare {event} {activeUser} compact={true} />
 			{:else}
 				<div class="py-4 text-center text-sm text-base-content/60">
-					Please sign in to add events to your calendars
+					{m.add_to_calendar_dropdown_signin_required()}
 				</div>
 			{/if}
 		</div>
@@ -102,7 +103,7 @@
 		disabled={disabled}
 	>
 		<PlusIcon class_="w-4 h-4" />
-		Add to Calendar
+		{m.add_to_calendar_dropdown_button_label()}
 	</button>
 
 	<!-- Mobile Modal -->
@@ -115,7 +116,7 @@
 		>
 			<div class="w-full rounded-t-2xl bg-base-100 p-6 shadow-xl">
 				<div class="mb-4 flex items-center justify-between">
-					<h3 class="text-lg font-semibold text-base-content">Add to Calendar</h3>
+					<h3 class="text-lg font-semibold text-base-content">{m.add_to_calendar_dropdown_button_label()}</h3>
 					<button class="btn btn-circle btn-ghost btn-sm" onclick={close}>✕</button>
 				</div>
 
@@ -127,7 +128,7 @@
 					<CommunityCalendarShare {event} {activeUser} compact={false} />
 				{:else}
 					<div class="py-8 text-center text-base-content/60">
-						Please sign in to add events to your calendars
+						{m.add_to_calendar_dropdown_signin_required()}
 					</div>
 				{/if}
 			</div>

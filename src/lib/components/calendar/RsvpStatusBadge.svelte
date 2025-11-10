@@ -3,29 +3,30 @@
 	 * RsvpStatusBadge Component
 	 * Displays RSVP status with appropriate styling
 	 */
+	import * as m from '$lib/paraglide/messages';
 
 	/**
 	 * @type {{ status: 'accepted' | 'declined' | 'tentative', size?: 'sm' | 'md' | 'lg' }}
 	 */
 	let { status, size = 'md' } = $props();
 
-	const statusConfig = {
+	const statusConfig = $derived({
 		accepted: {
-			label: 'Going',
+			label: m.inline_rsvp_button_going(),
 			icon: '✓',
 			class: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
 		},
 		declined: {
-			label: 'Not Going',
+			label: m.rsvp_status_badge_not_going(),
 			icon: '✗',
 			class: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
 		},
 		tentative: {
-			label: 'Maybe',
+			label: m.inline_rsvp_button_maybe(),
 			icon: '?',
 			class: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
 		}
-	};
+	});
 
 	const sizeClasses = {
 		sm: 'px-2 py-0.5 text-xs',

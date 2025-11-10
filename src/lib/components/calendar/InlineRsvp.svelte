@@ -12,6 +12,7 @@
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { calendarEventRsvpLoader } from '$lib/loaders/rsvp.js';
 	import { getTagValue } from 'applesauce-core/helpers';
+	import * as m from '$lib/paraglide/messages';
 
 	let {
 		calendarEvent,
@@ -101,12 +102,12 @@
 	 */
 	async function handleRsvp(status) {
 		if (!isLoggedIn) {
-			showToast('Please log in to RSVP', 'error');
+			showToast(m.inline_rsvp_toast_login_required(), 'error');
 			return;
 		}
 
 		if (!calendarEvent) {
-			showToast('Event data not available', 'error');
+			showToast(m.inline_rsvp_toast_event_unavailable(), 'error');
 			return;
 		}
 
@@ -123,11 +124,11 @@
 
 			// Success toast
 			const statusLabels = {
-				accepted: 'Going',
-				tentative: 'Maybe',
-				declined: 'Not Going'
+				accepted: m.inline_rsvp_button_going(),
+				tentative: m.inline_rsvp_button_maybe(),
+				declined: m.inline_rsvp_button_no()
 			};
-			showToast(`RSVP updated: ${statusLabels[status]}`, 'success');
+			showToast(m.inline_rsvp_toast_updated({ status: statusLabels[status] }), 'success');
 
 			// Clear note after successful submit
 			if (showNoteField && rsvpNote) {
@@ -135,7 +136,7 @@
 			}
 		} catch (err) {
 			console.error('Error creating RSVP:', err);
-			const errorMsg = err instanceof Error ? err.message : 'Failed to update RSVP';
+			const errorMsg = err instanceof Error ? err.message : m.inline_rsvp_error_failed();
 			error = errorMsg;
 			showToast(errorMsg, 'error');
 		} finally {
@@ -167,7 +168,7 @@
 			<!-- Not logged in message -->
 			<div class="text-sm text-base-content/60 text-center py-2">
 				<CalendarIcon class_="w-4 h-4 inline mr-1" />
-				Log in to RSVP to this event
+				{m.inline_rsvp_login_prompt()}
 			</div>
 		{:else}
 			<!-- Status Button Group -->
@@ -190,7 +191,7 @@
 					{:else}
 						<span class="flex items-center gap-1 {userRsvpStatus === 'accepted' ? 'font-bold' : ''}">
 							<span class="text-lg">{userRsvpStatus === 'accepted' ? '✓' : '✓'}</span>
-							<span>Going</span>
+							<span>{m.inline_rsvp_button_going()}</span>
 						</span>
 					{/if}
 				</button>
@@ -213,7 +214,7 @@
 					{:else}
 						<span class="flex items-center gap-1 {userRsvpStatus === 'tentative' ? 'font-bold' : ''}">
 							<span class="text-lg">{userRsvpStatus === 'tentative' ? '?' : '?'}</span>
-							<span>Maybe</span>
+							<span>{m.inline_rsvp_button_maybe()}</span>
 						</span>
 					{/if}
 				</button>
@@ -236,7 +237,7 @@
 					{:else}
 						<span class="flex items-center gap-1 {userRsvpStatus === 'declined' ? 'font-bold' : ''}">
 							<span class="text-lg">{userRsvpStatus === 'declined' ? '✗' : '✗'}</span>
-							<span>No</span>
+							<span>{m.inline_rsvp_button_no()}</span>
 						</span>
 					{/if}
 				</button>
@@ -250,7 +251,7 @@
 					class="btn btn-ghost btn-xs self-start"
 					disabled={isSubmitting}
 				>
-					{showNoteField ? '− Hide note' : '+ Add note'}
+					{showNoteField ? `− ${m.inline_rsvp_note_hide()}` : `+ ${m.inline_rsvp_note_add()}`}
 				</button>
 			{/if}
 
@@ -259,7 +260,7 @@
 				<div class="form-control">
 					<textarea
 						bind:value={rsvpNote}
-						placeholder="Add a message with your RSVP..."
+						placeholder={m.inline_rsvp_note_placeholder()}
 						rows={compact ? 2 : 3}
 						disabled={isSubmitting}
 						class="textarea textarea-bordered textarea-sm w-full
