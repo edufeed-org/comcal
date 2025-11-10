@@ -27,6 +27,7 @@
 	import CommunityCalendarShare from './CommunityCalendarShare.svelte';
 	import ReactionBar from '../reactions/ReactionBar.svelte';
 	import ProfileCard from '../shared/ProfileCard.svelte';
+	import EventManagementActions from './EventManagementActions.svelte';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
@@ -43,7 +44,6 @@
 		});
 		return () => subscription.unsubscribe();
 	});
-
 
 	// Generate unique modal ID
 	const modalId = 'event-details-modal';
@@ -100,6 +100,9 @@
 		event && endDate && startDate ? startDate.toDateString() !== endDate.toDateString() : false
 	);
 
+	// Check if user owns this event
+	let isUserEvent = $derived(event && activeUser && event.pubkey === activeUser.pubkey);
+
 	// Generate URL for event detail page
 	let eventDetailUrl = $derived(
 		event?.originalEvent ? `/calendar/event/${encodeEventToNaddr(event.originalEvent)}` : ''
@@ -143,11 +146,74 @@
 	}
 
 	/**
+	 * Handle edit action - navigate to event detail page
+	 */
+	function handleEdit() {
+		if (eventDetailUrl) {
+			window.location.href = eventDetailUrl;
+		}
+	}
+
+	/**
+	 * Handle delete success - close modal
+	 */
+	function handleDeleteSuccess() {
+		modal.closeModal();
+		// The event will be automatically removed from the calendar view
+		// since eventStore.add() in deleteCalendarEvent removes it
+	}
+
+	/**
 	 * Handle modal close
 	 */
 	function handleClose() {
 		modal.closeModal();
 	}
+
+	/**
+	 * Get event type badge info
+	 * @returns {{ text: string, class: string }}
+	 */
+	function getEventTypeBadge() {
+		if (!event) return { text: '', class: '' };
+		
+		if (isAllDay) {
+			if (isMultiDay) {
+				return { text: 'Multi-Day', class: 'badge-secondary' };
+			}
+			return { text: 'All-Day', class: 'badge-primary' };
+		}
+		return { text: 'Timed Event', class: 'badge-accent' };
+	}
+
+	/**
+	 * Get compact date string for header
+	 * @returns {string}
+	 */
+	function getCompactDate() {
+		if (!startDate) return '';
+		
+		const now = new Date();
+		const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+		const tomorrow = new Date(today);
+		tomorrow.setDate(tomorrow.getDate() + 1);
+		const eventDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+		
+		const timeStr = isAllDay ? '' : `, ${formatCalendarDate(startDate, 'time')}`;
+		
+		if (eventDay.getTime() === today.getTime()) {
+			return `Today${timeStr}`;
+		} else if (eventDay.getTime() === tomorrow.getTime()) {
+			return `Tomorrow${timeStr}`;
+		} else {
+			const monthDay = formatCalendarDate(startDate, 'long').split(',')[0]; // Get "Dec 25" part
+			return `${monthDay}${timeStr}`;
+		}
+	}
+
+	// Derived values for header
+	let eventTypeBadge = $derived(getEventTypeBadge());
+	let compactDate = $derived(getCompactDate());
 </script>
 
 <!-- Event Details Modal -->
@@ -160,35 +226,68 @@
 		aria-labelledby="event-title"
 	>
 		<div class="modal-box max-h-screen w-full max-w-2xl overflow-y-auto">
-			<!-- Modal Header -->
-			<div class="mb-6 flex items-center justify-between">
-				<h2 id="event-title" class="text-2xl font-bold text-base-content">
-					{event.title}
-				</h2>
-				<div class="flex items-center gap-2">
+			<!-- Modal Header - Enhanced Design -->
+			<div class="mb-6 rounded-lg bg-base-200/50 p-5 pb-4">
+				<!-- Top Row: Badge, Date, and Actions -->
+				<div class="mb-3 flex items-start justify-between gap-3">
+					<div class="flex items-center gap-3">
+						{#if eventTypeBadge.text}
+							<span class="badge {eventTypeBadge.class} badge-sm font-medium">
+								{eventTypeBadge.text}
+							</span>
+						{/if}
+						{#if compactDate}
+							<span class="flex items-center gap-1.5 text-sm text-base-content/70">
+								<ClockIcon class_="w-4 h-4" />
+								{compactDate}
+							</span>
+						{/if}
+					</div>
+					
+					<!-- Simplified Action Buttons -->
+					<div class="flex items-center gap-1">
+						{#if isUserEvent}
+							<EventManagementActions
+								{event}
+								{activeUser}
+								onEdit={handleEdit}
+								onDeleteSuccess={handleDeleteSuccess}
+							/>
+						{/if}
+						<a
+							href={eventDetailUrl}
+							class="btn btn-ghost btn-sm"
+							aria-label="Open in new tab"
+							title="Open in new tab"
+							onclick={handleClose}
+						>
+							<ExternalLinkIcon title="Show Event" class_="w-5 h-5" />
+						</a>
+						<button
+							class="btn btn-ghost btn-sm text-error hover:bg-error hover:text-error-content"
+							onclick={handleClose}
+							aria-label="Close"
+							title="Close"
+						>
+							<CloseIcon class_="w-5 h-5" />
+						</button>
+					</div>
+				</div>
+
+				<!-- Title with Copy Button -->
+				<div class="mb-3 flex items-start gap-2">
+					<h2 id="event-title" class="flex-1 text-3xl font-bold leading-tight text-base-content">
+						{event.title}
+					</h2>
 					<button
-						class="btn btn-circle btn-ghost btn-sm"
+						class="btn btn-ghost btn-sm mt-1"
 						onclick={copyNaddr}
 						aria-label={m.event_details_copy_address()}
 						title={m.event_details_copy_address()}
 					>
 						<CopyIcon class_="w-5 h-5" />
 					</button>
-					<a
-						href={eventDetailUrl}
-						class="btn btn-circle btn-ghost btn-sm"
-						aria-label={m.event_details_open_page()}
-						onclick={handleClose}
-					>
-						<ExternalLinkIcon class_="w-6 h-6" />
-					</a>
-					<button
-						class="btn btn-circle btn-ghost btn-sm"
-						onclick={handleClose}
-						aria-label={m.event_details_close()}
-					>
-						<CloseIcon class_="w-6 h-6" />
-					</button>
+					
 				</div>
 			</div>
 

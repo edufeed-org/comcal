@@ -27,3 +27,6 @@ memory-bank
 .clineignore
 
 data/
+
+#i18n
+project.inlang

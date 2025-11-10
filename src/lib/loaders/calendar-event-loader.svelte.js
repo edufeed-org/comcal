@@ -78,11 +78,78 @@ export function useCalendarEventLoader(options) {
 		targetedPublicationSubscription = cleanupSubscription(targetedPublicationSubscription);
 		
 		// Clean up deletion subscriptions
-		deletionSubscriptions.forEach((sub) => cleanupSubscription(sub));
+		deletionSubscriptions.forEach(sub => cleanupSubscription(sub));
 		deletionSubscriptions.clear();
 		
 		eventMap.clear();
 		resolutionErrors.length = 0;
+	}
+
+	/**
+	 * Start loading deletion events for author pubkeys in parallel
+	 * This MUST be called before or simultaneously with event loading
+	 * so EventStore can filter deleted events automatically
+	 * @param {string[]} pubkeys - Array of author pubkeys
+	 */
+	function startDeletionLoaders(pubkeys) {
+		console.log('🔍 DELETION LOADER: startDeletionLoaders called with', pubkeys.length, 'pubkeys:', pubkeys);
+		console.log('🔍 DELETION LOADER: Current active deletion subscriptions:', Array.from(deletionSubscriptions.keys()));
+		
+		pubkeys.forEach((pubkey) => {
+			// Skip if already loading deletions for this author
+			if (deletionSubscriptions.has(pubkey)) {
+				console.log('⏭️ DELETION LOADER: Already active for:', pubkey.substring(0, 8), '... - skipping');
+				return;
+			}
+			
+			console.log('🚀 DELETION LOADER: Creating new deletion loader for author:', pubkey.substring(0, 8), '...');
+			
+			const deletionLoader = userDeletionLoader(pubkey);
+			const loaderResult = deletionLoader();
+			
+			// Handle both Observable and Promise returns
+			if (loaderResult && typeof loaderResult.subscribe === 'function') {
+				console.log('✅ DELETION LOADER: Subscribing to deletion events for:', pubkey.substring(0, 8), '...');
+				const sub = loaderResult.subscribe({
+					next: (/** @type {any} */ deletionEvent) => {
+						if (deletionEvent) {
+							console.log('🗑️ DELETION EVENT RECEIVED:', {
+								id: deletionEvent.id.substring(0, 12) + '...',
+								author: deletionEvent.pubkey.substring(0, 8) + '...',
+								created_at: deletionEvent.created_at,
+								targetKinds: deletionEvent.tags?.filter((/** @type {any[]} */ t) => t[0] === 'k').map((/** @type {any[]} */ t) => t[1]) || [],
+								targetAddresses: deletionEvent.tags?.filter((/** @type {any[]} */ t) => t[0] === 'a').map((/** @type {any[]} */ t) => t[1]) || [],
+								targetEvents: deletionEvent.tags?.filter((/** @type {any[]} */ t) => t[0] === 'e').map((/** @type {any[]} */ t) => t[1].substring(0, 12) + '...') || []
+							});
+							
+							// Add to EventStore - this triggers automatic filtering in Models
+							const wasAdded = eventStore.add(deletionEvent);
+							
+							if (wasAdded) {
+								console.log('🗑️ Deletion event added to EventStore successfully');
+								console.log('🗑️ EventStore will now filter deleted events in all active Models');
+							} else {
+								console.log('⚠️ Deletion event was not added (may be duplicate or invalid)');
+							}
+						} else {
+							console.log('⚠️ DELETION LOADER: Received null/undefined deletion event');
+						}
+					},
+					error: (/** @type {any} */ err) => {
+						console.error('❌ DELETION LOADER ERROR for', pubkey.substring(0, 8), '...:', err);
+					},
+					complete: () => {
+						console.log('✅ DELETION LOADER COMPLETED for:', pubkey.substring(0, 8), '...');
+					}
+				});
+				deletionSubscriptions.set(pubkey, sub);
+				console.log('✅ DELETION LOADER: Subscription stored. Total active:', deletionSubscriptions.size);
+			} else {
+				console.error('❌ DELETION LOADER: Loader result is not subscribable!', loaderResult);
+			}
+		});
+		
+		console.log('🔍 DELETION LOADER: Finished setup. Active deletion subscriptions:', deletionSubscriptions.size);
 	}
 
 	/**
@@ -142,6 +209,20 @@ export function useCalendarEventLoader(options) {
 			const filter = { kinds: [31922, 31923], limit: 50 };
 
 			subscription = eventStore.model(TimelineModel, filter).subscribe((timeline) => {
+				const timestamp = Date.now();
+				console.log('📊 MODEL EMISSION (global) at', timestamp, '- Timeline has', timeline.length, 'events');
+				console.log('📊 Event IDs in timeline:', timeline.map(e => e.id).join(', '));
+				
+				// Log event details for debugging
+				timeline.forEach(e => {
+					console.log(`📊   Event ${e.id}: kind=${e.kind}, pubkey=${e.pubkey.substring(0, 8)}..., dTag=${e.tags?.find((/** @type {any[]} */ t) => t[0] === 'd')?.[1]}`);
+				});
+				
+				// Start deletion loaders for all visible event authors (parallel pattern)
+				const authorPubkeys = [...new SvelteSet(timeline.map(e => e.pubkey))];
+				console.log('📊 Starting deletion loaders for', authorPubkeys.length, 'unique authors');
+				startDeletionLoaders(authorPubkeys);
+				
 				const mapped = timeline.map(getCalendarEventMetadata);
 				options.onEventsUpdate(mapped);
 				options.onLoadingChange(false);
@@ -177,6 +258,9 @@ export function useCalendarEventLoader(options) {
 		relaySubscription = cleanupSubscription(relaySubscription);
 		stopBackgroundLoader();
 
+		// Collect all author pubkeys from calendar references for parallel deletion loading
+		const authorPubkeys = new SvelteSet();
+		
 		calendar.eventReferences.forEach((/** @type {string} */ addressRef, /** @type {number} */ index) => {
 			const parsed = parseAddressReference(addressRef);
 
@@ -189,6 +273,9 @@ export function useCalendarEventLoader(options) {
 				`📅 EventLoader: Loading event ${index + 1}/${calendar.eventReferences.length}:`,
 				parsed
 			);
+			
+			// Collect author pubkey for deletion loader
+			authorPubkeys.add(parsed.pubkey);
 
 			const loader = eventStore.addressableLoader?.({
 				kind: parsed.kind,
@@ -197,24 +284,33 @@ export function useCalendarEventLoader(options) {
 			});
 
 			if (loader) {
-				loader.subscribe((/** @type {any} */ event) => {
-					console.log(
-						`📅 EventLoader: Successfully loaded event:`,
-						event.id,
-						getCalendarEventTitle(event)
-					);
-					const calendarEvent = getCalendarEventMetadata(event);
+				// Type assertion to handle Observable vs Promise return type
+				const observableLoader = /** @type {any} */ (loader);
+				if (typeof observableLoader.subscribe === 'function') {
+					observableLoader.subscribe((/** @type {any} */ event) => {
+						console.log(
+							`📅 EventLoader: Successfully loaded event:`,
+							event.id,
+							getCalendarEventTitle(event)
+						);
+						const calendarEvent = getCalendarEventMetadata(event);
 
-					if (!eventMap.has(calendarEvent.id)) {
-						eventMap.set(calendarEvent.id, calendarEvent);
-						options.onEventsUpdate(Array.from(eventMap.values()));
-						console.log(`📅 EventLoader: Added unique event, total: ${eventMap.size}`);
-					} else {
-						console.log(`📅 EventLoader: Skipped duplicate event:`, calendarEvent.id);
-					}
-				});
+						if (!eventMap.has(calendarEvent.id)) {
+							eventMap.set(calendarEvent.id, calendarEvent);
+							options.onEventsUpdate(Array.from(eventMap.values()));
+							console.log(`📅 EventLoader: Added unique event, total: ${eventMap.size}`);
+						} else {
+							console.log(`📅 EventLoader: Skipped duplicate event:`, calendarEvent.id);
+						}
+					});
+				}
 			}
 		});
+		
+		// Start deletion loaders for all authors at once (parallel pattern)
+		if (authorPubkeys.size > 0) {
+			startDeletionLoaders([...authorPubkeys]);
+		}
 	}
 
 	/**
@@ -231,6 +327,9 @@ export function useCalendarEventLoader(options) {
 
 		options.onLoadingChange(true);
 		eventMap.clear();
+
+		// Start deletion loader FIRST (parallel pattern, before any subscriptions)
+		startDeletionLoaders([pubkey]);
 
 		if (selectedRelays.length > 0) {
 			// Use specific relays
@@ -274,7 +373,15 @@ export function useCalendarEventLoader(options) {
 			const filter = { kinds: [31922, 31923], authors: [pubkey], limit: 50 };
 
 			subscription = eventStore.model(TimelineModel, filter).subscribe((timeline) => {
-				console.log('📅 EventLoader: Loaded', timeline.length, 'events by author from EventStore');
+				const timestamp = Date.now();
+				console.log('📊 MODEL EMISSION (by author) at', timestamp, '- Timeline has', timeline.length, 'events');
+				console.log('📊 Event IDs in timeline:', timeline.map(e => e.id).join(', '));
+				
+				// Log event details for debugging
+				timeline.forEach(e => {
+					console.log(`📊   Event ${e.id}: kind=${e.kind}, pubkey=${e.pubkey.substring(0, 8)}..., dTag=${e.tags?.find((/** @type {any[]} */ t) => t[0] === 'd')?.[1]}`);
+				});
+				
 				const mapped = timeline.map(getCalendarEventMetadata);
 				options.onEventsUpdate(mapped);
 				options.onLoadingChange(false);
@@ -319,32 +426,23 @@ export function useCalendarEventLoader(options) {
 			// Use the CommunityCalendarEventModel to reactively combine all data
 			subscription = eventStore.model(CommunityCalendarEventModel, communityPubkey).subscribe({
 				next: (events) => {
-					console.log(`📅 EventLoader: Received ${events.length} community events from model`);
+					const timestamp = Date.now();
+					console.log('📊 MODEL EMISSION (community) at', timestamp, '- Events:', events.length);
+					console.log('📊 Event IDs in timeline:', events.map(e => e.id).join(', '));
+					
+					// Log event details for debugging
+					events.forEach(e => {
+						const original = e.originalEvent;
+						console.log(`📊   Event ${e.id}: kind=${original.kind}, pubkey=${original.pubkey.substring(0, 8)}..., dTag=${original.tags?.find((/** @type {any[]} */ t) => t[0] === 'd')?.[1]}`);
+					});
+					
+					// Start deletion loaders for all unique authors (parallel pattern)
+					const authorPubkeys = [...new SvelteSet(events.map(e => e.originalEvent.pubkey))];
+					console.log('📊 Starting deletion loaders for', authorPubkeys.length, 'unique authors');
+					startDeletionLoaders(authorPubkeys);
+					
 					options.onEventsUpdate(events);
 					options.onLoadingChange(false);
-					
-					// Load deletion events for all unique authors
-					// EventStore will automatically remove deleted events from all subscriptions
-					const authorPubkeys = new SvelteSet(events.map(e => e.originalEvent.pubkey));
-					
-					authorPubkeys.forEach((pubkey) => {
-						// Skip if already loading deletions for this author
-						if (deletionSubscriptions.has(pubkey)) return;
-						
-						const deletionLoader = userDeletionLoader(pubkey);
-						const loaderResult = deletionLoader();
-						
-						// Handle both Observable and Promise returns
-						if (loaderResult && typeof loaderResult.subscribe === 'function') {
-							const sub = loaderResult.subscribe(/** @param {any} deletionEvent */ (deletionEvent) => {
-								if (deletionEvent) {
-									eventStore.add(deletionEvent);
-								}
-							});
-							
-							deletionSubscriptions.set(pubkey, sub);
-						}
-					});
 				},
 				error: (err) => {
 					console.error('📅 EventLoader: Error in community calendar model:', err);
@@ -397,7 +495,20 @@ export function useCalendarEventLoader(options) {
 			)
 			.subscribe({
 				next: (timeline) => {
-					console.log('📅 EventLoader: Received timeline with', timeline.length, 'events');
+					const timestamp = Date.now();
+					console.log('📊 RELAY SUBSCRIPTION EMISSION (by relays) at', timestamp, '- Timeline has', timeline.length, 'events');
+					console.log('📊 Event IDs in timeline:', timeline.map(e => e.id).join(', '));
+					
+					// Log event details for debugging
+					timeline.forEach(e => {
+						console.log(`📊   Event ${e.id}: kind=${e.kind}, pubkey=${e.pubkey.substring(0, 8)}..., dTag=${e.tags?.find((/** @type {any[]} */ t) => t[0] === 'd')?.[1]}`);
+					});
+					
+					// Start deletion loaders for all visible event authors (parallel pattern)
+					const authorPubkeys = [...new SvelteSet(timeline.map(e => e.pubkey))];
+					console.log('📊 Starting deletion loaders for', authorPubkeys.length, 'unique authors');
+					startDeletionLoaders(authorPubkeys);
+					
 					const mapped = timeline.map(getCalendarEventMetadata);
 					options.onEventsUpdate(mapped);
 					options.onLoadingChange(false);
