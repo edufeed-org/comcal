@@ -168,6 +168,51 @@
 	function handleClose() {
 		modal.closeModal();
 	}
+
+	/**
+	 * Get event type badge info
+	 * @returns {{ text: string, class: string }}
+	 */
+	function getEventTypeBadge() {
+		if (!event) return { text: '', class: '' };
+		
+		if (isAllDay) {
+			if (isMultiDay) {
+				return { text: 'Multi-Day', class: 'badge-secondary' };
+			}
+			return { text: 'All-Day', class: 'badge-primary' };
+		}
+		return { text: 'Timed Event', class: 'badge-accent' };
+	}
+
+	/**
+	 * Get compact date string for header
+	 * @returns {string}
+	 */
+	function getCompactDate() {
+		if (!startDate) return '';
+		
+		const now = new Date();
+		const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+		const tomorrow = new Date(today);
+		tomorrow.setDate(tomorrow.getDate() + 1);
+		const eventDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+		
+		const timeStr = isAllDay ? '' : `, ${formatCalendarDate(startDate, 'time')}`;
+		
+		if (eventDay.getTime() === today.getTime()) {
+			return `Today${timeStr}`;
+		} else if (eventDay.getTime() === tomorrow.getTime()) {
+			return `Tomorrow${timeStr}`;
+		} else {
+			const monthDay = formatCalendarDate(startDate, 'long').split(',')[0]; // Get "Dec 25" part
+			return `${monthDay}${timeStr}`;
+		}
+	}
+
+	// Derived values for header
+	let eventTypeBadge = $derived(getEventTypeBadge());
+	let compactDate = $derived(getCompactDate());
 </script>
 
 <!-- Event Details Modal -->
@@ -180,43 +225,79 @@
 		aria-labelledby="event-title"
 	>
 		<div class="modal-box max-h-screen w-full max-w-2xl overflow-y-auto">
-			<!-- Modal Header -->
-			<div class="mb-6 flex items-center justify-between">
-				<h2 id="event-title" class="text-2xl font-bold text-base-content">
-					{event.title}
-				</h2>
-				<div class="flex items-center gap-2">
+			<!-- Modal Header - Enhanced Design -->
+			<div class="mb-6 rounded-lg bg-base-200/50 p-5 pb-4">
+				<!-- Top Row: Badge, Date, and Actions -->
+				<div class="mb-3 flex items-start justify-between gap-3">
+					<div class="flex items-center gap-3">
+						{#if eventTypeBadge.text}
+							<span class="badge {eventTypeBadge.class} badge-sm font-medium">
+								{eventTypeBadge.text}
+							</span>
+						{/if}
+						{#if compactDate}
+							<span class="flex items-center gap-1.5 text-sm text-base-content/70">
+								<ClockIcon class_="w-4 h-4" />
+								{compactDate}
+							</span>
+						{/if}
+					</div>
+					
+					<!-- Simplified Action Buttons -->
+					<div class="flex items-center gap-1">
+						{#if isUserEvent}
+							<EventManagementActions
+								{event}
+								{activeUser}
+								onEdit={handleEdit}
+								onDeleteSuccess={handleDeleteSuccess}
+							/>
+						{/if}
+						<a
+							href={eventDetailUrl}
+							class="btn btn-ghost btn-sm"
+							aria-label="Open in new tab"
+							title="Open in new tab"
+							onclick={handleClose}
+						>
+							<ExternalLinkIcon title="Show Event" class_="w-5 h-5" />
+						</a>
+						<button
+							class="btn btn-ghost btn-sm text-error hover:bg-error hover:text-error-content"
+							onclick={handleClose}
+							aria-label="Close"
+							title="Close"
+						>
+							<CloseIcon class_="w-5 h-5" />
+						</button>
+					</div>
+				</div>
+
+				<!-- Title with Copy Button -->
+				<div class="mb-3 flex items-start gap-2">
+					<h2 id="event-title" class="flex-1 text-3xl font-bold leading-tight text-base-content">
+						{event.title}
+					</h2>
 					<button
-						class="btn btn-circle btn-ghost btn-sm"
+						class="btn btn-ghost btn-sm mt-1"
 						onclick={copyNaddr}
-						aria-label="Copy event address"
-						title="Copy naddr"
+						aria-label="Copy event link"
+						title="Copy event link"
 					>
 						<CopyIcon class_="w-5 h-5" />
 					</button>
-					<a
-						href={eventDetailUrl}
-						class="btn btn-circle btn-ghost btn-sm"
-						aria-label="Open event details page"
-						onclick={handleClose}
-					>
-						<ExternalLinkIcon class_="w-6 h-6" />
-					</a>
-					{#if isUserEvent}
-						<EventManagementActions
-							{event}
-							{activeUser}
-							onEdit={handleEdit}
-							onDeleteSuccess={handleDeleteSuccess}
+				</div>
+
+				<!-- Author Info -->
+				<div class="flex items-center gap-2 text-sm text-base-content/70">
+					<UserIcon class_="w-4 h-4" />
+					<span>Event by</span>
+					<div class="inline-flex">
+						<ProfileCard 
+							pubkey={event.pubkey} 
+							onClose={handleClose}
 						/>
-					{/if}
-					<button
-						class="btn btn-circle btn-ghost btn-sm"
-						onclick={handleClose}
-						aria-label="Close modal"
-					>
-						<CloseIcon class_="w-6 h-6" />
-					</button>
+					</div>
 				</div>
 			</div>
 

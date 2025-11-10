@@ -63,7 +63,7 @@
 		title="Manage event"
 		aria-label="Manage event"
 	>
-		<EditIcon class_="w-5 h-5" />
+		<EditIcon class="w-5 h-5" />
 	</button>
 	<ul
 		tabindex="0"
