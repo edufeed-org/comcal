@@ -17,12 +17,28 @@
 	let showRawData = $state(false);
 	let activeTab = $state('notes');
 	let bannerError = $state(false);
+	let loadingState = $state(/** @type {'loading' | 'found' | 'notFound'} */ ('loading'));
+	let timeoutId = /** @type {ReturnType<typeof setTimeout> | null} */ (null);
 
-	// Use loader + model pattern
+	// Use loader + model pattern with timeout tracking
 	$effect(() => {
 		// Reset state when pubkey changes
 		profile = null;
 		profileEvent = null;
+		loadingState = 'loading';
+		
+		// Clear any existing timeout
+		if (timeoutId) {
+			clearTimeout(timeoutId);
+			timeoutId = null;
+		}
+		
+		// Set 5-second timeout to detect if no profile is found
+		timeoutId = setTimeout(() => {
+			if (!profile && !profileEvent) {
+				loadingState = 'notFound';
+			}
+		}, 5000);
 
 		// 1. Trigger loader to fetch from relays and populate eventStore
 		const loaderSub = profileLoader({ 
@@ -33,6 +49,11 @@
 			// Store the raw event for developer section
 			if (event) {
 				profileEvent = event;
+				loadingState = 'found';
+				if (timeoutId) {
+					clearTimeout(timeoutId);
+					timeoutId = null;
+				}
 			}
 		});
 
@@ -40,13 +61,24 @@
 		const modelSub = eventStore
 			.model(ProfileModel, data.pubkey)
 			.subscribe((profileContent) => {
-				profile = profileContent;
+				if (profileContent) {
+					profile = profileContent;
+					loadingState = 'found';
+					if (timeoutId) {
+						clearTimeout(timeoutId);
+						timeoutId = null;
+					}
+				}
 			});
 		
-		// Cleanup both subscriptions
+		// Cleanup both subscriptions and timeout
 		return () => {
 			loaderSub.unsubscribe();
 			modelSub.unsubscribe();
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+				timeoutId = null;
+			}
 		};
 	});
 
@@ -107,8 +139,68 @@
 	}
 </script>
 
-{#if profile}
-	<!-- Main Container with Gradient Background -->
+{#if loadingState === 'loading'}
+	<!-- Loading State -->
+	<div class="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-gray-700 flex items-center justify-center">
+		<div class="text-center">
+			<div class="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+			<p class="text-white text-lg">Loading profile...</p>
+		</div>
+	</div>
+{:else if loadingState === 'notFound' && isOwnProfile}
+	<!-- Profile Not Found - Own Profile (Prominent Create Profile CTA) -->
+	<div class="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-gray-700 flex items-center justify-center px-4">
+		<div class="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 text-center">
+			<div class="mb-6">
+				<div class="w-24 h-24 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+					<svg class="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+					</svg>
+				</div>
+				<h2 class="text-2xl font-bold text-gray-900 mb-2">Profile Not Found</h2>
+				<p class="text-gray-600 mb-6">
+					We couldn't find a Nostr profile for this account. Let's create one!
+				</p>
+			</div>
+			
+			<button 
+				onclick={openEditModal}
+				class="btn btn-primary btn-lg w-full mb-4 shadow-lg hover:shadow-xl transition-shadow"
+			>
+				<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+				</svg>
+				Create Your Profile
+			</button>
+			
+			<div class="bg-blue-50 rounded-lg p-4 text-left">
+				<p class="text-sm text-gray-700">
+					<span class="font-semibold">💡 What happens next:</span><br />
+					Your profile will be published to the Nostr network as a Kind 0 event, making it visible across all Nostr clients.
+				</p>
+			</div>
+		</div>
+	</div>
+{:else if loadingState === 'notFound' && !isOwnProfile}
+	<!-- Profile Not Found - Other User's Profile -->
+	<div class="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-gray-700 flex items-center justify-center px-4">
+		<div class="text-center text-white max-w-md">
+			<div class="w-24 h-24 bg-white bg-opacity-20 rounded-full mx-auto mb-6 flex items-center justify-center">
+				<svg class="w-12 h-12 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+				</svg>
+			</div>
+			<h2 class="text-3xl font-bold mb-3">Profile Not Found</h2>
+			<p class="text-gray-200 text-lg mb-4">This user hasn't created a Nostr profile yet.</p>
+			<div class="bg-white bg-opacity-10 rounded-lg p-4 backdrop-blur-sm">
+				<p class="text-sm text-gray-300">
+					The profile may not exist, or it hasn't been found on the connected relays.
+				</p>
+			</div>
+		</div>
+	</div>
+{:else if profile}
+	<!-- Profile Found - Main Container with Gradient Background -->
 	<div class="min-h-screen">
 		<!-- Profile Header Section -->
 		<div class="relative">
@@ -350,13 +442,6 @@
 					{/if}
 				</div>
 			</div>
-		</div>
-	</div>
-{:else}
-	<div class="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-gray-700 flex items-center justify-center">
-		<div class="text-center">
-			<div class="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-			<p class="text-white text-lg">Loading profile...</p>
 		</div>
 	</div>
 {/if}
