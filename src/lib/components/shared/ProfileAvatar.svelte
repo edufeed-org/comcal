@@ -5,7 +5,10 @@
 -->
 
 <script>
-	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
+	import { ProfileModel } from 'applesauce-core/models';
+	import { profileLoader } from '$lib/loaders/profile.js';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+	import { appConfig } from '$lib/config.js';
 	import { getProfilePicture, getDisplayName } from 'applesauce-core/helpers';
 
 	/**
@@ -26,9 +29,44 @@
 		class: className = ''
 	} = $props();
 
-	// Load profile if not provided as prop
-	const getProfile = useUserProfile(pubkey);
-	let loadedProfile = $derived(profile || getProfile());
+	// Load profile reactively when pubkey changes
+	let loadedProfile = $state(/** @type {any} */ (null));
+
+	$effect(() => {
+		// If profile is provided as prop, use it directly
+		if (profile) {
+			loadedProfile = profile;
+			return;
+		}
+
+		// Reset profile when pubkey changes
+		loadedProfile = null;
+
+		// Load profile for the given pubkey
+		if (pubkey) {
+			// 1. Trigger loader to fetch from relays and populate eventStore
+			const loaderSub = profileLoader({
+				kind: 0,
+				pubkey: pubkey,
+				relays: appConfig.calendar.defaultRelays
+			}).subscribe(() => {
+				// Loader automatically populates eventStore
+			});
+
+			// 2. Subscribe to model for reactive parsed profile from eventStore
+			const modelSub = eventStore
+				.model(ProfileModel, pubkey)
+				.subscribe((profileContent) => {
+					loadedProfile = profileContent;
+				});
+
+			// Return cleanup function to unsubscribe from both
+			return () => {
+				loaderSub.unsubscribe();
+				modelSub.unsubscribe();
+			};
+		}
+	});
 
 	// Size mappings
 	const sizeClasses = {
