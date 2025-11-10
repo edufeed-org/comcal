@@ -3,8 +3,11 @@
  * Provides reactive access to calendar events for a specific community
  * Combines direct community events (h-tag) and targeted publications (kind 30222)
  * 
- * Uses progressive streaming to emit partial results as events are processed,
- * preventing UI blocking when processing large event sets.
+ * Uses TimelineModel from applesauce-core which automatically:
+ * - Filters out deleted events (NIP-09 deletion events)
+ * - Handles deduplication
+ * - Re-emits when deletion events are added to EventStore
+ * - Provides proper reactive updates
  * 
  * This model actively loads referenced calendar events on-demand using EventStore loaders,
  * making it self-contained and eliminating race conditions.
@@ -17,7 +20,8 @@
  * The model will automatically load referenced calendar events as needed.
  */
 import { combineLatest, of, from, isObservable } from 'rxjs';
-import { switchMap, map, scan, distinctUntilChanged } from 'rxjs/operators';
+import { switchMap, map } from 'rxjs/operators';
+import { TimelineModel } from 'applesauce-core/models';
 import { getTagValue } from 'applesauce-core/helpers';
 import { getCalendarEventMetadata, parseAddressReference } from '$lib/helpers/eventUtils';
 
@@ -30,35 +34,21 @@ import { getCalendarEventMetadata, parseAddressReference } from '$lib/helpers/ev
 export function CommunityCalendarEventModel(communityPubkey) {
 	return (eventStore) => {
 		// Stream 1: Direct community events (events with h-tag pointing to community)
-		// Use scan for progressive updates
-		const directEvents$ = eventStore.timeline({
+		// Use TimelineModel which handles deletion filtering
+		const directEvents$ = eventStore.model(TimelineModel, {
 			kinds: [31922, 31923],
 			'#h': [communityPubkey],
 			limit: 100
-		}).pipe(
-			scan((accumulator, events) => {
-				const eventMap = new Map(accumulator.map((/** @type {any} */ e) => [e.id, e]));
-				events.forEach((/** @type {any} */ e) => eventMap.set(e.id, e));
-				return Array.from(eventMap.values());
-			}, /** @type {any[]} */ ([])),
-			distinctUntilChanged((prev, curr) => prev.length === curr.length)
-		);
+		});
 
 		// Stream 2: Targeted publication events (kind 30222 events referencing this community)
-		// Use scan for progressive updates
-		const targetedPublications$ = eventStore.timeline({
+		// Use TimelineModel which handles deletion filtering
+		const targetedPublications$ = eventStore.model(TimelineModel, {
 			kinds: [30222],
 			'#p': [communityPubkey],
 			'#k': ['31922', '31923'],
 			limit: 100
-		}).pipe(
-			scan((accumulator, events) => {
-				const eventMap = new Map(accumulator.map((/** @type {any} */ e) => [e.id, e]));
-				events.forEach((/** @type {any} */ e) => eventMap.set(e.id, e));
-				return Array.from(eventMap.values());
-			}, /** @type {any[]} */ ([])),
-			distinctUntilChanged((prev, curr) => prev.length === curr.length)
-		);
+		});
 
 		// Combine streams and actively load referenced events
 		return combineLatest([directEvents$, targetedPublications$]).pipe(

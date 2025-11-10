@@ -9,7 +9,7 @@
 	} from '$lib/loaders/calendar.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
-	import { manager } from '$lib/stores/accounts.svelte';
+	import { manager, useActiveUser } from '$lib/stores/accounts.svelte';
 	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { CommunityCalendarEventModel } from '$lib/models/community-calendar-event.js';
@@ -45,8 +45,9 @@
 		communityProfile = null
 	} = $props();
 
-	// Use runes store for reactive state
-	let activeUser = $state(manager.active);
+	// Use reactive getter for active user to ensure proper reactivity on login/logout
+	const getActiveUser = useActiveUser();
+	let activeUser = $derived(getActiveUser());
 
 	// Calendar view state (local to this component)
 	let currentDate = $state(new Date());
@@ -81,7 +82,6 @@
 	let selectedDateForNewEvent = $state(/** @type {Date | null} */ (null));
 
 	// Subscription management for loaders and models
-	let userSubscription = $state();
 	let calendarSubscription = $state();
 	let loaderSubscription = $state();
 	let modelSubscription = $state();
@@ -94,6 +94,7 @@
 
 	// Track previous community pubkey to detect actual changes
 	let previousCommunityPubkey = $state('');
+	
 
 	// Initialize event loader composable for community mode
 	const communityEventLoader = useCalendarEventLoader({
@@ -121,6 +122,7 @@
 			}
 		}
 	});
+	
 
 	// Sync initial URL state on mount
 	syncInitialUrlState(
@@ -220,6 +222,7 @@
 			modelSubscription = eventStore
 				.model(GlobalCalendarEventModel, authors)
 				.subscribe((/** @type {any} */ calendarEvents) => {
+					console.log('📅 CalendarView: Received', calendarEvents.length, 'global calendar events');
 					allCalendarEvents = calendarEvents;
 					loading = false;
 				});
@@ -311,6 +314,8 @@
 	}
 
 	onMount(() => {
+		console.log('🎬 CalendarView: onMount - activeUser on mount:', activeUser?.pubkey?.substring(0, 8));
+		
 		// Set mounted flag to allow effects to run
 		mounted = true;
 
@@ -327,10 +332,6 @@
 			});
 		}
 
-		userSubscription = manager.active$.subscribe((user) => {
-			activeUser = user;
-		});
-
 		// Subscribe to calendar selection changes (only when no calendar prop provided)
 		if (!calendar) {
 			calendarSubscription = calendarFilters.selectedCalendar$.subscribe((cal) => {
@@ -344,7 +345,6 @@
 
 		// Cleanup subscriptions on unmount
 		return () => {
-			userSubscription?.unsubscribe();
 			calendarSubscription?.unsubscribe();
 			loaderSubscription?.unsubscribe();
 			modelSubscription?.unsubscribe();

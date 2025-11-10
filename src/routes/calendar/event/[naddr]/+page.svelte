@@ -4,8 +4,7 @@
 	import { appConfig } from '$lib/config.js';
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import { encodeEventToNaddr, hexToNpub } from '$lib/helpers/nostrUtils';
-	import { EventFactory } from 'applesauce-factory';
-	import { publishEvent } from '$lib/helpers/publisher.js';
+	import { deleteCalendarEvent } from '$lib/helpers/eventDeletion.js';
 	import { showToast } from '$lib/helpers/toast.js';
 	import CommentList from '$lib/components/comments/CommentList.svelte';
 	import ReactionBar from '$lib/components/reactions/ReactionBar.svelte';
@@ -166,53 +165,23 @@ import {
 	 * Handle event deletion with NIP-09
 	 */
 	async function handleDeleteEvent() {
-		if (!activeUser || !event || !rawEvent) return;
+		if (!activeUser || !event) return;
 
 		isDeletingEvent = true;
 
 		try {
-			// Create EventFactory
-			const factory = new EventFactory({
-				signer: activeUser.signer
-			});
-
-			// Create NIP-09 deletion event (kind 5) manually for addressable events
-			// According to NIP-09, use 'a' tag for addressable events (not 'e' tag)
-			const deleteTemplate = await factory.build({
-				kind: 5,
-				content: 'Event deleted by author',
-				tags: [
-					['a', `${event.kind}:${event.pubkey}:${event.dTag}`],
-					['k', event.kind.toString()]
-				]
-			});
-
-			// Sign the deletion event
-			const signedDelete = await factory.sign(deleteTemplate);
-
-			console.log('📅 Deletion event created:', signedDelete);
-
-			// Publish to relays
-			const result = await publishEvent(signedDelete, {
-				relays: appConfig.calendar.defaultRelays,
-				logPrefix: 'EventDeletion'
-			});
+			const result = await deleteCalendarEvent(event, activeUser);
 
 			if (result.success) {
-				console.log('✅ Deletion event published successfully');
-
-				// Add to EventStore - this automatically removes the referenced event!
-				eventStore.add(signedDelete);
-
+				showToast('Event deleted successfully', 'success');
 				// Navigate back to previous page
 				window.history.back();
 			} else {
-				console.error('❌ Failed to publish deletion event');
-				alert('Failed to delete event. Please try again.');
+				showToast(result.error || 'Failed to delete event', 'error');
 			}
 		} catch (error) {
 			console.error('Failed to delete event:', error);
-			alert('An error occurred while deleting the event.');
+			showToast('An error occurred while deleting the event', 'error');
 		} finally {
 			isDeletingEvent = false;
 			showDeleteConfirmation = false;

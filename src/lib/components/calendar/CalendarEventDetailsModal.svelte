@@ -9,6 +9,7 @@
 	import { registerCalendarEventsRefreshCallback } from '../../stores/calendar-management-store.svelte.js';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { showToast } from '$lib/helpers/toast.js';
+	import { deleteCalendarEvent } from '$lib/helpers/eventDeletion.js';
 	import {
 		CloseIcon,
 		CalendarIcon,
@@ -16,7 +17,9 @@
 		LocationIcon,
 		ExternalLinkIcon,
 		CopyIcon,
-		UserIcon
+		UserIcon,
+		EditIcon,
+		TrashIcon
 	} from '$lib/components/icons';
 	import EventDebugInfo from './EventDebugInfo.svelte';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
@@ -43,6 +46,9 @@
 		return () => subscription.unsubscribe();
 	});
 
+	// Delete state
+	let isDeletingEvent = $state(false);
+	let showDeleteConfirmation = $state(false);
 
 	// Generate unique modal ID
 	const modalId = 'event-details-modal';
@@ -99,6 +105,9 @@
 		event && endDate && startDate ? startDate.toDateString() !== endDate.toDateString() : false
 	);
 
+	// Check if user owns this event
+	let isUserEvent = $derived(event && activeUser && event.pubkey === activeUser.pubkey);
+
 	// Generate URL for event detail page
 	let eventDetailUrl = $derived(
 		event?.originalEvent ? `/calendar/event/${encodeEventToNaddr(event.originalEvent)}` : ''
@@ -142,6 +151,35 @@
 	}
 
 	/**
+	 * Handle event deletion
+	 */
+	async function handleDeleteEvent() {
+		if (!activeUser || !event) return;
+
+		isDeletingEvent = true;
+
+		try {
+			const result = await deleteCalendarEvent(event, activeUser);
+
+			if (result.success) {
+				showToast('Event deleted successfully', 'success');
+				// Close the modal
+				modal.closeModal();
+				// The event will be automatically removed from the calendar view
+				// since eventStore.add() in deleteCalendarEvent removes it
+			} else {
+				showToast(result.error || 'Failed to delete event', 'error');
+			}
+		} catch (error) {
+			console.error('Failed to delete event:', error);
+			showToast('An error occurred while deleting the event', 'error');
+		} finally {
+			isDeletingEvent = false;
+			showDeleteConfirmation = false;
+		}
+	}
+
+	/**
 	 * Handle modal close
 	 */
 	function handleClose() {
@@ -181,6 +219,43 @@
 					>
 						<ExternalLinkIcon class_="w-6 h-6" />
 					</a>
+					{#if isUserEvent}
+						<div class="dropdown dropdown-end">
+							<button
+								tabindex="0"
+								class="btn btn-circle btn-ghost btn-sm"
+								role="button"
+								title="Manage event"
+								aria-label="Manage event"
+							>
+								<EditIcon class_="w-5 h-5" />
+							</button>
+							<ul
+								tabindex="0"
+								class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow-lg border border-base-300"
+							>
+								<li>
+									<a
+										href={eventDetailUrl}
+										class="flex items-center gap-2"
+										onclick={handleClose}
+									>
+										<EditIcon class_="w-4 h-4" />
+										<span>Edit Event</span>
+									</a>
+								</li>
+								<li>
+									<button
+										onclick={() => (showDeleteConfirmation = true)}
+										class="flex items-center gap-2 text-error hover:bg-error/10"
+									>
+										<TrashIcon class_="w-4 h-4" />
+										<span>Delete Event</span>
+									</button>
+								</li>
+							</ul>
+						</div>
+					{/if}
 					<button
 						class="btn btn-circle btn-ghost btn-sm"
 						onclick={handleClose}
@@ -385,4 +460,35 @@
 			</div>
 		</div>
 	</dialog>
+{/if}
+
+<!-- Delete Confirmation Modal -->
+{#if showDeleteConfirmation && event}
+	<div class="modal modal-open">
+		<div class="modal-box">
+			<h3 class="text-lg font-bold">Delete Event?</h3>
+			<p class="py-4">
+				Are you sure you want to delete <strong>{event.title}</strong>?
+				<br />
+				This action cannot be undone.
+			</p>
+			<div class="modal-action">
+				<button
+					class="btn"
+					onclick={() => (showDeleteConfirmation = false)}
+					disabled={isDeletingEvent}
+				>
+					Cancel
+				</button>
+				<button class="btn btn-error" onclick={handleDeleteEvent} disabled={isDeletingEvent}>
+					{#if isDeletingEvent}
+						<span class="loading loading-spinner loading-sm"></span>
+						Deleting...
+					{:else}
+						Delete Event
+					{/if}
+				</button>
+			</div>
+		</div>
+	</div>
 {/if}
