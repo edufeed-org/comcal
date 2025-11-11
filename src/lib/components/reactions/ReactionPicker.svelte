@@ -6,6 +6,7 @@
 	import { reactionsStore } from '$lib/stores/reactions.svelte.js';
 	import { CloseIcon } from '$lib/components/icons';
 	import * as m from '$lib/paraglide/messages';
+	import { emojiMetadata } from '$lib/data/emojiMetadata.js';
 	
 	/** @type {any} */
 	let { event, onClose } = $props();
@@ -57,9 +58,15 @@
 		return emojiCategories()
 			.map(category => ({
 				...category,
-				emojis: category.emojis.filter((/** @type {any} */ emoji) => {
-					// Simple filtering - in a real app you'd want emoji names/descriptions
-					return true;
+				emojis: category.emojis.filter((/** @type {string} */ emoji) => {
+					const metadata = /** @type {string[] | undefined} */ (emojiMetadata[/** @type {keyof typeof emojiMetadata} */ (emoji)]);
+					// If no metadata exists, exclude from search results
+					if (!metadata) return false;
+					
+					// Check if any keyword matches the search query
+					return metadata.some((/** @type {string} */ keyword) => 
+						keyword.toLowerCase().includes(query)
+					);
 				})
 			}))
 			.filter(category => category.emojis.length > 0);

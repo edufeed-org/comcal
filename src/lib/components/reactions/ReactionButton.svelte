@@ -79,9 +79,9 @@
 	onmouseenter={() => isHovering = true}
 	onmouseleave={() => isHovering = false}
 	disabled={loading || !isLoggedIn}
-	class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border {userReacted 
-		? 'bg-blue-500/20 text-blue-400 border-blue-500 hover:bg-blue-500/30' 
-		: 'bg-gray-700/50 text-gray-300 border-gray-600 hover:bg-gray-700'}"
+	class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border backdrop-blur-sm shadow-sm {userReacted 
+		? 'bg-blue-900/30 text-blue-300 border-blue-400/60 hover:bg-blue-500/20 hover:border-blue-400/80' 
+		: 'bg-gray-800/30 text-gray-300 border-gray-700/50 hover:bg-gray-800/40 hover:border-gray-600/60'}"
 >
 	<span class="text-base leading-none">{emoji}</span>
 	{#if count > 0}
