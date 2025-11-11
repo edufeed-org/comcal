@@ -10,6 +10,7 @@
 	import { hexToNpub } from '$lib/helpers/nostrUtils';
 	import { joinCommunity, leaveCommunity } from '$lib/helpers/community';
 	import { showToast } from '$lib/helpers/toast';
+	import ImageWithFallback from './shared/ImageWithFallback.svelte';
 
 	// Use the reusable user profile hook
 	const getProfile = useUserProfile(pubkey);
@@ -74,9 +75,10 @@
 	</div>
 
 	<figure class="mb-3">
-		<img
+		<ImageWithFallback
 			src={getProfilePicture(getProfile()) || `https://robohash.org/${pubkey}`}
 			alt={m.communikey_card_profile_alt()}
+			fallbackType="community"
 			class="rounded-full object-cover w-24 h-24 ring-2 ring-base-300 hover:ring-primary/50 transition-colors duration-300"
 		/>
 	</figure>

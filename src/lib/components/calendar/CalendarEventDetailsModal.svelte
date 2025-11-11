@@ -28,6 +28,7 @@
 	import ReactionBar from '../reactions/ReactionBar.svelte';
 	import ProfileCard from '../shared/ProfileCard.svelte';
 	import EventManagementActions from './EventManagementActions.svelte';
+	import ImageWithFallback from '../shared/ImageWithFallback.svelte';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
@@ -294,11 +295,11 @@
 			<!-- Event Image -->
 			{#if event.image}
 				<div class="mb-6">
-					<img
+					<ImageWithFallback
 						src={event.image}
 						alt={event.title}
+						fallbackType="event"
 						class="h-48 w-full rounded-lg object-cover"
-						loading="lazy"
 					/>
 				</div>
 			{/if}

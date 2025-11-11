@@ -14,6 +14,7 @@
 	import { useCalendarEventRsvps } from '$lib/stores/calendar-event-rsvps.svelte.js';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { transformRsvps } from '$lib/helpers/rsvpUtils.js';
+	import ImageWithFallback from '../shared/ImageWithFallback.svelte';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
@@ -77,12 +78,12 @@
 		{#if event.image && !compact}
 			<div class="w-full lg:w-auto lg:flex-shrink-0">
 				<div class="w-full aspect-[5/2] lg:aspect-square lg:w-20">
-			<img
-				src={event.image}
-				alt={event.title}
-				loading="lazy"
-				class="w-full h-full max-w-full object-cover rounded-lg"
-			/>
+					<ImageWithFallback
+						src={event.image}
+						alt={event.title}
+						fallbackType="event"
+						class="w-full h-full max-w-full object-cover rounded-lg"
+					/>
 				</div>
 			</div>
 		{/if}
