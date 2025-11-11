@@ -119,7 +119,7 @@
   "calendar_management_share": "Kalender teilen",
   "auth_login_title": "Anmelden",
   "auth_login_with_private_key": "Mit privatem Schlüssel anmelden",
-  "auth_login_with_extension": "Mit Erweiterung anmelden",
+  "auth_login_with_extension": "Mit Browser Extension anmelden",
   "auth_login_private_key": "Privater Schlüssel",
   "auth_login_enter_private_key": "Geben Sie Ihren privaten Schlüssel ein",
   "auth_login_private_key_placeholder": "nsec...",
@@ -139,7 +139,7 @@
   "auth_signup_private_key_warning": "Bewahren Sie Ihren privaten Schlüssel sicher auf. Sie benötigen ihn zum Anmelden.",
   "auth_login_modal_add_account": "Konto hinzufügen",
   "auth_login_modal_choose_method": "Wählen Sie, wie Sie sich anmelden möchten",
-  "auth_login_modal_extension": "Erweiterung",
+  "auth_login_modal_extension": "Browser Extension",
   "auth_login_modal_nsec": "NSEC / NCRYPTSEC",
   "auth_login_modal_bunker": "Bunker",
   "auth_login_modal_or": "ODER",
@@ -779,5 +779,18 @@
   "event_modal_creating": "Wird erstellt...",
   "event_modal_updating": "Wird aktualisiert...",
   "event_modal_invalid_url": "Bitte geben Sie eine gültige URL ein (z.B. https://example.com)",
-  "calendar_creation_modal_close_modal": "Modal schließen"
+  "calendar_creation_modal_close_modal": "Modal schließen",
+
+  "tag_selector_filter_by_tags": "Nach Tags filtern",
+  "tag_selector_clear_all": "Alle löschen",
+  "tag_selector_show_events_with_tag": "Veranstaltungen mit #{tag} anzeigen",
+  "tag_selector_show_communities_with_tag": "Communities mit #{tag} anzeigen",
+  "tag_selector_showing_events_single": "Veranstaltungen mit 1 Tag werden angezeigt",
+  "tag_selector_showing_events_multiple": "Veranstaltungen mit {count} Tags werden angezeigt",
+  "tag_selector_showing_communities_single": "Communities mit 1 Tag werden angezeigt",
+  "tag_selector_showing_communities_multiple": "Communities mit {count} Tags werden angezeigt",
+  "tag_selector_events_help": "Klicken Sie auf Tags, um Veranstaltungen zu filtern. Alle löschen, um alles anzuzeigen.",
+  "tag_selector_communities_help": "Klicken Sie auf Tags, um Communities zu filtern. Alle löschen, um alles anzuzeigen.",
+  "tag_selector_no_events_found": "Keine Veranstaltungen mit ausgewählten Tags gefunden",
+  "tag_selector_no_communities_found": "Keine Communities mit ausgewählten Tags gefunden"
 }

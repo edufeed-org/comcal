@@ -6,7 +6,8 @@
 <script>
 	import { extractHashtags } from '$lib/helpers/text.js';
 	import { getTagValue } from 'applesauce-core/helpers';
-	import { FilterIcon } from '../icons';
+	import { TagIcon } from '../icons';
+	import * as m from '$lib/paraglide/messages';
 
 	// Props
 	let { communities = [], communityProfiles = new Map(), selectedTags = [], onTagChange = () => {} } = $props();
@@ -120,8 +121,8 @@
 <div class="border-b border-base-300 bg-base-100 px-6 py-4">
 	<!-- Header -->
 	<div class="mb-3 flex items-center gap-3">
-		<FilterIcon class_="h-5 w-5 text-base-content/70" />
-		<span class="font-medium text-base-content">Filter by Tags</span>
+		<TagIcon class="h-4 w-4 text-base-content/70" />
+		<span class="font-medium text-base-content">{m.tag_selector_filter_by_tags()}</span>
 		{#if hasActiveTags}
 			<span class="badge badge-primary badge-sm">{selectedTags.length}</span>
 		{/if}
@@ -136,7 +137,7 @@
 					class:btn-primary={isSelected}
 					class:btn-ghost={!isSelected}
 					onclick={() => toggleTag(tag)}
-					title="Show communities with #{tag} tag"
+					title={m.tag_selector_show_communities_with_tag({ tag })}
 				>
 					<span class="text-xs opacity-70">#</span>{tag}
 					<span class="badge badge-sm">{count}</span>
@@ -147,20 +148,20 @@
 		<!-- Clear button -->
 		{#if hasActiveTags}
 			<div class="mt-3 flex items-center gap-3">
-				<button class="btn btn-ghost btn-sm" onclick={clearTags}> Clear All </button>
+				<button class="btn btn-ghost btn-sm" onclick={clearTags}>{m.tag_selector_clear_all()}</button>
 				<p class="text-xs text-base-content/60">
-					Showing communities with {selectedTags.length === 1 ? 'tag' : 'any of these tags'}
+					{selectedTags.length === 1 ? m.tag_selector_showing_communities_single() : m.tag_selector_showing_communities_multiple({ count: selectedTags.length })}
 				</p>
 			</div>
 		{:else}
 			<p class="mt-3 text-xs text-base-content/60">
-				Click tags to filter communities. Multiple tags will show communities matching any tag (OR logic).
+				{m.tag_selector_communities_help()}
 			</p>
 		{/if}
 	{:else}
 		<!-- Empty state -->
 		<div class="text-center text-sm text-base-content/50">
-			<p>No tags found in current communities</p>
+			<p>{m.tag_selector_no_communities_found()}</p>
 		</div>
 	{/if}
 </div>

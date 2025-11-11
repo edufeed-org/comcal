@@ -8,6 +8,7 @@
 	import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
 	import { updateQueryParams } from '$lib/helpers/urlParams.js';
 	import { TagIcon } from '../icons';
+	import * as m from '$lib/paraglide/messages';
 
 	// Props
 	let { events = [], onTagFilterChange = () => {} } = $props();
@@ -117,7 +118,7 @@
 	<!-- Header -->
 	<div class="mb-3 flex items-center gap-3">
 		<TagIcon class="h-4 w-4 text-base-content/70" />
-		<span class="font-medium text-base-content">Filter by Tags</span>
+		<span class="font-medium text-base-content">{m.tag_selector_filter_by_tags()}</span>
 		{#if hasActiveTags}
 			<span class="badge badge-primary badge-sm">{selectedTags.length}</span>
 		{/if}
@@ -132,7 +133,7 @@
 					class:btn-primary={isSelected}
 					class:btn-ghost={!isSelected}
 					onclick={() => toggleTag(tag)}
-					title="Show events with #{tag} tag"
+					title={m.tag_selector_show_events_with_tag({ tag })}
 				>
 					<span class="text-xs opacity-70">#</span>{tag}
 					<span class="badge badge-sm">{count}</span>
@@ -143,14 +144,14 @@
 		<!-- Clear button -->
 		{#if hasActiveTags}
 			<div class="mt-3 flex items-center gap-3">
-				<button class="btn btn-ghost btn-sm" onclick={clearTags}> Clear All </button>
+				<button class="btn btn-ghost btn-sm" onclick={clearTags}>{m.tag_selector_clear_all()}</button>
 				<p class="text-xs text-base-content/60">
-					Showing events with {selectedTags.length === 1 ? 'tag' : 'any of these tags'}
+					{selectedTags.length === 1 ? m.tag_selector_showing_events_single() : m.tag_selector_showing_events_multiple()}
 				</p>
 			</div>
 		{:else}
 			<p class="mt-3 text-xs text-base-content/60">
-				Click tags to filter events. Multiple tags will show events matching any tag (OR logic).
+				{m.tag_selector_events_help()}
 			</p>
 		{/if}
 	{:else}
