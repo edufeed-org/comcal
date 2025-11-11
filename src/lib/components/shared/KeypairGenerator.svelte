@@ -3,6 +3,7 @@
 	import * as nip49 from 'nostr-tools/nip49';
 	import CopyIcon from '../icons/actions/CopyIcon.svelte';
 	import CheckIcon from '../icons/ui/CheckIcon.svelte';
+	import * as m from '$lib/paraglide/messages';
 
 	let { userData, errors = $bindable({}) } = $props();
 
@@ -53,12 +54,12 @@
 
 	function downloadNcryptsec() {
 		if (!userData.ncryptsecPassword) {
-			errors.password = 'Please enter a password for encryption';
+			errors.password = m.keypair_generator_error_password_required();
 			return;
 		}
 
 		if (!userData.privateKey) {
-			errors.password = 'Private key not available';
+			errors.password = m.keypair_generator_error_private_key_missing();
 			return;
 		}
 
@@ -69,8 +70,8 @@
 			userData.downloadConfirmed = true;
 			errors.password = '';
 		} catch (error) {
-			console.error('NIP-49 encryption failed:', error);
-			errors.password = 'Failed to create encrypted key';
+			console.error('Error generating keypair:', error);
+			errors.keyGeneration = m.keypair_generator_error_generation_failed();
 		}
 	}
 
@@ -87,29 +88,29 @@
 <div class="space-y-6">
 	<div class="prose max-w-none">
 		<h3 class="text-lg font-semibold mb-4">
-			Your Nostr Keys
+			{m.keypair_generator_title()}
 		</h3>
 		<p class="mb-4">
-			Your keypair is identified by a unique string that starts with npub. This is your public profile code you can share with anyone.
+			{m.keypair_generator_description_1()}
 		</p>
 		<p class="mb-6">
-			Then there is the private key. It starts with nsec, and is used to control your profile and to publish notes. This must be kept absolutely secret.
+			{m.keypair_generator_description_2()}
 		</p>
 		<p class="mb-6 font-semibold text-warning">
-			Now please download your nsec (it's a text file) and save it in a safe place, for example your password manager.
+			{m.keypair_generator_warning()}
 		</p>
 	</div>
 
 	{#if isGeneratingKeys}
 		<div class="flex items-center justify-center py-8">
 			<span class="loading loading-spinner loading-lg"></span>
-			<span class="ml-2">Generating your keys...</span>
+			<span class="ml-2">{m.keypair_generator_generating()}</span>
 		</div>
 	{:else}
 		<!-- Public Key Display -->
 		<div class="card bg-base-200">
 			<div class="card-body">
-				<h3 class="card-title text-sm">Your Public Key (npub)</h3>
+				<h3 class="card-title text-sm">{m.keypair_generator_public_key_title()}</h3>
 				<div class="flex items-center gap-2">
 					<code class="text-xs break-all flex-1 p-2 bg-base-300 rounded">
 						{userData.npub}
@@ -127,7 +128,7 @@
 		<!-- Private Key Download -->
 		<div class="card bg-base-200">
 			<div class="card-body">
-				<h3 class="card-title text-sm">Download Your Private Key</h3>
+				<h3 class="card-title text-sm">{m.keypair_generator_private_key_title()}</h3>
 
 				<div class="space-y-4">
 					<!-- Plain nsec download -->
@@ -139,9 +140,9 @@
 						>
 							{#if userData.downloadConfirmed}
 								<CheckIcon />
-								Downloaded
+								{m.keypair_generator_downloaded()}
 							{:else}
-								Download NSEC
+								{m.keypair_generator_download_nsec()}
 							{/if}
 						</button>
 					</div>
@@ -151,13 +152,13 @@
 
 					<div class="space-y-2">
 						<label class="label">
-							<span class="label-text">Create encrypted backup with password:</span>
+							<span class="label-text">{m.keypair_generator_encrypted_backup_label()}</span>
 						</label>
 						<div class="flex gap-2">
 							<input
 								type="password"
 								bind:value={userData.ncryptsecPassword}
-								placeholder="Enter password for encryption"
+								placeholder={m.keypair_generator_password_placeholder()}
 								class="input input-bordered flex-1"
 								class:input-error={errors.password}
 							/>
@@ -168,9 +169,9 @@
 							>
 								{#if userData.downloadConfirmed}
 									<CheckIcon />
-									Downloaded
+									{m.keypair_generator_downloaded()}
 								{:else}
-									Download NCRYPTSEC
+									{m.keypair_generator_download_ncryptsec()}
 								{/if}
 							</button>
 						</div>

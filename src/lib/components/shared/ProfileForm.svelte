@@ -54,10 +54,11 @@
 <div class="space-y-4">
 	<!-- Name -->
 	<div class="form-control flex flex-col">
-		<label class="label">
+		<label class="label" for="profile-name">
 			<span class="label-text text-center w-full">Name *</span>
 		</label>
 		<input
+			id="profile-name"
 			type="text"
 			bind:value={userData.name}
 			placeholder="Your name or nickname"
@@ -65,18 +66,19 @@
 			class:input-error={errors.name}
 		/>
 		{#if errors.name}
-			<label class="label">
+			<div class="label" aria-live="polite">
 				<span class="label-text-alt text-center w-full text-error">{errors.name}</span>
-			</label>
+			</div>
 		{/if}
 	</div>
 
 	<!-- Display Name -->
 	<div class="form-control flex flex-col">
-		<label class="label">
+		<label class="label" for="profile-display-name">
 			<span class="label-text text-center w-full">Display Name</span>
 		</label>
 		<input
+			id="profile-display-name"
 			type="text"
 			bind:value={userData.display_name}
 			placeholder="@username"
@@ -86,10 +88,11 @@
 
 	<!-- About -->
 	<div class="form-control flex flex-col">
-		<label class="label">
+		<label class="label" for="profile-about">
 			<span class="label-text text-center w-full">About</span>
 		</label>
 		<textarea
+			id="profile-about"
 			bind:value={userData.about}
 			placeholder="Tell us something about yourself"
 			class="textarea textarea-bordered h-24 w-full"
@@ -98,10 +101,11 @@
 
 	<!-- Profile Picture URL -->
 	<div class="form-control flex flex-col">
-		<label class="label">
+		<label class="label" for="profile-picture">
 			<span class="label-text text-center w-full">Profile Picture URL</span>
 		</label>
 		<input
+			id="profile-picture"
 			type="url"
 			bind:value={userData.picture}
 			placeholder="https://example.com/avatar.jpg"
@@ -109,18 +113,19 @@
 			class:input-error={errors.picture}
 		/>
 		{#if errors.picture}
-			<label class="label">
+			<div class="label" aria-live="polite">
 				<span class="label-text-alt text-center w-full text-error">{errors.picture}</span>
-			</label>
+			</div>
 		{/if}
 	</div>
 
 	<!-- Banner Image URL -->
 	<div class="form-control flex flex-col">
-		<label class="label">
+		<label class="label" for="profile-banner">
 			<span class="label-text text-center w-full">Banner Image URL</span>
 		</label>
 		<input
+			id="profile-banner"
 			type="url"
 			bind:value={userData.banner}
 			placeholder="https://example.com/banner.jpg"
@@ -128,18 +133,19 @@
 			class:input-error={errors.banner}
 		/>
 		{#if errors.banner}
-			<label class="label">
+			<div class="label" aria-live="polite">
 				<span class="label-text-alt text-center w-full text-error">{errors.banner}</span>
-			</label>
+			</div>
 		{/if}
 	</div>
 
 	<!-- Website -->
 	<div class="form-control flex flex-col">
-		<label class="label">
+		<label class="label" for="profile-website">
 			<span class="label-text text-center w-full">Website</span>
 		</label>
 		<input
+			id="profile-website"
 			type="url"
 			bind:value={userData.website}
 			placeholder="https://your-website.com"
@@ -147,34 +153,36 @@
 			class:input-error={errors.website}
 		/>
 		{#if errors.website}
-			<label class="label">
+			<div class="label" aria-live="polite">
 				<span class="label-text-alt text-center w-full text-error">{errors.website}</span>
-			</label>
+			</div>
 		{/if}
 	</div>
 
 	<!-- NIP-05 Identifier -->
 	<div class="form-control flex flex-col">
-		<label class="label">
+		<label class="label" for="profile-nip05">
 			<span class="label-text text-center w-full">NIP-05 Identifier</span>
 		</label>
 		<input
+			id="profile-nip05"
 			type="text"
 			bind:value={userData.nip05}
 			placeholder="name@domain.com"
 			class="input input-bordered w-full"
 		/>
-		<label class="label">
+		<div class="label">
 			<span class="label-text-alt text-center w-full text-gray-400">Verified identity</span>
-		</label>
+		</div>
 	</div>
 
 	<!-- Lightning Address (LUD16) -->
 	<div class="form-control flex flex-col">
-		<label class="label">
+		<label class="label" for="profile-lud16">
 			<span class="label-text text-center w-full">Lightning Address</span>
 		</label>
 		<input
+			id="profile-lud16"
 			type="text"
 			bind:value={userData.lud16}
 			placeholder="name@getalby.com"

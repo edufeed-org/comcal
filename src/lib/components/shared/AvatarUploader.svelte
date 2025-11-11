@@ -1,6 +1,7 @@
 <script>
 	import { appConfig } from '$lib/config.js';
 	import CameraIcon from '$lib/components/icons/actions/CameraIcon.svelte';
+	import * as m from '$lib/paraglide/messages';
 
 	let { userData, signer = null, errors = $bindable({}) } = $props();
 
@@ -115,13 +116,13 @@
 
 		// Validate file type
 		if (!file.type.startsWith('image/')) {
-			errors.image = 'Please select a valid image file';
+			errors.image = m.avatar_uploader_error_invalid_file();
 			return;
 		}
 
 		// Validate file size
 		if (file.size > appConfig.blossom.maxFileSize) {
-			errors.image = `Image must be smaller than ${appConfig.blossom.maxFileSize / (1024 * 1024)}MB`;
+			errors.image = m.avatar_uploader_error_too_large({size: Math.round(appConfig.blossom.maxFileSize / (1024 * 1024))});
 			return;
 		}
 
@@ -142,7 +143,7 @@
 			userData.picture = imageUrl;
 		} catch (error) {
 			console.error('Image upload failed:', error);
-			errors.image = 'Failed to upload image. Please try again.';
+			errors.image = m.avatar_uploader_error_upload_failed();
 			imagePreview = null;
 		} finally {
 			uploadingImage = false;
@@ -158,8 +159,8 @@
 </script>
 
 <div class="form-control">
-	<label class="label">
-		<span class="label-text">Profile Picture</span>
+	<label class="label" for="avatar-upload-input">
+		<span class="label-text">{m.avatar_uploader_label()}</span>
 	</label>
 	
 	<!-- Avatar Upload Container -->
@@ -172,7 +173,7 @@
 					<!-- Loading State -->
 					<div class="w-full h-full flex flex-col items-center justify-center bg-base-300/90">
 						<span class="loading loading-spinner loading-lg"></span>
-						<span class="text-xs mt-2 opacity-70">Uploading...</span>
+						<span class="text-xs mt-2 opacity-70">{m.avatar_uploader_uploading()}</span>
 					</div>
 				{:else if userData.picture || imagePreview}
 					<!-- Image Preview -->
@@ -215,6 +216,7 @@
 
 		<!-- Hidden File Input -->
 		<input
+			id="avatar-upload-input"
 			bind:this={fileInputRef}
 			type="file"
 			accept="image/*"
@@ -226,18 +228,18 @@
 		<!-- Helper Text -->
 		<div class="text-center">
 			<p class="text-xs opacity-70">
-				Click the camera button to upload an image
+				{m.avatar_uploader_help_text()}
 			</p>
 			<p class="text-xs opacity-70">
-				Max size: {appConfig.blossom.maxFileSize / (1024 * 1024)}MB
+				{m.avatar_uploader_max_size({size: Math.round(appConfig.blossom.maxFileSize / (1024 * 1024))})}
 			</p>
 		</div>
 	</div>
 
 	<!-- Error Message -->
 	{#if errors.image}
-		<label class="label">
+		<div class="label" aria-live="polite">
 			<span class="label-text-alt text-error">{errors.image}</span>
-		</label>
+		</div>
 	{/if}
 </div>

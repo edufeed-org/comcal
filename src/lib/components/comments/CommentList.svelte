@@ -5,6 +5,7 @@
 	import { buildCommentTree, countComments } from '$lib/helpers/commentThreading.js';
 	import CommentThread from './CommentThread.svelte';
 	import CommentInput from './CommentInput.svelte';
+	import * as m from '$lib/paraglide/messages';
 
 	/**
 	 * @typedef {Object} CommentListProps
@@ -152,7 +153,7 @@
 	<div class="card bg-base-200 shadow-lg">
 		<div class="card-body">
 			<div class="flex items-center justify-between">
-				<h2 class="card-title text-2xl">Comments</h2>
+				<h2 class="card-title text-2xl">{m.comments_list_title()}</h2>
 				{#if totalCount > 0}
 					<span class="badge badge-lg">{totalCount}</span>
 				{/if}
@@ -165,13 +166,13 @@
 						{rootEvent}
 						parentItem={null}
 						{activeUser}
-						placeholder="Write a comment..."
+						placeholder={m.comments_list_placeholder()}
 						onCommentPosted={handleCommentPosted}
 					/>
 				</div>
 			{:else}
 				<div class="mt-4 rounded-lg bg-base-300 p-4 text-center">
-					<p class="text-base-content/70">Sign in to post a comment</p>
+					<p class="text-base-content/70">{m.comments_list_login_prompt()}</p>
 				</div>
 			{/if}
 
@@ -183,7 +184,7 @@
 					</div>
 				{:else if commentTree.length === 0}
 					<div class="py-8 text-center text-base-content/60">
-						No comments yet. Be the first to comment!
+						{m.comments_list_empty()}
 					</div>
 				{:else}
 					{#each commentTree as comment (comment.id)}

@@ -1,5 +1,6 @@
 <script>
 	import { CalendarIcon, PeopleIcon } from '$lib/components/icons';
+	import * as m from '$lib/paraglide/messages';
 </script>
 
 <section class="bg-base-200 py-16">
@@ -11,9 +12,9 @@
 					<div class="mb-4 rounded-full bg-primary/10 p-4">
 						<PeopleIcon class_="h-12 w-12 text-primary" />
 					</div>
-					<h3 class="card-title text-2xl font-bold text-base-content">Communities</h3>
+					<h3 class="card-title text-2xl font-bold text-base-content">{m.landing_features_communities()}</h3>
 					<p class="text-base-content/70">
-						Discover and join communities aligned with your interests. Connect with like-minded individuals and share your passion.
+						{m.landing_features_communities_description()}
 					</p>
 				</div>
 			</div>
@@ -24,9 +25,9 @@
 					<div class="mb-4 rounded-full bg-secondary/10 p-4">
 						<CalendarIcon class_="h-12 w-12 text-secondary" />
 					</div>
-					<h3 class="card-title text-2xl font-bold text-base-content">Calendar</h3>
+					<h3 class="card-title text-2xl font-bold text-base-content">{m.landing_features_calendar()}</h3>
 					<p class="text-base-content/70">
-						Coordinate events and never miss what matters. Create, share, and attend community events with ease.
+						{m.landing_features_calendar_description()}
 					</p>
 				</div>
 			</div>
@@ -41,9 +42,9 @@
 						class="h-12 w-12"
 					/>
 				</div>
-					<h3 class="card-title text-2xl font-bold text-base-content">Decentralized</h3>
+					<h3 class="card-title text-2xl font-bold text-base-content">{m.landing_features_decentralized()}</h3>
 					<p class="text-base-content/70">
-						Your data, your control. Powered by the Nostr protocol for censorship-resistant, decentralized communication.
+						{m.landing_features_decentralized_description()}
 					</p>
 				</div>
 			</div>

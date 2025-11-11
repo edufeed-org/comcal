@@ -6,6 +6,7 @@
 -->
 
 <script>
+	import * as m from '$lib/paraglide/messages';
 	import RelaySelector from './RelaySelector.svelte';
 	import FollowListSelector from './FollowListSelector.svelte';
 	import SearchInput from './SearchInput.svelte';
@@ -64,7 +65,7 @@
 			>
 				<div class="flex items-center gap-3">
 					<FilterIcon class_="h-5 w-5 text-primary" />
-					<h2 class="text-base font-semibold text-base-content">Filters</h2>
+					<h2 class="text-base font-semibold text-base-content">{m.calendar_filter_sidebar_title()}</h2>
 					{#if hasActiveFilters}
 						<span class="badge badge-primary badge-sm">{activeFilterCount}</span>
 					{/if}
@@ -72,8 +73,8 @@
 				<button
 					class="btn btn-circle btn-ghost btn-sm hover:bg-base-300"
 					onclick={toggleSidebar}
-					title="Collapse sidebar"
-					aria-label="Collapse sidebar"
+					title={m.calendar_filter_sidebar_collapse()}
+					aria-label={m.calendar_filter_sidebar_collapse()}
 				>
 					<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
@@ -103,8 +104,8 @@
 				<button
 					class="btn btn-circle btn-ghost btn-sm hover:bg-base-200"
 					onclick={toggleSidebar}
-					title="Expand filters {hasActiveFilters ? `(${activeFilterCount} active)` : ''}"
-					aria-label="Expand filters"
+					title={m.calendar_filter_sidebar_expand()}
+					aria-label={m.calendar_filter_sidebar_expand()}
 				>
 					<FilterIcon class_="h-5 w-5 {hasActiveFilters ? 'text-primary' : 'text-base-content/70'}" />
 				</button>
@@ -127,9 +128,15 @@
 		<div
 			class="fixed inset-0 z-40 bg-black/50 transition-opacity"
 			onclick={closeDrawer}
+			onkeydown={(e) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					closeDrawer();
+				}
+			}}
 			role="button"
-			tabindex="-1"
-			aria-label="Close filters"
+			tabindex="0"
+			aria-label={m.calendar_filter_sidebar_close()}
 		></div>
 
 		<!-- Drawer -->
@@ -142,7 +149,7 @@
 			>
 				<div class="flex items-center gap-3">
 					<FilterIcon class_="h-5 w-5 text-primary" />
-					<h2 class="text-base font-semibold text-base-content">Filters</h2>
+					<h2 class="text-base font-semibold text-base-content">{m.calendar_filter_sidebar_title()}</h2>
 					{#if hasActiveFilters}
 						<span class="badge badge-primary badge-sm">{activeFilterCount}</span>
 					{/if}
@@ -150,7 +157,7 @@
 				<button
 					class="btn btn-circle btn-ghost btn-sm hover:bg-base-300"
 					onclick={closeDrawer}
-					aria-label="Close filters"
+					aria-label={m.calendar_filter_sidebar_close()}
 				>
 					<CloseIcon class_="h-5 w-5" />
 				</button>
@@ -166,7 +173,7 @@
 
 			<!-- Footer with close button -->
 			<div class="border-t border-base-300 bg-base-200 p-4">
-				<button class="btn btn-block" onclick={closeDrawer}> Close Filters </button>
+				<button class="btn btn-block" onclick={closeDrawer}>{m.calendar_filter_sidebar_close_button()}</button>
 			</div>
 		</aside>
 	</div>

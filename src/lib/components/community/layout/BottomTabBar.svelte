@@ -2,6 +2,7 @@
 	import { HomeIcon, ChatIcon, CalendarIcon, BellIcon, SettingsIcon } from '$lib/components/icons';
 	import { getCommunityAvailableContentTypes, kindToContentType } from '$lib/helpers/contentTypes.js';
 	import { onMount } from 'svelte';
+	import * as m from '$lib/paraglide/messages';
 
 	let { 
 		selectedContentType = $bindable(), 
@@ -36,13 +37,13 @@
 	function getContentTypes() {
 		/** @type {Array<DockContentType>} */
 		const types = [
-			{ id: 'home', label: 'Home', icon: HomeIcon }
+			{ id: 'home', label: m.community_layout_bottom_tab_bar_home(), icon: HomeIcon }
 		];
 
 		// If we have a community event, get its content types
 		if (communityEvent) {
 			const availableTypes = getCommunityAvailableContentTypes(communityEvent);
-			
+
 			// Map available content types to dock items
 			for (const contentType of availableTypes) {
 				const typeId = kindToContentType(contentType.kind);
@@ -50,7 +51,7 @@
 					// Get icon and label
 					const icon = iconMap[typeId] || ChatIcon;
 					const label = contentType.name;
-					
+
 					types.push({
 						id: typeId,
 						label,
@@ -62,15 +63,15 @@
 		} else {
 			// Default content types when no community
 			types.push(
-				{ id: 'chat', label: 'Chat', icon: ChatIcon },
-				{ id: 'calendar', label: 'Calendar', icon: CalendarIcon }
+				{ id: 'chat', label: m.community_layout_bottom_tab_bar_chat(), icon: ChatIcon },
+				{ id: 'calendar', label: m.community_layout_bottom_tab_bar_calendar(), icon: CalendarIcon }
 			);
 		}
 
 		// Add common types at the end
 		types.push(
-			{ id: 'activity', label: 'Activity', icon: BellIcon },
-			{ id: 'settings', label: 'Settings', icon: SettingsIcon }
+			{ id: 'activity', label: m.community_layout_bottom_tab_bar_activity(), icon: BellIcon },
+			{ id: 'settings', label: m.community_layout_bottom_tab_bar_settings(), icon: SettingsIcon }
 		);
 
 		return types;
@@ -139,7 +140,7 @@
 			<button
 				onclick={() => scrollDock('left')}
 				class="absolute left-0 top-0 bottom-0 z-10 w-12 bg-gradient-to-r from-base-100 to-transparent flex items-center justify-start pl-2"
-				aria-label="Scroll left"
+				aria-label={m.community_layout_bottom_tab_bar_scroll_left()}
 			>
 				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -152,7 +153,7 @@
 			<button
 				onclick={() => scrollDock('right')}
 				class="absolute right-0 top-0 bottom-0 z-10 w-12 bg-gradient-to-l from-base-100 to-transparent flex items-center justify-end pr-2"
-				aria-label="Scroll right"
+				aria-label={m.community_layout_bottom_tab_bar_scroll_right()}
 			>
 				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />

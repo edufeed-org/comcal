@@ -4,6 +4,8 @@
 -->
 
 <script>
+	import * as m from '$lib/paraglide/messages';
+
 	// Props
 	let { onSearchChange = () => {} } = $props();
 
@@ -61,9 +63,9 @@
 				d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
 			/>
 		</svg>
-		<span class="font-medium text-base-content">Search Communities</span>
+		<span class="font-medium text-base-content">{m.discover_search_header()}</span>
 		{#if hasQuery}
-			<span class="badge badge-primary badge-sm">active</span>
+			<span class="badge badge-primary badge-sm">{m.discover_search_active_badge()}</span>
 		{/if}
 	</div>
 
@@ -72,10 +74,10 @@
 		<input
 			type="text"
 			class="input input-bordered w-full pr-10"
-			placeholder="Search by name or description..."
+			placeholder={m.discover_search_placeholder()}
 			value={searchQuery}
 			oninput={handleInput}
-			aria-label="Search communities"
+			aria-label={m.discover_search_aria_label()}
 		/>
 
 		<!-- Clear button -->
@@ -83,8 +85,8 @@
 			<button
 				class="btn btn-ghost btn-circle btn-sm absolute right-2 top-1/2 -translate-y-1/2"
 				onclick={clearSearch}
-				aria-label="Clear search"
-				title="Clear search"
+				aria-label={m.discover_search_clear_button()}
+				title={m.discover_search_clear_button()}
 			>
 				<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
@@ -101,9 +103,9 @@
 	<!-- Helper text -->
 	<p class="mt-2 text-xs text-base-content/60">
 		{#if hasQuery}
-			Searching in community names and descriptions. Press × to clear.
+			{m.discover_search_helper_with_query()}
 		{:else}
-			Search for communities by typing keywords from names or descriptions
+			{m.discover_search_helper_without_query()}
 		{/if}
 	</p>
 </div>

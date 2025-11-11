@@ -190,12 +190,11 @@
 				>
 					<!-- Global Calendar Option (always available) -->
 					<li>
-						<a
-							href="/calendar"
-							class="flex items-center gap-2 md:gap-3 rounded-lg px-2 md:px-3 py-2 md:py-2 transition-colors hover:bg-base-200 min-h-[44px]"
+						<button
+							type="button"
+							class="flex items-center gap-2 md:gap-3 rounded-lg px-2 md:px-3 py-2 md:py-2 transition-colors hover:bg-base-200 min-h-[44px] w-full text-left"
 							class:active={!selectedCalendarId && isOnGlobalRoute}
-							onclick={(e) => {
-								e.preventDefault();
+							onclick={() => {
 								handleCalendarSelect('');
 								goto('/calendar');
 							}}
@@ -208,7 +207,7 @@
 							{#if !selectedCalendarId && isOnGlobalRoute}
 								<CheckIcon class_="h-4 w-4 text-primary" />
 							{/if}
-						</a>
+						</button>
 					</li>
 
 					{#if activeUser}
@@ -294,17 +293,14 @@
 
 						<!-- Create New Calendar -->
 						<li>
-							<a
-								href="#"
-								class="flex items-center gap-2 md:gap-3 rounded-lg px-2 md:px-3 py-2 md:py-2 text-primary transition-colors hover:bg-base-200 min-h-[44px]"
-								onclick={(e) => {
-									e.preventDefault();
-									handleCreateCalendar();
-								}}
+							<button
+								type="button"
+								class="flex items-center gap-2 md:gap-3 rounded-lg px-2 md:px-3 py-2 md:py-2 text-primary transition-colors hover:bg-base-200 min-h-[44px] w-full text-left"
+								onclick={handleCreateCalendar}
 							>
 								<PlusIcon class_="h-4 w-4 flex-shrink-0" />
 								<span class="font-medium">Create New Calendar</span>
-							</a>
+							</button>
 						</li>
 
 						<!-- Manage Calendars -->
@@ -322,21 +318,17 @@
 						{#if calendars.length > 0}
 							<hr class="my-1 border-base-300" />
 							<li>
-								<a
-									href="#"
-									class="flex items-center gap-2 md:gap-3 rounded-lg px-2 md:px-3 py-2 md:py-2 transition-colors hover:bg-base-200 min-h-[44px]"
+								<button
+									type="button"
+									class="flex items-center gap-2 md:gap-3 rounded-lg px-2 md:px-3 py-2 md:py-2 transition-colors hover:bg-base-200 min-h-[44px] w-full text-left"
 									class:opacity-50={loading}
 									class:pointer-events-none={loading}
-									onclick={(e) => {
-										e.preventDefault();
-										if (!loading) {
-											handleRefresh();
-										}
-									}}
+									disabled={loading}
+									onclick={handleRefresh}
 								>
 									<RefreshIcon class_={`h-4 w-4 flex-shrink-0 ${loading ? 'animate-spin' : ''}`} />
 									<span class="text-sm">Refresh Calendars</span>
-								</a>
+								</button>
 							</li>
 						{/if}
 					{:else}

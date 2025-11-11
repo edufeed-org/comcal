@@ -4,6 +4,7 @@
 	import { appConfig } from '$lib/config.js';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { generateCommentTags } from '$lib/helpers/commentTags.js';
+	import * as m from '$lib/paraglide/messages';
 
 	/**
 	 * @typedef {Object} CommentInputProps
@@ -92,11 +93,11 @@
 				onCommentPosted(signedEvent);
 			} else {
 				console.error('Failed to publish comment');
-				error = 'Failed to publish comment. Please try again.';
+				error = m.comments_input_publish_error();
 			}
 		} catch (err) {
 			console.error('Failed to post comment:', err);
-			error = 'An error occurred. Please try again.';
+			error = m.comments_input_generic_error();
 		} finally {
 			isPosting = false;
 		}
@@ -123,15 +124,15 @@
 	<div class="flex justify-end gap-2">
 		{#if onCancel}
 			<button type="button" class="btn btn-ghost" onclick={onCancel} disabled={isPosting}>
-				Cancel
+				{m.comments_input_cancel_button()}
 			</button>
 		{/if}
 		<button type="submit" class="btn btn-primary" disabled={!content.trim() || isPosting}>
 			{#if isPosting}
 				<span class="loading loading-sm loading-spinner"></span>
-				Posting...
+				{m.comments_input_posting()}
 			{:else}
-				Post Comment
+				{m.comments_input_post_button()}
 			{/if}
 		</button>
 	</div>

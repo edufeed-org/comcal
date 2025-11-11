@@ -2,6 +2,7 @@
 	import { ChatIcon } from '$lib/components/icons';
 	import { pool } from '$lib/stores/nostr-infrastructure.svelte';
 	import { appConfig } from '$lib/config.js';
+	import * as m from '$lib/paraglide/messages';
 
 	// Props
 	let { communityId } = $props();
@@ -57,16 +58,16 @@
 	<div class="stat-figure text-accent">
 		<ChatIcon class_="w-8 h-8" />
 	</div>
-	<div class="stat-title">Messages</div>
+	<div class="stat-title">{m.community_stats_messages_title()}</div>
 	{#if isLoading}
 		<div class="stat-value text-accent">
 			<span class="loading loading-spinner loading-sm"></span>
 		</div>
 	{:else if error}
-		<div class="stat-value text-error text-sm">Error</div>
+		<div class="stat-value text-error text-sm">{m.community_stats_messages_error()}</div>
 		<div class="stat-desc text-xs text-error">{error}</div>
 	{:else}
 		<div class="stat-value text-accent">{messageCount}</div>
 	{/if}
-	<div class="stat-desc">Recent activity</div>
+	<div class="stat-desc">{m.community_stats_messages_description()}</div>
 </div>

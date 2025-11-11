@@ -7,6 +7,7 @@
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { ProfileModel } from 'applesauce-core/models';
 	import { appConfig } from '$lib/config.js';
+	import * as m from '$lib/paraglide/messages';
 	import CommunikeyCard from '$lib/components/CommunikeyCard.svelte';
 	import CommunitySearchInput from '$lib/components/discover/CommunitySearchInput.svelte';
 	import CommunityTagSelector from '$lib/components/discover/CommunityTagSelector.svelte';
@@ -182,10 +183,10 @@
 </script>
 
 <svelte:head>
-	<title>Discover Communities - Communikey</title>
+	<title>{m.discover_meta_title()}</title>
 	<meta
 		name="description"
-		content="Discover and join decentralized communities on Nostr"
+		content={m.discover_meta_description()}
 	/>
 </svelte:head>
 
@@ -194,10 +195,10 @@
 	<div class="bg-gradient-to-br from-primary/10 to-secondary/10 py-12">
 		<div class="container mx-auto px-4">
 			<h1 class="mb-4 text-center text-4xl font-bold text-base-content md:text-5xl">
-				Discover Communities
+				{m.discover_title()}
 			</h1>
 			<p class="text-center text-lg text-base-content/70">
-				Find and join communities that match your interests
+				{m.discover_subtitle()}
 			</p>
 		</div>
 	</div>
@@ -220,23 +221,22 @@
 			<div class="flex justify-center py-12">
 				<div class="text-center">
 					<div class="loading loading-spinner loading-lg text-primary"></div>
-					<p class="mt-4 text-base-content/70">Loading communities...</p>
+					<p class="mt-4 text-base-content/70">{m.discover_loading()}</p>
 				</div>
 			</div>
 		{:else if filteredCommunities.length === 0}
 			<!-- No results -->
 			<div class="flex justify-center py-12">
 				<div class="text-center">
-					<p class="text-xl text-base-content/70">No communities found</p>
-					<p class="mt-2 text-base-content/50">Try a different search query</p>
+					<p class="text-xl text-base-content/70">{m.discover_no_results()}</p>
+					<p class="mt-2 text-base-content/50">{m.discover_no_results_subtitle()}</p>
 				</div>
 			</div>
 		{:else}
 			<!-- Results count -->
 			<div class="mb-6 text-center">
 				<p class="text-base-content/70">
-					{filteredCommunities.length}
-					{filteredCommunities.length === 1 ? 'community' : 'communities'} found
+					{m.discover_results_count({ count: filteredCommunities.length })}
 				</p>
 			</div>
 
@@ -257,7 +257,7 @@
 						onclick={() => (showAll = !showAll)}
 						class="btn btn-primary btn-lg"
 					>
-						{showAll ? 'Show Less' : `Show All (${filteredCommunities.length})`}
+						{showAll ? m.discover_show_less() : m.discover_show_all({ count: filteredCommunities.length })}
 					</button>
 				</div>
 			{/if}

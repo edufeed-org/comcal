@@ -302,7 +302,7 @@
 				<button
 					class="btn btn-sm btn-circle btn-ghost"
 					onclick={handleClose}
-					aria-label="Close modal"
+					aria-label={m.event_modal_close_modal()}
 				>
 					<CloseIcon class_="w-6 h-6" />
 				</button>
@@ -334,26 +334,26 @@
 				<!-- Event Title -->
 				<div class="mb-4">
 					<label for="title" class="block text-sm font-medium text-base-content mb-1">
-						{m.event_modal_title_label()} <span class="text-error">*</span>
+						{m.event_modal_event_title()} <span class="text-error">*</span>
 					</label>
 					<input
 						id="title"
 						type="text"
 						class="input input-bordered w-full"
 						bind:value={formData.title}
-						placeholder={m.event_modal_title_placeholder()}
+						placeholder={m.event_modal_enter_event_title()}
 						required
 					/>
 				</div>
 
 				<!-- Event Description -->
 				<div class="mb-4">
-					<label for="summary" class="block text-sm font-medium text-base-content mb-1">{m.event_modal_description_label()}</label>
+					<label for="summary" class="block text-sm font-medium text-base-content mb-1">{m.event_modal_description()}</label>
 					<textarea
 						id="summary"
 						class="textarea textarea-bordered w-full resize-vertical"
 						bind:value={formData.summary}
-						placeholder={m.event_modal_description_placeholder()}
+						placeholder={m.event_modal_enter_event_description()}
 						rows="3"
 					></textarea>
 				</div>

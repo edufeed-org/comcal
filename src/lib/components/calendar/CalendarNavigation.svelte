@@ -148,8 +148,8 @@
 				<button
 					class="btn btn-square"
 					onclick={onFilterButtonClick}
-					title="Open filters"
-					aria-label="Open filters"
+					title={m.calendar_navigation_open_filters()}
+					aria-label={m.calendar_navigation_open_filters()}
 				>
 					<FilterIcon class_="h-5 w-5" />
 				</button>
@@ -161,7 +161,7 @@
 					<button
 						class="btn btn-outline btn-sm"
 						onclick={handlePreviousClick}
-						aria-label="Previous {viewMode}"
+						aria-label={m.calendar_navigation_previous({ viewMode })}
 					>
 						<ChevronLeftIcon class_="w-5 h-5" />
 					</button>
@@ -171,7 +171,7 @@
 					<button
 						class="btn btn-outline btn-sm"
 						onclick={handleNextClick}
-						aria-label="Next {viewMode}"
+						aria-label={m.calendar_navigation_next({ viewMode })}
 					>
 						<ChevronRightIcon class_="w-5 h-5" />
 					</button>
@@ -202,7 +202,7 @@
 					class:btn-outline={presentationViewMode !== 'calendar'}
 					class:btn-primary={presentationViewMode === 'calendar'}
 					onclick={(e) => handlePresentationViewModeClick('calendar')}
-					title="Calendar Grid View"
+					title={m.calendar_navigation_calendar_grid_view()}
 				>
 					<CalendarIcon class_="w-4 h-4" />
 				</button>
@@ -211,7 +211,7 @@
 					class:btn-outline={presentationViewMode !== 'list'}
 					class:btn-primary={presentationViewMode === 'list'}
 					onclick={(e) => handlePresentationViewModeClick('list')}
-					title="List View"
+					title={m.calendar_navigation_list_view()}
 				>
 					<MenuIcon class_="w-4 h-4" />
 				</button>
@@ -220,7 +220,7 @@
 					class:btn-outline={presentationViewMode !== 'map'}
 					class:btn-primary={presentationViewMode === 'map'}
 					onclick={(e) => handlePresentationViewModeClick('map')}
-					title="Map View"
+					title={m.calendar_navigation_map_view()}
 				>
 					<LocationIcon class_="w-4 h-4" />
 				</button>
@@ -235,7 +235,7 @@
 						class:btn-primary={viewMode === 'all'}
 						onclick={() => handleViewModeClick('all')}
 					>
-						All
+						{m.common_all()}
 					</button>
 				{/if}
 				<button
@@ -244,7 +244,7 @@
 					class:btn-primary={viewMode === 'month'}
 					onclick={() => handleViewModeClick('month')}
 				>
-					Month
+					{m.common_month()}
 				</button>
 				<button
 					class="btn join-item btn-sm"
@@ -252,7 +252,7 @@
 					class:btn-primary={viewMode === 'week'}
 					onclick={() => handleViewModeClick('week')}
 				>
-					Week
+					{m.common_week()}
 				</button>
 				<button
 					class="btn join-item btn-sm"
@@ -260,7 +260,7 @@
 					class:btn-primary={viewMode === 'day'}
 					onclick={() => handleViewModeClick('day')}
 				>
-					Day
+					{m.common_day()}
 				</button>
 			</div>
 		</div>
@@ -273,8 +273,8 @@
 			<button
 				class="btn btn-square btn-sm lg:hidden"
 				onclick={onFilterButtonClick}
-				title="Open filters"
-				aria-label="Open filters"
+				title={m.calendar_navigation_open_filters()}
+				aria-label={m.calendar_navigation_open_filters()}
 			>
 				<FilterIcon class_="h-5 w-5" />
 			</button>
@@ -286,7 +286,7 @@
 				<button
 					class="btn btn-outline btn-sm"
 					onclick={handlePreviousClick}
-					aria-label="Previous {viewMode}"
+					aria-label={m.calendar_navigation_previous({ viewMode })}
 				>
 					<ChevronLeftIcon class_="w-5 h-5" />
 				</button>
@@ -297,7 +297,7 @@
 				<button
 					class="btn btn-outline btn-sm"
 					onclick={handleNextClick}
-					aria-label="Next {viewMode}"
+					aria-label={m.calendar_navigation_next({ viewMode })}
 				>
 					<ChevronRightIcon class_="w-5 h-5" />
 				</button>
@@ -322,7 +322,7 @@
 					class:btn-outline={presentationViewMode !== 'calendar'}
 					class:btn-primary={presentationViewMode === 'calendar'}
 					onclick={(e) => handlePresentationViewModeClick('calendar')}
-					title="Calendar Grid View"
+					title={m.calendar_navigation_calendar_grid_view()}
 				>
 					<CalendarIcon class_="w-4 h-4" />
 				</button>
@@ -331,7 +331,7 @@
 					class:btn-outline={presentationViewMode !== 'list'}
 					class:btn-primary={presentationViewMode === 'list'}
 					onclick={(e) => handlePresentationViewModeClick('list')}
-					title="List View"
+					title={m.calendar_navigation_list_view()}
 				>
 					<MenuIcon class_="w-4 h-4" />
 				</button>
@@ -340,7 +340,7 @@
 					class:btn-outline={presentationViewMode !== 'map'}
 					class:btn-primary={presentationViewMode === 'map'}
 					onclick={(e) => handlePresentationViewModeClick('map')}
-					title="Map View"
+					title={m.calendar_navigation_map_view()}
 				>
 					<LocationIcon class_="w-4 h-4" />
 				</button>

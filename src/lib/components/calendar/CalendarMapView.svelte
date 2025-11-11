@@ -10,6 +10,7 @@
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
 	import { formatCalendarDate, filterEventsByViewMode } from '$lib/helpers/calendar.js';
 	import { MapIcon, CalendarIcon, ClockIcon } from '$lib/components/icons';
+	import * as m from '$lib/paraglide/messages';
 
 	/**
 	 * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
@@ -126,29 +127,28 @@
 	{#if loading}
 		<div class="map-loading">
 			<span class="loading loading-spinner loading-lg"></span>
-			<p class="text-sm mt-3">Loading event locations...</p>
+			<p class="text-sm mt-3">{m.calendar_map_loading()}</p>
 		</div>
 	{:else if error}
 		<div class="map-error">
 			<MapIcon class_="w-16 h-16 opacity-30 mb-4" />
-			<h3 class="text-lg font-medium mb-2">Error Loading Map</h3>
+			<h3 class="text-lg font-medium mb-2">{m.calendar_map_error_title()}</h3>
 			<p class="text-base-content/60">{error}</p>
 		</div>
 	{:else if eventsWithCoordinates.length === 0 && events.length > 0}
 		<div class="map-empty">
 			<MapIcon class_="w-16 h-16 opacity-30 mb-4" />
-			<h3 class="text-lg font-medium mb-2">No Events with Locations</h3>
+			<h3 class="text-lg font-medium mb-2">{m.calendar_map_empty_locations_title()}</h3>
 			<p class="text-base-content/60 max-w-md mb-4">
-				{events.length} event{events.length === 1 ? '' : 's'} in this view, 
-				but none have location data to display on the map.
+				{m.calendar_map_empty_locations_desc({ count: events.length, plural: events.length === 1 ? '' : 'en' })}
 			</p>
 		</div>
 	{:else if events.length === 0}
 		<div class="map-empty">
 			<CalendarIcon class_="w-16 h-16 opacity-30 mb-4" />
-			<h3 class="text-lg font-medium mb-2">No Events to Display</h3>
+			<h3 class="text-lg font-medium mb-2">{m.calendar_map_empty_events_title()}</h3>
 			<p class="text-base-content/60 mb-4">
-				Change your filters or create some events to see them on the map.
+				{m.calendar_map_empty_events_desc()}
 			</p>
 		</div>
 	{:else}

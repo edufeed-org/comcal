@@ -3,6 +3,7 @@
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { createCommunityMembersLoader } from '$lib/loaders/community';
 	import { CommunityMembersModel } from '$lib/models';
+	import * as m from '$lib/paraglide/messages';
 
 	// Props
 	let { communityId } = $props();
@@ -68,16 +69,16 @@
 	<div class="stat-figure text-primary">
 		<UserIcon class_="w-8 h-8" />
 	</div>
-	<div class="stat-title">Members</div>
+	<div class="stat-title">{m.community_stats_members_title()}</div>
 	{#if isLoading}
 		<div class="stat-value text-primary">
 			<span class="loading loading-spinner loading-sm"></span>
 		</div>
 	{:else if error}
-		<div class="stat-value text-error text-sm">Error</div>
+		<div class="stat-value text-error text-sm">{m.community_stats_members_error()}</div>
 		<div class="stat-desc text-xs text-error">{error}</div>
 	{:else}
 		<div class="stat-value text-primary">{memberCount}</div>
 	{/if}
-	<div class="stat-desc">Community size</div>
+	<div class="stat-desc">{m.community_stats_members_description()}</div>
 </div>

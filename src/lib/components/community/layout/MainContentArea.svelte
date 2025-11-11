@@ -9,6 +9,7 @@
 	import HomeView from '../views/HomeView.svelte';
 	import ActivityView from '../views/ActivityView.svelte';
 	import SettingsView from '../views/SettingsView.svelte';
+	import * as m from '$lib/paraglide/messages';
 
 	let { selectedCommunityId, selectedContentType, onKindNavigation } = $props();
 
@@ -77,9 +78,9 @@
 		<!-- Empty state: No community selected -->
 		<div class="flex flex-col items-center justify-center h-full text-center p-8">
 			<div class="max-w-md">
-				<h2 class="text-2xl font-bold text-base-content mb-4">Welcome to Communikey</h2>
+				<h2 class="text-2xl font-bold text-base-content mb-4">{m.community_layout_main_content_welcome_title()}</h2>
 				<p class="text-base-content/60 mb-6">
-					Select a community from the sidebar to get started, or create a new one to begin your journey.
+					{m.community_layout_main_content_welcome_description()}
 				</p>
 			</div>
 		</div>

@@ -7,6 +7,7 @@
 	import { showToast } from '$lib/helpers/toast';
 	import { goto } from '$app/navigation';
 	import CompactCommunityHeader from '$lib/components/community/layout/CompactCommunityHeader.svelte';
+	import * as m from '$lib/paraglide/messages';
 
 	let { communityId, communikeyEvent, profileEvent } = $props();
 
@@ -56,15 +57,15 @@
 		<div class="container mx-auto max-w-4xl">
 			<div class="flex items-center gap-3 mb-6">
 				<SettingsIcon class_="w-6 h-6 text-primary" />
-				<h1 class="text-2xl font-bold">Community Settings</h1>
+				<h1 class="text-2xl font-bold">{m.community_views_settings_title()}</h1>
 			</div>
 
 		{#if profileEvent && communikeyEvent}
 			<!-- Community Information -->
 			<div class="card bg-base-200 shadow-xl mb-6">
 				<div class="card-body">
-					<h2 class="card-title mb-4">Community Information</h2>
-					
+					<h2 class="card-title mb-4">{m.community_views_settings_info_title()}</h2>
+
 					<div class="space-y-4">
 						<div class="flex items-center gap-4">
 							<div class="avatar">
@@ -83,7 +84,7 @@
 
 						{#if communikeyEvent?.content}
 							<div>
-								<h4 class="font-medium mb-2">Description</h4>
+								<h4 class="font-medium mb-2">{m.community_views_settings_description_label()}</h4>
 								<p class="text-base-content/80">{communikeyEvent.content}</p>
 							</div>
 						{/if}
@@ -94,8 +95,8 @@
 			<!-- Community Actions -->
 			<div class="card bg-base-200 shadow-xl">
 				<div class="card-body">
-					<h2 class="card-title mb-4">Actions</h2>
-					
+					<h2 class="card-title mb-4">{m.community_views_settings_actions_title()}</h2>
+
 					<div class="space-y-3">
 						<button
 							onclick={handleLeaveClick}
@@ -104,13 +105,13 @@
 						>
 							{#if isLeaving}
 								<span class="loading loading-spinner loading-xs"></span>
-								Leaving...
+								{m.community_views_settings_leaving()}
 							{:else}
-								Leave Community
+								{m.community_views_settings_leave_button()}
 							{/if}
 						</button>
 						<p class="text-xs text-base-content/60 text-center">
-							You can rejoin this community later if you change your mind.
+							{m.community_views_settings_leave_help()}
 						</p>
 					</div>
 				</div>

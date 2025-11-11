@@ -4,12 +4,14 @@
 -->
 
 <script>
+	import * as m from '$lib/paraglide/messages';
+
 	let {
 		items = $bindable([]),
-		label = 'Items',
-		placeholder = 'Enter item',
-		buttonText = 'Add',
-		itemType = 'item',
+		label = m.editable_list_default_label(),
+		placeholder = m.editable_list_default_placeholder(),
+		buttonText = m.editable_list_default_button(),
+		itemType = m.editable_list_default_item_type(),
 		validator = null,
 		minItems = 0,
 		helpText = ''
@@ -25,13 +27,13 @@
 		const trimmedValue = inputValue.trim();
 		
 		if (!trimmedValue) {
-			error = `Please enter a ${itemType}`;
+			error = m.editable_list_error_empty({ itemType });
 			return;
 		}
 
 		// Check for duplicates
 		if (items.includes(trimmedValue)) {
-			error = `This ${itemType} is already in the list`;
+			error = m.editable_list_error_duplicate({ itemType });
 			return;
 		}
 
@@ -57,7 +59,7 @@
 	function removeItem(index) {
 		// Check minimum items constraint
 		if (items.length <= minItems) {
-			error = `At least ${minItems} ${itemType}${minItems !== 1 ? 's' : ''} required`;
+			error = m.editable_list_error_min_items({ count: minItems, itemType, plural: minItems !== 1 ? 's' : '' });
 			return;
 		}
 
@@ -78,7 +80,7 @@
 </script>
 
 <div class="form-control">
-	<label class="label">
+	<label class="label" for="editable-list-input">
 		<span class="label-text">{label}</span>
 		{#if helpText}
 			<span class="label-text-alt">{helpText}</span>
@@ -88,6 +90,7 @@
 	<!-- Input row -->
 	<div class="flex gap-2 mb-3">
 		<input
+			id="editable-list-input"
 			type="text"
 			bind:value={inputValue}
 			{placeholder}
@@ -106,9 +109,9 @@
 
 	<!-- Error message -->
 	{#if error}
-		<label class="label">
+		<div class="label" aria-live="polite">
 			<span class="label-text-alt text-error">{error}</span>
-		</label>
+		</div>
 	{/if}
 
 	<!-- Items list -->
@@ -122,7 +125,7 @@
 						class="btn btn-sm btn-ghost btn-circle"
 						onclick={() => removeItem(index)}
 						disabled={items.length <= minItems}
-						aria-label="Remove {itemType}"
+						aria-label={m.editable_list_remove_aria({ itemType })}
 					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -144,7 +147,7 @@
 		</div>
 	{:else}
 		<div class="text-sm text-base-content/60 italic">
-			No {itemType}s added yet
+			{m.editable_list_empty_state({ itemType, plural: 's' })}
 		</div>
 	{/if}
 </div>

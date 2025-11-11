@@ -2,11 +2,12 @@
 	import { getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
 	import CommunikeyHeader from '$lib/components/CommunikeyHeader.svelte';
 	import { getCommunityAvailableContentTypes } from '$lib/helpers/contentTypes.js';
-	
+
 	// Import stat components
 	import MembersStat from '$lib/components/community/stats/MembersStat.svelte';
 	import CalendarEventsStat from '$lib/components/community/stats/CalendarEventsStat.svelte';
 	import MessagesStat from '$lib/components/community/stats/MessagesStat.svelte';
+	import * as m from '$lib/paraglide/messages';
 
 	let { communikeyEvent, profileEvent, communityId, onKindNavigation } = $props();
 
@@ -37,7 +38,7 @@
 			{#if communikeyEvent?.content}
 				<div class="card bg-base-200 shadow-xl mb-8">
 					<div class="card-body">
-						<h2 class="card-title">About this community</h2>
+						<h2 class="card-title">{m.community_views_home_about_title()}</h2>
 						<p class="text-base-content/80">{communikeyEvent.content}</p>
 					</div>
 				</div>
@@ -46,10 +47,10 @@
 			<!-- Recent Activity Section (Placeholder) -->
 			<div class="card bg-base-200 shadow-xl">
 				<div class="card-body">
-					<h2 class="card-title mb-4">Recent Activity</h2>
+					<h2 class="card-title mb-4">{m.community_views_home_recent_activity_title()}</h2>
 					<div class="text-center py-8 text-base-content/60">
-						<p class="text-sm">No recent activity to display</p>
-						<p class="text-xs mt-2">Activity will appear here as members interact with the community</p>
+						<p class="text-sm">{m.community_views_home_recent_activity_empty()}</p>
+						<p class="text-xs mt-2">{m.community_views_home_recent_activity_description()}</p>
 					</div>
 				</div>
 			</div>

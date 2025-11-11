@@ -7,6 +7,7 @@
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import NostrIdentifierParser from '$lib/components/shared/NostrIdentifierParser.svelte';
 	import CompactCommunityHeader from '$lib/components/community/layout/CompactCommunityHeader.svelte';
+	import * as m from '$lib/paraglide/messages';
 
 	/** @type {any} */
 	let { communikeyEvent, communityProfile = null, communityPubkey = '' } = $props();
@@ -216,11 +217,11 @@
 
 	<!-- Chat header -->
 	<div class="border-b bg-base-200 px-4 py-2">
-		<h3 class="font-semibold text-base-content">Community Chat</h3>
+		<h3 class="font-semibold text-base-content">{m.community_views_chat_title()}</h3>
 		{#if isLoading}
-			<div class="text-sm text-base-content/70">Loading messages...</div>
+			<div class="text-sm text-base-content/70">{m.community_views_chat_loading()}</div>
 		{:else}
-			<div class="text-sm text-base-content/70">{messages.length} messages</div>
+			<div class="text-sm text-base-content/70">{messages.length} {m.community_views_chat_message_count()}</div>
 		{/if}
 	</div>
 
@@ -228,7 +229,7 @@
 	<div bind:this={chatContainer} class="flex-1 space-y-4 overflow-y-auto p-4">
 		{#if messages.length === 0 && !isLoading}
 			<div class="py-8 text-center text-base-content/50">
-				No messages yet. Be the first to say something!
+				{m.community_views_chat_empty()}
 			</div>
 		{/if}
 
@@ -275,7 +276,7 @@
 				<input
 					type="text"
 					bind:value={newMessage}
-					placeholder="Type a message..."
+					placeholder={m.community_views_chat_input_placeholder()}
 					class="input-bordered input flex-1"
 					disabled={isSending}
 					required
@@ -284,7 +285,7 @@
 					{#if isSending}
 						<span class="loading loading-sm loading-spinner"></span>
 					{:else}
-						Send
+						{m.community_views_chat_send_button()}
 					{/if}
 				</button>
 			</div>
@@ -292,7 +293,7 @@
 	{:else}
 		<div class="rounded-b-lg border-t bg-base-100 p-4">
 			<div class="text-center text-base-content/70">
-				<p class="mb-2">Sign in to participate in the chat</p>
+				<p class="mb-2">{m.community_views_chat_login_prompt()}</p>
 				<!-- TODO: Add login button/component -->
 			</div>
 		</div>

@@ -1,14 +1,15 @@
 <script>
 	import { HomeIcon, ChatIcon, CalendarIcon, BellIcon, SettingsIcon } from '$lib/components/icons';
+	import * as m from '$lib/paraglide/messages';
 
 	let { selectedContentType = $bindable(), onContentTypeSelect, communitySelected = true } = $props();
 
 	const contentTypes = [
-		{ id: 'home', label: 'Home', icon: HomeIcon },
-		{ id: 'chat', label: 'Chat', icon: ChatIcon },
-		{ id: 'calendar', label: 'Calendar', icon: CalendarIcon },
-		{ id: 'activity', label: 'Activity', icon: BellIcon },
-		{ id: 'settings', label: 'Settings', icon: SettingsIcon }
+		{ id: 'home', label: m.community_layout_bottom_tab_bar_home(), icon: HomeIcon },
+		{ id: 'chat', label: m.community_layout_bottom_tab_bar_chat(), icon: ChatIcon },
+		{ id: 'calendar', label: m.community_layout_bottom_tab_bar_calendar(), icon: CalendarIcon },
+		{ id: 'activity', label: m.community_layout_bottom_tab_bar_activity(), icon: BellIcon },
+		{ id: 'settings', label: m.community_layout_bottom_tab_bar_settings(), icon: SettingsIcon }
 	];
 
 	/**
@@ -26,7 +27,7 @@
 <div class="hidden lg:flex flex-col w-60 bg-base-100 border-r border-base-300 h-[calc(100vh-4rem)] fixed left-16 top-16 overflow-y-auto">
 	{#if !communitySelected}
 		<div class="flex flex-col items-center justify-center h-full text-center p-6 text-base-content/60">
-			<p class="text-sm">Select a community to view content</p>
+			<p class="text-sm">{m.community_layout_content_nav_select_community()}</p>
 		</div>
 	{:else}
 		<nav class="menu p-4 space-y-1">

@@ -4,6 +4,7 @@
 	import CommunikeyCard from '$lib/components/CommunikeyCard.svelte';
 	import { ChevronLeftIcon, ChevronRightIcon } from '$lib/components/icons';
 	import { useAllCommunities } from '$lib/stores/all-communities.svelte.js';
+	import * as m from '$lib/paraglide/messages';
 
 	const getAllCommunities = useAllCommunities();
 	const communities = $derived(getAllCommunities());
@@ -119,10 +120,10 @@
 		<!-- Section header -->
 		<div class="mb-12 text-center">
 			<h2 class="mb-4 text-3xl font-bold text-base-content md:text-4xl">
-				Discover Communities
+				{m.landing_carousel_title()}
 			</h2>
 			<p class="text-lg text-base-content/70">
-				Join vibrant communities and connect with people who share your interests
+				{m.landing_carousel_subtitle()}
 			</p>
 		</div>
 
@@ -142,7 +143,7 @@
 			<!-- Show less button -->
 			<div class="mt-8 text-center">
 				<button onclick={toggleShowAll} class="btn btn-primary btn-lg">
-					Show Less ←
+					{m.landing_carousel_show_less()}
 				</button>
 			</div>
 		{:else}
@@ -177,17 +178,17 @@
 				<!-- Navigation buttons -->
 				{#if slides().length > 1}
 					<div class="absolute left-5 right-5 top-1/2 flex -translate-y-1/2 transform justify-between pointer-events-none">
-						<button 
+						<button
 							onclick={scrollPrev}
 							class="btn btn-circle btn-primary shadow-lg pointer-events-auto"
-							aria-label="Previous slide"
+							aria-label={m.landing_carousel_previous_slide()}
 						>
 							<ChevronLeftIcon class_="h-6 w-6" />
 						</button>
-						<button 
+						<button
 							onclick={scrollNext}
 							class="btn btn-circle btn-primary shadow-lg pointer-events-auto"
-							aria-label="Next slide"
+							aria-label={m.landing_carousel_next_slide()}
 						>
 							<ChevronRightIcon class_="h-6 w-6" />
 						</button>
@@ -198,10 +199,10 @@
 				{#if slides().length > 1}
 					<div class="mt-8 flex justify-center gap-3">
 						{#each slides() as _, index}
-							<button 
+							<button
 								onclick={() => scrollTo(index)}
 								class="group flex items-center justify-center p-2 rounded-full hover:bg-base-200 transition-all duration-300"
-								aria-label="Go to slide {index + 1}"
+								aria-label={m.landing_carousel_go_to_slide({ index: index + 1 })}
 							>
 								<div 
 									class="h-3 w-3 rounded-full transition-all duration-300 {selectedIndex === index ? 'bg-primary scale-125' : 'bg-base-300 group-hover:bg-primary group-hover:scale-125'}"
@@ -215,7 +216,7 @@
 			<!-- View all link -->
 			<div class="mt-8 text-center">
 				<a href="/discover" class="link link-primary text-lg font-medium">
-					View All Communities →
+					{m.landing_carousel_view_all()}
 				</a>
 			</div>
 		{/if}

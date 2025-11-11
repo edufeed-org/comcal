@@ -10,6 +10,7 @@
 	import { deleteComment } from '$lib/helpers/comments.js';
 	import { showToast } from '$lib/helpers/toast.js';
 	import { appConfig } from '$lib/config.js';
+	import * as m from '$lib/paraglide/messages';
 
 	/**
 	 * @typedef {Object} CommentProps
@@ -85,7 +86,7 @@
 		if (isDeleting || !canDelete) return;
 
 		// Confirm deletion
-		if (!confirm('Are you sure you want to delete this comment?')) {
+		if (!confirm(m.comments_delete_confirm())) {
 			return;
 		}
 
@@ -94,10 +95,10 @@
 			await deleteComment(comment, {
 				relays: appConfig.calendar.defaultRelays
 			});
-			showToast('Comment deleted', 'success');
+			showToast(m.comments_delete_success(), 'success');
 		} catch (error) {
 			console.error('Failed to delete comment:', error);
-			showToast('Failed to delete comment', 'error');
+			showToast(m.comments_delete_error(), 'error');
 		} finally {
 			isDeleting = false;
 		}
@@ -166,7 +167,7 @@
 							class:btn-active={showReplyForm}
 						>
 							<ChatIcon class_="w-4 h-4" />
-							Reply
+							{m.comments_reply_button()}
 						</button>
 					{/if}
 					{#if canDelete}
@@ -176,13 +177,13 @@
 							disabled={isDeleting}
 						>
 							<TrashIcon class="w-4 h-4" />
-							Delete
+							{m.comments_delete_button()}
 						</button>
 					{/if}
 					{#if comment.replies && comment.replies.length > 0}
 						<span class="text-xs text-base-content/50">
 							{comment.replies.length}
-							{comment.replies.length === 1 ? 'reply' : 'replies'}
+							{comment.replies.length === 1 ? m.comments_reply_count_singular() : m.comments_reply_count_plural()}
 						</span>
 					{/if}
 				</div>
@@ -196,7 +197,7 @@
 					{rootEvent}
 					parentItem={comment}
 					{activeUser}
-					placeholder="Write a reply..."
+					placeholder={m.comments_reply_placeholder()}
 					onCommentPosted={handleReplyPosted}
 					onCancel={handleCancelReply}
 					autoFocus={true}

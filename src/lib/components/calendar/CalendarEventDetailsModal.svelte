@@ -137,10 +137,10 @@
 				const naddr = encodeEventToNaddr(event.originalEvent);
 				await navigator.clipboard.writeText(naddr);
 				console.log('Event naddr copied to clipboard:', naddr);
-				showToast('Event link copied to clipboard!', 'success');
+				showToast(m.event_details_link_copied(), 'success');
 			} catch (err) {
 				console.error('Failed to copy event naddr:', err);
-				showToast('Failed to copy link', 'error');
+				showToast(m.event_details_copy_failed(), 'error');
 			}
 		}
 	}
@@ -176,14 +176,14 @@
 	 */
 	function getEventTypeBadge() {
 		if (!event) return { text: '', class: '' };
-		
+
 		if (isAllDay) {
 			if (isMultiDay) {
-				return { text: 'Multi-Day', class: 'badge-secondary' };
+				return { text: m.event_details_multi_day(), class: 'badge-secondary' };
 			}
-			return { text: 'All-Day', class: 'badge-primary' };
+			return { text: m.event_details_all_day(), class: 'badge-primary' };
 		}
-		return { text: 'Timed Event', class: 'badge-accent' };
+		return { text: m.event_details_timed_event(), class: 'badge-accent' };
 	}
 
 	/**
@@ -192,19 +192,19 @@
 	 */
 	function getCompactDate() {
 		if (!startDate) return '';
-		
+
 		const now = new Date();
 		const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 		const tomorrow = new Date(today);
 		tomorrow.setDate(tomorrow.getDate() + 1);
 		const eventDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-		
+
 		const timeStr = isAllDay ? '' : `, ${formatCalendarDate(startDate, 'time')}`;
-		
+
 		if (eventDay.getTime() === today.getTime()) {
-			return `Today${timeStr}`;
+			return `${m.event_details_today()}${timeStr}`;
 		} else if (eventDay.getTime() === tomorrow.getTime()) {
-			return `Tomorrow${timeStr}`;
+			return `${m.event_details_tomorrow()}${timeStr}`;
 		} else {
 			const monthDay = formatCalendarDate(startDate, 'long').split(',')[0]; // Get "Dec 25" part
 			return `${monthDay}${timeStr}`;
@@ -257,17 +257,17 @@
 						<a
 							href={eventDetailUrl}
 							class="btn btn-ghost btn-sm"
-							aria-label="Open in new tab"
-							title="Open in new tab"
+							aria-label={m.event_details_open_in_new_tab()}
+							title={m.event_details_open_in_new_tab()}
 							onclick={handleClose}
 						>
-							<ExternalLinkIcon title="Show Event" class_="w-5 h-5" />
+							<ExternalLinkIcon title={m.event_details_show_event()} class_="w-5 h-5" />
 						</a>
 						<button
 							class="btn btn-ghost btn-sm text-error hover:bg-error hover:text-error-content"
 							onclick={handleClose}
-							aria-label="Close"
-							title="Close"
+							aria-label={m.event_details_close()}
+							title={m.event_details_close()}
 						>
 							<CloseIcon class_="w-5 h-5" />
 						</button>

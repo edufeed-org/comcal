@@ -4,6 +4,7 @@
 	import { EventFactory } from 'applesauce-factory';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { publishEvent } from '$lib/helpers/publisher';
+	import * as m from '$lib/paraglide/messages';
 
 	let { profile, communikeyEvent, communikeyContentTypes, activeTab, onTabChange } = $props();
 
@@ -58,7 +59,7 @@
 	<div class="flex items-center gap-2 p-3">
 		<div class="avatar">
 			<div class="mask w-12 mask-hexagon-2 ring-2 ring-base-300">
-				<img src={getProfilePicture(profile)} alt="Community Profile" class="object-cover" />
+				<img src={getProfilePicture(profile)} alt={m.communikey_header_profile_alt()} class="object-cover" />
 			</div>
 		</div>
 
@@ -72,14 +73,14 @@
 					<svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
 						<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
 					</svg>
-					Joined
+					{m.communikey_header_joined_badge()}
 				</div>
 			{:else}
 				<div class="badge badge-ghost gap-1">
-					Not Joined
+					{m.communikey_header_not_joined_badge()}
 				</div>
 				<button onclick={joinCommunity} class="btn btn-primary btn-sm">
-					Join Community
+					{m.communikey_header_join_button()}
 				</button>
 			{/if}
 		</div>

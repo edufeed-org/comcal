@@ -1,4 +1,6 @@
 <script>
+	import * as m from '$lib/paraglide/messages';
+
 	let { userData, errors = $bindable({}) } = $props();
 
 	// UI state
@@ -30,7 +32,8 @@
 					return result.url || result.data?.url;
 				}
 			} catch (error) {
-				console.warn(`Failed to upload to ${endpoint}:`, error);
+				console.error('Image upload failed:', error);
+				errors.image = m.image_uploader_error_upload_failed();
 			}
 		}
 
@@ -46,12 +49,12 @@
 		if (!file) return;
 
 		if (!file.type.startsWith('image/')) {
-			errors.image = 'Please select a valid image file';
+			errors.image = m.image_uploader_error_invalid_file();
 			return;
 		}
 
 		if (file.size > 5 * 1024 * 1024) { // 5MB limit
-			errors.image = 'Image must be smaller than 5MB';
+			errors.image = m.image_uploader_error_too_large({size: 5});
 			return;
 		}
 
@@ -73,7 +76,7 @@
 
 <div class="form-control">
 	<label class="label">
-		<span class="label-text">Profile Picture</span>
+		<span class="label-text">{m.image_uploader_label()}</span>
 	</label>
 	<div class="flex items-center gap-4">
 		{#if userData.picture}

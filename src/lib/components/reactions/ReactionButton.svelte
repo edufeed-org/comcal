@@ -10,6 +10,7 @@
 	import { deleteReaction } from '$lib/helpers/reactions.js';
 	import { showToast } from '$lib/helpers/toast.js';
 	import { appConfig } from '$lib/config.js';
+	import * as m from '$lib/paraglide/messages';
 	
 	/** @type {any} */
 	let { event, emoji, count = 0, userReacted = false, userReactionEvent = null } = $props();
@@ -62,10 +63,10 @@
 			await deleteReaction(userReactionEvent, {
 				relays: appConfig.calendar.defaultRelays
 			});
-			showToast('Reaction removed', 'success');
+			showToast(m.reactions_remove_success(), 'success');
 		} catch (error) {
 			console.error('Failed to delete reaction:', error);
-			showToast('Failed to remove reaction', 'error');
+			showToast(m.reactions_remove_error(), 'error');
 		} finally {
 			loading = false;
 		}
@@ -103,7 +104,7 @@
 				}
 			}}
 			class="ml-0.5 cursor-pointer transition-opacity inline-flex items-center"
-			aria-label="Delete reaction"
+			aria-label={m.reactions_delete_title()}
 		>
 			<TrashIcon class="w-3 h-3 text-red-400 hover:text-red-300 transition-colors" />
 		</span>

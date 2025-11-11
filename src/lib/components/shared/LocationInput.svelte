@@ -5,11 +5,12 @@
 
 <script>
 	import { autocompleteAddress } from '../../helpers/geocoding.js';
+	import * as m from '$lib/paraglide/messages';
 
 	let {
 		value = $bindable(''),
-		placeholder = 'Enter location (e.g., Berlin, Germany)',
-		label = 'Location',
+		placeholder = m.location_input_placeholder(),
+		label = m.location_input_label(),
 		required = false,
 		class: customClass = ''
 	} = $props();
@@ -18,7 +19,7 @@
 	let suggestions = $state(/** @type {Array<{formatted: string, lat: number, lng: number}>} */ ([]));
 	let showSuggestions = $state(false);
 	let isLoadingSuggestions = $state(false);
-	let debounceTimer = /** @type {number | null} */ (null);
+	let debounceTimer = /** @type {ReturnType<typeof setTimeout> | null} */ (null);
 
 	/**
 	 * Handle location input with debounced autocomplete
@@ -123,7 +124,7 @@
 	
 	{#if isLoadingSuggestions}
 		<div class="text-xs text-base-content/60 mt-1">
-			Loading suggestions...
+			{m.location_input_loading()}
 		</div>
 	{/if}
 </div>

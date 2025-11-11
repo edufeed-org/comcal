@@ -1,6 +1,7 @@
 <script>
 	import { getProfilePicture } from 'applesauce-core/helpers';
 	import { useCommunityMembership } from '$lib/stores/joined-communities-list.svelte.js';
+	import * as m from '$lib/paraglide/messages';
 
 	/**
 	 * @typedef {Object} Props
@@ -50,7 +51,7 @@
 					clip-rule="evenodd"
 				/>
 			</svg>
-			Joined
+			{m.community_layout_compact_header_joined_badge()}
 		</div>
 	{/if}
 </div>

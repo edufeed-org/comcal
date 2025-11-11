@@ -10,6 +10,7 @@
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { appConfig } from '$lib/config.js';
 	import { getProfilePicture, getDisplayName } from 'applesauce-core/helpers';
+	import * as m from '$lib/paraglide/messages';
 
 	/**
 	 * @typedef {Object} Props
@@ -99,14 +100,14 @@
 <div class="avatar {className}">
 	<div class="{sizeClasses[size]} rounded-full">
 		{#if avatarUrl}
-			<img src={avatarUrl} alt={displayName || 'User avatar'} />
+			<img src={avatarUrl} alt={displayName || m.profile_avatar_alt()} />
 		{:else if showRobohashFallback}
-			<img src={fallbackContent} alt={displayName || 'User avatar'} />
+			<img src={fallbackContent} alt={displayName || m.profile_avatar_alt()} />
 		{:else if showInitialFallback}
 			<div
 				class="flex h-full w-full items-center justify-center bg-primary text-sm font-semibold text-primary-content"
 			>
-				{fallbackContent}
+				{m.profile_avatar_fallback()}
 			</div>
 		{/if}
 	</div>

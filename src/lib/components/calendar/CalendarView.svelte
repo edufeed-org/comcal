@@ -17,6 +17,7 @@
 	import { PersonalCalendarEventsModel } from '$lib/models';
 	import { createUrlSyncHandler, syncInitialUrlState, useCalendarEventLoader } from '$lib/loaders';
 	import { validateCalendarEvent } from '$lib/helpers/eventValidation.js';
+	import * as m from '$lib/paraglide/messages';
 
 	// Import existing UI components
 	import CalendarNavigation from '$lib/components/calendar/CalendarNavigation.svelte';
@@ -634,7 +635,7 @@
 		<div class="flex items-center justify-between">
 			<div class="flex items-center gap-4">
 				{#if communityMode}
-					<h2 class="text-lg font-semibold text-base-content">Community Calendar</h2>
+					<h2 class="text-lg font-semibold text-base-content">{m.calendar_view_community_calendar()}</h2>
 				{:else}
 					<CalendarDropdown currentCalendar={calendar} />
 				{/if}
@@ -650,7 +651,7 @@
 								d="M12 6v6m0 0v6m0-6h6m-6 0H6"
 							/>
 						</svg>
-						Create Event
+						{m.calendar_view_create_event()}
 					</button>
 				{/if}
 
@@ -681,7 +682,7 @@
 				<button
 					class="btn btn-ghost btn-xs"
 					onclick={() => (error = null)}
-					aria-label="Dismiss error"
+					aria-label={m.calendar_view_dismiss_error()}
 				>
 					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
@@ -714,13 +715,12 @@
 					/>
 				</svg>
 				<div class="flex-1">
-					<h4 class="mb-1 text-sm font-medium">Some calendar events could not be loaded</h4>
+					<h4 class="mb-1 text-sm font-medium">{m.calendar_view_resolution_error_title()}</h4>
 					<p class="mb-2 text-xs text-base-content/70">
-						{resolutionErrors.length} referenced event{resolutionErrors.length === 1 ? '' : 's'} could
-						not be found or loaded.
+						{m.calendar_view_resolution_error_desc({ count: resolutionErrors.length, plural: resolutionErrors.length === 1 ? '' : 's', n: resolutionErrors.length })}
 					</p>
 					<details class="text-xs">
-						<summary class="cursor-pointer hover:text-base-content">Show details</summary>
+						<summary class="cursor-pointer hover:text-base-content">{m.calendar_view_show_details()}</summary>
 						<ul class="mt-2 space-y-1">
 							{#each resolutionErrors as errorMsg}
 								<li class="text-base-content/60">• {errorMsg}</li>
@@ -731,7 +731,7 @@
 				<button
 					class="btn btn-ghost btn-xs"
 					onclick={() => (resolutionErrors = [])}
-					aria-label="Dismiss resolution errors"
+					aria-label={m.calendar_view_dismiss_resolution()}
 				>
 					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
@@ -785,9 +785,9 @@
 				<div class="loading loading-sm loading-spinner"></div>
 				<div class="text-sm text-base-content/70">
 					{#if events.length === 0}
-						Loading calendar events...
+						{m.calendar_view_loading_events()}
 					{:else}
-						Loading more events... ({events.length} loaded)
+						{m.calendar_view_loading_more({ count: events.length })}
 					{/if}
 				</div>
 			</div>
@@ -797,7 +797,7 @@
 			<div class="flex items-center justify-center gap-3">
 				<div class="loading loading-sm loading-spinner"></div>
 				<div class="text-sm text-base-content/70">
-					Processing events... ({validEvents.length}/{events.length})
+					{m.calendar_view_processing({ valid: validEvents.length, total: events.length })}
 				</div>
 			</div>
 		</div>
@@ -817,17 +817,17 @@
 				</svg>
 			</div>
 			<h3 class="mb-2 text-lg font-medium text-base-content">
-				{globalMode ? 'No calendar events found' : 'No events yet'}
+				{globalMode ? m.calendar_view_empty_global_title() : m.calendar_view_empty_community_title()}
 			</h3>
 			<p class="mb-6 max-w-md text-base-content/60">
 				{#if globalMode}
-					No calendar events found from connected relays. Check back later for new events.
+					{m.calendar_view_empty_global_desc()}
 				{:else}
-					This community doesn't have any calendar events yet. Be the first to create one!
+					{m.calendar_view_empty_community_desc()}
 				{/if}
 			</p>
 			{#if !globalMode && manager.active}
-				<button class="btn btn-primary" onclick={handleCreateEvent}> Create First Event </button>
+				<button class="btn btn-primary" onclick={handleCreateEvent}>{m.calendar_view_create_first_event()}</button>
 			{/if}
 		</div>
 	{/if}
