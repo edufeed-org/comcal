@@ -11,13 +11,15 @@
 	 * @property {'xs' | 'sm' | 'md' | 'lg'} [size='sm'] - Badge size
 	 * @property {number} [maxDisplay] - Maximum number of tags to show before truncating
 	 * @property {boolean} [showCount=true] - Show count of remaining tags if truncated
+	 * @property {string} [targetRoute='/calendar'] - Route to navigate to when tag is clicked
 	 */
 
 	let {
 		tags = [],
 		size = 'sm',
 		maxDisplay = undefined,
-		showCount = true
+		showCount = true,
+		targetRoute = '/calendar'
 	} = $props();
 
 	// Determine which tags to display
@@ -44,7 +46,7 @@
 	<div class="flex flex-wrap gap-1">
 		{#each displayTags as tag}
 			<a
-				href="/calendar?view=list&tags={encodeURIComponent(tag)}"
+				href="{targetRoute}?tags={encodeURIComponent(tag)}"
 				class="badge badge-outline badge-{size} transition-colors hover:badge-primary focus:badge-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
 				onclick={(e) => handleTagClick(e, tag)}
 				title={m.event_tags_view_all_tooltip({ tag })}

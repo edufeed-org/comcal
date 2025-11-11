@@ -5,6 +5,8 @@
 	import { TimelineModel, ProfileModel } from 'applesauce-core/models';
 	import { profileLoader } from '$lib/loaders/profile.js';
 	import ArticleCard from '$lib/components/article/ArticleCard.svelte';
+	import { page } from '$app/stores';
+	import { updateQueryParams } from '$lib/helpers/urlParams.js';
 
 	// State management
 	let articles = $state(/** @type {any[]} */ ([]));
@@ -12,8 +14,22 @@
 	let isLoading = $state(true);
 	let sortBy = $state('newest');
 	let authorFilter = $state('');
-	let selectedTags = $state(/** @type {string[]} */ ([]));
+	// Initialize from URL params (one-time read using getAll for repeated keys)
+	let selectedTags = $state(/** @type {string[]} */ ($page.url.searchParams.getAll('tags')));
 	let showAll = $state(false);
+
+	// Watch for URL changes and sync to state (URL → State only, never reverse)
+	// This ensures tag clicks from article cards update the filter UI
+	$effect(() => {
+		const urlTags = $page.url.searchParams.getAll('tags');
+		const sortedUrlTags = [...urlTags].sort();
+		const sortedSelectedTags = [...selectedTags].sort();
+		
+		// Only update if different to prevent unnecessary updates
+		if (JSON.stringify(sortedUrlTags) !== JSON.stringify(sortedSelectedTags)) {
+			selectedTags = urlTags;
+		}
+	});
 
 	// Map to track loaded articles for deduplication
 	let loadedArticles = new Map();
@@ -167,11 +183,15 @@
 	 * @param {string} tag
 	 */
 	function toggleTag(tag) {
-		if (selectedTags.includes(tag)) {
-			selectedTags = selectedTags.filter((t) => t !== tag);
-		} else {
-			selectedTags = [...selectedTags, tag];
-		}
+		const newTags = selectedTags.includes(tag)
+			? selectedTags.filter((t) => t !== tag)
+			: [...selectedTags, tag];
+		
+		// Update local state
+		selectedTags = newTags;
+		
+		// Update URL using helper (handles repeated keys automatically)
+		updateQueryParams($page.url.searchParams, { tags: newTags });
 	}
 </script>
 
@@ -235,7 +255,10 @@
 					{/each}
 				</div>
 				{#if selectedTags.length > 0}
-					<button class="btn btn-ghost btn-xs mt-2" onclick={() => (selectedTags = [])}>
+					<button class="btn btn-ghost btn-xs mt-2" onclick={() => {
+						selectedTags = [];
+						updateQueryParams($page.url.searchParams, { tags: [] });
+					}}>
 						Clear filters
 					</button>
 				{/if}

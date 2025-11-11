@@ -152,7 +152,7 @@
 		<!-- Tags -->
 		{#if hashtags.length > 0 && !compact}
 			<div class="flex flex-wrap gap-1">
-				<EventTags tags={hashtags} size="sm" />
+				<EventTags tags={hashtags} size="sm" targetRoute="/feed" />
 			</div>
 		{/if}
 
