@@ -93,10 +93,9 @@
 			<CalendarIcon class_="w-5 h-5" />
 			{m.navbar_calendar()}
 		</a>
-		<LanguageSwitcher />
 		{#if activeAccount}
-			<div class="dropdown dropdown-end">
-				<div tabindex="0" role="button" class="btn btn-circle btn-ghost">
+		<div class="dropdown dropdown-end">
+			<div tabindex="0" role="button" class="btn btn-circle btn-ghost">
 					<ProfileAvatar pubkey={activeAccount.pubkey} size="md" fallbackType="robohash" />
 				</div>
 				<ul class="dropdown-content menu z-1 mt-3 w-52 menu-sm rounded-box bg-base-100 p-2 shadow">
@@ -119,5 +118,6 @@
 		{:else}
 			<button onclick={openLoginModal} class="btn btn-ghost">{m.common_login()}</button>
 		{/if}
+		<LanguageSwitcher />
 	</div>
 </div>
