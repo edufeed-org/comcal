@@ -1,9 +1,10 @@
 <script>
 	import { articleTimelineLoader } from '$lib/loaders';
-	import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { appConfig } from '$lib/config';
 	import { TimelineModel, ProfileModel } from 'applesauce-core/models';
 	import { profileLoader } from '$lib/loaders/profile.js';
+	import { getArticlePublished } from 'applesauce-core/helpers';
 	import ArticleCard from '$lib/components/article/ArticleCard.svelte';
 	import { page } from '$app/stores';
 	import { updateQueryParams } from '$lib/helpers/urlParams.js';
@@ -237,12 +238,13 @@
 			});
 		}
 
-		// Sort articles
+		// Sort articles by published_at (NIP-23) instead of created_at
+		// This ensures we sort by original publication date, not last edit date
 		const sorted = [...filtered].sort((a, b) => {
 			if (sortBy === 'newest') {
-				return b.created_at - a.created_at;
+				return getArticlePublished(b) - getArticlePublished(a);
 			} else if (sortBy === 'oldest') {
-				return a.created_at - b.created_at;
+				return getArticlePublished(a) - getArticlePublished(b);
 			}
 			return 0;
 		});
