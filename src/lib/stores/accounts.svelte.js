@@ -9,13 +9,58 @@ import { registerCommonAccountTypes } from 'applesauce-accounts/accounts';
 export const manager = $state(new AccountManager());
 registerCommonAccountTypes(manager);
 
-// subscribe to the active account
-manager.active$.subscribe((account) => {
-	if (account) console.log(`${account.id} is now active`);
-	else console.log('no account is active');
+// Initialize account persistence
+async function initializeAccountPersistence() {
+	if (typeof window === 'undefined') return; // Only run on client side
 
-	// updateUI();
-});
+	try {
+		// Step 1: Load existing accounts from localStorage
+		const savedAccounts = localStorage.getItem('accounts');
+		if (savedAccounts) {
+			const json = JSON.parse(savedAccounts);
+			await manager.fromJSON(json);
+			console.log(`📦 Loaded ${manager.accounts.length} account(s) from storage`);
+		}
+
+		// Step 2: Load active account from storage
+		const activeAccountId = localStorage.getItem('active');
+		if (activeAccountId && manager.getAccount(activeAccountId)) {
+			manager.setActive(activeAccountId);
+			console.log(`✅ Restored active account: ${activeAccountId}`);
+		}
+	} catch (error) {
+		console.error('❌ Failed to load accounts from storage:', error);
+	}
+
+	// Step 3: Subscribe to account changes and persist to localStorage
+	manager.accounts$.subscribe((accounts) => {
+		try {
+			const json = manager.toJSON();
+			localStorage.setItem('accounts', JSON.stringify(json));
+			console.log(`💾 Saved ${accounts.length} account(s) to storage`);
+		} catch (error) {
+			console.error('❌ Failed to save accounts to storage:', error);
+		}
+	});
+
+	// Step 4: Subscribe to active account changes and persist
+	manager.active$.subscribe((account) => {
+		try {
+			if (account) {
+				localStorage.setItem('active', account.id);
+				console.log(`✅ ${account.id} is now active`);
+			} else {
+				localStorage.removeItem('active');
+				console.log('⚪ No account is active');
+			}
+		} catch (error) {
+			console.error('❌ Failed to save active account:', error);
+		}
+	});
+}
+
+// Initialize persistence when module loads (client-side only)
+initializeAccountPersistence();
 
 export const accounts = $state(/** @type {any[]} */ ([]));
 
