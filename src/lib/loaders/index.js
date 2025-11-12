@@ -36,6 +36,7 @@ export {
 
 // Article loaders
 export { articleTimelineLoader } from './articles.js';
+export { ambTimelineLoader } from './amb.js';
 
 // Calendar event loader composable and URL sync helpers
 export { useCalendarEventLoader, createUrlSyncHandler, syncInitialUrlState } from './calendar-event-loader.svelte';
