@@ -42,53 +42,44 @@
 		});
 
 	// Load articles using proper loader/model pattern
-	$effect(() => {
-		isLoading = true;
-		loadedArticles.clear();
+	// Set up subscriptions at module level - they are already reactive via RxJS
+	console.log('📰 Feed: Setting up article loading');
 
-		console.log('📰 Feed: Setting up article loading');
-
-		// Step 1: Loader - fetch articles from relays into EventStore
-		const loaderSub = articleLoader()().subscribe({
-			error: (/** @type {any} */ error) => {
-				console.error('📰 Feed: Article loader error:', error);
-				isLoading = false;
-			}
-		});
-
-		// Step 2: Model - subscribe to EventStore for reactive updates
-		const modelSub = eventStore.model(TimelineModel, { kinds: [30023] }).subscribe((timeline) => {
-			let hasNew = false;
-			for (const article of timeline || []) {
-				if (!loadedArticles.has(article.id)) {
-					loadedArticles.set(article.id, article);
-					hasNew = true;
-				}
-			}
-			if (hasNew) {
-				articles = Array.from(loadedArticles.values());
-				console.log(`📰 Feed: Loaded ${articles.length} articles`);
-			}
+	// Step 1: Loader - fetch articles from relays into EventStore
+	const articleLoaderSub = articleLoader()().subscribe({
+		error: (/** @type {any} */ error) => {
+			console.error('📰 Feed: Article loader error:', error);
 			isLoading = false;
-		});
-
-		// Cleanup
-		return () => {
-			loaderSub.unsubscribe();
-			modelSub.unsubscribe();
-			console.log('📰 Feed: Cleaned up article subscriptions');
-		};
+		}
 	});
 
-	// Load author profiles for articles
+	// Step 2: Model - subscribe to EventStore for reactive updates
+	const articleModelSub = eventStore.model(TimelineModel, { kinds: [30023] }).subscribe((timeline) => {
+		for (const article of timeline || []) {
+			if (!loadedArticles.has(article.id)) {
+				loadedArticles.set(article.id, article);
+			}
+		}
+		articles = Array.from(loadedArticles.values());
+		console.log(`📰 Feed: Loaded ${articles.length} articles`);
+		isLoading = false;
+	});
+
+	// Load author profiles for articles - reactively update when articles change
+	let profileLoaderSubs = /** @type {any[]} */ ([]);
+	let profileModelSubs = /** @type {any[]} */ ([]);
+	let profilesMap = new Map();
+
 	$effect(() => {
+		// Clean up previous subscriptions
+		profileLoaderSubs.forEach((s) => s.unsubscribe());
+		profileModelSubs.forEach((s) => s.unsubscribe());
+		profileLoaderSubs = [];
+		profileModelSubs = [];
+
 		if (articles.length === 0) return;
 
 		console.log(`📰 Feed: Loading profiles for ${articles.length} articles`);
-
-		const loaderSubs = /** @type {any[]} */ ([]);
-		const modelSubs = /** @type {any[]} */ ([]);
-		const profilesMap = new Map();
 
 		// Get unique author pubkeys
 		const authorPubkeys = [...new Set(articles.map((a) => a.pubkey))];
@@ -104,7 +95,7 @@
 					console.error(`📰 Feed: Profile loader error for ${pubkey.slice(0, 8)}:`, error);
 				}
 			});
-			loaderSubs.push(loaderSub);
+			profileLoaderSubs.push(loaderSub);
 
 			// Step 2: Model - subscribe to EventStore for reactive updates
 			const modelSub = eventStore.model(ProfileModel, { pubkey }).subscribe((profile) => {
@@ -113,14 +104,18 @@
 					articleProfiles = new Map(profilesMap);
 				}
 			});
-			modelSubs.push(modelSub);
+			profileModelSubs.push(modelSub);
 		});
+	});
 
-		// Cleanup
+	// Cleanup all subscriptions on component unmount
+	$effect(() => {
 		return () => {
-			loaderSubs.forEach((s) => s.unsubscribe());
-			modelSubs.forEach((s) => s.unsubscribe());
-			console.log('📰 Feed: Cleaned up profile subscriptions');
+			articleLoaderSub.unsubscribe();
+			articleModelSub.unsubscribe();
+			profileLoaderSubs.forEach((s) => s.unsubscribe());
+			profileModelSubs.forEach((s) => s.unsubscribe());
+			console.log('📰 Feed: Cleaned up all subscriptions');
 		};
 	});
 

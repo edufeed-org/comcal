@@ -4,6 +4,7 @@
 -->
 
 <script>
+	import { goto } from '$app/navigation';
 	import { hexToNpub } from '$lib/helpers/nostrUtils';
 	
 	/**
@@ -89,7 +90,7 @@
 	function goToProfile() {
 		if (event?.pubkey) {
 			const npub = hexToNpub(event.pubkey);
-			window.location.href = `/p/${npub || event.pubkey}`;
+			goto(`/p/${npub || event.pubkey}`);
 		}
 	}
 

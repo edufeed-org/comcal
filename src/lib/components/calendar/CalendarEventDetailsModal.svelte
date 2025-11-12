@@ -5,6 +5,7 @@
 
 <script>
 	import * as m from '$lib/paraglide/messages';
+	import { goto } from '$app/navigation';
 	import { formatCalendarDate } from '../../helpers/calendar.js';
 	import { modalStore } from '../../stores/modal.svelte.js';
 	import { registerCalendarEventsRefreshCallback } from '../../stores/calendar-management-store.svelte.js';
@@ -151,7 +152,7 @@
 	 */
 	function handleEdit() {
 		if (eventDetailUrl) {
-			window.location.href = eventDetailUrl;
+			goto(eventDetailUrl);
 		}
 	}
 

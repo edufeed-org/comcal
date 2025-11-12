@@ -6,6 +6,7 @@
 <script>
 	import { getArticleTitle, getArticleImage, getProfilePicture, getDisplayName } from 'applesauce-core/helpers';
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
+	import { goto } from '$app/navigation';
 	import ImageWithFallback from '../shared/ImageWithFallback.svelte';
 	import ReactionBar from '../reactions/ReactionBar.svelte';
 	import EventTags from '../calendar/EventTags.svelte';
@@ -81,7 +82,7 @@
 	 */
 	function handleClick(e) {
 		if (articleNaddr && e.target instanceof HTMLElement && !e.target.closest('button, a')) {
-			window.location.href = `/${articleNaddr}`;
+			goto(`/${articleNaddr}`);
 		}
 	}
 
@@ -92,7 +93,7 @@
 	function handleKeydown(e) {
 		if ((e.key === 'Enter' || e.key === ' ') && articleNaddr) {
 			e.preventDefault();
-			window.location.href = `/${articleNaddr}`;
+			goto(`/${articleNaddr}`);
 		}
 	}
 </script>
