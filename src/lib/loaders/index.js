@@ -34,6 +34,9 @@ export {
 	kind1Loader
 } from './profile.js';
 
+// Article loaders
+export { articleTimelineLoader } from './articles.js';
+
 // Calendar event loader composable and URL sync helpers
 export { useCalendarEventLoader, createUrlSyncHandler, syncInitialUrlState } from './calendar-event-loader.svelte';
 

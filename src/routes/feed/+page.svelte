@@ -1,5 +1,5 @@
 <script>
-	import { createTimelineLoader } from 'applesauce-loaders/loaders';
+	import { articleTimelineLoader } from '$lib/loaders';
 	import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { appConfig } from '$lib/config';
 	import { TimelineModel, ProfileModel } from 'applesauce-core/models';
@@ -12,11 +12,13 @@
 	let articles = $state(/** @type {any[]} */ ([]));
 	let articleProfiles = $state(/** @type {Map<string, any>} */ (new Map()));
 	let isLoading = $state(true);
+	let isLoadingMore = $state(false);
+	let hasMoreArticles = $state(true);
+	let oldestTimestamp = $state(/** @type {number | null} */ (null));
 	let sortBy = $state('newest');
 	let authorFilter = $state('');
 	// Initialize from URL params (one-time read using getAll for repeated keys)
 	let selectedTags = $state(/** @type {string[]} */ ($page.url.searchParams.getAll('tags')));
-	let showAll = $state(false);
 
 	// Watch for URL changes and sync to state (URL → State only, never reverse)
 	// This ensures tag clicks from article cards update the filter UI
@@ -31,39 +33,84 @@
 		}
 	});
 
-	// Map to track loaded articles for deduplication
-	let loadedArticles = new Map();
+	// Batch size for loading
+	const BATCH_SIZE = 20;
 
-	// Loader for articles
-	const articleLoader = () =>
-		createTimelineLoader(pool, appConfig.calendar.defaultRelays, { kinds: [30023] }, {
-			limit: 100,
-			eventStore
-		});
-
-	// Load articles using proper loader/model pattern
-	// Set up subscriptions at module level - they are already reactive via RxJS
 	console.log('📰 Feed: Setting up article loading');
 
-	// Step 1: Loader - fetch articles from relays into EventStore
-	const articleLoaderSub = articleLoader()().subscribe({
+	// Step 1: Create stateful loader once (automatically handles pagination)
+	const articleLoader = articleTimelineLoader(BATCH_SIZE);
+
+	// Step 2: Initial load
+	articleLoader().subscribe({
 		error: (/** @type {any} */ error) => {
-			console.error('📰 Feed: Article loader error:', error);
+			console.error('📰 Feed: Initial loader error:', error);
 			isLoading = false;
 		}
 	});
 
-	// Step 2: Model - subscribe to EventStore for reactive updates
+	// Step 3: Model subscription - EventStore automatically handles deduplication
 	const articleModelSub = eventStore.model(TimelineModel, { kinds: [30023] }).subscribe((timeline) => {
-		for (const article of timeline || []) {
-			if (!loadedArticles.has(article.id)) {
-				loadedArticles.set(article.id, article);
+		const previousCount = articles.length;
+		
+		// TimelineModel returns deduplicated array - just use it directly
+		articles = timeline || [];
+		const currentCount = articles.length;
+		
+		// Update oldest timestamp for display purposes
+		if (articles.length > 0) {
+			const timestamps = articles.map(a => a.created_at);
+			oldestTimestamp = Math.min(...timestamps);
+		}
+		
+		// END DETECTION: Only check during pagination, not initial load
+		if (isLoadingMore) {
+			const newArticlesReceived = currentCount - previousCount;
+			
+			if (newArticlesReceived > 0) {
+				console.log(`📰 Feed: Received ${newArticlesReceived} new articles`);
+				isLoadingMore = false;
+			} else {
+				console.log('📰 Feed: No new articles received, reached the end');
+				hasMoreArticles = false;
+				isLoadingMore = false;
 			}
 		}
-		articles = Array.from(loadedArticles.values());
-		console.log(`📰 Feed: Loaded ${articles.length} articles`);
+		
+		console.log(`📰 Feed: Loaded ${articles.length} articles, oldest: ${oldestTimestamp}, hasMore: ${hasMoreArticles}`);
 		isLoading = false;
 	});
+
+	/**
+	 * Load more articles - the loader is stateful and automatically fetches the next chronological block
+	 */
+	function loadMoreArticles() {
+		if (isLoadingMore || !hasMoreArticles) {
+			console.log('📰 Feed: Skipping load more', { isLoadingMore, hasMoreArticles });
+			return;
+		}
+		
+		console.log('📰 Feed: Loading more articles (next block)');
+		isLoadingMore = true;
+		
+		// Simply call the loader again - it automatically continues from where it left off
+		articleLoader().subscribe({
+			error: (/** @type {any} */ error) => {
+				console.error('📰 Feed: Pagination error:', error);
+				isLoadingMore = false;
+				// Keep hasMoreArticles true on error so user can retry
+			}
+		});
+		
+		// Failsafe: Reset loading state after timeout if no articles arrive
+		setTimeout(() => {
+			if (isLoadingMore) {
+				console.warn('📰 Feed: Pagination timeout - no response from relays');
+				isLoadingMore = false;
+				hasMoreArticles = false;
+			}
+		}, 10000); // 10 second timeout
+	}
 
 	// Load author profiles for articles - reactively update when articles change
 	let profileLoaderSubs = /** @type {any[]} */ ([]);
@@ -111,11 +158,46 @@
 	// Cleanup all subscriptions on component unmount
 	$effect(() => {
 		return () => {
-			articleLoaderSub.unsubscribe();
 			articleModelSub.unsubscribe();
 			profileLoaderSubs.forEach((s) => s.unsubscribe());
 			profileModelSubs.forEach((s) => s.unsubscribe());
 			console.log('📰 Feed: Cleaned up all subscriptions');
+		};
+	});
+
+	// Intersection Observer for infinite scroll
+	$effect(() => {
+		// Only set up observer if we have articles and potentially more to load
+		if (articles.length === 0 || !hasMoreArticles) return;
+		
+		const sentinel = document.getElementById('load-more-sentinel');
+		if (!sentinel) {
+			console.log('📰 Feed: Sentinel element not found');
+			return;
+		}
+		
+		console.log('📰 Feed: Setting up Intersection Observer');
+		
+		const observer = new IntersectionObserver(
+			(entries) => {
+				// Check if sentinel is visible
+				if (entries[0].isIntersecting) {
+					console.log('📰 Feed: Sentinel visible, loading more articles');
+					loadMoreArticles();
+				}
+			},
+			{
+				root: null, // viewport
+				rootMargin: '200px', // Trigger 200px before reaching sentinel
+				threshold: 0.1
+			}
+		);
+		
+		observer.observe(sentinel);
+		
+		return () => {
+			console.log('📰 Feed: Cleaning up Intersection Observer');
+			observer.disconnect();
 		};
 	});
 
@@ -168,10 +250,8 @@
 		return sorted;
 	});
 
-	// Pagination
-	const displayLimit = 12;
-	const displayedArticles = $derived(showAll ? filteredArticles : filteredArticles.slice(0, displayLimit));
-	const hasMore = $derived(filteredArticles.length > displayLimit);
+	// Show all loaded articles (infinite scroll handles pagination)
+	const displayedArticles = $derived(filteredArticles);
 
 	/**
 	 * Toggle tag selection
@@ -263,10 +343,10 @@
 		<!-- Results count -->
 		{#if filteredArticles.length > 0}
 			<div class="mt-4 text-center text-sm text-base-content/70">
-				Showing {displayedArticles.length} of {filteredArticles.length} article{filteredArticles.length !==
-				1
-					? 's'
-					: ''}
+				Showing {displayedArticles.length} article{filteredArticles.length !== 1 ? 's' : ''}
+				{#if hasMoreArticles}
+					<span class="ml-2 text-primary">• Scroll for more</span>
+				{/if}
 			</div>
 		{/if}
 	</div>
@@ -302,14 +382,21 @@
 				{/each}
 			</div>
 
-			<!-- Show More/Less Button -->
-			{#if hasMore}
-				<div class="mt-8 text-center">
-					<button onclick={() => (showAll = !showAll)} class="btn btn-primary btn-lg">
-						{showAll ? 'Show Less' : `Show All (${filteredArticles.length})`}
-					</button>
-				</div>
-			{/if}
+			<!-- Infinite Scroll Sentinel -->
+			<div id="load-more-sentinel" class="mt-8 py-8">
+				{#if isLoadingMore}
+					<div class="flex justify-center">
+						<div class="text-center">
+							<div class="loading loading-spinner loading-lg text-primary"></div>
+							<p class="mt-4 text-base-content/70">Loading more articles...</p>
+						</div>
+					</div>
+				{:else if !hasMoreArticles}
+					<div class="flex justify-center">
+						<p class="text-base-content/50">No more articles to load</p>
+					</div>
+				{/if}
+			</div>
 		{/if}
 	</div>
 </div>
