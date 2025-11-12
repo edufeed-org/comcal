@@ -31,7 +31,7 @@
 	type="button"
 	onclick={() => isLoggedIn && (showPicker = true)}
 	disabled={!isLoggedIn}
-	class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-600 bg-gray-700/50 text-gray-300 hover:bg-gray-700 hover:border-gray-500"
+	class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-600 hover:text-white hover:bg-gray-700 hover:border-gray-500"
 	title={isLoggedIn ? m.reactions_add_reaction_title() : m.reactions_login_required()}
 >
 	<SmilePlusIcon class="w-4 h-4" />
