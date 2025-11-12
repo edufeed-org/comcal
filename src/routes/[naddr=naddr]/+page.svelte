@@ -1,7 +1,9 @@
 <script>
 	import CalendarView from '$lib/components/calendar/CalendarView.svelte';
 	import ArticleView from '$lib/components/article/ArticleView.svelte';
+	import AMBResourceView from '$lib/components/amb/AMBResourceView.svelte';
 	import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
+	import { formatAMBResource } from '$lib/helpers/amb';
 
 	/** @type {{ data: any }} */
 	let { data } = $props();
@@ -27,6 +29,15 @@
 			};
 		}
 
+		// AMB educational resource (kind 30142)
+		if (data.kind === 30142) {
+			return {
+				type: 'amb',
+				event: data.event,
+				resource: formatAMBResource(data.event)
+			};
+		}
+
 		// Unsupported kind
 		return {
 			type: 'unsupported',
@@ -41,6 +52,8 @@
 		} else if (displayData?.type === 'article') {
 			const titleTag = data.event?.tags?.find((/** @type {any} */ t) => t[0] === 'title');
 			return `${titleTag?.[1] || 'Article'} - Communikey`;
+		} else if (displayData?.type === 'amb') {
+			return `${displayData.resource?.name || 'Educational Resource'} - Communikey`;
 		}
 		return 'Content - Communikey';
 	});
@@ -62,6 +75,9 @@
 	{:else if displayData?.type === 'article'}
 		<!-- Article Display -->
 		<ArticleView event={displayData.event} />
+	{:else if displayData?.type === 'amb'}
+		<!-- AMB Resource Display -->
+		<AMBResourceView event={displayData.event} resource={displayData.resource} />
 	{:else if displayData?.type === 'unsupported'}
 		<!-- Unsupported Content Type -->
 		<div class="alert alert-warning">

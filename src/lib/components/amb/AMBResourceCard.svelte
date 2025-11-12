@@ -6,6 +6,8 @@
 <script>
 	import { getProfilePicture, getDisplayName } from 'applesauce-core/helpers';
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
+	import { nip19 } from 'nostr-tools';
+	import { goto } from '$app/navigation';
 	import ImageWithFallback from '../shared/ImageWithFallback.svelte';
 	import ReactionBar from '../reactions/ReactionBar.svelte';
 	import EventTags from '../calendar/EventTags.svelte';
@@ -31,8 +33,24 @@
 	// Get published date
 	const publishedAt = $derived(new Date(resource.publishedDate * 1000));
 
+	// Generate naddr for navigation to detail view
+	const resourceNaddr = $derived.by(() => {
+		return nip19.naddrEncode({
+			kind: resource.kind,
+			pubkey: resource.pubkey,
+			identifier: resource.identifier
+		});
+	});
+
 	/**
-	 * Open resource in new tab
+	 * Navigate to resource detail view
+	 */
+	function navigateToDetail() {
+		goto(`/${resourceNaddr}`);
+	}
+
+	/**
+	 * Open external resource in new tab
 	 */
 	function openResource() {
 		if (resource.primaryURL) {
@@ -45,25 +63,25 @@
 	 * @param {KeyboardEvent} e
 	 */
 	function handleKeydown(e) {
-		if ((e.key === 'Enter' || e.key === ' ') && resource.primaryURL) {
+		if (e.key === 'Enter' || e.key === ' ') {
 			e.preventDefault();
-			openResource();
+			navigateToDetail();
 		}
 	}
 </script>
 
 <div
-	class="amb-card bg-base-100 border border-base-300 rounded-lg shadow-sm hover:shadow-md transition-shadow {compact
+	class="amb-card bg-base-100 border border-base-300 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer hover:border-secondary {compact
 		? 'p-3'
-		: 'p-4'} {resource.primaryURL ? 'cursor-pointer hover:border-secondary' : ''}"
-	class:focus:outline-none={resource.primaryURL}
-	class:focus:ring-2={resource.primaryURL}
-	class:focus:ring-secondary={resource.primaryURL}
-	class:focus:ring-opacity-50={resource.primaryURL}
-	role={resource.primaryURL ? 'button' : 'article'}
-	tabindex={resource.primaryURL ? 0 : -1}
-	onclick={resource.primaryURL ? openResource : undefined}
-	onkeydown={resource.primaryURL ? handleKeydown : undefined}
+		: 'p-4'}"
+	class:focus:outline-none={true}
+	class:focus:ring-2={true}
+	class:focus:ring-secondary={true}
+	class:focus:ring-opacity-50={true}
+	role="button"
+	tabindex="0"
+	onclick={navigateToDetail}
+	onkeydown={handleKeydown}
 >
 	<!-- Author Header -->
 	<div class="flex items-center gap-3 mb-3">
@@ -114,7 +132,9 @@
 					rel="noopener noreferrer"
 					class="badge badge-outline badge-sm shrink-0"
 					title={resource.license.label}
-					onclick={(e) => e.stopPropagation()}
+					onclick={(e) => {
+						e.stopPropagation();
+					}}
 				>
 					{resource.license.label}
 				</a>
@@ -204,7 +224,7 @@
 
 		<!-- Reactions -->
 		{#if !compact && resource.tags}
-			<div class="pt-2">
+			<div class="pt-2" onclick={(e) => e.stopPropagation()}>
 				<ReactionBar event={{ id: resource.id, kind: resource.kind, pubkey: resource.pubkey, tags: resource.tags }} />
 			</div>
 		{/if}
