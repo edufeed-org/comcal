@@ -31,6 +31,7 @@
   "common_copied": "Kopiert",
   "navbar_brand": "Communikey",
   "navbar_calendar": "Kalender",
+  "navbar_feed": "Feed",
   "navbar_switch_account": "Konto wechseln",
   "navbar_logout_current": "Abmelden",
   "navbar_logout_all": "Alle Konten abmelden",
@@ -368,7 +369,6 @@
   "events_list_global_empty_title": "Keine Kalenderereignisse gefunden",
   "events_list_global_empty_description": "Keine Kalenderereignisse von verbundenen Relays gefunden.",
   "events_list_loading": "Kalenderereignisse werden geladen...",
-
   "calendar_management_page_title": "Kalender verwalten - Communikey",
   "calendar_management_page_description": "Verwalten Sie Ihre persönlichen Kalender auf Nostr",
   "calendar_management_header_title": "Kalender verwalten",
@@ -395,7 +395,6 @@
   "calendar_management_delete_confirmation": "Sind Sie sicher, dass Sie \"{title}\" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden und entfernt den Kalender von allen Relays.",
   "calendar_management_delete_button": "Löschen",
   "calendar_management_delete_cancel_button": "Abbrechen",
-
   "add_to_calendar_fallback_title": "Kalender",
   "add_to_calendar_action_subscribe": "Kalender abonnieren",
   "add_to_calendar_action_subscribe_tooltip": "Automatische Aktualisierung mit neuen Terminen",
@@ -408,10 +407,8 @@
   "add_to_calendar_toast_subscription_added": "Kalenderabonnement hinzugefügt",
   "add_to_calendar_toast_download_success": "Kalender erfolgreich heruntergeladen",
   "add_to_calendar_toast_qr_failed": "QR-Code konnte nicht geöffnet werden",
-
   "add_to_calendar_dropdown_button_label": "Zum Kalender hinzufügen",
   "add_to_calendar_dropdown_signin_required": "Bitte melden Sie sich an, um Veranstaltungen zu Ihren Kalendern hinzuzufügen",
-
   "attendee_indicator_attendees_label": "Teilnehmer ({count})",
   "attendee_indicator_accepted_label": "Zugesagt ({count})",
   "attendee_indicator_maybe_label": "Vielleicht ({count})",
@@ -419,7 +416,6 @@
   "attendee_indicator_show_all": "Alle {count} Teilnehmer anzeigen",
   "attendee_indicator_modal_title": "Alle Teilnehmer ({count})",
   "attendee_indicator_modal_close": "Schließen",
-
   "inline_rsvp_toast_login_required": "Bitte melden Sie sich an, um zuzusagen",
   "inline_rsvp_toast_event_unavailable": "Veranstaltungsdaten nicht verfügbar",
   "inline_rsvp_button_going": "Nehme teil",
@@ -431,16 +427,12 @@
   "inline_rsvp_note_hide": "Notiz ausblenden",
   "inline_rsvp_note_add": "Notiz hinzufügen",
   "inline_rsvp_note_placeholder": "Fügen Sie eine Nachricht zu Ihrer Zusage hinzu...",
-
   "rsvp_status_badge_not_going": "Nehme nicht teil",
-
   "event_tags_view_all_tooltip": "Alle Veranstaltungen mit #{tag} anzeigen",
   "event_tags_more_count": "+{count} weitere",
-
   "event_location_map_loading": "Karte wird geladen...",
   "event_location_map_error": "Ort konnte nicht verarbeitet werden",
   "event_location_map_open_osm": "In OpenStreetMap öffnen",
-
   "webcal_qr_modal_title": "QR-Code scannen",
   "webcal_qr_modal_instructions_header": "📱 Kalender auf dem Handy abonnieren:",
   "webcal_qr_modal_step_1": "Öffnen Sie die Kamera-App Ihres Handys",
@@ -457,7 +449,6 @@
   "webcal_qr_modal_toast_downloaded": "QR-Code heruntergeladen",
   "webcal_qr_modal_toast_download_failed": "Fehler beim Herunterladen des QR-Codes",
   "webcal_qr_modal_toast_image_failed": "Fehler beim Generieren des QR-Code-Bildes",
-
   "create_community_modal_title": "Neue Community erstellen",
   "create_community_modal_step_profile": "Profil",
   "create_community_modal_step_keys": "Schlüssel",
@@ -524,7 +515,6 @@
   "create_community_modal_error_publish_failed": "Fehler beim Veröffentlichen der Community auf einem Relay",
   "create_community_modal_error_npub_conversion": "Fehler beim Konvertieren von Pubkey zu Npub",
   "create_community_modal_error_invalid_state": "Ungültiger Zustand erreicht. Bitte von vorne beginnen.",
-
   "communikey_card_joined_badge": "Beigetretene Community",
   "communikey_card_profile_alt": "Profil",
   "communikey_card_unknown_user": "Unbekannter Benutzer",
@@ -780,7 +770,6 @@
   "event_modal_updating": "Wird aktualisiert...",
   "event_modal_invalid_url": "Bitte geben Sie eine gültige URL ein (z.B. https://example.com)",
   "calendar_creation_modal_close_modal": "Modal schließen",
-
   "tag_selector_filter_by_tags": "Nach Tags filtern",
   "tag_selector_clear_all": "Alle löschen",
   "tag_selector_show_events_with_tag": "Veranstaltungen mit #{tag} anzeigen",

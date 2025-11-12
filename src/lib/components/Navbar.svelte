@@ -2,7 +2,7 @@
 	import * as m from '$lib/paraglide/messages';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
-	import { CalendarIcon } from './icons';
+	import { CalendarIcon, ScrollTextIcon } from './icons';
 	import ProfileAvatar from './shared/ProfileAvatar.svelte';
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 
@@ -89,6 +89,10 @@
 		<a href="/" class="btn text-xl btn-ghost">{m.navbar_brand()}</a>
 	</div>
 	<div class="flex gap-2 items-center">
+		<a href="/feed" class="btn btn-ghost btn">
+			<ScrollTextIcon class_="w-5 h-5" />
+			{m.navbar_feed()}
+		</a>
 		<a href="/calendar" class="btn btn-ghost btn">
 			<CalendarIcon class_="w-5 h-5" />
 			{m.navbar_calendar()}

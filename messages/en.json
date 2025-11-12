@@ -30,6 +30,7 @@
   "common_copy": "Copy",
   "common_copied": "Copied",
   "navbar_brand": "Communikey",
+  "navbar_feed": "Feed",
   "navbar_calendar": "Calendar",
   "navbar_switch_account": "Switch Account",
   "navbar_logout_current": "Logout",
