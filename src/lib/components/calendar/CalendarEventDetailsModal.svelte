@@ -423,15 +423,15 @@
 				<div class="mb-6">
 					<h3 class="mb-3 text-lg font-semibold text-base-content">{m.calendar_event_tags()}</h3>
 					<div class="flex flex-wrap gap-2">
-						{#each event.hashtags as tag}
-							<a
-								href="/calendar?view=list&tags={encodeURIComponent(tag)}"
-								class="badge badge-outline badge-lg transition-colors hover:badge-primary"
-								title={m.event_details_view_events_with_tag()}
-							>
-								#{tag}
-							</a>
-						{/each}
+				{#each event.hashtags as tag}
+					<a
+						href="/calendar?view=list&tags={encodeURIComponent(tag)}"
+						class="badge badge-outline badge-lg transition-colors hover:badge-primary"
+						title={m.event_details_view_events_with_tag({ tag })}
+					>
+						#{tag}
+					</a>
+				{/each}
 					</div>
 				</div>
 			{/if}
