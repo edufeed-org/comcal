@@ -6,6 +6,7 @@
 export const appConfig = {
 	logo: 'https://blossom.edufeed.org/f22e1410f09a9130757704b6dcd4c34774d2926b9cfd6cf2e4c4675c64d4333b.webp',
 	name: 'ComCal',
+	gitRepo: 'https://github.com/edufeed-org/comcal',
 	calendar: {
 		// Week start day: 0 = Sunday, 1 = Monday, 2 = Tuesday, etc.
 		weekStartDay: 1, // Default to Monday
