@@ -29,12 +29,9 @@
 	// Load profiles reactively using ProfileModel
 	$effect(() => {
 		if (allCommunities.length === 0) {
-			console.log('📋 Discover: No communities to load profiles for');
 			return;
 		}
 
-		console.log('📋 Discover: Setting up profile loading for', allCommunities.length, 'communities');
-		
 		const loaderSubscriptions = /** @type {any[]} */ ([]);
 		const modelSubscriptions = /** @type {any[]} */ ([]);
 		const profilesMap = new Map();
@@ -48,9 +45,6 @@
 				pubkey,
 				relays: appConfig.calendar.defaultRelays
 			}).subscribe({
-				next: () => {
-					console.log('📋 Discover: Profile loader fetched for', pubkey.slice(0, 8));
-				},
 				error: (error) => {
 					console.error('📋 Discover: Error loading profile for', pubkey.slice(0, 8), error);
 				}
@@ -65,23 +59,16 @@
 					profilesMap.set(pubkey, profile);
 					// Trigger reactivity by creating new Map
 					communityProfiles = new Map(profilesMap);
-					console.log('📋 Discover: Profile updated for', profile?.name || pubkey.slice(0, 8));
 				}
 			});
 
 			modelSubscriptions.push(modelSub);
 		});
 
-		console.log('📋 Discover: Profile subscriptions set up:', {
-			loaders: loaderSubscriptions.length,
-			models: modelSubscriptions.length
-		});
-
 		// Cleanup subscriptions when effect re-runs or component unmounts
 		return () => {
 			loaderSubscriptions.forEach((s) => s.unsubscribe());
 			modelSubscriptions.forEach((s) => s.unsubscribe());
-			console.log('📋 Discover: Cleaned up profile subscriptions');
 		};
 	});
 
