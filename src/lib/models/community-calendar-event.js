@@ -1,29 +1,24 @@
 /**
  * Community Calendar Event Model
- * Provides reactive access to calendar events for a specific community
- * Combines direct community events (h-tag) and targeted publications (kind 30222)
+ * Combines direct community events and events referenced by targeted publications
+ * 
+ * This model ONLY reads from EventStore - it does NOT fetch data.
+ * The loader must populate EventStore with:
+ * - Direct community events (kinds 31922, 31923 with h-tag)
+ * - Targeted publications (kind 30222)
+ * - Referenced calendar events (loaded on-demand by the loader)
  * 
  * Uses TimelineModel from applesauce-core which automatically:
  * - Filters out deleted events (NIP-09 deletion events)
  * - Handles deduplication
  * - Re-emits when deletion events are added to EventStore
  * - Provides proper reactive updates
- * 
- * This model actively loads referenced calendar events on-demand using EventStore loaders,
- * making it self-contained and eliminating race conditions.
- * 
- * Required loaders (must be started before using this model):
- * - Direct community events (kinds 31922, 31923 with h-tag)
- * - Targeted publication events (kind 30222)
- * - Deletion events (kind 5) for all event authors
- * 
- * The model will automatically load referenced calendar events as needed.
  */
-import { combineLatest, of, from, isObservable } from 'rxjs';
-import { switchMap, map } from 'rxjs/operators';
+import { combineLatest } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { TimelineModel } from 'applesauce-core/models';
 import { getTagValue } from 'applesauce-core/helpers';
-import { getCalendarEventMetadata, parseAddressReference } from '$lib/helpers/eventUtils';
+import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
 
 /**
  * Model for community calendar events
@@ -33,16 +28,14 @@ import { getCalendarEventMetadata, parseAddressReference } from '$lib/helpers/ev
  */
 export function CommunityCalendarEventModel(communityPubkey) {
 	return (eventStore) => {
-		// Stream 1: Direct community events (events with h-tag pointing to community)
-		// Use TimelineModel which handles deletion filtering
+		// Stream 1: Direct community events (h-tag)
 		const directEvents$ = eventStore.model(TimelineModel, {
 			kinds: [31922, 31923],
 			'#h': [communityPubkey],
 			limit: 100
 		});
 
-		// Stream 2: Targeted publication events (kind 30222 events referencing this community)
-		// Use TimelineModel which handles deletion filtering
+		// Stream 2: Targeted publications (kind 30222)
 		const targetedPublications$ = eventStore.model(TimelineModel, {
 			kinds: [30222],
 			'#p': [communityPubkey],
@@ -50,79 +43,62 @@ export function CommunityCalendarEventModel(communityPubkey) {
 			limit: 100
 		});
 
-		// Combine streams and actively load referenced events
-		return combineLatest([directEvents$, targetedPublications$]).pipe(
-			switchMap(([directEvents, shareEvents]) => {
-				const eventMap = new Map();
-				
-				// Add direct events first (these have priority)
+		// Stream 3: All calendar events (will include referenced events loaded by the loader)
+		const allCalendarEvents$ = eventStore.model(TimelineModel, {
+			kinds: [31922, 31923],
+			limit: 500
+		});
+
+		// Combine all streams reactively
+		return combineLatest([directEvents$, targetedPublications$, allCalendarEvents$]).pipe(
+			map(([directEvents, shareEvents, allEvents]) => {
+				// Create lookup map for efficient searching
+				const allEventsMap = new Map();
+				allEvents.forEach((event) => {
+					// Index by event ID
+					allEventsMap.set(event.id, event);
+					// Also index by address for addressable events (kind:pubkey:d-tag)
+					const dTag = getTagValue(event, 'd');
+					if (dTag) {
+						const address = `${event.kind}:${event.pubkey}:${dTag}`;
+						allEventsMap.set(address, event);
+					}
+				});
+
+				const resultMap = new Map();
+
+				// Add direct events first (priority)
 				directEvents.forEach((event) => {
 					const calendarEvent = getCalendarEventMetadata(event);
-					eventMap.set(calendarEvent.id, calendarEvent);
+					resultMap.set(calendarEvent.id, calendarEvent);
 				});
-				
-				// Extract references from targeted publications and create loaders
-				/** @type {Array<import('rxjs').Observable<any>>} */
-				const referenceLoaders = [];
-				console.log('share events', shareEvents)
+
+				// Parse targeted publications and resolve references
 				shareEvents.forEach((shareEvent) => {
 					const eTag = getTagValue(shareEvent, 'e');
 					const aTag = getTagValue(shareEvent, 'a');
-					
-					if (aTag) {
-						// Load by addressable reference
-						const parsed = parseAddressReference(aTag);
-						if (parsed && eventStore.addressableLoader) {
-							const loaderResult = eventStore.addressableLoader({
-								kind: parsed.kind,
-								pubkey: parsed.pubkey,
-								identifier: parsed.dTag
-							});
-							if (loaderResult) {
-								// Handle both Observable and Promise returns
-								const loader = isObservable(loaderResult) ? loaderResult : from(loaderResult);
-								referenceLoaders.push(loader);
+
+					if (eTag && allEventsMap.has(eTag)) {
+						// Found event by ID
+						const event = allEventsMap.get(eTag);
+						if (!resultMap.has(event.id)) {
+							resultMap.set(event.id, getCalendarEventMetadata(event));
+						}
+					} else if (aTag) {
+						// Try to find event by address
+						if (allEventsMap.has(aTag)) {
+							const event = allEventsMap.get(aTag);
+							if (!resultMap.has(event.id)) {
+								resultMap.set(event.id, getCalendarEventMetadata(event));
 							}
 						}
-					} else if (eTag) {
-						// Load by event ID using TimelineModel (filters deleted events)
-						const loader = eventStore.model(TimelineModel, {
-							ids: [eTag]
-						}).pipe(
-							map((events) => events[0] || null)
-						);
-						referenceLoaders.push(loader);
 					}
 				});
+
+				const results = Array.from(resultMap.values());
+				console.log(`📅 CommunityCalendarEventModel: Combined ${results.length} events (${directEvents.length} direct + ${results.length - directEvents.length} from shares out of ${shareEvents.length} total shares)`);
 				
-				// If no references to load, return direct events immediately
-				if (referenceLoaders.length === 0) {
-					console.log(`📅 CommunityCalendarEventModel: Combined ${eventMap.size} events (${directEvents.length} direct + 0 resolved shares)`);
-					return of(Array.from(eventMap.values()));
-				}
-				
-				// Combine all reference loaders and add results to map
-				return combineLatest(referenceLoaders).pipe(
-					map((referencedEvents) => {
-						let resolvedCount = 0;
-						console.log('referenced events', referencedEvents)
-						referencedEvents.forEach((event) => {
-							// Skip null/undefined results
-							if (!event) return;
-							
-							// Add to map if not already present
-							if (!eventMap.has(event.id)) {
-								const calendarEvent = getCalendarEventMetadata(event);
-								eventMap.set(calendarEvent.id, calendarEvent);
-								resolvedCount++;
-							}
-						});
-						
-						const combined = Array.from(eventMap.values());
-						console.log(`📅 CommunityCalendarEventModel: Combined ${combined.length} events (${directEvents.length} direct + ${resolvedCount} resolved shares from ${shareEvents.length} total)`);
-						return combined;
-					})
-				);
+				return results;
 			})
 		);
 	};

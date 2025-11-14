@@ -9,6 +9,7 @@ import { TimelineModel } from 'applesauce-core/models';
 import { onlyEvents } from 'applesauce-relay/operators';
 import { mapEventsToStore, mapEventsToTimeline } from 'applesauce-core/observable';
 import { map } from 'rxjs';
+import { getTagValue } from 'applesauce-core/helpers';
 import { getCalendarEventMetadata, parseAddressReference } from '$lib/helpers/eventUtils';
 import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
 import {
@@ -383,10 +384,69 @@ export function useCalendarEventLoader(options) {
 			// 2. Targeted publications (kind 30222 referencing community)
 			targetedPublicationSubscription = targetedPublicationTimelineLoader(communityPubkey)().subscribe();
 			
-			// Note: The CommunityCalendarEventModel will automatically load referenced
-			// calendar events on-demand, so no need for a global calendar loader here
+			// 3. Watch targeted publications and load referenced calendar events on-demand
+			const referencedEventsLoaderSubscription = eventStore.model(TimelineModel, {
+				kinds: [30222],
+				'#p': [communityPubkey],
+				'#k': ['31922', '31923'],
+				limit: 100
+			}).subscribe((shareEvents) => {
+				console.log(`📅 EventLoader: Processing ${shareEvents.length} targeted publications for references`);
+				
+				// Extract unique event IDs and addressable references
+				const eventIds = new SvelteSet();
+				/** @type {Array<{kind: number, pubkey: string, dTag: string}>} */
+				const addressableRefs = [];
+				
+				shareEvents.forEach((shareEvent) => {
+					const eTag = getTagValue(shareEvent, 'e');
+					const aTag = getTagValue(shareEvent, 'a');
+					
+					if (eTag) {
+						eventIds.add(eTag);
+					}
+					if (aTag) {
+						const parsed = parseAddressReference(aTag);
+						if (parsed) {
+							addressableRefs.push(parsed);
+						}
+					}
+				});
+				
+				console.log(`📅 EventLoader: Found ${eventIds.size} event IDs and ${addressableRefs.length} addressable refs to load`);
+				
+				// Start loader for events by ID
+				if (eventIds.size > 0) {
+					const timelineLoader = eventStore.timeline({
+						ids: Array.from(eventIds)
+					});
+					// Handle both Observable and Promise returns
+					if (timelineLoader && typeof timelineLoader.subscribe === 'function') {
+						timelineLoader.subscribe();
+					}
+				}
+				
+				// Start loaders for addressable events
+				addressableRefs.forEach((ref) => {
+					if (eventStore.addressableLoader) {
+						const loader = eventStore.addressableLoader({
+							kind: ref.kind,
+							pubkey: ref.pubkey,
+							identifier: ref.dTag
+						});
+						
+						// Handle both Observable and Promise returns
+						if (loader && typeof loader.subscribe === 'function') {
+							loader.subscribe();
+						}
+					}
+				});
+			});
+			
+			// Store this subscription so it can be cleaned up
+			deletionSubscriptions.set('referencedEventsLoader', referencedEventsLoaderSubscription);
 
-			// Use the CommunityCalendarEventModel to reactively combine all data
+			// 4. Use the CommunityCalendarEventModel to reactively combine all data
 			subscription = eventStore.model(CommunityCalendarEventModel, communityPubkey).subscribe({
 				next: (events) => {
 					const timestamp = Date.now();
