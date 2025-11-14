@@ -6,6 +6,8 @@
 	import { calendarLoader } from '$lib/loaders';
 	import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
 	import { manager } from '$lib/stores/accounts.svelte';
+	import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte';
+	import { useUserProfile } from '$lib/stores/user-profile.svelte';
 	import CalendarCreationModal from './CalendarCreationModal.svelte';
 	import {
 		CalendarIcon,
@@ -17,10 +19,12 @@
 		RefreshIcon,
 		LockIcon
 	} from '$lib/components/icons';
+	import PeopleIcon from '$lib/components/icons/social/People.svelte';
 	import ChevronDownIcon from '$lib/components/icons/ui/ChevronDownIcon.svelte';
 	import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
 	import { TimelineModel } from 'applesauce-core/models';
-	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils';
+	import { encodeEventToNaddr, hexToNpub } from '$lib/helpers/nostrUtils';
+	import { getTagValue, getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
 	import { nip19 } from 'nostr-tools';
 
 	/**
@@ -48,6 +52,10 @@
 	let selectedCalendar = $state(calendarStore.selectedCalendar);
 	let selectedCalendarId = $derived(selectedCalendar?.id || '');
 	let personalCalendars = $state(/** @type {CalendarEvent[]} */ ([]));
+	
+	// Load joined communities
+	const getJoinedCommunities = useJoinedCommunitiesList();
+	let joinedCommunities = $derived(getJoinedCommunities());
 	
 	// Check if we're on the global calendar route (synchronous with navigation)
 	let isOnGlobalRoute = $derived($page.url.pathname === '/calendar');
@@ -235,6 +243,48 @@
 								{/if}
 							</a>
 						</li>
+
+						<!-- My Communities Section -->
+						{#if joinedCommunities.length > 0}
+							<hr class="my-1 border-base-300" />
+							
+							{#each joinedCommunities as community (getTagValue(community, 'd'))}
+								{@const communityPubkey = getTagValue(community, 'd')}
+								{#if communityPubkey}
+									{@const getCommunityProfile = useUserProfile(communityPubkey)}
+									{@const communityProfile = getCommunityProfile()}
+									{@const communityNpub = hexToNpub(communityPubkey)}
+									<li>
+										<a
+											href={communityNpub ? `/c/${communityNpub}?view=calendar` : '#'}
+											class="flex items-center gap-2 md:gap-3 rounded-lg px-2 md:px-3 py-2 md:py-2 transition-colors hover:bg-base-200 min-h-[44px]"
+											onclick={(e) => {
+												e.preventDefault();
+												if (communityNpub) {
+													goto(`/c/${communityNpub}?view=calendar`);
+												}
+											}}
+										>
+											<PeopleIcon class_="h-4 w-4 text-primary flex-shrink-0" />
+											<div class="avatar">
+												<div class="w-5 h-5 rounded-full ring-1 ring-base-300">
+													<img 
+														src={getProfilePicture(communityProfile) || `https://robohash.org/${communityPubkey}`} 
+														alt={getDisplayName(communityProfile)} 
+														class="rounded-full object-cover" 
+													/>
+												</div>
+											</div>
+											<div class="min-w-0 flex-1">
+												<div class="truncate text-sm font-medium">
+													{getDisplayName(communityProfile)}
+												</div>
+											</div>
+										</a>
+									</li>
+								{/if}
+							{/each}
+						{/if}
 					{/if}
 
 					{#if activeUser}

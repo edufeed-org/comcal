@@ -1,5 +1,6 @@
 <script>
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { useActiveUser } from '$lib/stores/accounts.svelte';
 	import { hexToNpub } from '$lib/helpers/nostrUtils.js';
 	import CommunitySidebar from '$lib/components/community/layout/CommunitySidebar.svelte';
@@ -23,6 +24,14 @@
 	let leftDrawerOpen = $state(false);
 	let communikeyEvent = $state(/** @type {any} */ (null));
 	let communityProfile = $state(/** @type {any} */ (null));
+
+	// Check URL params for initial view (e.g., ?view=calendar)
+	$effect(() => {
+		const viewParam = $page.url.searchParams.get('view');
+		if (viewParam === 'calendar') {
+			selectedContentType = 'calendar';
+		}
+	});
 
 	// Load community's kind:10222 event for content type configuration
 	$effect(() => {
