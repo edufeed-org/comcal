@@ -29,7 +29,7 @@
   "common_share": "Teilen",
   "common_copy": "Kopieren",
   "common_copied": "Kopiert",
-  "navbar_brand": "ComCal",
+  "navbar_brand": "{appName}",
   "navbar_calendar": "Kalender",
   "navbar_feed": "Feed",
   "navbar_switch_account": "Konto wechseln",

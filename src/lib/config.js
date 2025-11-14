@@ -4,6 +4,8 @@
  */
 
 export const appConfig = {
+	logo: 'https://blossom.edufeed.org/f22e1410f09a9130757704b6dcd4c34774d2926b9cfd6cf2e4c4675c64d4333b.webp',
+	name: 'ComCal',
 	calendar: {
 		// Week start day: 0 = Sunday, 1 = Monday, 2 = Tuesday, etc.
 		weekStartDay: 1, // Default to Monday
@@ -11,10 +13,6 @@ export const appConfig = {
 		// Default relays for calendar filtering
 		defaultRelays: [
 			'wss://relay-rpi.edufeed.org',
-			// 'wss://relay.damus.io',
-			// 'wss://nos.lol',
-			// 'wss://relay.nostr.band',
-			// 'wss://nostr.wine',
 		],
 
 		// Fallback relays for event discovery when event not found
@@ -56,7 +54,7 @@ export const appConfig = {
 		// Free tier: 2,500 requests/day
 		// Get your key at: https://opencagedata.com/api
 		apiKey: '324cfa67aec44c27b0ec767881636065',
-		
+
 		// Cache geocoding results for 30 days
 		cacheDurationDays: 30,
 
@@ -64,16 +62,16 @@ export const appConfig = {
 		validation: {
 			// Minimum length for a geocodable address
 			minAddressLength: 10,
-			
+
 			// Minimum confidence score from OpenCage (0-10)
 			// Higher values = more strict validation
 			// Lowered to 5 to accept city-level geocoding
 			minConfidenceScore: 5,
-			
+
 			// Require address components (street types, numbers, etc.)
 			// Set to false to allow city names and organizations
 			requireAddressComponents: false,
-			
+
 			// Component types accepted from OpenCage results
 			// Expanded to include cities, towns, venues, and organizations
 			acceptedComponentTypes: [

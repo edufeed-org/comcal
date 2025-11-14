@@ -5,6 +5,8 @@
 	import { CalendarIcon, ScrollTextIcon } from './icons';
 	import ProfileAvatar from './shared/ProfileAvatar.svelte';
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
+	import { config } from 'rxjs';
+	import { appConfig } from '$lib/config';
 
 	// Use the modal store for opening modals
 	const modal = modalStore;
@@ -57,11 +59,11 @@
 	 */
 	function handleLogoutCurrent() {
 		console.log('Navbar: Logging out current account');
-		
+
 		if (activeAccount) {
 			manager.removeAccount(activeAccount.id);
 		}
-		
+
 		closeDropdown();
 	}
 
@@ -70,34 +72,42 @@
 	 */
 	function handleLogoutAll() {
 		console.log('Navbar: Logging out all accounts');
-		
+
 		if (confirm(m.navbar_logout_all_confirm())) {
 			const accounts = [...manager.accounts];
-			accounts.forEach(account => {
+			accounts.forEach((account) => {
 				manager.removeAccount(account.id);
 			});
 		}
-		
+
 		closeDropdown();
 	}
 </script>
 
-<div class="navbar bg-base-100 shadow-sm ">
+<div class="navbar bg-base-100 shadow-sm">
 	<div class="flex-1">
-		<a href="/" class="btn text-xl btn-ghost">{m.navbar_brand()}</a>
+		<div class="avatar">
+			<div class="mask w-10 mask-hexagon-2">
+				<img
+					src={`${appConfig.logo}`}
+					alt="App Logo"
+				/>
+			</div>
+		</div>
+		<a href="/" class="btn text-xl btn-ghost">{m.navbar_brand({ appName: appConfig.name })}</a>
 	</div>
-	<div class="flex gap-2 items-center">
-		<a href="/feed" class="btn btn-ghost btn">
+	<div class="flex items-center gap-2">
+		<a href="/feed" class="btn btn-ghost">
 			<ScrollTextIcon class_="w-5 h-5" />
 			{m.navbar_feed()}
 		</a>
-		<a href="/calendar" class="btn btn-ghost btn">
+		<a href="/calendar" class="btn btn-ghost">
 			<CalendarIcon class_="w-5 h-5" />
 			{m.navbar_calendar()}
 		</a>
 		{#if activeAccount}
-		<div class="dropdown dropdown-end">
-			<div tabindex="0" role="button" class="btn btn-circle btn-ghost">
+			<div class="dropdown dropdown-end">
+				<div tabindex="0" role="button" class="btn btn-circle btn-ghost">
 					<ProfileAvatar pubkey={activeAccount.pubkey} size="md" fallbackType="robohash" />
 				</div>
 				<ul class="dropdown-content menu z-1 mt-3 w-52 menu-sm rounded-box bg-base-100 p-2 shadow">
