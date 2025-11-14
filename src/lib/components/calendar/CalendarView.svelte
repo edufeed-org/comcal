@@ -529,7 +529,6 @@
 			} else {
 				// Processing complete
 				processing = false;
-				console.log(`📅 CalendarView: Processed ${validatedEvents.length}/${events.length} events`);
 			}
 		}
 

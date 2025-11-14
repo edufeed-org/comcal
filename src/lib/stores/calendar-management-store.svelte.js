@@ -61,7 +61,7 @@ export function createCalendarManagementStore(userPubkey) {
 	let subscription = null;
 	/** @type {import('rxjs').Subscription | null} */
 	let deletionSubscription = null;
-	
+
 	// Track deleted calendar identifiers (format: "31924:pubkey:dTag")
 	const deletedCalendarIds = new SvelteSet();
 
@@ -72,13 +72,13 @@ export function createCalendarManagementStore(userPubkey) {
 	 */
 	function getDeletedCalendarId(deletionEvent) {
 		if (!deletionEvent || !deletionEvent.tags) return null;
-		
+
 		// Find 'a' tag with format: 31924:pubkey:dTag
 		const aTag = deletionEvent.tags.find(
-			/** @param {any[]} tag */ tag => 
+			/** @param {any[]} tag */ tag =>
 				tag[0] === 'a' && tag[1] && tag[1].startsWith('31924:')
 		);
-		
+
 		return aTag ? aTag[1] : null;
 	}
 
@@ -110,7 +110,7 @@ export function createCalendarManagementStore(userPubkey) {
 
 		// Subscribe to user's deletion events (kind 5)
 		deletionLoader = userDeletionLoader(userPubkey);
-		
+
 		deletionSubscription = deletionLoader()
 			.pipe(
 				catchError(/** @param {any} error */ error => {
@@ -122,12 +122,10 @@ export function createCalendarManagementStore(userPubkey) {
 				if (deletionEvent && deletionEvent.kind === 5) {
 					const deletedId = getDeletedCalendarId(deletionEvent);
 					if (deletedId) {
-						console.log('📅 Calendar Management: Deletion event received for:', deletedId);
 						deletedCalendarIds.add(deletedId);
-						
+
 						// Re-filter calendars to remove the deleted one
 						store.calendars = filterDeletedCalendars(store.calendars);
-						console.log('📅 Calendar Management: Calendar count after deletion:', store.calendars.length);
 					}
 				}
 			});
@@ -150,13 +148,13 @@ export function createCalendarManagementStore(userPubkey) {
 				if (calendar) {
 					// Build calendar identifier to check if it's deleted
 					const calendarId = `${calendar.kind}:${calendar.pubkey}:${calendar.dTag}`;
-					
+
 					// Skip if calendar has been deleted
 					if (deletedCalendarIds.has(calendarId)) {
 						console.log('📅 Calendar Management: Skipping deleted calendar:', calendar.title);
 						return;
 					}
-					
+
 					// Check if calendar already exists to avoid duplicates
 					const exists = store.calendars.some(c => c.id === calendar.id);
 					if (!exists) {

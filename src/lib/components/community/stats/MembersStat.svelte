@@ -53,7 +53,6 @@
 			});
 
 		return () => {
-			console.log('👥 MembersStat: Cleaning up subscriptions');
 			loaderSubscription.unsubscribe();
 			modelSubscription.unsubscribe();
 		};

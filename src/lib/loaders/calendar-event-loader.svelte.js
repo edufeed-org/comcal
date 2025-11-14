@@ -362,9 +362,7 @@ export function useCalendarEventLoader(options) {
 			console.warn('📅 EventLoader: No communityPubkey provided for community mode');
 			return;
 		}
-
-		console.log('📅 EventLoader: Loading community events for:', communityPubkey);
-
+	
 		options.onLoadingChange(true);
 		options.onError(null);
 		eventMap.clear();
@@ -391,8 +389,6 @@ export function useCalendarEventLoader(options) {
 				'#k': ['31922', '31923'],
 				limit: 100
 			}).subscribe((shareEvents) => {
-				console.log(`📅 EventLoader: Processing ${shareEvents.length} targeted publications for references`);
-				
 				// Extract unique event IDs and addressable references
 				const eventIds = new SvelteSet();
 				/** @type {Array<{kind: number, pubkey: string, dTag: string}>} */
@@ -412,8 +408,6 @@ export function useCalendarEventLoader(options) {
 						}
 					}
 				});
-				
-				console.log(`📅 EventLoader: Found ${eventIds.size} event IDs and ${addressableRefs.length} addressable refs to load`);
 				
 				// Start loader for events by ID
 				if (eventIds.size > 0) {
@@ -449,19 +443,8 @@ export function useCalendarEventLoader(options) {
 			// 4. Use the CommunityCalendarEventModel to reactively combine all data
 			subscription = eventStore.model(CommunityCalendarEventModel, communityPubkey).subscribe({
 				next: (events) => {
-					const timestamp = Date.now();
-					console.log('📊 MODEL EMISSION (community) at', timestamp, '- Events:', events.length);
-					console.log('📊 Event IDs in timeline:', events.map(e => e.id).join(', '));
-					
-					// Log event details for debugging
-					events.forEach(e => {
-						const original = e.originalEvent;
-						console.log(`📊   Event ${e.id}: kind=${original.kind}, pubkey=${original.pubkey.substring(0, 8)}..., dTag=${original.tags?.find((/** @type {any[]} */ t) => t[0] === 'd')?.[1]}`);
-					});
-					
 					// Start deletion loaders for all unique authors (parallel pattern)
 					const authorPubkeys = [...new SvelteSet(events.map(e => e.originalEvent.pubkey))];
-					console.log('📊 Starting deletion loaders for', authorPubkeys.length, 'unique authors');
 					startDeletionLoaders(authorPubkeys);
 					
 					options.onEventsUpdate(events);

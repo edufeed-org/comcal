@@ -45,7 +45,6 @@
 			});
 
 		return () => {
-			console.log('💬 MessagesStat: Cleaning up subscription');
 			sub.unsubscribe();
 		};
 	});

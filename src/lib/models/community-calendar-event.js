@@ -96,8 +96,6 @@ export function CommunityCalendarEventModel(communityPubkey) {
 				});
 
 				const results = Array.from(resultMap.values());
-				console.log(`📅 CommunityCalendarEventModel: Combined ${results.length} events (${directEvents.length} direct + ${results.length - directEvents.length} from shares out of ${shareEvents.length} total shares)`);
-				
 				return results;
 			})
 		);
