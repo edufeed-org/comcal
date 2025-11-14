@@ -20,7 +20,6 @@
 			return;
 		}
 
-		console.log('💬 MessagesStat: Starting to load messages for community:', communityId);
 
 		// Reset state
 		messages = [];

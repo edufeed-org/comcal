@@ -23,8 +23,6 @@
 			return;
 		}
 
-		console.log('👥 MembersStat: Starting to load members for community:', communityId);
-
 		// Reset state
 		memberPubkeys = new Set();
 		isLoading = true;
@@ -46,7 +44,6 @@
 				next: (/** @type {Set<string>} */ members) => {
 					memberPubkeys = members;
 					isLoading = false;
-					console.log('👥 MembersStat: Members loaded:', members.size);
 				},
 				error: (/** @type {any} */ err) => {
 					console.error('👥 MembersStat: Model error:', err);

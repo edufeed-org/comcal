@@ -38,7 +38,6 @@
 	 */
 	$effect(() => {
 		const currentModal = modal.activeModal;
-		console.log('ModalManager: Modal state changed to:', currentModal);
 
 		// Close any currently open modals first
 		if (currentModal === 'none') {

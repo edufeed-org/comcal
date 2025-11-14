@@ -18,7 +18,6 @@
 	const eventLoaderComposable = useCalendarEventLoader({
 		onEventsUpdate: (newEvents) => {
 			events = newEvents;
-			console.log('📊 CalendarEventsStat: Events updated, count:', newEvents.length);
 		},
 		onLoadingChange: (loading) => {
 			isLoading = loading;
@@ -31,7 +30,6 @@
 	// Function to load events for a community
 	function loadEvents() {
 		if (!communityId) {
-			console.log('📊 CalendarEventsStat: No communityId provided');
 			events = [];
 			isLoading = false;
 			error = null;
@@ -41,11 +39,9 @@
 
 		// Skip if already loading this community
 		if (communityId === lastLoadedCommunityId) {
-			console.log('📊 CalendarEventsStat: Already loaded for this community');
 			return;
 		}
 
-		console.log('📊 CalendarEventsStat: Loading events for community:', communityId);
 		lastLoadedCommunityId = communityId;
 		eventLoaderComposable.loadByCommunity(communityId);
 	}
@@ -54,17 +50,14 @@
 	$effect(() => {
 		// Track communityId as dependency
 		const currentId = communityId;
-		console.log('📊 CalendarEventsStat: communityId changed to:', currentId);
 		loadEvents();
 	});
 
 	// Setup and cleanup
 	onMount(() => {
-		console.log('📊 CalendarEventsStat: Component mounted');
 		
 		// Cleanup on unmount
 		return () => {
-			console.log('📊 CalendarEventsStat: Component unmounting, cleaning up');
 			eventLoaderComposable.cleanup();
 		};
 	});

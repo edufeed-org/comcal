@@ -19,14 +19,12 @@ async function initializeAccountPersistence() {
 		if (savedAccounts) {
 			const json = JSON.parse(savedAccounts);
 			await manager.fromJSON(json);
-			console.log(`📦 Loaded ${manager.accounts.length} account(s) from storage`);
 		}
 
 		// Step 2: Load active account from storage
 		const activeAccountId = localStorage.getItem('active');
 		if (activeAccountId && manager.getAccount(activeAccountId)) {
 			manager.setActive(activeAccountId);
-			console.log(`✅ Restored active account: ${activeAccountId}`);
 		}
 	} catch (error) {
 		console.error('❌ Failed to load accounts from storage:', error);
@@ -37,7 +35,6 @@ async function initializeAccountPersistence() {
 		try {
 			const json = manager.toJSON();
 			localStorage.setItem('accounts', JSON.stringify(json));
-			console.log(`💾 Saved ${accounts.length} account(s) to storage`);
 		} catch (error) {
 			console.error('❌ Failed to save accounts to storage:', error);
 		}
@@ -48,10 +45,8 @@ async function initializeAccountPersistence() {
 		try {
 			if (account) {
 				localStorage.setItem('active', account.id);
-				console.log(`✅ ${account.id} is now active`);
 			} else {
 				localStorage.removeItem('active');
-				console.log('⚪ No account is active');
 			}
 		} catch (error) {
 			console.error('❌ Failed to save active account:', error);

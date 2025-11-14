@@ -35,7 +35,6 @@ export function useJoinedCommunitiesList() {
 		const modelSubscription = eventStore
 			.model(CommunityRelationshipModel, activeUser.pubkey)
 			.subscribe((events) => {
-				console.log('📋 JoinedCommunities: Loaded relationship events:', events.length);
 				joinedCommunities = events;
 			});
 

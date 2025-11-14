@@ -16,7 +16,6 @@
 	$effect(() => {
 		const subscription = manager.active$.subscribe((account) => {
 			activeAccount = account;
-			console.log('Navbar: Active account changed:', account);
 		});
 		return () => subscription.unsubscribe();
 	});
@@ -24,7 +23,6 @@
 	$effect(() => {
 		const subscription = manager.accounts$.subscribe((accounts) => {
 			accountCount = accounts.length;
-			console.log('Navbar: Account count changed:', accountCount);
 		});
 		return () => subscription.unsubscribe();
 	});

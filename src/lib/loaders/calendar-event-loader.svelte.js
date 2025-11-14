@@ -91,65 +91,28 @@ export function useCalendarEventLoader(options) {
 	 * so EventStore can filter deleted events automatically
 	 * @param {string[]} pubkeys - Array of author pubkeys
 	 */
-	function startDeletionLoaders(pubkeys) {
-		console.log('🔍 DELETION LOADER: startDeletionLoaders called with', pubkeys.length, 'pubkeys:', pubkeys);
-		console.log('🔍 DELETION LOADER: Current active deletion subscriptions:', Array.from(deletionSubscriptions.keys()));
-		
+	function startDeletionLoaders(pubkeys) {		
 		pubkeys.forEach((pubkey) => {
 			// Skip if already loading deletions for this author
 			if (deletionSubscriptions.has(pubkey)) {
-				console.log('⏭️ DELETION LOADER: Already active for:', pubkey.substring(0, 8), '... - skipping');
 				return;
 			}
-			
-			console.log('🚀 DELETION LOADER: Creating new deletion loader for author:', pubkey.substring(0, 8), '...');
 			
 			const deletionLoader = userDeletionLoader(pubkey);
 			const loaderResult = deletionLoader();
 			
 			// Handle both Observable and Promise returns
 			if (loaderResult && typeof loaderResult.subscribe === 'function') {
-				console.log('✅ DELETION LOADER: Subscribing to deletion events for:', pubkey.substring(0, 8), '...');
 				const sub = loaderResult.subscribe({
-					next: (/** @type {any} */ deletionEvent) => {
-						if (deletionEvent) {
-							console.log('🗑️ DELETION EVENT RECEIVED:', {
-								id: deletionEvent.id.substring(0, 12) + '...',
-								author: deletionEvent.pubkey.substring(0, 8) + '...',
-								created_at: deletionEvent.created_at,
-								targetKinds: deletionEvent.tags?.filter((/** @type {any[]} */ t) => t[0] === 'k').map((/** @type {any[]} */ t) => t[1]) || [],
-								targetAddresses: deletionEvent.tags?.filter((/** @type {any[]} */ t) => t[0] === 'a').map((/** @type {any[]} */ t) => t[1]) || [],
-								targetEvents: deletionEvent.tags?.filter((/** @type {any[]} */ t) => t[0] === 'e').map((/** @type {any[]} */ t) => t[1].substring(0, 12) + '...') || []
-							});
-							
-							// Add to EventStore - this triggers automatic filtering in Models
-							const wasAdded = eventStore.add(deletionEvent);
-							
-							if (wasAdded) {
-								console.log('🗑️ Deletion event added to EventStore successfully');
-								console.log('🗑️ EventStore will now filter deleted events in all active Models');
-							} else {
-								console.log('⚠️ Deletion event was not added (may be duplicate or invalid)');
-							}
-						} else {
-							console.log('⚠️ DELETION LOADER: Received null/undefined deletion event');
-						}
-					},
 					error: (/** @type {any} */ err) => {
 						console.error('❌ DELETION LOADER ERROR for', pubkey.substring(0, 8), '...:', err);
 					},
-					complete: () => {
-						console.log('✅ DELETION LOADER COMPLETED for:', pubkey.substring(0, 8), '...');
-					}
 				});
 				deletionSubscriptions.set(pubkey, sub);
-				console.log('✅ DELETION LOADER: Subscription stored. Total active:', deletionSubscriptions.size);
 			} else {
 				console.error('❌ DELETION LOADER: Loader result is not subscribable!', loaderResult);
 			}
-		});
-		
-		console.log('🔍 DELETION LOADER: Finished setup. Active deletion subscriptions:', deletionSubscriptions.size);
+		});	
 	}
 
 	/**

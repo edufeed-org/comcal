@@ -64,7 +64,7 @@ export function CommunityCalendarEventModel(communityPubkey) {
 				// Extract references from targeted publications and create loaders
 				/** @type {Array<import('rxjs').Observable<any>>} */
 				const referenceLoaders = [];
-				
+				console.log('share events', shareEvents)
 				shareEvents.forEach((shareEvent) => {
 					const eTag = getTagValue(shareEvent, 'e');
 					const aTag = getTagValue(shareEvent, 'a');
@@ -85,8 +85,8 @@ export function CommunityCalendarEventModel(communityPubkey) {
 							}
 						}
 					} else if (eTag) {
-						// Load by event ID using timeline query
-						const loader = eventStore.timeline({
+						// Load by event ID using TimelineModel (filters deleted events)
+						const loader = eventStore.model(TimelineModel, {
 							ids: [eTag]
 						}).pipe(
 							map((events) => events[0] || null)
@@ -105,7 +105,7 @@ export function CommunityCalendarEventModel(communityPubkey) {
 				return combineLatest(referenceLoaders).pipe(
 					map((referencedEvents) => {
 						let resolvedCount = 0;
-						
+						console.log('referenced events', referencedEvents)
 						referencedEvents.forEach((event) => {
 							// Skip null/undefined results
 							if (!event) return;
