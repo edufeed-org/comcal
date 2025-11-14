@@ -69,7 +69,16 @@
 	});
 
 	// Get calendar management and joined communities for authenticated user
-	let calendarManagement = $derived(activeUser ? useCalendarManagement(activeUser.pubkey) : null);
+	let calendarManagement = $state(/** @type {import('../../stores/calendar-management-store.svelte.js').CalendarManagementStore | null} */ (null));
+	
+	$effect(() => {
+		if (activeUser) {
+			calendarManagement = useCalendarManagement(activeUser.pubkey);
+		} else {
+			calendarManagement = null;
+		}
+	});
+	
 	const getJoinedCommunities = useJoinedCommunitiesList();
 	const joinedCommunities = $derived(getJoinedCommunities());
 

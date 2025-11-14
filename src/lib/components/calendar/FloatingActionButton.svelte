@@ -4,6 +4,9 @@
 	import CalendarEventModal from './CalendarEventModal.svelte';
 	import CalendarCreationModal from './CalendarCreationModal.svelte';
 
+	// Props
+	let { communityPubkey = '' } = $props();
+
 	// Event modal state
 	let isEventModalOpen = $state(false);
 	let selectedDateForNewEvent = $state(/** @type {Date | null} */ (null));
@@ -60,8 +63,7 @@
 
 <!-- Floating Action Button Container -->
 <div 
-	class="fab fixed z-50"
-	style="bottom: 1.5rem; right: 1.5rem;"
+	class="fab fixed z-[60] bottom-20 right-6 lg:bottom-6"
 >
 	<!-- Main FAB Button -->
 	<div 
@@ -83,27 +85,30 @@
 		<CalendarIcon class_="h-5 w-5" />
 	</button>
 	
-	<button 
-		class="btn btn-lg btn-circle tooltip tooltip-left" 
-		data-tip="Create Calendar"
-		onclick={handleCreateCalendar}
-		aria-label="Create new calendar"
-	>
-		<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				stroke-width="2"
-				d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
-			/>
-		</svg>
-	</button>
+	<!-- Only show Create Calendar option for personal calendars -->
+	{#if !communityPubkey}
+		<button 
+			class="btn btn-lg btn-circle tooltip tooltip-left" 
+			data-tip="Create Calendar"
+			onclick={handleCreateCalendar}
+			aria-label="Create new calendar"
+		>
+			<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+				/>
+			</svg>
+		</button>
+	{/if}
 </div>
 
 <!-- Event Creation Modal -->
 <CalendarEventModal
 	isOpen={isEventModalOpen}
-	communityPubkey=""
+	communityPubkey={communityPubkey}
 	selectedDate={selectedDateForNewEvent}
 	onClose={handleEventModalClose}
 	onEventCreated={handleEventCreated}

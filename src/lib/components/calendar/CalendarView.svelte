@@ -22,13 +22,13 @@
 	// Import existing UI components
 	import CalendarNavigation from '$lib/components/calendar/CalendarNavigation.svelte';
 	import CalendarGrid from '$lib/components/calendar/CalendarGrid.svelte';
-	import CalendarEventModal from '$lib/components/calendar/CalendarEventModal.svelte';
 	import CalendarDropdown from './CalendarDropdown.svelte';
 	import CalendarFilterSidebar from './CalendarFilterSidebar.svelte';
 	import SimpleCalendarEventsList from './CalendarEventsList.svelte';
 	import AddToCalendarButton from './AddToCalendarButton.svelte';
 	import CalendarMapView from './CalendarMapView.svelte';
 	import CompactCommunityHeader from '$lib/components/community/layout/CompactCommunityHeader.svelte';
+	import FloatingActionButton from './FloatingActionButton.svelte';
 
 	/**
 	 * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
@@ -77,10 +77,6 @@
 	// Validation cache to avoid re-validating same events
 	const validationCache = new Map();
 	let processingTimeout = /** @type {ReturnType<typeof setTimeout> | null} */ (null);
-
-	// Modal state
-	let isEventModalOpen = $state(false);
-	let selectedDateForNewEvent = $state(/** @type {Date | null} */ (null));
 
 	// Subscription management for loaders and models
 	let calendarSubscription = $state();
@@ -422,21 +418,6 @@
 		console.log('📅 CalendarView: Event clicked, opening details modal:', event.title);
 	}
 
-	function handleCreateEvent() {
-		selectedDateForNewEvent = currentDate;
-		isEventModalOpen = true;
-	}
-
-	function handleEventModalClose() {
-		isEventModalOpen = false;
-		selectedDateForNewEvent = null;
-	}
-
-	function handleEventCreated() {
-		// Refresh events to show the newly created event
-		handleRefresh();
-	}
-
 	/**
 	 * Handle relay filter changes
 	 * @param {string[]} relays
@@ -639,20 +620,6 @@
 				{/if}
 			</div>
 			<div class="flex items-center gap-3">
-				{#if !globalMode && !calendar && manager.active}
-					<button class="btn gap-2 btn-sm btn-primary" onclick={handleCreateEvent}>
-						<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-							/>
-						</svg>
-						{m.calendar_view_create_event()}
-					</button>
-				{/if}
-
 				<!-- Add to Calendar Button (community mode only) -->
 				{#if communityMode && communityPubkey}
 					<AddToCalendarButton
@@ -824,19 +791,12 @@
 					{m.calendar_view_empty_community_desc()}
 				{/if}
 			</p>
-			{#if !globalMode && manager.active}
-				<button class="btn btn-primary" onclick={handleCreateEvent}>{m.calendar_view_create_first_event()}</button>
-			{/if}
 		</div>
 	{/if}
-
-		<!-- Event Creation Modal -->
-		<CalendarEventModal
-			isOpen={isEventModalOpen}
-			{communityPubkey}
-			selectedDate={selectedDateForNewEvent}
-			onClose={handleEventModalClose}
-			onEventCreated={handleEventCreated}
-		/>
 	</div>
 </div>
+
+<!-- Floating Action Button for community calendars -->
+{#if communityMode && manager.active}
+	<FloatingActionButton {communityPubkey} />
+{/if}

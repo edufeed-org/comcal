@@ -59,6 +59,11 @@ export function createCalendarActions(communityPubkey) {
 				// Add d-tag for addressable/replaceable event
 				tags.push(['d', dTag]);
 				
+				// Add h-tag if event is targeted to a community (Communikey spec)
+				if (targetCommunityPubkey) {
+					tags.push(['h', targetCommunityPubkey]);
+				}
+				
 				// Add calendar-specific tags
 				tags.push(['title', eventData.title]);
 				if (eventData.start) {
@@ -168,6 +173,9 @@ export function createCalendarActions(communityPubkey) {
 				throw new Error('Cannot update event: missing d-tag. Event may not be replaceable.');
 			}
 
+			// Extract the original h-tag (community targeting) if present
+			const hTag = existingEvent.tags.find((/** @type {string[]} */ t) => t[0] === 'h')?.[1];
+
 			// Verify the user owns this event
 			if (existingEvent.pubkey !== currentAccount.pubkey) {
 				throw new Error('Cannot update event: you do not own this event.');
@@ -185,6 +193,11 @@ export function createCalendarActions(communityPubkey) {
 				
 				// CRITICAL: Use the original d-tag for addressable event replacement
 				tags.push(['d', dTag]);
+				
+				// Preserve h-tag if event was originally targeted to a community (Communikey spec)
+				if (hTag) {
+					tags.push(['h', hTag]);
+				}
 				
 				// Add calendar-specific tags
 				tags.push(['title', eventData.title]);
