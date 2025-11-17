@@ -792,5 +792,19 @@
   "event_modal_creating": "Creating...",
   "event_modal_updating": "Updating...",
   "event_modal_invalid_url": "Please enter a valid URL (e.g., https://example.com)",
-  "calendar_creation_modal_close_modal": "Close modal"
+  "calendar_creation_modal_close_modal": "Close modal",
+  "calendar_dropdown_global_calendar": "Global Calendar",
+  "calendar_dropdown_global_calendar_desc": "All community events",
+  "calendar_dropdown_my_events": "My Events",
+  "calendar_dropdown_my_events_desc": "Events I created",
+  "calendar_dropdown_no_calendars": "No calendars found",
+  "calendar_dropdown_create_first": "Create your first calendar below",
+  "calendar_dropdown_loading": "Loading calendars...",
+  "calendar_dropdown_create_new": "Create New Calendar",
+  "calendar_dropdown_refresh": "Refresh Calendars",
+  "calendar_dropdown_my_calendar": "My Calendar",
+  "calendar_dropdown_external_calendar": "Calendar",
+  "calendar_dropdown_select": "Select Calendar",
+  "calendar_dropdown_login_title": "Log in to manage your calendars",
+  "calendar_dropdown_login_desc": "Create and organize your own calendar events"
 }

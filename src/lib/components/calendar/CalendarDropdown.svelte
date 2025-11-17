@@ -26,6 +26,7 @@
 	import { encodeEventToNaddr, hexToNpub } from '$lib/helpers/nostrUtils';
 	import { getTagValue, getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
 	import { nip19 } from 'nostr-tools';
+	import * as m from '$paraglide/messages';
 
 	/**
 	 * @typedef {Object} Calendar
@@ -71,36 +72,36 @@
 		if (currentCalendar) {
 			// Check if it's the user's own calendar
 			if (manager.active && currentCalendar.pubkey === manager.active.pubkey) {
-				return currentCalendar.title || 'My Calendar';
+				return currentCalendar.title || m.calendar_dropdown_my_calendar();
 			}
 			// External calendar
-			return currentCalendar.title || 'Calendar';
+			return currentCalendar.title || m.calendar_dropdown_external_calendar();
 		}
 
 		// Check if we're on the "My Events" route
-		if (manager.active && $page.url.pathname.startsWith('/calendar/author/') && 
+		if (manager.active && $page.url.pathname.startsWith('/calendar/author/') &&
 		    $page.url.pathname.includes(nip19.npubEncode(manager.active.pubkey))) {
-			return 'My Events';
+			return m.calendar_dropdown_my_events();
 		}
 
 		// Not logged in
 		if (!activeUser) {
-			return 'Log in to manage your calendars';
+			return m.calendar_dropdown_login_title();
 		}
 
 		// No calendar selected - show global
 		if (!selectedCalendar) {
-			return 'Global Calendar';
+			return m.calendar_dropdown_global_calendar();
 		}
 
 		// "My Events" filter selected (legacy)
 		if (manager.active && selectedCalendarId === manager.active.pubkey) {
-			return 'My Events';
+			return m.calendar_dropdown_my_events();
 		}
 
 		// Personal calendar selected - show its title
 		const cal = selectedCalendar;
-		return cal ? cal.title : 'Select Calendar';
+		return cal ? cal.title : m.calendar_dropdown_select();
 	});
 
 	onMount(() => {
@@ -209,8 +210,8 @@
 						>
 							<GlobeIcon class_="h-4 w-4 text-primary flex-shrink-0" />
 							<div class="min-w-0 flex-1">
-								<div class="text-sm font-medium">Global Calendar</div>
-								<div class="hidden sm:block text-xs text-base-content/60">All community events</div>
+								<div class="text-sm font-medium">{m.calendar_dropdown_global_calendar()}</div>
+								<div class="hidden sm:block text-xs text-base-content/60">{m.calendar_dropdown_global_calendar_desc()}</div>
 							</div>
 							{#if !selectedCalendarId && isOnGlobalRoute}
 								<CheckIcon class_="h-4 w-4 text-primary" />
@@ -235,8 +236,8 @@
 							>
 							<UserIcon class_="h-4 w-4 text-primary flex-shrink-0" />
 							<div class="min-w-0 flex-1">
-								<div class="text-sm font-medium">My Events</div>
-								<div class="hidden sm:block text-xs text-base-content/60">Events I created</div>
+								<div class="text-sm font-medium">{m.calendar_dropdown_my_events()}</div>
+								<div class="hidden sm:block text-xs text-base-content/60">{m.calendar_dropdown_my_events_desc()}</div>
 							</div>
 								{#if $page.url.pathname.startsWith('/calendar/author/') && manager.active && $page.url.pathname.includes(nip19.npubEncode(manager.active.pubkey))}
 									<CheckIcon class_="h-4 w-4 text-primary" />
@@ -323,8 +324,8 @@
 							<li>
 								<div class="px-3 py-4 text-center text-base-content/60">
 									<CalendarIcon class_="mx-auto mb-2 h-8 w-8 opacity-50" />
-									<p class="text-sm">No calendars found</p>
-									<p class="mt-1 text-xs">Create your first calendar below</p>
+									<p class="text-sm">{m.calendar_dropdown_no_calendars()}</p>
+									<p class="mt-1 text-xs">{m.calendar_dropdown_create_first()}</p>
 								</div>
 							</li>
 						{/if}
@@ -334,7 +335,7 @@
 							<li>
 								<div class="px-3 py-4 text-center text-base-content/60">
 									<span class="loading loading-sm loading-spinner"></span>
-									<p class="mt-2 text-sm">Loading calendars...</p>
+									<p class="mt-2 text-sm">{m.calendar_dropdown_loading()}</p>
 								</div>
 							</li>
 						{/if}
@@ -349,7 +350,7 @@
 								onclick={handleCreateCalendar}
 							>
 								<PlusIcon class_="h-4 w-4 flex-shrink-0" />
-								<span class="font-medium">Create New Calendar</span>
+								<span class="font-medium">{m.calendar_dropdown_create_new()}</span>
 							</button>
 						</li>
 
@@ -360,7 +361,7 @@
 								class="flex items-center gap-2 md:gap-3 rounded-lg px-2 md:px-3 py-2 md:py-2 transition-colors hover:bg-base-200 min-h-[44px]"
 							>
 								<SettingsIcon class_="h-4 w-4 flex-shrink-0" />
-								<span class="font-medium">Manage Calendars</span>
+								<span class="font-medium">{m.calendar_management_title()}</span>
 							</a>
 						</li>
 
@@ -377,7 +378,7 @@
 									onclick={handleRefresh}
 								>
 									<RefreshIcon class_={`h-4 w-4 flex-shrink-0 ${loading ? 'animate-spin' : ''}`} />
-									<span class="text-sm">Refresh Calendars</span>
+									<span class="text-sm">{m.calendar_dropdown_refresh()}</span>
 								</button>
 							</li>
 						{/if}
@@ -387,8 +388,8 @@
 						<li>
 							<div class="px-3 py-4 text-center text-base-content/60">
 								<LockIcon class_="mx-auto mb-2 h-8 w-8 opacity-50" />
-								<p class="text-sm">Log in to manage your calendars</p>
-								<p class="mt-1 text-xs">Create and organize your own calendar events</p>
+								<p class="text-sm">{m.calendar_dropdown_login_title()}</p>
+								<p class="mt-1 text-xs">{m.calendar_dropdown_login_desc()}</p>
 							</div>
 						</li>
 					{/if}

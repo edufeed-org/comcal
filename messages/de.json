@@ -770,6 +770,17 @@
   "event_modal_updating": "Wird aktualisiert...",
   "event_modal_invalid_url": "Bitte geben Sie eine gültige URL ein (z.B. https://example.com)",
   "calendar_creation_modal_close_modal": "Modal schließen",
+  "calendar_dropdown_global_calendar": "Globaler Kalender",
+  "calendar_dropdown_global_calendar_desc": "Alle Community-Veranstaltungen",
+  "calendar_dropdown_my_events": "Meine Veranstaltungen",
+  "calendar_dropdown_my_events_desc": "Veranstaltungen, die ich erstellt habe",
+  "calendar_dropdown_no_calendars": "Keine Kalender gefunden",
+  "calendar_dropdown_create_first": "Erstellen Sie Ihren ersten Kalender unten",
+  "calendar_dropdown_loading": "Kalender werden geladen...",
+  "calendar_dropdown_create_new": "Neuen Kalender erstellen",
+  "calendar_dropdown_refresh": "Kalender aktualisieren",
+  "calendar_dropdown_login_title": "Melden Sie sich an, um Ihre Kalender zu verwalten",
+  "calendar_dropdown_login_desc": "Erstellen und organisieren Sie Ihre eigenen Kalender-Veranstaltungen",
   "tag_selector_filter_by_tags": "Nach Tags filtern",
   "tag_selector_clear_all": "Alle löschen",
   "tag_selector_show_events_with_tag": "Veranstaltungen mit #{tag} anzeigen",
@@ -781,5 +792,8 @@
   "tag_selector_events_help": "Klicken Sie auf Tags, um Veranstaltungen zu filtern. Alle löschen, um alles anzuzeigen.",
   "tag_selector_communities_help": "Klicken Sie auf Tags, um Communities zu filtern. Alle löschen, um alles anzuzeigen.",
   "tag_selector_no_events_found": "Keine Veranstaltungen mit ausgewählten Tags gefunden",
-  "tag_selector_no_communities_found": "Keine Communities mit ausgewählten Tags gefunden"
+  "tag_selector_no_communities_found": "Keine Communities mit ausgewählten Tags gefunden",
+  "calendar_dropdown_my_calendar": "Mein Kalender",
+  "calendar_dropdown_external_calendar": "Kalender",
+  "calendar_dropdown_select": "Kalender auswählen"
 }
