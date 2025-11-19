@@ -47,7 +47,7 @@
 	}
 </script>
 
-<div class="min-h-screen bg-base-100">
+<div class="bg-base-100">
 	<!-- Community Context Header -->
 	{#if profileEvent && communityId}
 		<CompactCommunityHeader communityProfile={profileEvent} communityPubkey={communityId} />

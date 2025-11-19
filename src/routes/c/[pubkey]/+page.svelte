@@ -136,7 +136,7 @@
 <!-- Desktop Layout -->
 {#if activeUser()}
 	<!-- Logged-in: Show all three sidebars -->
-	<div class="hidden lg:flex h-[calc(100vh-4rem)] pt-16">
+	<div class="hidden lg:flex h-[calc(100vh-8rem)] pt-16">
 		<CommunitySidebar
 			currentCommunityId={data.pubkey}
 			onCommunitySelect={handleCommunitySelect}
@@ -154,7 +154,7 @@
 	</div>
 {:else}
 	<!-- Logged-out: Just content nav + main -->
-	<div class="hidden lg:flex h-[calc(100vh-4rem)] pt-16">
+	<div class="hidden lg:flex h-[calc(100vh-8rem)] pt-16">
 		<ContentNavSidebar
 			bind:selectedContentType
 			onContentTypeSelect={handleContentTypeSelect}
@@ -174,7 +174,7 @@
 	<div class="lg:hidden">
 		<div class="drawer">
 			<input id="community-drawer" type="checkbox" class="drawer-toggle" bind:checked={leftDrawerOpen} />
-			<div class="drawer-content flex flex-col h-[calc(100vh-4rem)] pt-16">
+			<div class="drawer-content flex flex-col h-[calc(100vh-8rem)] pt-16">
 				<!-- Mobile Header with Menu Button -->
 				<div class="bg-base-200 border-b border-base-300 p-4 flex items-center justify-between">
 					<button
@@ -248,7 +248,7 @@
 	</div>
 {:else}
 	<!-- Logged-out: Simple layout -->
-	<div class="lg:hidden h-[calc(100vh-4rem)] pt-16 flex flex-col">
+	<div class="lg:hidden h-[calc(100vh-8rem)] pt-16 flex flex-col">
 		<div class="flex-1 overflow-auto pb-16">
 			<MainContentArea
 				selectedCommunityId={data.pubkey}

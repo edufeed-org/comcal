@@ -2,13 +2,27 @@
 	import { appConfig } from '$lib/config.js';
 </script>
 
-<footer class="footer footer-center bg-base-200 text-base-content border-t border-base-300 p-4">
-	<div>
-		<p class="text-sm">
-			<a href={appConfig.gitRepo} target="_blank" rel="noopener noreferrer" class="link link-primary font-medium">
-			{appConfig.name}	
-			</a>
-			 - Built with <span class="animate-pulse">💜</span> on the nostr protocol
-		</p>
+<footer class="bg-base-200 text-base-content border-t border-base-300 p-4">
+	<div class="container mx-auto max-w-7xl">
+		<div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+			<!-- GitHub Link -->
+			<div class="text-center sm:text-left">
+				<p class="text-sm">
+					<a href={appConfig.gitRepo} target="_blank" rel="noopener noreferrer" class="link link-primary font-medium">
+						{appConfig.name}
+					</a>
+					- Built with <span class="animate-pulse">💜</span> on the nostr protocol
+				</p>
+			</div>
+
+			<!-- Imprint Link -->
+			{#if appConfig.imprint.enabled}
+				<div class="text-center sm:text-right">
+					<a href="/imprint" class="link link-hover text-sm whitespace-nowrap">
+						Imprint
+					</a>
+				</div>
+			{/if}
+		</div>
 	</div>
 </footer>

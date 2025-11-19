@@ -11,7 +11,7 @@
 	const activities = [];
 </script>
 
-<div class="min-h-screen bg-base-100">
+<div class="bg-base-100">
 	<!-- Community Context Header -->
 	{#if communityProfile && communityPubkey}
 		<CompactCommunityHeader {communityProfile} {communityPubkey} />

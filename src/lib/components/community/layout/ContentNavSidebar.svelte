@@ -24,7 +24,7 @@
 </script>
 
 <!-- Desktop: Fixed right sidebar -->
-<div class="hidden lg:flex flex-col w-60 bg-base-100 border-r border-base-300 h-[calc(100vh-4rem)] fixed left-16 top-16 overflow-y-auto">
+<div class="hidden lg:flex flex-col w-60 bg-base-100 border-r border-base-300 h-[calc(100vh-8rem)] fixed left-16 top-16 overflow-y-auto">
 	{#if !communitySelected}
 		<div class="flex flex-col items-center justify-center h-full text-center p-6 text-base-content/60">
 			<p class="text-sm">{m.community_layout_content_nav_select_community()}</p>

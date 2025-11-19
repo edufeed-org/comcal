@@ -86,6 +86,25 @@ export const appConfig = {
 		}
 	},
 
+	imprint: {
+		enabled: true,
+		organization: 'ComCal GbR',
+		address: {
+			street: '',
+			postalCode: '',
+			city: '',
+			country: ''
+		},
+		contact: {
+			email: 'mail@comcal.net',
+			phone: ''
+		},
+		representative: '',
+		registrationNumber: '', // Optional: e.g., HRB 12345
+		vatId: '', // Optional: e.g., DE123456789
+		responsibleForContent: '' // Optional: if different from representative
+	},
+
 	// Other app-wide configurations can be added here:
 	// ui: {
 	//   theme: 'auto',

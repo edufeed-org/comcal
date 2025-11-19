@@ -15,7 +15,7 @@
 </script>
 
 {#if profileEvent && communikeyEvent}
-	<div class="min-h-screen bg-base-100">
+	<div class="bg-base-100">
 		<!-- Community Header -->
 		<CommunikeyHeader
 			{communikeyEvent}

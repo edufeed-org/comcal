@@ -270,6 +270,14 @@ docker compose logs -f
 
 ---
 
+## Funding
+
+This project was funded by the BMBSFJ.
+
+Förderkennzeichen: 01PZ24007
+
+![Logo BMBSFJ](/static/BMBFSFJ.png)
+
 ## Contributing
 
 Contributions are welcome!
