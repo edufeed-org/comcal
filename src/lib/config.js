@@ -81,7 +81,7 @@ export const appConfig = {
 				'address', 'postcode', 'street', 'neighbourhood',
 				'city', 'town', 'village', 'municipality',
 				'county', 'state', 'country',
-				'amenity', 'venue', 'place', 'locality'
+				'amenity', 'venue', 'place', 'locality', 'university'
 			]
 		}
 	},

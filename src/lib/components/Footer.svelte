@@ -11,7 +11,8 @@
 					<a href={appConfig.gitRepo} target="_blank" rel="noopener noreferrer" class="link link-primary font-medium">
 						{appConfig.name}
 					</a>
-					- Built with <span class="animate-pulse">💜</span> on the nostr protocol
+					- Built with <span class="animate-pulse">💜</span> on the nostr protocol,
+					<span>gefördert vom BMBFSFJ (FKZ01PZ24007)</span>
 				</p>
 			</div>
 
