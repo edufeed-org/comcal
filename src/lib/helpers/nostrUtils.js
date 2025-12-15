@@ -5,6 +5,33 @@ import { getCalendarEventStart, getSeenRelays } from "applesauce-core/helpers";
 
 
 /**
+ * Parse a Nostr 'a' tag value into an AddressPointer
+ * Correctly handles d-tags that contain colons (like URLs)
+ * 
+ * This is a workaround for the broken getAddressPointerFromATag() from applesauce-core
+ * which naively splits by ':' and breaks when identifiers contain colons.
+ * 
+ * @param {string[]|string} aTag - The 'a' tag array [tag, value, ...] or just the value string
+ * @returns {{kind: number, pubkey: string, identifier: string}|null}
+ */
+export function parseAddressPointerFromATag(aTag) {
+    const value = Array.isArray(aTag) ? aTag[1] : aTag;
+    if (!value) return null;
+    
+    const firstColon = value.indexOf(':');
+    const secondColon = value.indexOf(':', firstColon + 1);
+    
+    if (firstColon === -1 || secondColon === -1) return null;
+    
+    return {
+        kind: parseInt(value.substring(0, firstColon), 10),
+        pubkey: value.substring(firstColon + 1, secondColon),
+        identifier: value.substring(secondColon + 1)  // Everything after second colon
+    };
+}
+
+
+/**
  * Convert hex pubkey to npub format
  * @param {string} hex - 64-character hex pubkey
  * @returns {string|null} npub string or null if invalid

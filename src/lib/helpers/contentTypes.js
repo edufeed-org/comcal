@@ -23,6 +23,14 @@ export const CONTENT_TYPE_CONFIG = {
 		component: 'Chat',
 		description: 'Real-time community chat'
 	},
+	30142: {
+		kind: 30142,
+		name: 'Learning',
+		icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
+		supported: true,
+		component: 'LearningView',
+		description: 'Educational resources (AMB/OER)'
+	},
 	31922: {
 		kind: 31922,
 		name: 'Date-based Calendar Events',
@@ -207,11 +215,11 @@ export function kindToContentType(kind) {
 	/** @type {Record<number, string>} */
 	const mapping = {
 		9: 'chat',
+		30142: 'learning',
 		31923: 'calendar',
 		31922: 'calendar',
 		31924: 'calendar',
 		31925: 'calendar'
-		// Add more mappings as features are implemented
 	};
 	return mapping[kind] || null;
 }

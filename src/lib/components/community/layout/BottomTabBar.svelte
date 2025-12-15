@@ -1,5 +1,5 @@
 <script>
-	import { HomeIcon, ChatIcon, CalendarIcon, BellIcon, SettingsIcon } from '$lib/components/icons';
+	import { HomeIcon, ChatIcon, CalendarIcon, BellIcon, SettingsIcon, BookIcon } from '$lib/components/icons';
 	import { getCommunityAvailableContentTypes, kindToContentType } from '$lib/helpers/contentTypes.js';
 	import { onMount } from 'svelte';
 	import * as m from '$lib/paraglide/messages';
@@ -16,6 +16,7 @@
 		home: HomeIcon,
 		chat: ChatIcon,
 		calendar: CalendarIcon,
+		learning: BookIcon,
 		activity: BellIcon,
 		settings: SettingsIcon
 	};
@@ -64,7 +65,8 @@
 			// Default content types when no community
 			types.push(
 				{ id: 'chat', label: m.community_layout_bottom_tab_bar_chat(), icon: ChatIcon },
-				{ id: 'calendar', label: m.community_layout_bottom_tab_bar_calendar(), icon: CalendarIcon }
+				{ id: 'calendar', label: m.community_layout_bottom_tab_bar_calendar(), icon: CalendarIcon },
+				{ id: 'learning', label: m.community_layout_bottom_tab_bar_learning(), icon: BookIcon }
 			);
 		}
 

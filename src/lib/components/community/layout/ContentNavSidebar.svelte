@@ -1,5 +1,5 @@
 <script>
-	import { HomeIcon, ChatIcon, CalendarIcon, BellIcon, SettingsIcon } from '$lib/components/icons';
+	import { HomeIcon, ChatIcon, CalendarIcon, BellIcon, SettingsIcon, BookIcon } from '$lib/components/icons';
 	import * as m from '$lib/paraglide/messages';
 
 	let { selectedContentType = $bindable(), onContentTypeSelect, communitySelected = true } = $props();
@@ -8,6 +8,7 @@
 		{ id: 'home', label: m.community_layout_bottom_tab_bar_home(), icon: HomeIcon },
 		{ id: 'chat', label: m.community_layout_bottom_tab_bar_chat(), icon: ChatIcon },
 		{ id: 'calendar', label: m.community_layout_bottom_tab_bar_calendar(), icon: CalendarIcon },
+		{ id: 'learning', label: m.community_layout_bottom_tab_bar_learning(), icon: BookIcon },
 		{ id: 'activity', label: m.community_layout_bottom_tab_bar_activity(), icon: BellIcon },
 		{ id: 'settings', label: m.community_layout_bottom_tab_bar_settings(), icon: SettingsIcon }
 	];

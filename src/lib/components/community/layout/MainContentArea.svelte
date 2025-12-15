@@ -6,6 +6,7 @@
 	import { appConfig } from '$lib/config.js';
 	import Chat from '../views/Chat.svelte';
 	import CalendarView from '$lib/components/calendar/CalendarView.svelte';
+	import LearningView from '../views/LearningView.svelte';
 	import HomeView from '../views/HomeView.svelte';
 	import ActivityView from '../views/ActivityView.svelte';
 	import SettingsView from '../views/SettingsView.svelte';
@@ -98,6 +99,8 @@
 				<Chat {communikeyEvent} communityProfile={communityProfile} communityPubkey={selectedCommunityId} />
 			{:else if selectedContentType === 'calendar'}
 				<CalendarView communityPubkey={selectedCommunityId} communityMode={true} communityProfile={communityProfile} />
+			{:else if selectedContentType === 'learning'}
+				<LearningView communityPubkey={selectedCommunityId} communityProfile={communityProfile} />
 			{:else if selectedContentType === 'activity'}
 				<ActivityView communityId={selectedCommunityId} {communikeyEvent} communityProfile={communityProfile} communityPubkey={selectedCommunityId} />
 			{:else if selectedContentType === 'settings'}

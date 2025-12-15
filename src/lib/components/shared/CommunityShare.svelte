@@ -7,17 +7,19 @@
 <script>
 	import { useJoinedCommunitiesList } from '../../stores/joined-communities-list.svelte.js';
 	import { useUserProfile } from '../../stores/user-profile.svelte.js';
-	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+	import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
 	import { EventFactory } from 'applesauce-factory';
+	import { createTimelineLoader } from 'applesauce-loaders/loaders';
+	import { TimelineModel } from 'applesauce-core/models';
 	import { publishEvent } from '../../helpers/publisher.js';
 	import {
 		getTagValue,
 		getDisplayName,
 		getAddressPointerForEvent,
-		getAddressPointerFromATag,
 		getReplaceableIdentifier,
 		getReplaceableAddress
 	} from 'applesauce-core/helpers';
+	import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
 	import { PlusIcon, CheckIcon, AlertIcon } from '../icons';
 	import { appConfig } from '$lib/config.js';
 
@@ -55,19 +57,14 @@
 	let loadedShares = new Map();
 
 	/**
-	 * Get community name from profile
+	 * Get community name for logging purposes
+	 * Note: We use truncated pubkey here instead of profile lookup because
+	 * useUserProfile() uses $effect internally which cannot be called from async handlers
 	 * @param {string} communityPubkey
-	 * @returns {Promise<string>}
+	 * @returns {string}
 	 */
-	async function getCommunityName(communityPubkey) {
-		try {
-			const getProfile = useUserProfile(communityPubkey);
-			const profile = await getProfile();
-			return profile?.name || profile?.display_name || communityPubkey.slice(0, 8);
-		} catch (error) {
-			console.warn(`🔗 CommunityShare: Failed to get community name for ${communityPubkey}:`, error);
-			return communityPubkey.slice(0, 8);
-		}
+	function getCommunityName(communityPubkey) {
+		return communityPubkey.slice(0, 8) + '...';
 	}
 
 	/**
@@ -85,14 +82,37 @@
 		loadedShares.clear();
 		const shares = new Set();
 
-		console.log('🔗 CommunityShare: Checking for existing shares');
+		console.log('🔗 CommunityShare: Loading and checking for existing shares');
 
-		// Subscribe to all share events for this user
-		const modelSub = eventStore.timeline({
+		// Create loader to FETCH user's targeted publications from relays
+		// This is critical - without this, we only read from local cache which may be empty
+		const loader = createTimelineLoader(
+			pool,
+			appConfig.calendar.defaultRelays,
+			{
+				kinds: [30222],
+				authors: [activeUser.pubkey]
+			},
+			{ eventStore, limit: 100 }
+		);
+
+		// Start fetching from relays
+		const loaderSub = loader().subscribe({
+			// next: (event) => {
+			// 	// Loader populates eventStore automatically
+			// 	console.log('🔗 CommunityShare: Loader fetched share events from relays', event);
+			// },
+			error: (err) => console.warn('🔗 CommunityShare: Loader error:', err)
+		});
+
+		// Subscribe to EventStore for reactive updates (reads from cache populated by loader)
+		// Using TimelineModel for proper reactivity when new events are added to EventStore
+		const modelSub = eventStore.model(TimelineModel, {
 			kinds: [30222],
 			authors: [activeUser.pubkey]
 		}).subscribe((shareEvents) => {
 			let hasNew = false;
+			console.log('🔗 CommunityShare: Checking loaded share events for matches', shareEvents);
 			for (const shareEvent of shareEvents || []) {
 				if (!loadedShares.has(shareEvent.id)) {
 					loadedShares.set(shareEvent.id, shareEvent);
@@ -104,12 +124,21 @@
 					
 					if (aTag) {
 						// Try addressable reference match
+						// Using local parseAddressPointerFromATag to correctly handle d-tags with colons (like URLs)
 						const eventPointer = getAddressPointerForEvent(event);
-						const sharePointer = getAddressPointerFromATag(aTag);
+						const sharePointer = parseAddressPointerFromATag(aTag);
+
+						if (!sharePointer) continue;
 
 						const idMatch = eventPointer.identifier === sharePointer.identifier;
 						const kindMatch = eventPointer.kind === sharePointer.kind;
 						const pubkeyMatch = eventPointer.pubkey === sharePointer.pubkey;
+
+						console.log('🔗 CommunityShare: Comparing identifiers:', {
+							eventIdentifier: eventPointer.identifier,
+							shareIdentifier: sharePointer.identifier,
+							idMatch, kindMatch, pubkeyMatch
+						});
 
 						if (idMatch && kindMatch && pubkeyMatch) {
 							const pTag = shareEvent.tags.find(t => t[0] === 'p');
@@ -136,6 +165,7 @@
 		});
 
 		return () => {
+			loaderSub.unsubscribe();
 			modelSub.unsubscribe();
 		};
 	});
@@ -213,7 +243,9 @@
 		const identifier = isReplaceable ? getReplaceableIdentifier(event) : event.id;
 
 		return new Promise((resolve) => {
-			let sub = eventStore
+			/** @type {import('rxjs').Subscription | undefined} */
+			let sub;
+			sub = eventStore
 				.replaceable({
 					kind: 30222,
 					pubkey: activeUser.pubkey,
@@ -229,7 +261,9 @@
 					} else {
 						// Try manual search through all shares
 						console.log('🔗 CommunityShare: Trying manual search...');
-						let allSharesSub = eventStore
+						/** @type {import('rxjs').Subscription | undefined} */
+						let allSharesSub;
+						allSharesSub = eventStore
 							.timeline({
 								kinds: [30222],
 								authors: [activeUser.pubkey]
@@ -312,7 +346,7 @@
 		try {
 			for (const communityPubkey of selectedCommunityIds) {
 				const isAlreadyShared = communitiesWithShares.has(communityPubkey);
-				const communityName = await getCommunityName(communityPubkey);
+				const communityName = getCommunityName(communityPubkey);
 
 				try {
 					let success = false;

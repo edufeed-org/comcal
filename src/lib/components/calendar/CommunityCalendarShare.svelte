@@ -8,10 +8,10 @@
 		getTagValue,
 		getDisplayName,
 		getAddressPointerForEvent,
-		getAddressPointerFromATag,
 		getReplaceableIdentifier,
 		getReplaceableAddress
 	} from 'applesauce-core/helpers';
+	import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
 	import { PlusIcon, CheckIcon, AlertIcon } from '../icons';
 	import { appConfig } from '$lib/config.js';
 
@@ -92,8 +92,11 @@
 					// Check if this share references our event
 					const aTag = shareEvent.tags.find(t => t[0] === 'a');
 					if (aTag) {
+						// Using local parseAddressPointerFromATag to correctly handle d-tags with colons (like URLs)
 						const eventPointer = getAddressPointerForEvent(event.originalEvent);
-						const sharePointer = getAddressPointerFromATag(aTag);
+						const sharePointer = parseAddressPointerFromATag(aTag);
+
+						if (!sharePointer) continue;
 
 						const idMatch = eventPointer.identifier === sharePointer.identifier;
 						const kindMatch = eventPointer.kind === sharePointer.kind;

@@ -795,5 +795,12 @@
   "tag_selector_no_communities_found": "Keine Communities mit ausgewählten Tags gefunden",
   "calendar_dropdown_my_calendar": "Mein Kalender",
   "calendar_dropdown_external_calendar": "Kalender",
-  "calendar_dropdown_select": "Kalender auswählen"
+  "calendar_dropdown_select": "Kalender auswählen",
+  "community_layout_bottom_tab_bar_learning": "Lernen",
+  "community_learning_title": "Lernressourcen",
+  "community_learning_description": "Bildungsressourcen, die mit dieser Community geteilt wurden",
+  "community_learning_loading": "Lernressourcen werden geladen...",
+  "community_learning_empty_title": "Noch keine Lernressourcen",
+  "community_learning_empty_description": "Bildungsressourcen, die mit dieser Community geteilt werden, erscheinen hier.",
+  "community_learning_count": "{count} Ressourcen"
 }

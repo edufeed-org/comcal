@@ -546,6 +546,7 @@
   "community_layout_bottom_tab_bar_home": "Home",
   "community_layout_bottom_tab_bar_chat": "Chat",
   "community_layout_bottom_tab_bar_calendar": "Calendar",
+  "community_layout_bottom_tab_bar_learning": "Learning",
   "community_layout_bottom_tab_bar_activity": "Activity",
   "community_layout_bottom_tab_bar_settings": "Settings",
   "community_layout_bottom_tab_bar_scroll_left": "Scroll left",
@@ -806,5 +807,11 @@
   "calendar_dropdown_external_calendar": "Calendar",
   "calendar_dropdown_select": "Select Calendar",
   "calendar_dropdown_login_title": "Log in to manage your calendars",
-  "calendar_dropdown_login_desc": "Create and organize your own calendar events"
+  "calendar_dropdown_login_desc": "Create and organize your own calendar events",
+  "community_learning_title": "Learning Resources",
+  "community_learning_description": "Educational resources shared with this community",
+  "community_learning_loading": "Loading learning resources...",
+  "community_learning_empty_title": "No learning resources yet",
+  "community_learning_empty_description": "Educational resources shared with this community will appear here.",
+  "community_learning_count": "{count} resources"
 }

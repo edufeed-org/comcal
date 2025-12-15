@@ -11,23 +11,19 @@
 import { combineLatest, of } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
+import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
 
 /**
  * Helper to parse address pointers from calendar 'a' tags
+ * Using parseAddressPointerFromATag to correctly handle d-tags with colons (like URLs)
  * @param {any} calendar 
  * @returns {Array<{kind: number, pubkey: string, identifier: string}>}
  */
 function getCalendarAddressPointers(calendar) {
 	const pointers = calendar.tags
-		.filter((tag) => tag[0] === 'a')
-		.map((tag) => {
-			const [kind, pubkey, identifier] = tag[1].split(':');
-			return {
-				kind: parseInt(kind, 10),
-				pubkey,
-				identifier: identifier || '' // Use empty string instead of undefined
-			};
-		});
+		.filter((/** @type {any[]} */ tag) => tag[0] === 'a')
+		.map((/** @type {any[]} */ tag) => parseAddressPointerFromATag(tag))
+		.filter((/** @type {any} */ pointer) => pointer !== null);
 	
 	console.log('📅 PersonalCalendarEventsModel: Parsed pointers from calendar:', pointers);
 	return pointers;
