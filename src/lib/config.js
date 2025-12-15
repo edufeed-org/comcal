@@ -3,6 +3,13 @@
  * Centralized configuration for various app settings
  */
 
+// Detect development mode (true when running `npm run dev`)
+const isDev = import.meta.env.DEV;
+
+// Relay configuration
+const productionRelays = ['wss://relay-rpi.edufeed.org'];
+const devRelays = ['ws://localhost:10547'];
+
 export const appConfig = {
 	logo: 'https://blossom.edufeed.org/f22e1410f09a9130757704b6dcd4c34774d2926b9cfd6cf2e4c4675c64d4333b.webp',
 	name: 'ComCal',
@@ -12,9 +19,9 @@ export const appConfig = {
 		weekStartDay: 1, // Default to Monday
 
 		// Default relays for calendar filtering
-		defaultRelays: [
-			'wss://relay-rpi.edufeed.org',
-		],
+		// In development: uses local relay for testing
+		// In production: uses production relay
+		defaultRelays: isDev ? devRelays : productionRelays,
 
 		// Fallback relays for event discovery when event not found
 		// on default relays or when naddr contains no relay hints
