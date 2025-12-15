@@ -1,9 +1,9 @@
 <script>
 	import CalendarView from '$lib/components/calendar/CalendarView.svelte';
 	import ArticleView from '$lib/components/article/ArticleView.svelte';
-	import AMBResourceView from '$lib/components/amb/AMBResourceView.svelte';
+	import AMBResourceView from '$lib/components/educational/AMBResourceView.svelte';
 	import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
-	import { formatAMBResource } from '$lib/helpers/amb';
+	import { formatAMBResource } from '$lib/helpers/educational';
 
 	/** @type {{ data: any }} */
 	let { data } = $props();

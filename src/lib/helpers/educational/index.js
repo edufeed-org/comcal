@@ -1,5 +1,5 @@
 /**
- * AMB Helpers - Main Export
+ * Educational Helpers - Main Export
  * 
  * Exports both library-ready transformation functions and app-specific helpers.
  */

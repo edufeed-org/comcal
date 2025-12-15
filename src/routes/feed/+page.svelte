@@ -6,9 +6,9 @@
 	import { AMBResourceModel } from '$lib/models';
 	import { profileLoader } from '$lib/loaders/profile.js';
 	import { getArticlePublished } from 'applesauce-core/helpers';
-	import { getAMBPublishedDate } from '$lib/helpers/amb';
+	import { getAMBPublishedDate } from '$lib/helpers/educational';
 	import ArticleCard from '$lib/components/article/ArticleCard.svelte';
-	import AMBResourceCard from '$lib/components/amb/AMBResourceCard.svelte';
+	import AMBResourceCard from '$lib/components/educational/AMBResourceCard.svelte';
 	import { page } from '$app/stores';
 	import { updateQueryParams } from '$lib/helpers/urlParams.js';
 

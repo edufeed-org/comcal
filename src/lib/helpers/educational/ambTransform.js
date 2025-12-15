@@ -326,3 +326,87 @@ export function getNestedTagValues(tags, tagPath) {
 export function getTagsByPrefix(tags, prefix) {
 	return tags.filter((t) => t[0].startsWith(prefix));
 }
+
+/**
+ * Gets a prefLabel value with language fallback logic.
+ * Implements the language preference: userLang → 'en' → null
+ * 
+ * @param {Array<Array<string>>} tags - Array of Nostr tags
+ * @param {string} prefix - The tag prefix (e.g., 'about', 'learningResourceType', 'educationalLevel')
+ * @param {string} [userLang='en'] - User's preferred language code (e.g., 'de', 'en')
+ * @returns {string|null} - The label in preferred language, or null if not found
+ * 
+ * @example
+ * // Tags: [["about:prefLabel:de", "Mathematik"], ["about:prefLabel:en", "Mathematics"]]
+ * getPrefLabelWithFallback(tags, 'about', 'de') // Returns "Mathematik"
+ * getPrefLabelWithFallback(tags, 'about', 'fr') // Returns "Mathematics" (English fallback)
+ * getPrefLabelWithFallback(tags, 'about', 'fr') // Returns null if no English either
+ */
+export function getPrefLabelWithFallback(tags, prefix, userLang = 'en') {
+	// Try user's preferred language first
+	const userLangTag = `${prefix}:prefLabel:${userLang}`;
+	const userLangLabel = getTagValue(tags, userLangTag);
+	if (userLangLabel) {
+		return userLangLabel;
+	}
+	
+	// Fallback to English if user's language not available
+	if (userLang !== 'en') {
+		const enTag = `${prefix}:prefLabel:en`;
+		const enLabel = getTagValue(tags, enTag);
+		if (enLabel) {
+			return enLabel;
+		}
+	}
+	
+	// Return null - caller should use ID as final fallback
+	return null;
+}
+
+/**
+ * Gets all prefLabel values for a given prefix, grouped by index position.
+ * This is useful for properties that can have multiple instances (like multiple subjects).
+ * 
+ * @param {Array<Array<string>>} tags - Array of Nostr tags
+ * @param {string} prefix - The tag prefix (e.g., 'about', 'learningResourceType')
+ * @param {string} [userLang='en'] - User's preferred language code
+ * @returns {Array<{id: string, label: string}>} Array of objects with id and language-aware label
+ * 
+ * @example
+ * // Tags with multiple subjects:
+ * // ["about:id", "http://example.org/math"], ["about:prefLabel:de", "Mathematik"],
+ * // ["about:id", "http://example.org/physics"], ["about:prefLabel:de", "Physik"]
+ * getLabelsWithFallback(tags, 'about', 'de')
+ * // Returns [{id: "http://example.org/math", label: "Mathematik"}, {id: "http://example.org/physics", label: "Physik"}]
+ */
+export function getLabelsWithFallback(tags, prefix, userLang = 'en') {
+	const idTagName = `${prefix}:id`;
+	const userLangTagName = `${prefix}:prefLabel:${userLang}`;
+	const enTagName = `${prefix}:prefLabel:en`;
+	
+	// Get all IDs
+	const ids = getTagValues(tags, idTagName);
+	
+	// Get all labels in user's language
+	const userLangLabels = getTagValues(tags, userLangTagName);
+	
+	// Get all English labels as fallback
+	const enLabels = userLang !== 'en' ? getTagValues(tags, enTagName) : [];
+	
+	return ids.map((id, index) => {
+		// Try user's language first
+		let label = userLangLabels[index];
+		
+		// Fallback to English
+		if (!label && userLang !== 'en') {
+			label = enLabels[index];
+		}
+		
+		// Final fallback to ID
+		if (!label) {
+			label = id;
+		}
+		
+		return { id, label };
+	});
+}

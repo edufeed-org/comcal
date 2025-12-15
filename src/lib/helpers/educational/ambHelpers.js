@@ -5,7 +5,7 @@
  * These functions extract and format data from AMB events for display.
  */
 
-import { getTagValue, getTagValues, getNestedTagValues } from './ambTransform.js';
+import { getTagValue, getTagValues, getNestedTagValues, getLabelsWithFallback } from './ambTransform.js';
 
 /**
  * Extracts the resource name from an AMB event
@@ -44,48 +44,36 @@ export function getAMBTypes(event) {
 }
 
 /**
- * Extracts learning resource types with labels from an AMB event
+ * Extracts learning resource types with language-aware labels from an AMB event.
+ * Uses language fallback: userLang → 'en' → ID
  * @param {any} event - AMB event (kind 30142)
+ * @param {string} [lang='en'] - User's preferred language code
  * @returns {Array<{id: string, label: string}>} Array of learning resource types
  */
-export function getAMBLearningResourceTypes(event) {
-	const ids = getNestedTagValues(event.tags, 'learningResourceType:id');
-	const labels = getNestedTagValues(event.tags, 'learningResourceType:prefLabel');
-	
-	return ids.map((id, index) => ({
-		id,
-		label: labels[index] || id
-	}));
+export function getAMBLearningResourceTypes(event, lang = 'en') {
+	return getLabelsWithFallback(event.tags, 'learningResourceType', lang);
 }
 
 /**
- * Extracts subjects/topics from an AMB event
+ * Extracts subjects/topics with language-aware labels from an AMB event.
+ * Uses language fallback: userLang → 'en' → ID
  * @param {any} event - AMB event (kind 30142)
+ * @param {string} [lang='en'] - User's preferred language code
  * @returns {Array<{id: string, label: string}>} Array of subjects
  */
-export function getAMBSubjects(event) {
-	const ids = getNestedTagValues(event.tags, 'about:id');
-	const labels = getNestedTagValues(event.tags, 'about:prefLabel');
-	
-	return ids.map((id, index) => ({
-		id,
-		label: labels[index] || id
-	}));
+export function getAMBSubjects(event, lang = 'en') {
+	return getLabelsWithFallback(event.tags, 'about', lang);
 }
 
 /**
- * Extracts educational levels from an AMB event
+ * Extracts educational levels with language-aware labels from an AMB event.
+ * Uses language fallback: userLang → 'en' → ID
  * @param {any} event - AMB event (kind 30142)
+ * @param {string} [lang='en'] - User's preferred language code
  * @returns {Array<{id: string, label: string}>} Array of educational levels
  */
-export function getAMBEducationalLevels(event) {
-	const ids = getNestedTagValues(event.tags, 'educationalLevel:id');
-	const labels = getNestedTagValues(event.tags, 'educationalLevel:prefLabel');
-	
-	return ids.map((id, index) => ({
-		id,
-		label: labels[index] || id
-	}));
+export function getAMBEducationalLevels(event, lang = 'en') {
+	return getLabelsWithFallback(event.tags, 'educationalLevel', lang);
 }
 
 /**
@@ -193,12 +181,20 @@ export function getAMBIdentifier(event) {
 }
 
 /**
- * Formats AMB resource for display
- * Combines all relevant metadata into a structured object
+ * Formats AMB resource for display with language-aware labels.
+ * Combines all relevant metadata into a structured object.
+ * 
+ * Labels for subjects, learning resource types, and educational levels
+ * use the following fallback order:
+ * 1. User's preferred language (e.g., 'de')
+ * 2. English ('en')
+ * 3. ID as final fallback
+ * 
  * @param {any} event - AMB event (kind 30142)
+ * @param {string} [lang='en'] - User's preferred language code for labels
  * @returns {Object} Formatted resource object
  */
-export function formatAMBResource(event) {
+export function formatAMBResource(event, lang = 'en') {
 	return {
 		id: event.id,
 		identifier: getAMBIdentifier(event),
@@ -209,9 +205,9 @@ export function formatAMBResource(event) {
 		description: getAMBDescription(event),
 		image: getAMBImage(event),
 		types: getAMBTypes(event),
-		learningResourceTypes: getAMBLearningResourceTypes(event),
-		subjects: getAMBSubjects(event),
-		educationalLevels: getAMBEducationalLevels(event),
+		learningResourceTypes: getAMBLearningResourceTypes(event, lang),
+		subjects: getAMBSubjects(event, lang),
+		educationalLevels: getAMBEducationalLevels(event, lang),
 		keywords: getAMBKeywords(event),
 		languages: getAMBLanguages(event),
 		license: getAMBLicense(event),

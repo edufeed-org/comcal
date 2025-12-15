@@ -11,6 +11,8 @@
 	import ImageWithFallback from '../shared/ImageWithFallback.svelte';
 	import ReactionBar from '../reactions/ReactionBar.svelte';
 	import EventTags from '../calendar/EventTags.svelte';
+	import { getLocale } from '$lib/paraglide/runtime.js';
+	import { getLabelsWithFallback } from '$lib/helpers/educational/ambTransform.js';
 
 	/**
 	 * @typedef {Object} Props
@@ -32,6 +34,18 @@
 
 	// Get published date
 	const publishedAt = $derived(new Date(resource.publishedDate * 1000));
+
+	// Language-aware labels - reactive to locale changes!
+	// Uses fallback: user's language → English → ID
+	const localizedLearningResourceTypes = $derived(
+		getLabelsWithFallback(resource.tags, 'learningResourceType', getLocale())
+	);
+	const localizedSubjects = $derived(
+		getLabelsWithFallback(resource.tags, 'about', getLocale())
+	);
+	const localizedEducationalLevels = $derived(
+		getLabelsWithFallback(resource.tags, 'educationalLevel', getLocale())
+	);
 
 	// Generate naddr for navigation to detail view
 	const resourceNaddr = $derived.by(() => {
@@ -97,9 +111,9 @@
 			</div>
 		</div>
 		<!-- Resource Type Badge -->
-		{#if resource.learningResourceTypes.length > 0}
+		{#if localizedLearningResourceTypes.length > 0}
 			<div class="badge badge-primary badge-sm">
-				{resource.learningResourceTypes[0].label}
+				{localizedLearningResourceTypes[0].label}
 			</div>
 		{/if}
 	</div>
@@ -152,9 +166,9 @@
 		{#if !compact}
 			<div class="flex flex-wrap gap-2">
 				<!-- Educational Level -->
-				{#if resource.educationalLevels.length > 0}
+				{#if localizedEducationalLevels.length > 0}
 					<div class="badge badge-secondary badge-sm">
-						{resource.educationalLevels[0].label}
+						{localizedEducationalLevels[0].label}
 					</div>
 				{/if}
 
@@ -171,16 +185,16 @@
 		{/if}
 
 		<!-- Subjects/Topics -->
-		{#if resource.subjects.length > 0 && !compact}
+		{#if localizedSubjects.length > 0 && !compact}
 			<div class="flex flex-wrap gap-1">
-				{#each resource.subjects.slice(0, 3) as subject}
+				{#each localizedSubjects.slice(0, 3) as subject}
 					<span class="text-xs text-base-content/60 bg-base-200 px-2 py-1 rounded">
 						{subject.label}
 					</span>
 				{/each}
-				{#if resource.subjects.length > 3}
+				{#if localizedSubjects.length > 3}
 					<span class="text-xs text-base-content/60 bg-base-200 px-2 py-1 rounded">
-						+{resource.subjects.length - 3} more
+						+{localizedSubjects.length - 3} more
 					</span>
 				{/if}
 			</div>

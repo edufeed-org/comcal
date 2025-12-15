@@ -15,6 +15,8 @@
 	import CommentList from '../comments/CommentList.svelte';
 	import EventTags from '../calendar/EventTags.svelte';
 	import CommunityShare from '../shared/CommunityShare.svelte';
+	import { getLocale } from '$lib/paraglide/runtime.js';
+	import { getLabelsWithFallback } from '$lib/helpers/educational/ambTransform.js';
 
 	/**
 	 * @typedef {Object} Props
@@ -24,6 +26,18 @@
 
 	/** @type {Props} */
 	let { event, resource } = $props();
+
+	// Language-aware labels - reactive to locale changes!
+	// Uses fallback: user's language → English → ID
+	const localizedLearningResourceTypes = $derived(
+		getLabelsWithFallback(event.tags, 'learningResourceType', getLocale())
+	);
+	const localizedSubjects = $derived(
+		getLabelsWithFallback(event.tags, 'about', getLocale())
+	);
+	const localizedEducationalLevels = $derived(
+		getLabelsWithFallback(event.tags, 'educationalLevel', getLocale())
+	);
 
 	// Get active user (reactive to login/logout)
 	const getActiveUser = useActiveUser();
@@ -68,11 +82,11 @@
 		}));
 	});
 
-	// Check if we have educational metadata to display
+	// Check if we have educational metadata to display (using localized versions)
 	const hasEducationalMetadata = $derived(
-		resource.learningResourceTypes.length > 0 ||
-			resource.educationalLevels.length > 0 ||
-			resource.subjects.length > 0
+		localizedLearningResourceTypes.length > 0 ||
+			localizedEducationalLevels.length > 0 ||
+			localizedSubjects.length > 0
 	);
 
 	// Published date
@@ -95,9 +109,9 @@
 		</h1>
 
 		<!-- Learning Resource Type Badge (prominent) -->
-		{#if resource.learningResourceTypes.length > 0}
+		{#if localizedLearningResourceTypes.length > 0}
 			<div class="mb-4 flex flex-wrap gap-2">
-				{#each resource.learningResourceTypes.slice(0, 2) as type}
+				{#each localizedLearningResourceTypes.slice(0, 2) as type}
 					<span class="badge badge-primary badge-lg">{type.label}</span>
 				{/each}
 			</div>
@@ -258,11 +272,11 @@
 
 			<div class="grid md:grid-cols-2 gap-6">
 				<!-- Educational Levels -->
-				{#if resource.educationalLevels.length > 0}
+				{#if localizedEducationalLevels.length > 0}
 					<div class="bg-base-200 p-4 rounded-lg">
 						<h3 class="font-semibold text-sm text-base-content/70 mb-2">Educational Level</h3>
 						<div class="flex flex-wrap gap-2">
-							{#each resource.educationalLevels as level}
+							{#each localizedEducationalLevels as level}
 								<span class="badge badge-secondary">{level.label}</span>
 							{/each}
 						</div>
@@ -270,11 +284,11 @@
 				{/if}
 
 				<!-- Subjects -->
-				{#if resource.subjects.length > 0}
+				{#if localizedSubjects.length > 0}
 					<div class="bg-base-200 p-4 rounded-lg">
 						<h3 class="font-semibold text-sm text-base-content/70 mb-2">Subjects</h3>
 						<div class="flex flex-wrap gap-2">
-							{#each resource.subjects as subject}
+							{#each localizedSubjects as subject}
 								<span class="badge badge-outline">{subject.label}</span>
 							{/each}
 						</div>

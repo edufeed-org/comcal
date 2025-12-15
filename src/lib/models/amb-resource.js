@@ -17,7 +17,7 @@
  */
 import { TimelineModel } from 'applesauce-core/models';
 import { map } from 'rxjs/operators';
-import { formatAMBResource } from '$lib/helpers/amb/index.js';
+import { formatAMBResource } from '$lib/helpers/educational/index.js';
 
 /**
  * @param {string[]} [authors]
