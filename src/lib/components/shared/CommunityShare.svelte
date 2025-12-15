@@ -82,8 +82,6 @@
 		loadedShares.clear();
 		const shares = new Set();
 
-		console.log('🔗 CommunityShare: Loading and checking for existing shares');
-
 		// Create loader to FETCH user's targeted publications from relays
 		// This is critical - without this, we only read from local cache which may be empty
 		const loader = createTimelineLoader(
@@ -112,7 +110,6 @@
 			authors: [activeUser.pubkey]
 		}).subscribe((shareEvents) => {
 			let hasNew = false;
-			console.log('🔗 CommunityShare: Checking loaded share events for matches', shareEvents);
 			for (const shareEvent of shareEvents || []) {
 				if (!loadedShares.has(shareEvent.id)) {
 					loadedShares.set(shareEvent.id, shareEvent);
@@ -134,17 +131,10 @@
 						const kindMatch = eventPointer.kind === sharePointer.kind;
 						const pubkeyMatch = eventPointer.pubkey === sharePointer.pubkey;
 
-						console.log('🔗 CommunityShare: Comparing identifiers:', {
-							eventIdentifier: eventPointer.identifier,
-							shareIdentifier: sharePointer.identifier,
-							idMatch, kindMatch, pubkeyMatch
-						});
-
 						if (idMatch && kindMatch && pubkeyMatch) {
 							const pTag = shareEvent.tags.find(t => t[0] === 'p');
 							if (pTag?.[1]) {
 								shares.add(pTag[1]);
-								console.log(`✅ CommunityShare: Found existing share for community ${pTag[1].slice(0, 8)}`);
 							}
 						}
 					} else if (eTag && eTag[1] === event.id) {
@@ -161,7 +151,6 @@
 				communitiesWithShares = new Set(shares);
 			}
 			isCheckingShares = false;
-			console.log(`🔗 CommunityShare: Check complete - found ${shares.size} existing shares`);
 		});
 
 		return () => {
