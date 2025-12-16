@@ -1,0 +1,100 @@
+<!--
+  CommunityFilterDropdown Component
+  A grouped dropdown for filtering feed content by community
+  
+  Options:
+  - All: Show all content
+  - My Communities: Show content from all joined communities
+  - Joined section: Individual joined communities
+  - Discover section: Individual non-joined communities
+-->
+<script>
+	import { getDisplayName } from 'applesauce-core/helpers';
+
+	/**
+	 * @typedef {Object} CommunityOption
+	 * @property {string} pubkey - Community pubkey
+	 * @property {string} name - Display name for the community
+	 */
+
+	/**
+	 * @typedef {Object} Props
+	 * @property {string | null} value - Current filter value: null (all), 'joined', or community pubkey
+	 * @property {CommunityOption[]} joinedCommunities - Array of joined community options
+	 * @property {CommunityOption[]} discoverCommunities - Array of non-joined community options
+	 * @property {(value: string | null) => void} onchange - Callback when filter changes
+	 * @property {boolean} [disabled=false] - Whether the dropdown is disabled
+	 */
+
+	/** @type {Props} */
+	let {
+		value = null,
+		joinedCommunities = [],
+		discoverCommunities = [],
+		onchange,
+		disabled = false
+	} = $props();
+
+	/**
+	 * Get display text for current selection
+	 * @returns {string}
+	 */
+	function getDisplayText() {
+		if (!value) return 'All';
+		if (value === 'joined') return 'My Communities';
+
+		// Find community name
+		const joined = joinedCommunities.find((c) => c.pubkey === value);
+		if (joined) return joined.name;
+
+		const discover = discoverCommunities.find((c) => c.pubkey === value);
+		if (discover) return discover.name;
+
+		return `${value.slice(0, 8)}...`;
+	}
+
+	/**
+	 * Handle selection change
+	 * @param {Event} e
+	 */
+	function handleChange(e) {
+		const target = /** @type {HTMLSelectElement} */ (e.target);
+		const newValue = target.value === '' ? null : target.value;
+		onchange(newValue);
+	}
+</script>
+
+<div class="flex items-center gap-2">
+	<label for="community-filter" class="text-sm font-medium text-base-content">Community:</label>
+	<select
+		id="community-filter"
+		class="select select-bordered select-sm min-w-[180px]"
+		value={value ?? ''}
+		onchange={handleChange}
+		{disabled}
+	>
+		<!-- Default options -->
+		<option value="">All</option>
+		{#if joinedCommunities.length > 0}
+			<option value="joined">My Communities</option>
+		{/if}
+
+		<!-- Joined communities section -->
+		{#if joinedCommunities.length > 0}
+			<optgroup label="Joined">
+				{#each joinedCommunities as community}
+					<option value={community.pubkey}>🏠 {community.name}</option>
+				{/each}
+			</optgroup>
+		{/if}
+
+		<!-- Discover communities section -->
+		{#if discoverCommunities.length > 0}
+			<optgroup label="Discover">
+				{#each discoverCommunities as community}
+					<option value={community.pubkey}>🔍 {community.name}</option>
+				{/each}
+			</optgroup>
+		{/if}
+	</select>
+</div>

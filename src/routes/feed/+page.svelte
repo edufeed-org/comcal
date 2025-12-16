@@ -1,21 +1,31 @@
 <script>
-	import { articleTimelineLoader, ambTimelineLoader } from '$lib/loaders';
+	import { articleTimelineLoader, ambTimelineLoader, feedTargetedPublicationsLoader } from '$lib/loaders';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { appConfig } from '$lib/config';
 	import { TimelineModel, ProfileModel } from 'applesauce-core/models';
 	import { AMBResourceModel } from '$lib/models';
 	import { profileLoader } from '$lib/loaders/profile.js';
-	import { getArticlePublished } from 'applesauce-core/helpers';
-	import { getAMBPublishedDate } from '$lib/helpers/educational';
+	import { getArticlePublished, getTagValue } from 'applesauce-core/helpers';
 	import ArticleCard from '$lib/components/article/ArticleCard.svelte';
 	import AMBResourceCard from '$lib/components/educational/AMBResourceCard.svelte';
+	import CommunityFilterDropdown from '$lib/components/feed/CommunityFilterDropdown.svelte';
 	import { page } from '$app/stores';
-	import { updateQueryParams } from '$lib/helpers/urlParams.js';
+	import { updateQueryParams, parseFeedFilters } from '$lib/helpers/urlParams.js';
+	import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte.js';
+	import { useAllCommunities } from '$lib/stores/all-communities.svelte.js';
+	import { manager } from '$lib/stores/accounts.svelte';
+	import {
+		buildContentToCommunityMap,
+		filterContentByCommunity,
+		getCommunityFilterOptions
+	} from '$lib/helpers/communityContent.js';
 
 	// State management
 	let articles = $state(/** @type {any[]} */ ([]));
 	let ambResources = $state(/** @type {any[]} */ ([]));
+	let targetedPubs = $state(/** @type {any[]} */ ([]));
 	let authorProfiles = $state(/** @type {Map<string, any>} */ (new Map()));
+	let communityProfiles = $state(/** @type {Map<string, any>} */ (new Map()));
 	let isLoading = $state(true);
 	let isLoadingMore = $state(false);
 	let hasMoreArticles = $state(true);
@@ -23,8 +33,43 @@
 	let sortBy = $state('newest');
 	let authorFilter = $state('');
 	let contentType = $state('both'); // 'articles', 'amb', 'both'
-	// Initialize from URL params (one-time read using getAll for repeated keys)
-	let selectedTags = $state(/** @type {string[]} */ ($page.url.searchParams.getAll('tags')));
+
+	// Initialize from URL params
+	const initialFilters = parseFeedFilters($page.url.searchParams);
+	let selectedTags = $state(/** @type {string[]} */ (initialFilters.tags));
+	let communityFilter = $state(/** @type {string | null} */ (initialFilters.community));
+
+	// Active user state
+	let activeUser = $state(manager.active);
+	$effect(() => {
+		const subscription = manager.active$.subscribe((user) => {
+			activeUser = user;
+		});
+		return () => subscription.unsubscribe();
+	});
+
+	// Community hooks (for logged-in users)
+	const getJoinedCommunities = useJoinedCommunitiesList();
+	const getAllCommunities = useAllCommunities();
+	const joinedCommunities = $derived(getJoinedCommunities());
+	const allCommunities = $derived(getAllCommunities());
+
+	// Get joined community pubkeys for filtering
+	const joinedCommunityPubkeys = $derived(
+		joinedCommunities.map((rel) => getTagValue(rel, 'd')).filter(Boolean)
+	);
+
+	// Build content-to-community map from targeted publications
+	// Using $effect instead of $derived because buildContentToCommunityMap uses Map.set() mutations
+	let contentToCommunityMap = $state(/** @type {Map<string, string[]>} */ (new Map()));
+	$effect(() => {
+		contentToCommunityMap = buildContentToCommunityMap(targetedPubs);
+	});
+
+	// Get community options for dropdown
+	const communityOptions = $derived(
+		getCommunityFilterOptions(allCommunities, joinedCommunities, communityProfiles)
+	);
 
 	// Watch for URL changes and sync to state (URL → State only, never reverse)
 	// This ensures tag clicks from article cards update the filter UI
@@ -37,6 +82,12 @@
 		if (JSON.stringify(sortedUrlTags) !== JSON.stringify(sortedSelectedTags)) {
 			selectedTags = urlTags;
 		}
+
+		// Sync community filter from URL
+		const urlCommunity = $page.url.searchParams.get('community') || null;
+		if (urlCommunity !== communityFilter) {
+			communityFilter = urlCommunity;
+		}
 	});
 
 	// Batch size for loading
@@ -47,8 +98,9 @@
 	// Step 1: Create stateful loaders once (automatically handle pagination)
 	const articleLoader = articleTimelineLoader(BATCH_SIZE);
 	const ambLoader = ambTimelineLoader(BATCH_SIZE);
+	const targetedPubsLoader = feedTargetedPublicationsLoader(200);
 
-	// Step 2: Initial load for both types
+	// Step 2: Initial load for articles, AMB resources, and targeted publications
 	articleLoader().subscribe({
 		error: (/** @type {any} */ error) => {
 			console.error('📰 Feed: Article loader error:', error);
@@ -62,6 +114,21 @@
 			isLoading = false;
 		}
 	});
+
+	// Load targeted publications for community mapping
+	targetedPubsLoader().subscribe({
+		error: (/** @type {any} */ error) => {
+			console.error('📰 Feed: Targeted publications loader error:', error);
+		}
+	});
+
+	// Subscribe to targeted publications model
+	const targetedPubsModelSub = eventStore
+		.model(TimelineModel, { kinds: [30222], '#k': ['30023', '30142'] })
+		.subscribe((pubs) => {
+			targetedPubs = pubs || [];
+			console.log(`📰 Feed: Loaded ${targetedPubs.length} targeted publications`);
+		});
 
 	// Step 3: Model subscriptions - EventStore automatically handles deduplication
 	const articleModelSub = eventStore
@@ -194,13 +261,59 @@
 		});
 	});
 
+	// Load community profiles for the dropdown
+	let communityProfileLoaderSubs = /** @type {any[]} */ ([]);
+	let communityProfileModelSubs = /** @type {any[]} */ ([]);
+	let communityProfilesMap = new Map();
+
+	$effect(() => {
+		// Clean up previous subscriptions
+		communityProfileLoaderSubs.forEach((s) => s.unsubscribe());
+		communityProfileModelSubs.forEach((s) => s.unsubscribe());
+		communityProfileLoaderSubs = [];
+		communityProfileModelSubs = [];
+
+		// Get unique community pubkeys
+		const communityPubkeys = allCommunities.map((c) => c.pubkey);
+
+		if (communityPubkeys.length === 0) return;
+
+		console.log(`📰 Feed: Loading profiles for ${communityPubkeys.length} communities`);
+
+		communityPubkeys.forEach((pubkey) => {
+			// Loader - fetch profile from relays
+			const loaderSub = profileLoader({
+				kind: 0,
+				pubkey,
+				relays: appConfig.calendar.defaultRelays
+			}).subscribe({
+				error: (error) => {
+					console.error(`📰 Feed: Community profile loader error for ${pubkey.slice(0, 8)}:`, error);
+				}
+			});
+			communityProfileLoaderSubs.push(loaderSub);
+
+			// Model - subscribe to EventStore for reactive updates
+			const modelSub = eventStore.model(ProfileModel, { pubkey }).subscribe((profile) => {
+				if (profile) {
+					communityProfilesMap.set(pubkey, profile);
+					communityProfiles = new Map(communityProfilesMap);
+				}
+			});
+			communityProfileModelSubs.push(modelSub);
+		});
+	});
+
 	// Cleanup all subscriptions on component unmount
 	$effect(() => {
 		return () => {
 			articleModelSub.unsubscribe();
 			ambModelSub.unsubscribe();
+			targetedPubsModelSub.unsubscribe();
 			profileLoaderSubs.forEach((s) => s.unsubscribe());
 			profileModelSubs.forEach((s) => s.unsubscribe());
+			communityProfileLoaderSubs.forEach((s) => s.unsubscribe());
+			communityProfileModelSubs.forEach((s) => s.unsubscribe());
 			console.log('📰 Feed: Cleaned up all subscriptions');
 		};
 	});
@@ -274,6 +387,16 @@
 		
 		if (contentType === 'amb' || contentType === 'both') {
 			items = [...items, ...ambResources.map(r => ({ type: 'amb', data: r }))];
+		}
+
+		// Apply community filter
+		if (communityFilter) {
+			items = filterContentByCommunity(
+				items,
+				communityFilter,
+				/** @type {string[]} */ (joinedCommunityPubkeys),
+				contentToCommunityMap
+			);
 		}
 
 		// Apply author filter
@@ -354,6 +477,15 @@
 		// Update URL using helper (handles repeated keys automatically)
 		updateQueryParams($page.url.searchParams, { tags: newTags });
 	}
+
+	/**
+	 * Handle community filter change
+	 * @param {string | null} newValue
+	 */
+	function handleCommunityFilterChange(newValue) {
+		communityFilter = newValue;
+		updateQueryParams($page.url.searchParams, { community: newValue });
+	}
 </script>
 
 <svelte:head>
@@ -376,7 +508,7 @@
 
 	<!-- Filters -->
 	<div class="container mx-auto px-4 py-6">
-		<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+		<div class="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-center md:justify-between">
 			<!-- Sort -->
 			<div class="flex items-center gap-2">
 				<label for="sort" class="text-sm font-medium text-base-content">Sort by:</label>
@@ -385,6 +517,16 @@
 					<option value="oldest">Oldest First</option>
 				</select>
 			</div>
+
+			<!-- Community Filter (only for logged-in users) -->
+			{#if activeUser}
+				<CommunityFilterDropdown
+					value={communityFilter}
+					joinedCommunities={communityOptions.joined}
+					discoverCommunities={communityOptions.discover}
+					onchange={handleCommunityFilterChange}
+				/>
+			{/if}
 
 			<!-- Author Filter -->
 			<div class="flex flex-1 items-center gap-2 md:max-w-md">

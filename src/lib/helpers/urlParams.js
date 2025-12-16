@@ -184,3 +184,79 @@ export function clearAllFilters(basePath = '/calendar', options = {}) {
 		noScroll: options.noScroll ?? false // Allow scroll to top when clearing
 	});
 }
+
+// ============================================================
+// Feed Page URL Parameter Functions
+// ============================================================
+
+/**
+ * @typedef {Object} FeedFilters
+ * @property {string[]} tags - Tag filters
+ * @property {string | null} community - Community filter (pubkey, 'joined', or null)
+ */
+
+/**
+ * Parse feed filter parameters from URL
+ * 
+ * @param {URLSearchParams} searchParams - URL search params from $page.url.searchParams
+ * @returns {FeedFilters} - Parsed filter state
+ * 
+ * @example
+ * const filters = parseFeedFilters($page.url.searchParams);
+ * // Returns: {
+ * //   tags: ['bitcoin', 'nostr'],
+ * //   community: 'abc123' | 'joined' | null
+ * // }
+ */
+export function parseFeedFilters(searchParams) {
+	return {
+		tags: searchParams.getAll('tags'),
+		community: searchParams.get('community') || null
+	};
+}
+
+/**
+ * Build feed URL with specified filters
+ * 
+ * @param {Object} filters - Filter parameters
+ * @param {string[]} [filters.tags] - Tag filters
+ * @param {string | null} [filters.community] - Community filter (pubkey, 'joined', or null)
+ * @param {string} [basePath='/feed'] - Base path for URL
+ * @returns {string} - Complete URL with query parameters
+ * 
+ * @example
+ * const url = buildFeedURL({
+ *   tags: ['education', 'nostr'],
+ *   community: 'joined'
+ * });
+ * // Returns: '/feed?tags=education&tags=nostr&community=joined'
+ */
+export function buildFeedURL(filters, basePath = '/feed') {
+	const params = new URLSearchParams();
+
+	// Add tags (repeated keys)
+	if (filters.tags && filters.tags.length > 0) {
+		filters.tags.forEach((tag) => params.append('tags', tag));
+	}
+
+	// Add community filter
+	if (filters.community) {
+		params.set('community', filters.community);
+	}
+
+	const queryString = params.toString();
+	return queryString ? `${basePath}?${queryString}` : basePath;
+}
+
+/**
+ * Check if feed URL has any active filters
+ * 
+ * @param {URLSearchParams} searchParams - URL search params
+ * @returns {boolean} - True if any filters are active
+ */
+export function hasFeedFilters(searchParams) {
+	return (
+		searchParams.getAll('tags').length > 0 ||
+		searchParams.get('community') !== null
+	);
+}

@@ -38,6 +38,14 @@ export {
 export { articleTimelineLoader } from './articles.js';
 export { ambTimelineLoader } from './amb.js';
 
+// Targeted publications loaders
+export {
+	allTargetedPublicationsLoader,
+	articleTargetedPublicationsLoader,
+	ambTargetedPublicationsLoader,
+	feedTargetedPublicationsLoader
+} from './targeted-publications.js';
+
 // Calendar event loader composable and URL sync helpers
 export { useCalendarEventLoader, createUrlSyncHandler, syncInitialUrlState } from './calendar-event-loader.svelte';
 
