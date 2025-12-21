@@ -10,11 +10,13 @@
 	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
 	import { useActiveUser } from '$lib/stores/accounts.svelte';
 	import { nip19 } from 'nostr-tools';
+	import { goto } from '$app/navigation';
 	import ImageWithFallback from '../shared/ImageWithFallback.svelte';
 	import ReactionBar from '../reactions/ReactionBar.svelte';
 	import CommentList from '../comments/CommentList.svelte';
 	import EventTags from '../calendar/EventTags.svelte';
 	import CommunityShare from '../shared/CommunityShare.svelte';
+	import AMBUploadModal from './AMBUploadModal.svelte';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import { getLabelsWithFallback } from '$lib/helpers/educational/ambTransform.js';
 
@@ -45,6 +47,36 @@
 
 	// Share UI state
 	let showShareUI = $state(false);
+
+	// Edit modal state
+	let showEditModal = $state(false);
+
+	// Check if current user owns this resource
+	const isOwner = $derived(activeUser?.pubkey === event.pubkey);
+
+	/**
+	 * Handle edit button click
+	 */
+	function handleEditClick() {
+		showEditModal = true;
+	}
+
+	/**
+	 * Handle edit modal close
+	 */
+	function handleEditModalClose() {
+		showEditModal = false;
+	}
+
+	/**
+	 * Handle resource updated
+	 * @param {string} naddr - The naddr of the updated resource
+	 */
+	function handleResourceUpdated(naddr) {
+		showEditModal = false;
+		// Refresh the page to show updated content
+		window.location.reload();
+	}
 
 	// Parse related resources from 'a' tags
 	const relatedResources = $derived.by(() => {
@@ -93,6 +125,27 @@
 	const publishedAt = $derived(
 		resource.publishedDate ? new Date(resource.publishedDate * 1000) : null
 	);
+
+	// Determine if the identifier is a nostr URI or an external URL
+	const isNostrIdentifier = $derived(
+		resource.identifier?.startsWith('nostr:') || resource.identifier?.startsWith('naddr1')
+	);
+
+	/**
+	 * Navigate to content - handles both nostr identifiers and external URLs
+	 */
+	function navigateToContent() {
+		if (!resource.identifier) return;
+		
+		if (isNostrIdentifier) {
+			// Handle nostr identifiers - strip 'nostr:' prefix if present
+			const naddr = resource.identifier.replace(/^nostr:/, '');
+			goto(`/${naddr}`);
+		} else {
+			// External URL - open in new tab
+			window.open(resource.identifier, '_blank', 'noopener,noreferrer');
+		}
+	}
 </script>
 
 <svelte:head>
@@ -178,6 +231,18 @@
 
 			<!-- Actions -->
 			<div class="flex gap-2">
+				{#if isOwner}
+					<button
+						class="btn btn-outline btn-sm"
+						onclick={handleEditClick}
+						aria-label="Edit resource"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+						</svg>
+						Edit
+					</button>
+				{/if}
 				{#if activeUser}
 					<button
 						class="btn btn-secondary btn-sm"
@@ -216,34 +281,62 @@
 	{/if}
 
 
-	<!-- EXTERNAL RESOURCE ACCESS (Secondary CTA) -->
-	{#if resource.primaryURL}
-		<div class="mb-8 p-6 bg-secondary/10 border-2 border-secondary rounded-lg">
-			<h2 class="text-xl font-bold text-base-content mb-3">Access External Resource</h2>
+	<!-- VIEW CONTENT CTA -->
+	{#if resource.identifier}
+		<div class="mb-8 p-6 bg-primary/10 border-2 border-primary rounded-lg">
+			<h2 class="text-xl font-bold text-base-content mb-3">Access Content</h2>
 			<p class="text-sm text-base-content/70 mb-4">
-				This educational resource is hosted externally. Click below to access the full content.
+				{#if isNostrIdentifier}
+					View this educational content within Communikey.
+				{:else}
+					Access the full educational content.
+				{/if}
 			</p>
-			<a
-				href={resource.primaryURL}
-				target="_blank"
-				rel="noopener noreferrer"
-				class="btn btn-secondary btn-lg"
+			<button
+				onclick={navigateToContent}
+				class="btn btn-primary btn-lg"
 			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="w-5 h-5 mr-2"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-					/>
-				</svg>
-				Open Resource
+				{#if isNostrIdentifier}
+					<!-- Play/View icon for internal content -->
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="w-5 h-5 mr-2"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+						/>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+						/>
+					</svg>
+					View Content
+				{:else}
+					<!-- External link icon -->
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="w-5 h-5 mr-2"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+						/>
+					</svg>
+					Open Content
+				{/if}
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
 					class="w-4 h-4 ml-2"
@@ -258,10 +351,12 @@
 						d="M9 5l7 7-7 7"
 					/>
 				</svg>
-			</a>
-			<div class="mt-3 text-xs text-base-content/60 break-all">
-				{resource.primaryURL}
-			</div>
+			</button>
+			{#if !isNostrIdentifier}
+				<div class="mt-3 text-xs text-base-content/60 break-all">
+					{resource.identifier}
+				</div>
+			{/if}
 		</div>
 	{/if}
 
@@ -431,3 +526,13 @@
 		<CommentList rootEvent={event} activeUser={activeUser} />
 	</div>
 </article>
+
+<!-- Edit Modal -->
+{#if isOwner}
+	<AMBUploadModal
+		isOpen={showEditModal}
+		communityPubkey={event.tags?.find((/** @type {string[]} */ t) => t[0] === 'h')?.[1] || ''}
+		onClose={handleEditModalClose}
+		onPublished={handleResourceUpdated}
+	/>
+{/if}

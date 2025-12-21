@@ -14,6 +14,14 @@
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import { getLabelsWithFallback } from '$lib/helpers/educational/ambTransform.js';
 
+	// Helper to determine if identifier is a nostr URI
+	/**
+	 * @param {string|null|undefined} identifier
+	 */
+	function isNostrUri(identifier) {
+		return identifier?.startsWith('nostr:') || identifier?.startsWith('naddr1');
+	}
+
 	/**
 	 * @typedef {Object} Props
 	 * @property {any} resource - Formatted AMB resource object
@@ -64,11 +72,18 @@
 	}
 
 	/**
-	 * Open external resource in new tab
+	 * Navigate to content - handles both nostr identifiers and external URLs
 	 */
-	function openResource() {
-		if (resource.primaryURL) {
-			window.open(resource.primaryURL, '_blank', 'noopener,noreferrer');
+	function openContent() {
+		if (!resource.identifier) return;
+		
+		if (isNostrUri(resource.identifier)) {
+			// Handle nostr identifiers - strip 'nostr:' prefix if present
+			const naddr = resource.identifier.replace(/^nostr:/, '');
+			goto(`/${naddr}`);
+		} else {
+			// External URL - open in new tab
+			window.open(resource.identifier, '_blank', 'noopener,noreferrer');
 		}
 	}
 
@@ -208,30 +223,56 @@
 		{/if}
 
 		<!-- Action Button -->
-		{#if resource.primaryURL}
+		{#if resource.identifier}
 			<div class="pt-2">
 				<button
-					class="btn btn-secondary btn-sm"
+					class="btn btn-primary btn-sm"
 					onclick={(e) => {
 						e.stopPropagation();
-						openResource();
+						openContent();
 					}}
 				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-4 w-4"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-						/>
-					</svg>
-					Access Resource
+					{#if isNostrUri(resource.identifier)}
+						<!-- Play/View icon for internal content -->
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-4 w-4"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+							/>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+							/>
+						</svg>
+						View Content
+					{:else}
+						<!-- External link icon -->
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-4 w-4"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+							/>
+						</svg>
+						Open Content
+					{/if}
 				</button>
 			</div>
 		{/if}

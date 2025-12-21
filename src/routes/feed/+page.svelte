@@ -498,10 +498,10 @@
 	<div class="bg-gradient-to-br from-primary/10 to-secondary/10 py-12">
 		<div class="container mx-auto px-4">
 			<h1 class="mb-4 text-center text-4xl font-bold text-base-content md:text-5xl">
-				Long-form Articles
+				Education Feed
 			</h1>
 			<p class="text-center text-lg text-base-content/70">
-				Discover in-depth content from the Nostr ecosystem
+				Discover educational content from and by the community
 			</p>
 		</div>
 	</div>

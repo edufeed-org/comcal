@@ -58,7 +58,7 @@
 <div class="border-b border-base-300 bg-base-100 px-6 py-4">
 	<!-- Header -->
 	<div class="mb-3 flex items-center gap-3">
-		<SearchIcon class="h-4 w-4 text-base-content/70" />
+		<SearchIcon class_="h-4 w-4 text-base-content/70" />
 		<span class="font-medium text-base-content">Search Events</span>
 		{#if hasQuery}
 			<span class="badge badge-primary badge-sm">active</span>

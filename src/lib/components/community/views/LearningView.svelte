@@ -12,6 +12,7 @@
 	import { ProfileModel } from 'applesauce-core/models';
 	import { appConfig } from '$lib/config.js';
 	import AMBResourceCard from '$lib/components/educational/AMBResourceCard.svelte';
+	import EducationalFAB from '$lib/components/educational/EducationalFAB.svelte';
 	import * as m from '$lib/paraglide/messages';
 
 	/**
@@ -186,6 +187,9 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Floating Action Button for creating new resources -->
+<EducationalFAB {communityPubkey} />
 
 <style>
 	.learning-view {
