@@ -59,12 +59,17 @@
 	let learningSearchResults = $state(/** @type {import('nostr-tools').Event[]} */ ([]));
 	/** @type {import('rxjs').Subscription | null} */
 	let currentSearchSubscription = $state(null);
+	/** @type {ReturnType<typeof setTimeout> | null} */
+	let searchDebounceTimer = null;
 
 	// Get current locale
 	const locale = $derived(getLocale());
 
 	// Search input reference for auto-focus
 	let searchInputRef = $state(/** @type {HTMLInputElement | null} */ (null));
+
+	// Debounced search text for learning tab (triggers NIP-50 search)
+	let debouncedSearchQuery = $state('');
 
 	// Valid content types
 	const VALID_CONTENT_TYPES = ['all', 'events', 'learning', 'articles', 'communities'];
@@ -295,6 +300,18 @@
 	onMount(() => {
 		if (searchInputRef) {
 			searchInputRef.focus();
+		}
+	});
+
+	// Debounce search query for learning tab NIP-50 search
+	$effect(() => {
+		if (contentType === 'learning') {
+			if (searchDebounceTimer) {
+				clearTimeout(searchDebounceTimer);
+			}
+			searchDebounceTimer = setTimeout(() => {
+				debouncedSearchQuery = searchQuery;
+			}, appConfig.educational?.searchDebounceMs || 300);
 		}
 	});
 
@@ -694,42 +711,15 @@
 </svelte:head>
 
 <div class="min-h-screen bg-base-100">
-	<!-- Hero Section with Search -->
+	<!-- Hero Section -->
 	<div class="bg-gradient-to-br from-primary/10 to-secondary/10 py-12">
 		<div class="container mx-auto px-4">
 			<h1 class="mb-4 text-center text-4xl font-bold text-base-content md:text-5xl">
 				{m.discover_content_title()}
 			</h1>
-			<p class="mb-8 text-center text-lg text-base-content/70">
+			<p class="text-center text-lg text-base-content/70">
 				{m.discover_content_subtitle()}
 			</p>
-
-			<!-- Search Input -->
-			<div class="mx-auto max-w-2xl">
-				<div class="join w-full">
-					<div class="join-item flex items-center bg-base-100 pl-4">
-						<SearchIcon class_="h-5 w-5 text-base-content/50" />
-					</div>
-					<input
-						bind:this={searchInputRef}
-						type="text"
-						placeholder={m.discover_content_search_placeholder()}
-						bind:value={searchQuery}
-						class="input input-bordered join-item w-full text-lg"
-						aria-label={m.discover_content_search_aria()}
-					/>
-					{#if searchQuery}
-						<button
-							type="button"
-							class="btn btn-ghost join-item"
-							onclick={() => (searchQuery = '')}
-							aria-label={m.discover_content_clear_search()}
-						>
-							✕
-						</button>
-					{/if}
-				</div>
-			</div>
 		</div>
 	</div>
 
@@ -771,31 +761,54 @@
 		</div>
 	</div>
 
-	<!-- Learning Content Filters (shown only on learning tab) -->
-	{#if contentType === 'learning'}
+	<!-- Unified Filter Section (shown for all content types) -->
 	<div class="container mx-auto px-4 py-6">
-		<LearningContentFilters 
-			onfilterchange={handleLearningFilterChange}
-			isSearching={isLearningSearchActive && learningSearchResults.length === 0}
-		/>
-	</div>
-	{/if}
-
-	<!-- Filters (hidden when showing communities or learning) -->
-	{#if contentType !== 'communities' && contentType !== 'learning'}
-	<div class="container mx-auto px-4 py-6">
+		<!-- Search Row - shown for all content types -->
 		<div class="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-center md:justify-between">
-			<!-- Sort -->
-			<div class="flex items-center gap-2">
-				<label for="sort" class="text-sm font-medium text-base-content">{m.discover_sort_label()}</label>
-				<select id="sort" bind:value={sortBy} class="select-bordered select select-sm">
-					<option value="newest">{m.discover_sort_newest()}</option>
-					<option value="oldest">{m.discover_sort_oldest()}</option>
-				</select>
+			<!-- Search Input -->
+			<div class="flex-1 max-w-xl">
+				<div class="join w-full">
+					<div class="join-item flex items-center bg-base-100 pl-4">
+						{#if contentType === 'learning' && isLearningSearchActive && learningSearchResults.length === 0}
+							<span class="loading loading-spinner loading-sm text-primary"></span>
+						{:else}
+							<SearchIcon class_="h-5 w-5 text-base-content/50" />
+						{/if}
+					</div>
+					<input
+						bind:this={searchInputRef}
+						type="text"
+						placeholder={m.discover_content_search_placeholder()}
+						bind:value={searchQuery}
+						class="input input-bordered join-item w-full"
+						aria-label={m.discover_content_search_aria()}
+					/>
+					{#if searchQuery}
+						<button
+							type="button"
+							class="btn btn-ghost join-item"
+							onclick={() => (searchQuery = '')}
+							aria-label={m.discover_content_clear_search()}
+						>
+							✕
+						</button>
+					{/if}
+				</div>
 			</div>
 
-			<!-- Community Filter (only for logged-in users) -->
-			{#if activeUser}
+			<!-- Sort (not shown for communities) -->
+			{#if contentType !== 'communities'}
+				<div class="flex items-center gap-2">
+					<label for="sort" class="text-sm font-medium text-base-content">{m.discover_sort_label()}</label>
+					<select id="sort" bind:value={sortBy} class="select-bordered select select-sm">
+						<option value="newest">{m.discover_sort_newest()}</option>
+						<option value="oldest">{m.discover_sort_oldest()}</option>
+					</select>
+				</div>
+			{/if}
+
+			<!-- Community Filter (shown for all except communities tab, only for logged-in users) -->
+			{#if activeUser && contentType !== 'communities'}
 				<CommunityFilterDropdown
 					value={communityFilter}
 					joinedCommunities={communityOptions.joined}
@@ -805,8 +818,19 @@
 			{/if}
 		</div>
 
-		<!-- Tag Filter -->
-		{#if allTags.length > 0}
+		<!-- Learning Content Filters (SKOS dropdowns - shown only on learning tab) -->
+		{#if contentType === 'learning'}
+			<div class="mt-4">
+				<LearningContentFilters 
+					onfilterchange={handleLearningFilterChange}
+					isSearching={isLearningSearchActive && learningSearchResults.length === 0}
+					searchText={debouncedSearchQuery}
+				/>
+			</div>
+		{/if}
+
+		<!-- Tag Filter (not shown for communities or learning) -->
+		{#if contentType !== 'communities' && contentType !== 'learning' && allTags.length > 0}
 			<div class="mt-4">
 				<div class="mb-2 text-sm font-medium text-base-content">{m.discover_filter_by_topic()}</div>
 				<div class="flex flex-wrap gap-2">
@@ -835,8 +859,8 @@
 			</div>
 		{/if}
 
-		<!-- Results count -->
-		{#if displayedContent.length > 0}
+		<!-- Results count (not shown for communities which has its own) -->
+		{#if contentType !== 'communities' && displayedContent.length > 0}
 			<div class="mt-4 text-center text-sm text-base-content/70">
 				{m.discover_results_count({ count: displayedContent.length })}
 				{#if hasMoreArticles || hasMoreAMB}
@@ -845,7 +869,6 @@
 			</div>
 		{/if}
 	</div>
-	{/if}
 
 	<!-- Content Grid -->
 	<div class="container mx-auto px-4 py-8">
