@@ -10,12 +10,13 @@ import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { appConfig } from '$lib/config.js';
 
 // Bootstrap EventStore - gives it relay knowledge
-// Includes both default relays and fallback relays for event discovery
+// Includes default relays, fallback relays, and AMB relays for event discovery
 export const addressLoader = createAddressLoader(pool, { 
 	eventStore, 
 	lookupRelays: [
 		...appConfig.calendar.defaultRelays,
-		...appConfig.calendar.fallbackRelays
+		...appConfig.calendar.fallbackRelays,
+		...appConfig.educational.ambRelays
 	]
 });
 
