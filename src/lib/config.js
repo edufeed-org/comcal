@@ -21,7 +21,7 @@ export const appConfig = {
 		// Default relays for calendar filtering
 		// In development: uses local relay for testing
 		// In production: uses production relay
-		defaultRelays: isDev ? devRelays : productionRelays,
+		defaultRelays: isDev ? productionRelays : productionRelays,
 
 		// Fallback relays for event discovery when event not found
 		// on default relays or when naddr contains no relay hints

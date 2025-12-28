@@ -1,87 +1,274 @@
 <script>
-	import { useAllCommunities } from '$lib/stores/all-communities.svelte.js';
-	import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte.js';
-	import { extractHashtags } from '$lib/helpers/text.js';
-	import { getTagValue, getProfileContent } from 'applesauce-core/helpers';
-	import { profileLoader } from '$lib/loaders/profile.js';
+	import { onMount } from 'svelte';
+	import {
+		articleTimelineLoader,
+		ambTimelineLoader,
+		feedTargetedPublicationsLoader,
+		calendarTimelineLoader
+	} from '$lib/loaders';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-	import { ProfileModel } from 'applesauce-core/models';
-	import { appConfig } from '$lib/config.js';
-	import * as m from '$lib/paraglide/messages';
+	import { appConfig } from '$lib/config';
+	import { TimelineModel, ProfileModel } from 'applesauce-core/models';
+	import { AMBResourceModel, GlobalCalendarEventModel } from '$lib/models';
+	import { profileLoader } from '$lib/loaders/profile.js';
+	import { getArticlePublished, getTagValue } from 'applesauce-core/helpers';
+	import ArticleCard from '$lib/components/article/ArticleCard.svelte';
+	import AMBResourceCard from '$lib/components/educational/AMBResourceCard.svelte';
+	import CalendarEventCard from '$lib/components/calendar/CalendarEventCard.svelte';
+	import CalendarEventDetailsModal from '$lib/components/calendar/CalendarEventDetailsModal.svelte';
+	import CommunityFilterDropdown from '$lib/components/feed/CommunityFilterDropdown.svelte';
 	import CommunikeyCard from '$lib/components/CommunikeyCard.svelte';
-	import CommunitySearchInput from '$lib/components/discover/CommunitySearchInput.svelte';
-	import CommunityTagSelector from '$lib/components/discover/CommunityTagSelector.svelte';
+	import { SearchIcon } from '$lib/components/icons';
+	import { page } from '$app/stores';
+	import { updateQueryParams, parseFeedFilters } from '$lib/helpers/urlParams.js';
+	import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte.js';
+	import { useAllCommunities } from '$lib/stores/all-communities.svelte.js';
+	import { manager } from '$lib/stores/accounts.svelte';
+	import {
+		buildContentToCommunityMap,
+		filterContentByCommunity,
+		getCommunityFilterOptions
+	} from '$lib/helpers/communityContent.js';
+	import * as m from '$lib/paraglide/messages';
 
-	const getAllCommunities = useAllCommunities();
-	const getJoinedCommunities = useJoinedCommunitiesList();
-	
-	const allCommunities = $derived(getAllCommunities());
-	const joinedCommunities = $derived(getJoinedCommunities());
-
-	let searchQuery = $state('');
-	let selectedTags = $state(/** @type {string[]} */ ([]));
-	let showAll = $state(false);
-
-	// Reactive community profiles using ProfileModel (loader + model pattern)
-	// This Map updates automatically as profiles load from relays
+	// State management
+	let articles = $state(/** @type {any[]} */ ([]));
+	let ambResources = $state(/** @type {any[]} */ ([]));
+	let calendarEvents = $state(/** @type {any[]} */ ([]));
+	let targetedPubs = $state(/** @type {any[]} */ ([]));
+	let authorProfiles = $state(/** @type {Map<string, any>} */ (new Map()));
 	let communityProfiles = $state(/** @type {Map<string, any>} */ (new Map()));
+	let isLoading = $state(true);
+	let isLoadingMore = $state(false);
+	let hasMoreArticles = $state(true);
+	let hasMoreAMB = $state(true);
+	let sortBy = $state('newest');
+	let searchQuery = $state('');
+	let contentType = $state('all'); // 'events', 'learning', 'articles', 'communities', 'all'
 
-	// Load profiles reactively using ProfileModel
+	// Selected event for modal
+	let selectedEvent = $state(/** @type {any} */ (null));
+
+	// Search input reference for auto-focus
+	let searchInputRef = $state(/** @type {HTMLInputElement | null} */ (null));
+
+	// Initialize from URL params
+	const initialFilters = parseFeedFilters($page.url.searchParams);
+	let selectedTags = $state(/** @type {string[]} */ (initialFilters.tags));
+	let communityFilter = $state(/** @type {string | null} */ (initialFilters.community));
+
+	// Active user state
+	let activeUser = $state(manager.active);
 	$effect(() => {
-		if (allCommunities.length === 0) {
+		const subscription = manager.active$.subscribe((user) => {
+			activeUser = user;
+		});
+		return () => subscription.unsubscribe();
+	});
+
+	// Community hooks
+	const getJoinedCommunities = useJoinedCommunitiesList();
+	const getAllCommunities = useAllCommunities();
+	const joinedCommunities = $derived(getJoinedCommunities());
+	const allCommunities = $derived(getAllCommunities());
+
+	// Communities state for the Communities tab
+	let communities = $state(/** @type {any[]} */ ([]));
+	let hasMoreCommunities = $state(true);
+	let displayedCommunitiesCount = $state(20);
+
+	// Get joined community pubkeys for filtering
+	const joinedCommunityPubkeys = $derived(
+		joinedCommunities.map((rel) => getTagValue(rel, 'd')).filter(Boolean)
+	);
+
+	// Build content-to-community map from targeted publications
+	let contentToCommunityMap = $state(/** @type {Map<string, string[]>} */ (new Map()));
+	$effect(() => {
+		contentToCommunityMap = buildContentToCommunityMap(targetedPubs);
+	});
+
+	// Get community options for dropdown
+	const communityOptions = $derived(
+		getCommunityFilterOptions(allCommunities, joinedCommunities, communityProfiles)
+	);
+
+	// Watch for URL changes and sync to state
+	$effect(() => {
+		const urlTags = $page.url.searchParams.getAll('tags');
+		const sortedUrlTags = [...urlTags].sort();
+		const sortedSelectedTags = [...selectedTags].sort();
+
+		if (JSON.stringify(sortedUrlTags) !== JSON.stringify(sortedSelectedTags)) {
+			selectedTags = urlTags;
+		}
+
+		const urlCommunity = $page.url.searchParams.get('community') || null;
+		if (urlCommunity !== communityFilter) {
+			communityFilter = urlCommunity;
+		}
+	});
+
+	// Batch size for loading
+	const BATCH_SIZE = 20;
+
+	console.log('🔍 Discover: Setting up content loading');
+
+	// Step 1: Create stateful loaders
+	const articleLoader = articleTimelineLoader(BATCH_SIZE);
+	const ambLoader = ambTimelineLoader(BATCH_SIZE);
+	const targetedPubsLoader = feedTargetedPublicationsLoader(200);
+
+	// Step 2: Initial load
+	articleLoader().subscribe({
+		error: (/** @type {any} */ error) => {
+			console.error('🔍 Discover: Article loader error:', error);
+			isLoading = false;
+		}
+	});
+
+	ambLoader().subscribe({
+		error: (/** @type {any} */ error) => {
+			console.error('🔍 Discover: AMB loader error:', error);
+			isLoading = false;
+		}
+	});
+
+	// Load calendar events
+	calendarTimelineLoader().subscribe({
+		error: (/** @type {any} */ error) => {
+			console.error('🔍 Discover: Calendar loader error:', error);
+		}
+	});
+
+	// Load targeted publications for community mapping
+	targetedPubsLoader().subscribe({
+		error: (/** @type {any} */ error) => {
+			console.error('🔍 Discover: Targeted publications loader error:', error);
+		}
+	});
+
+	// Subscribe to targeted publications model
+	const targetedPubsModelSub = eventStore
+		.model(TimelineModel, { kinds: [30222], '#k': ['30023', '30142'] })
+		.subscribe((pubs) => {
+			targetedPubs = pubs || [];
+		});
+
+	// Subscribe to articles
+	const articleModelSub = eventStore
+		.model(TimelineModel, { kinds: [30023] })
+		.subscribe((timeline) => {
+			const previousCount = articles.length;
+			articles = timeline || [];
+			const currentCount = articles.length;
+
+			if (isLoadingMore) {
+				const newArticlesReceived = currentCount - previousCount;
+				if (newArticlesReceived === 0) {
+					hasMoreArticles = false;
+				}
+			}
+
+			isLoading = false;
+		});
+
+	// Subscribe to AMB resources
+	const ambModelSub = eventStore.model(AMBResourceModel, []).subscribe((resources) => {
+		const previousCount = ambResources.length;
+		ambResources = resources || [];
+		const currentCount = ambResources.length;
+
+		if (isLoadingMore) {
+			const newResourcesReceived = currentCount - previousCount;
+			if (newResourcesReceived === 0) {
+				hasMoreAMB = false;
+			}
+		}
+
+		isLoading = false;
+	});
+
+	// Subscribe to calendar events
+	const calendarModelSub = eventStore
+		.model(GlobalCalendarEventModel, [])
+		.subscribe((/** @type {any[]} */ events) => {
+			calendarEvents = events || [];
+			console.log(`🔍 Discover: Loaded ${calendarEvents.length} calendar events`);
+		});
+
+	// Update communities from allCommunities hook
+	$effect(() => {
+		communities = allCommunities || [];
+		console.log(`🔍 Discover: Loaded ${communities.length} communities`);
+	});
+
+	// Auto-focus search input on mount
+	onMount(() => {
+		if (searchInputRef) {
+			searchInputRef.focus();
+		}
+	});
+
+	/**
+	 * Load more content
+	 */
+	function loadMoreContent() {
+		const hasMore =
+			(contentType === 'articles' && hasMoreArticles) ||
+			(contentType === 'learning' && hasMoreAMB) ||
+			(contentType === 'communities' && hasMoreCommunities) ||
+			(contentType === 'all' && (hasMoreArticles || hasMoreAMB));
+
+		if (isLoadingMore || !hasMore) return;
+
+		isLoadingMore = true;
+
+		if (contentType === 'articles' || contentType === 'all') {
+			if (hasMoreArticles) {
+				articleLoader().subscribe({
+					error: (/** @type {any} */ error) => {
+						console.error('🔍 Discover: Article pagination error:', error);
+					}
+				});
+			}
+		}
+
+		if (contentType === 'learning' || contentType === 'all') {
+			if (hasMoreAMB) {
+				ambLoader().subscribe({
+					error: (/** @type {any} */ error) => {
+						console.error('🔍 Discover: AMB pagination error:', error);
+					}
+				});
+			}
+		}
+
+		if (contentType === 'communities') {
+			// For communities, we just increase the display count
+			const currentCount = displayedCommunitiesCount;
+			const totalCount = filteredCommunities.length;
+			if (currentCount < totalCount) {
+				displayedCommunitiesCount = Math.min(currentCount + 20, totalCount);
+			} else {
+				hasMoreCommunities = false;
+			}
+			isLoadingMore = false;
 			return;
 		}
 
-		const loaderSubscriptions = /** @type {any[]} */ ([]);
-		const modelSubscriptions = /** @type {any[]} */ ([]);
-		const profilesMap = new Map();
+		setTimeout(() => {
+			if (isLoadingMore) {
+				isLoadingMore = false;
+			}
+		}, 10000);
+	}
 
-		allCommunities.forEach((community) => {
-			const pubkey = getTagValue(community, 'd') || community.pubkey;
-
-			// Step 1: Loader - fetch profile from relays into EventStore
-			const loaderSub = profileLoader({
-				kind: 0,
-				pubkey,
-				relays: appConfig.calendar.defaultRelays
-			}).subscribe({
-				error: (error) => {
-					console.error('📋 Discover: Error loading profile for', pubkey.slice(0, 8), error);
-				}
-			});
-
-			loaderSubscriptions.push(loaderSub);
-
-			// Step 2: Model - subscribe to EventStore for reactive updates
-			// ProfileModel returns ProfileContent directly, not an Event
-			const modelSub = eventStore.model(ProfileModel, { pubkey }).subscribe((profile) => {
-				if (profile) {
-					profilesMap.set(pubkey, profile);
-					// Trigger reactivity by creating new Map
-					communityProfiles = new Map(profilesMap);
-				}
-			});
-
-			modelSubscriptions.push(modelSub);
-		});
-
-		// Cleanup subscriptions when effect re-runs or component unmounts
-		return () => {
-			loaderSubscriptions.forEach((s) => s.unsubscribe());
-			modelSubscriptions.forEach((s) => s.unsubscribe());
-		};
-	});
-
-	// Get joined community pubkeys for comparison
-	const joinedPubkeys = $derived(
-		new Set(joinedCommunities.map((c) => getTagValue(c, 'd')).filter(Boolean))
-	);
-
-	// Filter and sort communities
+	// Filtered communities for the Communities tab
 	const filteredCommunities = $derived.by(() => {
-		let filtered = allCommunities;
+		let filtered = communities;
 
-		// Apply search filter by name and description (using pre-loaded profiles)
+		// Apply search filter by name and description
 		if (searchQuery.trim()) {
 			const query = searchQuery.toLowerCase();
 			filtered = filtered.filter((community) => {
@@ -95,159 +282,582 @@
 			});
 		}
 
-		// Apply tag filter (OR logic - show if community has ANY of the selected tags)
-		if (selectedTags.length > 0) {
-			filtered = filtered.filter((community) => {
-				const communityPubkey = getTagValue(community, 'd') || community.pubkey;
-				const profile = communityProfiles.get(communityPubkey);
-				
-				// Collect all tags from multiple sources
-				const allTagsForCommunity = new Set();
-				
-				// 1. From profile about field
-				if (profile?.about) {
-					extractHashtags(profile.about).forEach(tag => allTagsForCommunity.add(tag));
-				}
-				
-				// 2. From community content
-				if (community.content) {
-					extractHashtags(community.content).forEach(tag => allTagsForCommunity.add(tag));
-				}
-				
-				// 3. From 't' tags
-				const explicitTags = community.tags
-					?.filter(tag => tag[0] === 't')
-					.map(tag => tag[1].toLowerCase().trim()) || [];
-				explicitTags.forEach(tag => {
-					if (tag) allTagsForCommunity.add(tag);
-				});
-				
-				// Check if any selected tag matches
-				return selectedTags.some(selectedTag => 
-					allTagsForCommunity.has(selectedTag.toLowerCase())
-				);
-			});
+		return filtered;
+	});
+
+	// Reset displayed count when search changes
+	$effect(() => {
+		if (searchQuery) {
+			displayedCommunitiesCount = 20;
+			hasMoreCommunities = true;
 		}
+	});
 
-		// Sort: joined communities first, then alphabetically
-		return [...filtered].sort((a, b) => {
-			const aPubkey = getTagValue(a, 'd') || a.pubkey;
-			const bPubkey = getTagValue(b, 'd') || b.pubkey;
-			const aJoined = joinedPubkeys.has(aPubkey);
-			const bJoined = joinedPubkeys.has(bPubkey);
+	// Load author profiles
+	let profileLoaderSubs = /** @type {any[]} */ ([]);
+	let profileModelSubs = /** @type {any[]} */ ([]);
+	let profilesMap = new Map();
 
-			// Joined communities first
-			if (aJoined !== bJoined) {
-				return aJoined ? -1 : 1;
-			}
+	$effect(() => {
+		profileLoaderSubs.forEach((s) => s.unsubscribe());
+		profileModelSubs.forEach((s) => s.unsubscribe());
+		profileLoaderSubs = [];
+		profileModelSubs = [];
 
-			// Then alphabetically by name
-			const aProfile = communityProfiles.get(aPubkey);
-			const bProfile = communityProfiles.get(bPubkey);
-			const aName = aProfile?.name || aPubkey;
-			const bName = bProfile?.name || bPubkey;
-			return aName.localeCompare(bName);
+		const articlePubkeys = articles.map((a) => a.pubkey);
+		const ambPubkeys = ambResources.map((r) => r.pubkey);
+		const eventPubkeys = calendarEvents.map((e) => e.pubkey);
+		const communityPubkeys = communities.map((c) => getTagValue(c, 'd') || c.pubkey);
+		const authorPubkeys = [...new Set([...articlePubkeys, ...ambPubkeys, ...eventPubkeys, ...communityPubkeys])];
+
+		if (authorPubkeys.length === 0) return;
+
+		authorPubkeys.forEach((pubkey) => {
+			const loaderSub = profileLoader({
+				kind: 0,
+				pubkey,
+				relays: appConfig.calendar.defaultRelays
+			}).subscribe({
+				error: (error) => {
+					console.error(`🔍 Discover: Profile loader error for ${pubkey.slice(0, 8)}:`, error);
+				}
+			});
+			profileLoaderSubs.push(loaderSub);
+
+			const modelSub = eventStore.model(ProfileModel, { pubkey }).subscribe((profile) => {
+				if (profile) {
+					profilesMap.set(pubkey, profile);
+					authorProfiles = new Map(profilesMap);
+				}
+			});
+			profileModelSubs.push(modelSub);
 		});
 	});
 
-	// Calculate display limit
-	const displayLimit = 12;
-	const displayedCommunities = $derived(
-		showAll ? filteredCommunities : filteredCommunities.slice(0, displayLimit)
-	);
-	const hasMore = $derived(filteredCommunities.length > displayLimit);
+	// Load community profiles
+	let communityProfileLoaderSubs = /** @type {any[]} */ ([]);
+	let communityProfileModelSubs = /** @type {any[]} */ ([]);
+	let communityProfilesMap = new Map();
 
-	// Callback handlers for reusable components
-	function handleSearchChange(/** @type {string} */ newQuery) {
-		searchQuery = newQuery;
-		console.log('📋 Discover: Search query updated:', newQuery);
+	$effect(() => {
+		communityProfileLoaderSubs.forEach((s) => s.unsubscribe());
+		communityProfileModelSubs.forEach((s) => s.unsubscribe());
+		communityProfileLoaderSubs = [];
+		communityProfileModelSubs = [];
+
+		const communityPubkeys = allCommunities.map((c) => c.pubkey);
+
+		if (communityPubkeys.length === 0) return;
+
+		communityPubkeys.forEach((pubkey) => {
+			const loaderSub = profileLoader({
+				kind: 0,
+				pubkey,
+				relays: appConfig.calendar.defaultRelays
+			}).subscribe({
+				error: (error) => {
+					console.error(`🔍 Discover: Community profile loader error:`, error);
+				}
+			});
+			communityProfileLoaderSubs.push(loaderSub);
+
+			const modelSub = eventStore.model(ProfileModel, { pubkey }).subscribe((profile) => {
+				if (profile) {
+					communityProfilesMap.set(pubkey, profile);
+					communityProfiles = new Map(communityProfilesMap);
+				}
+			});
+			communityProfileModelSubs.push(modelSub);
+		});
+	});
+
+	// Cleanup subscriptions
+	$effect(() => {
+		return () => {
+			articleModelSub.unsubscribe();
+			ambModelSub.unsubscribe();
+			calendarModelSub.unsubscribe();
+			targetedPubsModelSub.unsubscribe();
+			profileLoaderSubs.forEach((s) => s.unsubscribe());
+			profileModelSubs.forEach((s) => s.unsubscribe());
+			communityProfileLoaderSubs.forEach((s) => s.unsubscribe());
+			communityProfileModelSubs.forEach((s) => s.unsubscribe());
+		};
+	});
+
+	// Intersection Observer for infinite scroll
+	$effect(() => {
+		const hasContent = articles.length > 0 || ambResources.length > 0;
+		const hasMore = hasMoreArticles || hasMoreAMB;
+		if (!hasContent || !hasMore) return;
+
+		const sentinel = document.getElementById('load-more-sentinel');
+		if (!sentinel) return;
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0].isIntersecting) {
+					loadMoreContent();
+				}
+			},
+			{ root: null, rootMargin: '200px', threshold: 0.1 }
+		);
+
+		observer.observe(sentinel);
+
+		return () => observer.disconnect();
+	});
+
+	// Get all unique tags
+	const allTags = $derived.by(() => {
+		const tags = new Set();
+
+		articles.forEach((article) => {
+			article.tags
+				?.filter((/** @type {any} */ t) => t[0] === 't')
+				.forEach((/** @type {any} */ t) => tags.add(t[1]));
+		});
+
+		ambResources.forEach((resource) => {
+			resource.keywords?.forEach((/** @type {string} */ keyword) => tags.add(keyword));
+		});
+
+		calendarEvents.forEach((event) => {
+			event.hashtags?.forEach((/** @type {string} */ tag) => tags.add(tag));
+		});
+
+		return Array.from(tags).sort();
+	});
+
+	// Combined and filtered content
+	const combinedContent = $derived.by(() => {
+		/** @type {Array<{type: string, data: any}>} */
+		let items = [];
+
+		if (contentType === 'events' || contentType === 'all') {
+			items = [
+				...items,
+				...calendarEvents.map((e) => ({ type: 'event', data: e }))
+			];
+		}
+
+		if (contentType === 'learning' || contentType === 'all') {
+			items = [...items, ...ambResources.map((r) => ({ type: 'amb', data: r }))];
+		}
+
+		if (contentType === 'articles' || contentType === 'all') {
+			items = [...items, ...articles.map((a) => ({ type: 'article', data: a }))];
+		}
+
+		// Note: Communities are handled separately, not in combinedContent
+		// They use the CommunikeyCard component directly
+
+		// Apply community filter
+		if (communityFilter) {
+			items = filterContentByCommunity(
+				items,
+				communityFilter,
+				/** @type {string[]} */ (joinedCommunityPubkeys),
+				contentToCommunityMap
+			);
+		}
+
+		// Apply text search filter
+		if (searchQuery.trim()) {
+			const query = searchQuery.toLowerCase();
+			items = items.filter((item) => {
+				const pubkey = item.data.pubkey;
+				const profile = authorProfiles.get(pubkey);
+				const name = profile?.name?.toLowerCase() || '';
+				const displayName = profile?.display_name?.toLowerCase() || '';
+
+				if (item.type === 'article') {
+					const title = getTagValue(item.data, 'title')?.toLowerCase() || '';
+					const summary = getTagValue(item.data, 'summary')?.toLowerCase() || '';
+					return (
+						title.includes(query) ||
+						summary.includes(query) ||
+						name.includes(query) ||
+						displayName.includes(query)
+					);
+				} else if (item.type === 'amb') {
+					const resourceName = item.data.name?.toLowerCase() || '';
+					const description = item.data.description?.toLowerCase() || '';
+					return (
+						resourceName.includes(query) ||
+						description.includes(query) ||
+						name.includes(query) ||
+						displayName.includes(query)
+					);
+				} else if (item.type === 'event') {
+					const title = item.data.title?.toLowerCase() || '';
+					const summary = item.data.summary?.toLowerCase() || '';
+					const locations = item.data.locations?.join(' ').toLowerCase() || '';
+					return (
+						title.includes(query) ||
+						summary.includes(query) ||
+						locations.includes(query) ||
+						name.includes(query) ||
+						displayName.includes(query)
+					);
+				}
+				return false;
+			});
+		}
+
+		// Apply tag filter
+		if (selectedTags.length > 0) {
+			items = items.filter((item) => {
+				if (item.type === 'article') {
+					const articleTags =
+						item.data.tags
+							?.filter((/** @type {any} */ t) => t[0] === 't')
+							.map((/** @type {any} */ t) => t[1].toLowerCase()) || [];
+					return selectedTags.some((tag) => articleTags.includes(tag.toLowerCase()));
+				} else if (item.type === 'amb') {
+					const keywords =
+						item.data.keywords?.map((/** @type {string} */ k) => k.toLowerCase()) || [];
+					return selectedTags.some((tag) => keywords.includes(tag.toLowerCase()));
+				} else if (item.type === 'event') {
+					const eventTags =
+						item.data.hashtags?.map((/** @type {string} */ t) => t.toLowerCase()) || [];
+					return selectedTags.some((tag) => eventTags.includes(tag.toLowerCase()));
+				}
+				return false;
+			});
+		}
+
+		// Sort
+		const sorted = [...items].sort((a, b) => {
+			let aDate, bDate;
+
+			if (a.type === 'article') {
+				aDate = getArticlePublished(a.data);
+			} else if (a.type === 'amb') {
+				aDate = a.data.publishedDate;
+			} else {
+				aDate = a.data.start;
+			}
+
+			if (b.type === 'article') {
+				bDate = getArticlePublished(b.data);
+			} else if (b.type === 'amb') {
+				bDate = b.data.publishedDate;
+			} else {
+				bDate = b.data.start;
+			}
+
+			if (sortBy === 'newest') {
+				return bDate - aDate;
+			} else if (sortBy === 'oldest') {
+				return aDate - bDate;
+			}
+			return 0;
+		});
+
+		return sorted;
+	});
+
+	const displayedContent = $derived(combinedContent);
+
+	/**
+	 * Toggle tag selection
+	 * @param {string} tag
+	 */
+	function toggleTag(tag) {
+		const newTags = selectedTags.includes(tag)
+			? selectedTags.filter((t) => t !== tag)
+			: [...selectedTags, tag];
+
+		selectedTags = newTags;
+		updateQueryParams($page.url.searchParams, { tags: newTags });
 	}
 
-	function handleTagChange(/** @type {string[]} */ newTags) {
-		selectedTags = newTags;
-		console.log('📋 Discover: Selected tags updated:', newTags);
+	/**
+	 * Handle community filter change
+	 * @param {string | null} newValue
+	 */
+	function handleCommunityFilterChange(newValue) {
+		communityFilter = newValue;
+		updateQueryParams($page.url.searchParams, { community: newValue });
+	}
+
+	/**
+	 * Handle event click - show modal
+	 * @param {any} event
+	 */
+	function handleEventClick(event) {
+		selectedEvent = event;
 	}
 </script>
 
 <svelte:head>
-	<title>{m.discover_meta_title()}</title>
-	<meta
-		name="description"
-		content={m.discover_meta_description()}
-	/>
+	<title>{m.discover_content_meta_title()}</title>
+	<meta name="description" content={m.discover_content_meta_description()} />
 </svelte:head>
 
 <div class="min-h-screen bg-base-100">
-	<!-- Header -->
+	<!-- Hero Section with Search -->
 	<div class="bg-gradient-to-br from-primary/10 to-secondary/10 py-12">
 		<div class="container mx-auto px-4">
 			<h1 class="mb-4 text-center text-4xl font-bold text-base-content md:text-5xl">
-				{m.discover_title()}
+				{m.discover_content_title()}
 			</h1>
-			<p class="text-center text-lg text-base-content/70">
-				{m.discover_subtitle()}
+			<p class="mb-8 text-center text-lg text-base-content/70">
+				{m.discover_content_subtitle()}
 			</p>
+
+			<!-- Search Input -->
+			<div class="mx-auto max-w-2xl">
+				<div class="join w-full">
+					<div class="join-item flex items-center bg-base-100 pl-4">
+						<SearchIcon class_="h-5 w-5 text-base-content/50" />
+					</div>
+					<input
+						bind:this={searchInputRef}
+						type="text"
+						placeholder={m.discover_content_search_placeholder()}
+						bind:value={searchQuery}
+						class="input input-bordered join-item w-full text-lg"
+						aria-label={m.discover_content_search_aria()}
+					/>
+					{#if searchQuery}
+						<button
+							type="button"
+							class="btn btn-ghost join-item"
+							onclick={() => (searchQuery = '')}
+							aria-label={m.discover_content_clear_search()}
+						>
+							✕
+						</button>
+					{/if}
+				</div>
+			</div>
 		</div>
 	</div>
 
-	<!-- Search Input Component -->
-	<CommunitySearchInput onSearchChange={handleSearchChange} />
+	<!-- Content Type Tabs -->
+	<div class="border-b border-base-300 bg-base-100">
+		<div class="container mx-auto px-4">
+			<div class="tabs tabs-boxed bg-transparent justify-center py-4">
+				<button
+					class="tab {contentType === 'all' ? 'tab-active' : ''}"
+					onclick={() => (contentType = 'all')}
+				>
+					{m.discover_tab_all()}
+				</button>
+				<button
+					class="tab {contentType === 'events' ? 'tab-active' : ''}"
+					onclick={() => (contentType = 'events')}
+				>
+					{m.discover_tab_events()}
+				</button>
+				<button
+					class="tab {contentType === 'learning' ? 'tab-active' : ''}"
+					onclick={() => (contentType = 'learning')}
+				>
+					{m.discover_tab_learning()}
+				</button>
+				<button
+					class="tab {contentType === 'articles' ? 'tab-active' : ''}"
+					onclick={() => (contentType = 'articles')}
+				>
+					{m.discover_tab_articles()}
+				</button>
+				<button
+					class="tab {contentType === 'communities' ? 'tab-active' : ''}"
+					onclick={() => (contentType = 'communities')}
+				>
+					{m.discover_tab_communities()}
+				</button>
+			</div>
+		</div>
+	</div>
 
-	<!-- Tag Filter Component -->
-	<CommunityTagSelector
-		communities={allCommunities}
-		communityProfiles={communityProfiles}
-		selectedTags={selectedTags}
-		onTagChange={handleTagChange}
-	/>
+	<!-- Filters (hidden when showing communities) -->
+	{#if contentType !== 'communities'}
+	<div class="container mx-auto px-4 py-6">
+		<div class="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-center md:justify-between">
+			<!-- Sort -->
+			<div class="flex items-center gap-2">
+				<label for="sort" class="text-sm font-medium text-base-content">{m.discover_sort_label()}</label>
+				<select id="sort" bind:value={sortBy} class="select-bordered select select-sm">
+					<option value="newest">{m.discover_sort_newest()}</option>
+					<option value="oldest">{m.discover_sort_oldest()}</option>
+				</select>
+			</div>
 
-	<!-- Communities Grid -->
-	<div class="container mx-auto px-4 py-12">
-		{#if allCommunities.length === 0}
-			<!-- Loading state -->
+			<!-- Community Filter (only for logged-in users) -->
+			{#if activeUser}
+				<CommunityFilterDropdown
+					value={communityFilter}
+					joinedCommunities={communityOptions.joined}
+					discoverCommunities={communityOptions.discover}
+					onchange={handleCommunityFilterChange}
+				/>
+			{/if}
+		</div>
+
+		<!-- Tag Filter -->
+		{#if allTags.length > 0}
+			<div class="mt-4">
+				<div class="mb-2 text-sm font-medium text-base-content">{m.discover_filter_by_topic()}</div>
+				<div class="flex flex-wrap gap-2">
+					{#each allTags.slice(0, 20) as tag}
+						<button
+							class="badge cursor-pointer badge-lg transition-colors {selectedTags.includes(tag)
+								? 'badge-primary'
+								: 'badge-outline hover:badge-primary'}"
+							onclick={() => toggleTag(tag)}
+						>
+							#{tag}
+						</button>
+					{/each}
+				</div>
+				{#if selectedTags.length > 0}
+					<button
+						class="btn mt-2 btn-ghost btn-xs"
+						onclick={() => {
+							selectedTags = [];
+							updateQueryParams($page.url.searchParams, { tags: [] });
+						}}
+					>
+						{m.discover_clear_filters()}
+					</button>
+				{/if}
+			</div>
+		{/if}
+
+		<!-- Results count -->
+		{#if displayedContent.length > 0}
+			<div class="mt-4 text-center text-sm text-base-content/70">
+				{m.discover_results_count({ count: displayedContent.length })}
+				{#if hasMoreArticles || hasMoreAMB}
+					<span class="ml-2 text-primary">• {m.discover_scroll_for_more()}</span>
+				{/if}
+			</div>
+		{/if}
+	</div>
+	{/if}
+
+	<!-- Content Grid -->
+	<div class="container mx-auto px-4 py-8">
+		{#if contentType === 'communities'}
+			<!-- Communities Grid -->
+			{#if communities.length === 0}
+				<div class="flex justify-center py-12">
+					<div class="text-center">
+						<div class="loading loading-lg loading-spinner text-primary"></div>
+						<p class="mt-4 text-base-content/70">{m.discover_loading()}</p>
+					</div>
+				</div>
+			{:else if filteredCommunities.length === 0}
+				<div class="flex justify-center py-12">
+					<div class="text-center">
+						<p class="text-xl text-base-content/70">{m.discover_no_matches()}</p>
+						<p class="mt-2 text-base-content/50">{m.discover_no_matches_subtitle()}</p>
+					</div>
+				</div>
+			{:else}
+				<!-- Results count -->
+				<div class="mb-6 text-center text-sm text-base-content/70">
+					{m.discover_results_count({ count: filteredCommunities.length })}
+				</div>
+
+				<div class="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+					{#each filteredCommunities.slice(0, displayedCommunitiesCount) as community (community.pubkey)}
+						<CommunikeyCard 
+							pubkey={community.pubkey}
+							showJoinButton={true}
+						/>
+					{/each}
+				</div>
+
+				<!-- Infinite Scroll Sentinel for Communities -->
+				{#if displayedCommunitiesCount < filteredCommunities.length}
+					<div id="load-more-sentinel" class="mt-8 py-8">
+						{#if isLoadingMore}
+							<div class="flex justify-center">
+								<div class="text-center">
+									<div class="loading loading-lg loading-spinner text-primary"></div>
+									<p class="mt-4 text-base-content/70">{m.discover_loading_more()}</p>
+								</div>
+							</div>
+						{/if}
+					</div>
+				{:else}
+					<div class="mt-8 py-8 flex justify-center">
+						<p class="text-base-content/50">{m.discover_no_more_content()}</p>
+					</div>
+				{/if}
+			{/if}
+		{:else if isLoading}
+			<!-- Loading State -->
 			<div class="flex justify-center py-12">
 				<div class="text-center">
-					<div class="loading loading-spinner loading-lg text-primary"></div>
+					<div class="loading loading-lg loading-spinner text-primary"></div>
 					<p class="mt-4 text-base-content/70">{m.discover_loading()}</p>
 				</div>
 			</div>
-		{:else if filteredCommunities.length === 0}
-			<!-- No results -->
+		{:else if displayedContent.length === 0}
+			<!-- Empty State -->
 			<div class="flex justify-center py-12">
 				<div class="text-center">
-					<p class="text-xl text-base-content/70">{m.discover_no_results()}</p>
-					<p class="mt-2 text-base-content/50">{m.discover_no_results_subtitle()}</p>
+					{#if articles.length === 0 && ambResources.length === 0 && calendarEvents.length === 0}
+						<p class="text-xl text-base-content/70">{m.discover_no_content()}</p>
+						<p class="mt-2 text-base-content/50">{m.discover_no_content_subtitle()}</p>
+					{:else}
+						<p class="text-xl text-base-content/70">{m.discover_no_matches()}</p>
+						<p class="mt-2 text-base-content/50">{m.discover_no_matches_subtitle()}</p>
+					{/if}
 				</div>
 			</div>
 		{:else}
-			<!-- Results count -->
-			<div class="mb-6 text-center">
-				<p class="text-base-content/70">
-					{m.discover_results_count({ count: filteredCommunities.length })}
-				</p>
-			</div>
-
-			<!-- Communities grid -->
-			<div class="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-				{#each displayedCommunities as community (community.pubkey)}
-					<CommunikeyCard 
-						pubkey={community.pubkey}
-						showJoinButton={true}
-					/>
+			<!-- Content Grid -->
+			<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+				{#each displayedContent as item (item.data.id)}
+					{#if item.type === 'article'}
+						<ArticleCard
+							article={item.data}
+							authorProfile={authorProfiles.get(item.data.pubkey)}
+						/>
+					{:else if item.type === 'amb'}
+						<AMBResourceCard
+							resource={item.data}
+							authorProfile={authorProfiles.get(item.data.pubkey)}
+						/>
+					{:else if item.type === 'event'}
+						<CalendarEventCard
+							event={item.data}
+							onEventClick={handleEventClick}
+						/>
+					{/if}
 				{/each}
 			</div>
 
-			<!-- Show more/less button -->
-			{#if hasMore}
-				<div class="mt-8 text-center">
-					<button
-						onclick={() => (showAll = !showAll)}
-						class="btn btn-primary btn-lg"
-					>
-						{showAll ? m.discover_show_less() : m.discover_show_all({ count: filteredCommunities.length })}
-					</button>
-				</div>
-			{/if}
+			<!-- Infinite Scroll Sentinel -->
+			<div id="load-more-sentinel" class="mt-8 py-8">
+				{#if isLoadingMore}
+					<div class="flex justify-center">
+						<div class="text-center">
+							<div class="loading loading-lg loading-spinner text-primary"></div>
+							<p class="mt-4 text-base-content/70">{m.discover_loading_more()}</p>
+						</div>
+					</div>
+				{:else if !hasMoreArticles && !hasMoreAMB}
+					<div class="flex justify-center">
+						<p class="text-base-content/50">{m.discover_no_more_content()}</p>
+					</div>
+				{/if}
+			</div>
 		{/if}
 	</div>
 </div>
+
+<!-- Event Details Modal -->
+{#if selectedEvent}
+	<CalendarEventDetailsModal
+		event={selectedEvent}
+		onclose={() => (selectedEvent = null)}
+	/>
+{/if}
