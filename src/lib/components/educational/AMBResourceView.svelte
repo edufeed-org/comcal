@@ -19,6 +19,7 @@
 	import AMBUploadModal from './AMBUploadModal.svelte';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import { getLabelsWithFallback } from '$lib/helpers/educational/ambTransform.js';
+	import * as m from '$lib/paraglide/messages.js';
 
 	/**
 	 * @typedef {Object} Props
@@ -204,13 +205,16 @@
 							</div>
 						{/if}
 					</div>
-				{:else if resource.creatorNames.length > 0}
-					<!-- Fallback to name-only creators -->
-					<div class="avatar placeholder">
-						<div class="w-12 h-12 rounded-full bg-neutral text-neutral-content">
-							<span class="text-lg">{resource.creatorNames[0][0]}</span>
-						</div>
+			{:else if resource.creatorNames.length > 0}
+				<!-- Fallback to name-only creators -->
+				<div class="avatar">
+					<div class="w-12 h-12 rounded-full">
+						<img
+							src={`https://robohash.org/${encodeURIComponent(resource.creatorNames[0])}`}
+							alt="Creator"
+						/>
 					</div>
+				</div>
 					<div>
 						<div class="font-semibold text-base-content">{resource.creatorNames[0]}</div>
 						{#if resource.creatorNames.length > 1}
@@ -284,12 +288,12 @@
 	<!-- VIEW CONTENT CTA -->
 	{#if resource.identifier}
 		<div class="mb-8 p-6 bg-primary/10 border-2 border-primary rounded-lg">
-			<h2 class="text-xl font-bold text-base-content mb-3">Access Content</h2>
+			<h2 class="text-xl font-bold text-base-content mb-3">{m.amb_resource_access_content_title()}</h2>
 			<p class="text-sm text-base-content/70 mb-4">
 				{#if isNostrIdentifier}
-					View this educational content within Communikey.
+					{m.amb_resource_access_content_nostr_desc()}
 				{:else}
-					Access the full educational content.
+					{m.amb_resource_access_content_external_desc()}
 				{/if}
 			</p>
 			<button
@@ -318,7 +322,7 @@
 							d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 						/>
 					</svg>
-					View Content
+					{m.amb_resource_view_content()}
 				{:else}
 					<!-- External link icon -->
 					<svg
@@ -335,7 +339,7 @@
 							d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
 						/>
 					</svg>
-					Open Content
+					{m.amb_resource_open_content()}
 				{/if}
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -363,13 +367,13 @@
 	<!-- EDUCATIONAL METADATA -->
 	{#if hasEducationalMetadata}
 		<div class="mb-8">
-			<h2 class="text-2xl font-bold text-base-content mb-4">Educational Details</h2>
+			<h2 class="text-2xl font-bold text-base-content mb-4">{m.amb_resource_educational_details()}</h2>
 
 			<div class="grid md:grid-cols-2 gap-6">
 				<!-- Educational Levels -->
 				{#if localizedEducationalLevels.length > 0}
 					<div class="bg-base-200 p-4 rounded-lg">
-						<h3 class="font-semibold text-sm text-base-content/70 mb-2">Educational Level</h3>
+						<h3 class="font-semibold text-sm text-base-content/70 mb-2">{m.amb_resource_educational_level()}</h3>
 						<div class="flex flex-wrap gap-2">
 							{#each localizedEducationalLevels as level}
 								<span class="badge badge-secondary">{level.label}</span>
@@ -381,7 +385,7 @@
 				<!-- Subjects -->
 				{#if localizedSubjects.length > 0}
 					<div class="bg-base-200 p-4 rounded-lg">
-						<h3 class="font-semibold text-sm text-base-content/70 mb-2">Subjects</h3>
+						<h3 class="font-semibold text-sm text-base-content/70 mb-2">{m.amb_resource_subjects()}</h3>
 						<div class="flex flex-wrap gap-2">
 							{#each localizedSubjects as subject}
 								<span class="badge badge-outline">{subject.label}</span>
@@ -393,7 +397,7 @@
 				<!-- Languages -->
 				{#if resource.languages.length > 0}
 					<div class="bg-base-200 p-4 rounded-lg">
-						<h3 class="font-semibold text-sm text-base-content/70 mb-2">Available Languages</h3>
+						<h3 class="font-semibold text-sm text-base-content/70 mb-2">{m.amb_resource_available_languages()}</h3>
 						<div class="flex flex-wrap gap-2">
 							{#each resource.languages as lang}
 								<span class="badge badge-ghost">{lang.toUpperCase()}</span>
@@ -404,11 +408,11 @@
 
 				<!-- Free/Paid -->
 				<div class="bg-base-200 p-4 rounded-lg">
-					<h3 class="font-semibold text-sm text-base-content/70 mb-2">Access</h3>
+					<h3 class="font-semibold text-sm text-base-content/70 mb-2">{m.amb_resource_access()}</h3>
 					<span
 						class="badge {resource.isFree ? 'badge-success' : 'badge-warning'} badge-lg"
 					>
-						{resource.isFree ? 'Free' : 'Paid / Registration Required'}
+						{resource.isFree ? m.amb_resource_free() : m.amb_resource_paid()}
 					</span>
 				</div>
 			</div>
@@ -418,7 +422,7 @@
 	<!-- LICENSE INFORMATION -->
 	{#if resource.license}
 		<div class="mb-8 p-6 bg-info/10 border border-info rounded-lg">
-			<h2 class="text-xl font-bold text-base-content mb-3">License</h2>
+			<h2 class="text-xl font-bold text-base-content mb-3">{m.amb_resource_license()}</h2>
 			<div class="flex items-center gap-4">
 				<span class="badge badge-info badge-lg">{resource.license.label}</span>
 				<a
@@ -427,7 +431,7 @@
 					rel="noopener noreferrer"
 					class="text-sm link link-primary"
 				>
-					View license details →
+					{m.amb_resource_view_license()}
 				</a>
 			</div>
 		</div>
@@ -436,7 +440,7 @@
 	<!-- KEYWORDS/TAGS -->
 	{#if resource.keywords.length > 0}
 		<div class="mb-8">
-			<h3 class="text-lg font-semibold text-base-content mb-3">Topics & Keywords</h3>
+			<h3 class="text-lg font-semibold text-base-content mb-3">{m.amb_resource_topics_keywords()}</h3>
 			<EventTags tags={resource.keywords} size="md" targetRoute="/feed" />
 		</div>
 	{/if}
@@ -444,7 +448,7 @@
 	<!-- ALL CREATORS LIST -->
 	{#if creators.length > 1 || resource.creatorNames.length > 1}
 		<div class="mb-8">
-			<h3 class="text-lg font-semibold text-base-content mb-3">All Contributors</h3>
+			<h3 class="text-lg font-semibold text-base-content mb-3">{m.amb_resource_all_contributors()}</h3>
 			<div class="grid md:grid-cols-2 gap-3">
 				{#each creators as creator}
 					{@const getCreatorProfile = useUserProfile(creator.pubkey)}
@@ -469,9 +473,12 @@
 
 				{#each resource.creatorNames as name}
 					<div class="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
-						<div class="avatar placeholder">
-							<div class="w-10 h-10 rounded-full bg-neutral text-neutral-content">
-								<span class="text-lg">{name[0]}</span>
+						<div class="avatar">
+							<div class="w-10 h-10 rounded-full">
+								<img
+									src={`https://robohash.org/${encodeURIComponent(name)}`}
+									alt="Creator"
+								/>
 							</div>
 						</div>
 						<div class="font-medium text-base-content">{name}</div>
@@ -484,7 +491,7 @@
 	<!-- RELATED RESOURCES -->
 	{#if relatedResources.length > 0}
 		<div class="mb-8">
-			<h3 class="text-lg font-semibold text-base-content mb-3">Related Resources</h3>
+			<h3 class="text-lg font-semibold text-base-content mb-3">{m.amb_resource_related_resources()}</h3>
 			<div class="space-y-2">
 				{#each relatedResources as related}
 					<a
@@ -522,7 +529,7 @@
 
 	<!-- COMMENTS SECTION (Nostr-first: Primary interaction) -->
 	<div class="mt-8">
-		<h2 class="text-2xl font-bold text-base-content mb-4">Discussion</h2>
+		<h2 class="text-2xl font-bold text-base-content mb-4">{m.amb_resource_discussion()}</h2>
 		<CommentList rootEvent={event} activeUser={activeUser} />
 	</div>
 </article>

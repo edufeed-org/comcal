@@ -14,6 +14,7 @@
 	import EventDebugPanel from '../shared/EventDebugPanel.svelte';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import { getLabelsWithFallback } from '$lib/helpers/educational/ambTransform.js';
+	import * as m from '$lib/paraglide/messages.js';
 
 	// Helper to determine if identifier is a nostr URI
 	/**
@@ -190,7 +191,7 @@
 
 				<!-- Free/Paid Indicator -->
 				{#if resource.isFree}
-					<div class="badge badge-success badge-sm">Free</div>
+					<div class="badge badge-success badge-sm">{m.amb_resource_free()}</div>
 				{/if}
 
 				<!-- Languages -->
@@ -255,8 +256,8 @@
 								d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 							/>
 						</svg>
-						View Content
-					{:else}
+					{m.amb_resource_view_content()}
+				{:else}
 						<!-- External link icon -->
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -272,8 +273,8 @@
 								d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
 							/>
 						</svg>
-						Open Content
-					{/if}
+					{m.amb_resource_open_content()}
+				{/if}
 				</button>
 			</div>
 		{/if}
