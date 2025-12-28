@@ -11,6 +11,7 @@
 	import ImageWithFallback from '../shared/ImageWithFallback.svelte';
 	import ReactionBar from '../reactions/ReactionBar.svelte';
 	import EventTags from '../calendar/EventTags.svelte';
+	import EventDebugPanel from '../shared/EventDebugPanel.svelte';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import { getLabelsWithFallback } from '$lib/helpers/educational/ambTransform.js';
 
@@ -281,6 +282,13 @@
 		{#if !compact && resource.tags}
 			<div class="pt-2" onclick={(e) => e.stopPropagation()}>
 				<ReactionBar event={{ id: resource.id, kind: resource.kind, pubkey: resource.pubkey, tags: resource.tags }} />
+			</div>
+		{/if}
+
+		<!-- Debug Panel -->
+		{#if !compact}
+			<div onclick={(e) => e.stopPropagation()}>
+				<EventDebugPanel event={resource} />
 			</div>
 		{/if}
 	</div>

@@ -216,6 +216,7 @@ export function formatAMBResource(event, lang = 'en') {
 		creatorNames: getAMBCreatorNames(event),
 		resourceURLs: getAMBResourceURLs(event),
 		primaryURL: getAMBPrimaryURL(event),
-		tags: event.tags // Keep original tags for reference
+		tags: event.tags, // Keep original tags for reference
+		rawEvent: event // Keep original raw Nostr event for debug purposes
 	};
 }

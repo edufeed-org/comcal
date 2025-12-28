@@ -3,6 +3,7 @@
 	import { SimpleAccount } from 'applesauce-accounts/accounts';
 	import { merge, Subject, Subscription } from 'rxjs';
 	import { manager } from '$lib/stores/accounts.svelte';
+	import { appSettings } from '$lib/stores/app-settings.svelte.js';
 	import * as m from '$lib/paraglide/messages';
 
 	let accounts = [];
@@ -109,7 +110,7 @@
 <div class="container mx-auto my-8 p-4">
 	<div class="mb-6 flex items-center justify-between">
 		<h1 class="text-2xl font-bold">{m.account_manager_title()}</h1>
-		<button class="btn btn-primary" on:click={createNewAccount}>{m.account_manager_create_button()}</button>
+		<button class="btn btn-primary" onclick={createNewAccount}>{m.account_manager_create_button()}</button>
 	</div>
 
 	<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -133,7 +134,7 @@
 						class="input-bordered input w-full"
 						bind:value={names[account.id]}
 						placeholder={m.account_manager_name_placeholder()}
-						on:blur={() => saveName(account.id)}
+						onblur={() => saveName(account.id)}
 					/>
 
 					<p class="font-mono text-sm text-base-content/70">
@@ -143,12 +144,12 @@
 					<div class="card-actions justify-end">
 						<button
 							class="btn btn-primary"
-							on:click={() => setActive(account.id)}
+							onclick={() => setActive(account.id)}
 							disabled={activeAccount && activeAccount.id === account.id}
 						>
 							{m.account_manager_set_active_button()}
 						</button>
-						<button class="btn btn-error" on:click={() => removeAccount(account.id)}>
+						<button class="btn btn-error" onclick={() => removeAccount(account.id)}>
 							{m.account_manager_remove_button()}
 						</button>
 					</div>
@@ -162,4 +163,28 @@
 			{m.account_manager_empty_state()}
 		</div>
 	{/if}
+
+	<!-- Developer Settings Section -->
+	<div class="divider mt-12"></div>
+	<div class="mb-6">
+		<h2 class="text-xl font-bold mb-4">{m.settings_developer_title()}</h2>
+		<div class="card bg-base-100 shadow-xl">
+			<div class="card-body">
+				<div class="form-control">
+					<label class="label cursor-pointer justify-start gap-4">
+						<input
+							type="checkbox"
+							class="toggle toggle-primary"
+							checked={appSettings.debugMode}
+							onchange={(e) => appSettings.debugMode = e.currentTarget.checked}
+						/>
+						<div>
+							<span class="label-text font-medium">{m.settings_debug_mode_label()}</span>
+							<p class="text-sm text-base-content/60">{m.settings_debug_mode_description()}</p>
+						</div>
+					</label>
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
