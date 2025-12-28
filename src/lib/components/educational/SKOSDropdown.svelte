@@ -24,7 +24,7 @@
 	 * @property {string} label - The display label
 	 */
 
-	/** @type {{ vocabularyKey: 'learningResourceType' | 'about', selected?: SelectedConcept[], multiple?: boolean, required?: boolean, label?: string, placeholder?: string, helpText?: string, disabled?: boolean, maxSelections?: number, onchange?: (selected: SelectedConcept[]) => void }} */
+	/** @type {{ vocabularyKey: 'learningResourceType' | 'about' | 'intendedEndUserRole', selected?: SelectedConcept[], multiple?: boolean, required?: boolean, label?: string, placeholder?: string, helpText?: string, disabled?: boolean, maxSelections?: number, onchange?: (selected: SelectedConcept[]) => void }} */
 	let {
 		vocabularyKey,
 		selected = $bindable([]),

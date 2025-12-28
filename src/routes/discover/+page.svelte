@@ -6,6 +6,8 @@
 		feedTargetedPublicationsLoader,
 		calendarTimelineLoader
 	} from '$lib/loaders';
+	import { ambSearchLoader } from '$lib/loaders/amb-search.js';
+	import { hasActiveFilters, createEmptyFilters } from '$lib/helpers/educational/searchQueryBuilder.js';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { appConfig } from '$lib/config';
 	import { TimelineModel, ProfileModel } from 'applesauce-core/models';
@@ -18,8 +20,10 @@
 	import CalendarEventDetailsModal from '$lib/components/calendar/CalendarEventDetailsModal.svelte';
 	import CommunityFilterDropdown from '$lib/components/feed/CommunityFilterDropdown.svelte';
 	import CommunikeyCard from '$lib/components/CommunikeyCard.svelte';
+	import LearningContentFilters from '$lib/components/educational/LearningContentFilters.svelte';
 	import { SearchIcon } from '$lib/components/icons';
 	import { page } from '$app/stores';
+	import { getLocale } from '$lib/paraglide/runtime.js';
 	import { updateQueryParams, parseFeedFilters } from '$lib/helpers/urlParams.js';
 	import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte.js';
 	import { useAllCommunities } from '$lib/stores/all-communities.svelte.js';
@@ -47,6 +51,17 @@
 
 	// Selected event for modal
 	let selectedEvent = $state(/** @type {any} */ (null));
+
+	// Learning content filter state
+	/** @type {import('$lib/helpers/educational/searchQueryBuilder.js').SearchFilters} */
+	let learningFilters = $state(createEmptyFilters());
+	let isLearningSearchActive = $state(false);
+	let learningSearchResults = $state(/** @type {import('nostr-tools').Event[]} */ ([]));
+	/** @type {import('rxjs').Subscription | null} */
+	let currentSearchSubscription = $state(null);
+
+	// Get current locale
+	const locale = $derived(getLocale());
 
 	// Search input reference for auto-focus
 	let searchInputRef = $state(/** @type {HTMLInputElement | null} */ (null));
@@ -129,6 +144,57 @@
 		contentType = newType;
 		// Update URL - use null for 'all' to keep URL clean
 		updateQueryParams($page.url.searchParams, { type: newType === 'all' ? null : newType });
+		
+		// Reset learning filters when switching away from learning tab
+		if (newType !== 'learning') {
+			learningFilters = createEmptyFilters();
+			isLearningSearchActive = false;
+			learningSearchResults = [];
+			if (currentSearchSubscription) {
+				currentSearchSubscription.unsubscribe();
+				currentSearchSubscription = null;
+			}
+		}
+	}
+
+	/**
+	 * Handle learning content filter changes
+	 * @param {import('$lib/helpers/educational/searchQueryBuilder.js').SearchFilters} filters
+	 */
+	function handleLearningFilterChange(filters) {
+		learningFilters = filters;
+		
+		// Cancel any pending search
+		if (currentSearchSubscription) {
+			currentSearchSubscription.unsubscribe();
+			currentSearchSubscription = null;
+		}
+
+		// Check if we should use NIP-50 search
+		if (hasActiveFilters(filters)) {
+			isLearningSearchActive = true;
+			learningSearchResults = []; // Clear previous results
+			
+			// Start NIP-50 search - accumulate individual events into array
+			currentSearchSubscription = ambSearchLoader(filters, 100).subscribe({
+				next: (/** @type {import('nostr-tools').Event} */ event) => {
+					// Accumulate events as they arrive (createTimelineLoader emits one at a time)
+					// The events are already added to eventStore by the loader
+					learningSearchResults = [...learningSearchResults, event];
+				},
+				error: (error) => {
+					console.error('🔍 Learning search error:', error);
+					isLearningSearchActive = false;
+				},
+				complete: () => {
+					console.log('🔍 Learning search complete, results:', learningSearchResults.length);
+				}
+			});
+		} else {
+			// No active filters, use normal timeline loading
+			isLearningSearchActive = false;
+			learningSearchResults = [];
+		}
 	}
 
 	// Batch size for loading
@@ -464,7 +530,16 @@
 		}
 
 		if (contentType === 'learning' || contentType === 'all') {
-			items = [...items, ...ambResources.map((r) => ({ type: 'amb', data: r }))];
+			// When learning filters are active and we're on the learning tab, use search results
+			if (contentType === 'learning' && isLearningSearchActive) {
+				// Use search results from NIP-50 query
+				// Search results are raw events, need to convert to model format
+				const searchResultIds = new Set(learningSearchResults.map((e) => e.id));
+				const filteredAmbResources = ambResources.filter((r) => searchResultIds.has(r.event?.id || r.id));
+				items = [...items, ...filteredAmbResources.map((r) => ({ type: 'amb', data: r }))];
+			} else {
+				items = [...items, ...ambResources.map((r) => ({ type: 'amb', data: r }))];
+			}
 		}
 
 		if (contentType === 'articles' || contentType === 'all') {
@@ -484,8 +559,8 @@
 			);
 		}
 
-		// Apply text search filter
-		if (searchQuery.trim()) {
+		// Apply text search filter (skip for learning tab when NIP-50 search is active)
+		if (searchQuery.trim() && !(contentType === 'learning' && isLearningSearchActive)) {
 			const query = searchQuery.toLowerCase();
 			items = items.filter((item) => {
 				const pubkey = item.data.pubkey;
@@ -696,8 +771,18 @@
 		</div>
 	</div>
 
-	<!-- Filters (hidden when showing communities) -->
-	{#if contentType !== 'communities'}
+	<!-- Learning Content Filters (shown only on learning tab) -->
+	{#if contentType === 'learning'}
+	<div class="container mx-auto px-4 py-6">
+		<LearningContentFilters 
+			onfilterchange={handleLearningFilterChange}
+			isSearching={isLearningSearchActive && learningSearchResults.length === 0}
+		/>
+	</div>
+	{/if}
+
+	<!-- Filters (hidden when showing communities or learning) -->
+	{#if contentType !== 'communities' && contentType !== 'learning'}
 	<div class="container mx-auto px-4 py-6">
 		<div class="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-center md:justify-between">
 			<!-- Sort -->

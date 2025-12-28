@@ -831,5 +831,17 @@
   "discover_no_matches": "Keine Treffer gefunden",
   "discover_no_matches_subtitle": "Versuche andere Suchbegriffe oder Filter",
   "discover_loading_more": "Weitere Inhalte werden geladen...",
-  "discover_no_more_content": "Keine weiteren Inhalte"
+  "discover_no_more_content": "Keine weiteren Inhalte",
+  "learning_filter_search_placeholder": "Lernressourcen suchen...",
+  "learning_filter_search_aria": "Lernressourcen durchsuchen",
+  "learning_filter_clear_search": "Suche löschen",
+  "learning_filter_resource_type": "Ressourcentyp",
+  "learning_filter_resource_type_placeholder": "Typ auswählen...",
+  "learning_filter_subject": "Fach",
+  "learning_filter_subject_placeholder": "Fach auswählen...",
+  "learning_filter_audience": "Zielgruppe",
+  "learning_filter_audience_placeholder": "Zielgruppe auswählen...",
+  "learning_filter_active": "Aktive Filter",
+  "learning_filter_search_label": "Suche",
+  "learning_filter_clear_all": "Alle löschen"
 }

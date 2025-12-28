@@ -842,5 +842,17 @@
   "community_learning_loading": "Loading learning resources...",
   "community_learning_empty_title": "No learning resources yet",
   "community_learning_empty_description": "Educational resources shared with this community will appear here.",
-  "community_learning_count": "{count} resources"
+  "community_learning_count": "{count} resources",
+  "learning_filter_search_placeholder": "Search learning resources...",
+  "learning_filter_search_aria": "Search learning resources",
+  "learning_filter_clear_search": "Clear search",
+  "learning_filter_resource_type": "Resource Type",
+  "learning_filter_resource_type_placeholder": "Select type...",
+  "learning_filter_subject": "Subject",
+  "learning_filter_subject_placeholder": "Select subject...",
+  "learning_filter_audience": "Target Audience",
+  "learning_filter_audience_placeholder": "Select audience...",
+  "learning_filter_active": "Active filters",
+  "learning_filter_search_label": "Search",
+  "learning_filter_clear_all": "Clear all"
 }

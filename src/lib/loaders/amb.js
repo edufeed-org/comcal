@@ -10,6 +10,17 @@ import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
 import { SvelteSet } from 'svelte/reactivity';
 
 /**
+ * Get combined relays for AMB resource loading (default + educational AMB relays)
+ * @returns {string[]} Deduplicated array of relay URLs
+ */
+function getAMBRelays() {
+	const defaultRelays = appConfig.calendar.defaultRelays || [];
+	const ambRelays = appConfig.educational?.ambRelays || [];
+	// Combine and deduplicate
+	return [...new Set([...defaultRelays, ...ambRelays])];
+}
+
+/**
  * Factory: Create a stateful timeline loader for kind 30142 AMB resources with automatic pagination
  * The returned loader function automatically tracks state and fetches the next chronological block on each call
  * @param {number} limit - Maximum number of resources to load per batch
@@ -18,7 +29,7 @@ import { SvelteSet } from 'svelte/reactivity';
 export function ambTimelineLoader(limit = 20) {
 	return createTimelineLoader(
 		pool,
-		appConfig.calendar.defaultRelays,
+		getAMBRelays(),
 		{ kinds: [30142] },
 		{ eventStore, limit }
 	);

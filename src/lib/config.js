@@ -10,6 +10,9 @@ const isDev = import.meta.env.DEV;
 const productionRelays = ['wss://relay-rpi.edufeed.org'];
 const devRelays = ['ws://localhost:10547'];
 
+// AMB (Educational Content) relay with NIP-50 full-text search support
+const ambRelays = ['ws://localhost:3334'];
+
 export const appConfig = {
 	logo: 'https://blossom.edufeed.org/f22e1410f09a9130757704b6dcd4c34774d2926b9cfd6cf2e4c4675c64d4333b.webp',
 	name: 'ComCal',
@@ -110,6 +113,21 @@ export const appConfig = {
 		registrationNumber: '', // Optional: e.g., HRB 12345
 		vatId: '', // Optional: e.g., DE123456789
 		responsibleForContent: '' // Optional: if different from representative
+	},
+
+	educational: {
+		// AMB relay with NIP-50 full-text search and Typesense backend
+		ambRelays: ambRelays,
+		
+		// Debounce delay for search input (ms)
+		searchDebounceMs: 300,
+		
+		// SKOS vocabulary keys used for filtering
+		vocabularies: {
+			learningResourceType: 'hcrt',
+			about: 'hochschulfaechersystematik', 
+			audience: 'intendedEndUserRole'
+		}
 	},
 
 	// Other app-wide configurations can be added here:

@@ -7,7 +7,8 @@
 // SKOS vocabulary URLs
 export const SKOS_VOCABULARIES = {
 	learningResourceType: 'https://w3id.org/kim/hcrt/scheme.json',
-	about: 'https://w3id.org/kim/hochschulfaechersystematik/scheme.json'
+	about: 'https://w3id.org/kim/hochschulfaechersystematik/scheme.json',
+	intendedEndUserRole: 'https://w3id.org/kim/intendedEndUserRole/scheme.json'
 };
 
 // Cache key prefix
