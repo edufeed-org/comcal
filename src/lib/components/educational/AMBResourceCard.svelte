@@ -220,7 +220,7 @@
 		<!-- Keywords (Tags) -->
 		{#if resource.keywords.length > 0 && !compact}
 			<div class="flex flex-wrap gap-1">
-				<EventTags tags={resource.keywords.slice(0, 5)} size="sm" targetRoute="/feed" />
+				<EventTags tags={resource.keywords.slice(0, 5)} size="sm" targetRoute="/discover" />
 			</div>
 		{/if}
 

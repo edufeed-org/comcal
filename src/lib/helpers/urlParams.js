@@ -224,7 +224,7 @@ export function parseFeedFilters(searchParams) {
  * @param {Object} filters - Filter parameters
  * @param {string[]} [filters.tags] - Tag filters
  * @param {string | null} [filters.community] - Community filter (pubkey, 'joined', or null)
- * @param {string} [basePath='/feed'] - Base path for URL
+ * @param {string} [basePath='/discover'] - Base path for URL
  * @returns {string} - Complete URL with query parameters
  * 
  * @example
@@ -232,9 +232,9 @@ export function parseFeedFilters(searchParams) {
  *   tags: ['education', 'nostr'],
  *   community: 'joined'
  * });
- * // Returns: '/feed?tags=education&tags=nostr&community=joined'
+ * // Returns: '/discover?tags=education&tags=nostr&community=joined'
  */
-export function buildFeedURL(filters, basePath = '/feed') {
+export function buildFeedURL(filters, basePath = '/discover') {
 	const params = new URLSearchParams();
 
 	// Add tags (repeated keys)

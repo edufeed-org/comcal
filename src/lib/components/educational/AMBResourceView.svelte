@@ -441,7 +441,7 @@
 	{#if resource.keywords.length > 0}
 		<div class="mb-8">
 			<h3 class="text-lg font-semibold text-base-content mb-3">{m.amb_resource_topics_keywords()}</h3>
-			<EventTags tags={resource.keywords} size="md" targetRoute="/feed" />
+			<EventTags tags={resource.keywords} size="md" targetRoute="/discover" />
 		</div>
 	{/if}
 

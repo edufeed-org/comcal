@@ -150,7 +150,7 @@
 	{#if hashtags.length > 0}
 		<div class="mb-8 flex flex-wrap gap-2">
 			<span class="text-sm font-medium text-base-content/70">Topics:</span>
-			<EventTags tags={hashtags} size="md" targetRoute="/feed" />
+			<EventTags tags={hashtags} size="md" targetRoute="/discover" />
 		</div>
 	{/if}
 
