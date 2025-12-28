@@ -44,7 +44,6 @@
 	let hasMoreAMB = $state(true);
 	let sortBy = $state('newest');
 	let searchQuery = $state('');
-	let contentType = $state('all'); // 'events', 'learning', 'articles', 'communities', 'all'
 
 	// Selected event for modal
 	let selectedEvent = $state(/** @type {any} */ (null));
@@ -52,10 +51,17 @@
 	// Search input reference for auto-focus
 	let searchInputRef = $state(/** @type {HTMLInputElement | null} */ (null));
 
+	// Valid content types
+	const VALID_CONTENT_TYPES = ['all', 'events', 'learning', 'articles', 'communities'];
+
 	// Initialize from URL params
 	const initialFilters = parseFeedFilters($page.url.searchParams);
 	let selectedTags = $state(/** @type {string[]} */ (initialFilters.tags));
 	let communityFilter = $state(/** @type {string | null} */ (initialFilters.community));
+
+	// Initialize contentType from URL, with validation
+	const initialContentType = VALID_CONTENT_TYPES.includes(initialFilters.type) ? initialFilters.type : 'all';
+	let contentType = $state(initialContentType); // 'events', 'learning', 'articles', 'communities', 'all'
 
 	// Active user state
 	let activeUser = $state(manager.active);
@@ -107,7 +113,23 @@
 		if (urlCommunity !== communityFilter) {
 			communityFilter = urlCommunity;
 		}
+
+		// Sync content type from URL
+		const urlType = $page.url.searchParams.get('type') || 'all';
+		if (VALID_CONTENT_TYPES.includes(urlType) && urlType !== contentType) {
+			contentType = urlType;
+		}
 	});
+
+	/**
+	 * Handle content type tab change
+	 * @param {string} newType
+	 */
+	function handleContentTypeChange(newType) {
+		contentType = newType;
+		// Update URL - use null for 'all' to keep URL clean
+		updateQueryParams($page.url.searchParams, { type: newType === 'all' ? null : newType });
+	}
 
 	// Batch size for loading
 	const BATCH_SIZE = 20;
@@ -642,31 +664,31 @@
 			<div class="tabs tabs-boxed bg-transparent justify-center py-4">
 				<button
 					class="tab {contentType === 'all' ? 'tab-active' : ''}"
-					onclick={() => (contentType = 'all')}
+					onclick={() => handleContentTypeChange('all')}
 				>
 					{m.discover_tab_all()}
 				</button>
 				<button
 					class="tab {contentType === 'events' ? 'tab-active' : ''}"
-					onclick={() => (contentType = 'events')}
+					onclick={() => handleContentTypeChange('events')}
 				>
 					{m.discover_tab_events()}
 				</button>
 				<button
 					class="tab {contentType === 'learning' ? 'tab-active' : ''}"
-					onclick={() => (contentType = 'learning')}
+					onclick={() => handleContentTypeChange('learning')}
 				>
 					{m.discover_tab_learning()}
 				</button>
 				<button
 					class="tab {contentType === 'articles' ? 'tab-active' : ''}"
-					onclick={() => (contentType = 'articles')}
+					onclick={() => handleContentTypeChange('articles')}
 				>
 					{m.discover_tab_articles()}
 				</button>
 				<button
 					class="tab {contentType === 'communities' ? 'tab-active' : ''}"
-					onclick={() => (contentType = 'communities')}
+					onclick={() => handleContentTypeChange('communities')}
 				>
 					{m.discover_tab_communities()}
 				</button>

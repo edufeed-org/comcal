@@ -193,6 +193,7 @@ export function clearAllFilters(basePath = '/calendar', options = {}) {
  * @typedef {Object} FeedFilters
  * @property {string[]} tags - Tag filters
  * @property {string | null} community - Community filter (pubkey, 'joined', or null)
+ * @property {string} type - Content type filter ('all', 'events', 'learning', 'articles', 'communities')
  */
 
 /**
@@ -205,13 +206,15 @@ export function clearAllFilters(basePath = '/calendar', options = {}) {
  * const filters = parseFeedFilters($page.url.searchParams);
  * // Returns: {
  * //   tags: ['bitcoin', 'nostr'],
- * //   community: 'abc123' | 'joined' | null
+ * //   community: 'abc123' | 'joined' | null,
+ * //   type: 'all' | 'events' | 'learning' | 'articles' | 'communities'
  * // }
  */
 export function parseFeedFilters(searchParams) {
 	return {
 		tags: searchParams.getAll('tags'),
-		community: searchParams.get('community') || null
+		community: searchParams.get('community') || null,
+		type: searchParams.get('type') || 'all'
 	};
 }
 

@@ -259,7 +259,7 @@
   "discover_no_results": "No communities found",
   "discover_no_results_subtitle": "Try a different search query",
   "discover_loading": "Loading communities...",
-  "discover_results_count": "{count} community/communities found",
+  "discover_results_count": "{count} results found",
   "discover_show_all": "Show All ({count})",
   "discover_show_less": "Show Less",
   "discover_load_more": "Load More",
