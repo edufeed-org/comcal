@@ -181,6 +181,34 @@ export function getAMBIdentifier(event) {
 }
 
 /**
+ * Extracts uploaded files/encodings from an AMB event
+ * @param {any} event - AMB event (kind 30142)
+ * @returns {Array<{url: string, mimeType: string, size: number, sha256?: string, name?: string}>} Array of uploaded files
+ */
+export function getAMBEncodings(event) {
+	// Get all encoding-related tags
+	const contentUrls = getNestedTagValues(event.tags, 'encoding:contentUrl');
+	const encodingFormats = getNestedTagValues(event.tags, 'encoding:encodingFormat');
+	const contentSizes = getNestedTagValues(event.tags, 'encoding:contentSize');
+	const sha256Hashes = getNestedTagValues(event.tags, 'encoding:sha256');
+	
+	// Reconstruct file objects
+	return contentUrls.map((url, index) => {
+		// Extract filename from URL (last part after /)
+		const urlParts = url.split('/');
+		const filename = urlParts[urlParts.length - 1] || 'file';
+		
+		return {
+			url,
+			mimeType: encodingFormats[index] || 'application/octet-stream',
+			size: parseInt(contentSizes[index]) || 0,
+			sha256: sha256Hashes[index],
+			name: filename
+		};
+	});
+}
+
+/**
  * Formats AMB resource for display with language-aware labels.
  * Combines all relevant metadata into a structured object.
  * 
@@ -216,6 +244,7 @@ export function formatAMBResource(event, lang = 'en') {
 		creatorNames: getAMBCreatorNames(event),
 		resourceURLs: getAMBResourceURLs(event),
 		primaryURL: getAMBPrimaryURL(event),
+		encodings: getAMBEncodings(event),
 		tags: event.tags, // Keep original tags for reference
 		rawEvent: event // Keep original raw Nostr event for debug purposes
 	};

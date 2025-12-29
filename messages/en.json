@@ -875,7 +875,8 @@
   "amb_resource_view_license": "View license details →",
   "amb_resource_topics_keywords": "Topics & Keywords",
   "amb_resource_all_contributors": "All Contributors",
-  "amb_resource_related_resources": "Related Resources",
-  "amb_resource_discussion": "Discussion",
+	"amb_resource_related_resources": "Related Resources",
+	"amb_resource_uploaded_files": "Uploaded Files",
+	"amb_resource_discussion": "Discussion",
   "amb_resource_published": "Published {date}"
 }

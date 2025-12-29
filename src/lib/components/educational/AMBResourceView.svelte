@@ -147,6 +147,36 @@
 			window.open(resource.identifier, '_blank', 'noopener,noreferrer');
 		}
 	}
+
+	/**
+	 * Format file size for display
+	 * @param {number} bytes
+	 * @returns {string}
+	 */
+	function formatFileSize(bytes) {
+		if (bytes === 0) return '0 B';
+		const k = 1024;
+		const sizes = ['B', 'KB', 'MB', 'GB'];
+		const i = Math.floor(Math.log(bytes) / Math.log(k));
+		return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+	}
+
+	/**
+	 * Get file icon based on MIME type
+	 * @param {string} mimeType
+	 * @returns {string}
+	 */
+	function getFileIcon(mimeType) {
+		if (mimeType.startsWith('image/')) return '🖼️';
+		if (mimeType.startsWith('video/')) return '🎬';
+		if (mimeType.startsWith('audio/')) return '🎵';
+		if (mimeType.includes('pdf')) return '📄';
+		if (mimeType.includes('word') || mimeType.includes('document')) return '📝';
+		if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return '📊';
+		if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return '📽️';
+		if (mimeType.includes('zip') || mimeType.includes('archive')) return '📦';
+		return '📎';
+	}
 </script>
 
 <svelte:head>
@@ -516,6 +546,48 @@
 							<span class="font-medium text-base-content">{related.label}</span>
 						</div>
 					</a>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
+	<!-- UPLOADED FILES -->
+	{#if resource.encodings && resource.encodings.length > 0}
+		<div class="mb-8">
+			<h3 class="text-lg font-semibold text-base-content mb-3">{m.amb_resource_uploaded_files()}</h3>
+			<div class="space-y-2">
+				{#each resource.encodings as file}
+					<div class="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
+						<span class="text-2xl">{getFileIcon(file.mimeType)}</span>
+						<div class="flex-1 min-w-0">
+							<div class="font-medium text-base-content truncate">{file.name}</div>
+							<div class="text-xs text-base-content/60">
+								{file.mimeType} • {formatFileSize(file.size)}
+							</div>
+						</div>
+						<a
+							href={file.url}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="btn btn-ghost btn-sm"
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+							</svg>
+							View
+						</a>
+						<a
+							href={file.url}
+							download
+							class="btn btn-ghost btn-sm"
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+							</svg>
+							Download
+						</a>
+					</div>
 				{/each}
 			</div>
 		</div>

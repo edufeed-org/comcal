@@ -864,7 +864,8 @@
   "amb_resource_view_license": "Lizenzdetails anzeigen →",
   "amb_resource_topics_keywords": "Themen & Schlagwörter",
   "amb_resource_all_contributors": "Alle Mitwirkenden",
-  "amb_resource_related_resources": "Verwandte Ressourcen",
-  "amb_resource_discussion": "Diskussion",
+	"amb_resource_related_resources": "Verwandte Ressourcen",
+	"amb_resource_uploaded_files": "Hochgeladene Dateien",
+	"amb_resource_discussion": "Diskussion",
   "amb_resource_published": "Veröffentlicht {date}"
 }
