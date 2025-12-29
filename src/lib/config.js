@@ -31,7 +31,6 @@ export const appConfig = {
 		fallbackRelays: [
 			'wss://relay.damus.io',
 			'wss://nos.lol',
-			'wss://relay.nostr.band',
 			'wss://nostr.wine',
 		],
 

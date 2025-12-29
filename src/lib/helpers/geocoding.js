@@ -48,8 +48,8 @@ function isGeocodableAddress(location) {
 }
 
 /**
- * Validate OpenCage geocoding result
- * @param {Object} result - OpenCage result object
+ * Validate geocoding result from server API
+ * @param {any} result - Geocoding result object
  * @returns {boolean}
  */
 function validateGeocodeResult(result) {
@@ -62,8 +62,8 @@ function validateGeocodeResult(result) {
 	}
 
 	// Check component type
-	const componentType = result.components._type;
-	if (config.acceptedComponentTypes.length > 0) {
+	const componentType = result.components?._type;
+	if (componentType && config.acceptedComponentTypes.length > 0) {
 		if (!config.acceptedComponentTypes.includes(componentType)) {
 			console.log(`Geocode result rejected: type '${componentType}' not accepted`);
 			return false;
@@ -71,7 +71,7 @@ function validateGeocodeResult(result) {
 	}
 
 	// Ensure coordinates are valid
-	if (!isValidCoordinates(result.geometry.lat, result.geometry.lng)) {
+	if (!isValidCoordinates(result.lat, result.lng)) {
 		console.log('Geocode result rejected: invalid coordinates');
 		return false;
 	}
@@ -267,7 +267,7 @@ export function setCachedCoordinates(location, coords) {
 }
 
 /**
- * Autocomplete address suggestions using OpenCage API
+ * Autocomplete address suggestions using server-side geocoding API
  * Focused on Germany and Europe
  * @param {string} query - Partial address to search for
  * @returns {Promise<Array<{formatted: string, lat: number, lng: number}>>}
@@ -277,24 +277,13 @@ export async function autocompleteAddress(query) {
 		return [];
 	}
 
-	const apiKey = appConfig.geocoding.apiKey;
-	if (!apiKey) {
-		console.error('OpenCage API key not configured');
-		return [];
-	}
-
 	try {
-		// Focus on German-speaking countries and Europe
 		const params = new URLSearchParams({
 			q: query.trim(),
-			key: apiKey,
-			limit: '5',
-			countrycode: 'de,at,ch,fr,nl,be,pl,cz,dk,it,es', // Germany and neighboring countries
-			language: 'en',
-			no_annotations: '1'
+			mode: 'autocomplete'
 		});
 
-		const url = `https://api.opencagedata.com/geocode/v1/json?${params}`;
+		const url = `/api/geocode?${params}`;
 		const response = await fetch(url);
 
 		if (!response.ok) {
@@ -303,12 +292,8 @@ export async function autocompleteAddress(query) {
 
 		const data = await response.json();
 
-		if (data.results && data.results.length > 0) {
-			return data.results.map(result => ({
-				formatted: result.formatted,
-				lat: result.geometry.lat,
-				lng: result.geometry.lng
-			}));
+		if (data.success && data.results && data.results.length > 0) {
+			return data.results;
 		}
 
 		return [];
@@ -319,7 +304,7 @@ export async function autocompleteAddress(query) {
 }
 
 /**
- * Geocode an address using OpenCage API with validation
+ * Geocode an address using server-side geocoding API with validation
  * @param {string} address - Address to geocode
  * @returns {Promise<{ lat: number, lng: number, formatted: string } | null>}
  */
@@ -335,14 +320,13 @@ export async function geocodeAddress(address) {
 		return null;
 	}
 
-	const apiKey = appConfig.geocoding.apiKey;
-	if (!apiKey) {
-		console.error('OpenCage API key not configured');
-		return null;
-	}
-
 	try {
-		const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(address)}&key=${apiKey}&limit=1`;
+		const params = new URLSearchParams({
+			q: trimmed,
+			mode: 'geocode'
+		});
+
+		const url = `/api/geocode?${params}`;
 		const response = await fetch(url);
 
 		if (!response.ok) {
@@ -351,8 +335,8 @@ export async function geocodeAddress(address) {
 
 		const data = await response.json();
 
-		if (data.results && data.results.length > 0) {
-			const result = data.results[0];
+		if (data.success && data.result) {
+			const result = data.result;
 
 			// Post-validation: Check result quality
 			if (!validateGeocodeResult(result)) {
@@ -360,8 +344,8 @@ export async function geocodeAddress(address) {
 			}
 
 			const coords = {
-				lat: result.geometry.lat,
-				lng: result.geometry.lng,
+				lat: result.lat,
+				lng: result.lng,
 				formatted: result.formatted // Store formatted address for display
 			};
 

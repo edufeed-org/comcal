@@ -188,6 +188,8 @@ cd comcal
 
 ### Step 3: Configure Environment Variables
 
+Comcal uses a **12-factor app approach** with runtime environment variables for configuration. This allows you to use the same Docker image across different environments (development, staging, production) by simply changing environment variables.
+
 ```bash
 # Copy environment template
 cp .env.example .env
@@ -196,7 +198,7 @@ cp .env.example .env
 nano .env
 ```
 
-**Required Environment Variables:**
+#### Required Environment Variables
 
 ```env
 # Your domain (required for SvelteKit CSRF protection)
@@ -208,6 +210,61 @@ PORT=3000
 # Node environment
 NODE_ENV=production
 ```
+
+#### Complete Configuration Reference
+
+The `.env.example` file contains all available configuration options. Key categories:
+
+**App Branding**
+- `APP_NAME`: Application name (default: "ComCal")
+- `APP_LOGO`: URL to application logo
+- `APP_GIT_REPO`: Git repository URL
+
+**Nostr Relays**
+- `RELAYS`: Primary relays for calendar events (comma-separated)
+- `FALLBACK_RELAYS`: Fallback relays for event discovery
+- `AMB_RELAYS`: Educational content relays with NIP-50 search support
+
+**Calendar Settings**
+- `CALENDAR_WEEK_START_DAY`: Week start day (0=Sunday, 1=Monday)
+- `CALENDAR_LOCALE`: Date/time locale (e.g., de-DE, en-US)
+- `CALENDAR_TIME_FORMAT`: Time format (12h or 24h)
+
+**Signup**
+- `SIGNUP_SUGGESTED_USERS`: Suggested users to follow (comma-separated npubs)
+
+**Media Uploads (Blossom)**
+- `BLOSSOM_UPLOAD_ENDPOINT`: Blossom server upload endpoint
+- `BLOSSOM_MAX_FILE_SIZE`: Maximum file size in bytes
+
+**Geocoding (OpenCage API)**
+- `GEOCODING_API_KEY`: **SECRET** - OpenCage API key (never expose to client)
+- `GEOCODING_CACHE_DURATION_DAYS`: Cache duration for geocoded results
+- `GEOCODING_MIN_ADDRESS_LENGTH`: Minimum address length for geocoding
+- `GEOCODING_MIN_CONFIDENCE_SCORE`: Minimum confidence score (0-10)
+- `GEOCODING_REQUIRE_ADDRESS_COMPONENTS`: Require address components (true/false)
+- `GEOCODING_ACCEPTED_COMPONENT_TYPES`: Accepted component types (comma-separated)
+
+**Imprint/Legal Information**
+- `IMPRINT_ENABLED`: Enable/disable imprint page
+- `IMPRINT_ORGANIZATION`: Organization name
+- `IMPRINT_ADDRESS_*`: Address fields
+- `IMPRINT_CONTACT_*`: Contact information
+- `IMPRINT_*`: Other legal information
+
+**Educational Content**
+- `EDUCATIONAL_SEARCH_DEBOUNCE_MS`: Search debounce delay
+- `EDUCATIONAL_VOCAB_*`: SKOS vocabulary keys
+
+See `.env.example` for complete documentation of all variables with descriptions and defaults.
+
+#### Security Best Practices
+
+1. **Never commit `.env` files** - They are in `.gitignore` by default
+2. **Protect API keys** - The `GEOCODING_API_KEY` is kept server-side only
+3. **Use strong values** - Especially for production deployments
+4. **Rotate secrets regularly** - Update API keys periodically
+5. **Environment-specific configs** - Use different `.env` files for dev/staging/production
 
 ### Step 4: Configure Docker Compose
 
