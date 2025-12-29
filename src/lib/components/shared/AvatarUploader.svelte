@@ -2,6 +2,7 @@
 	import { appConfig } from '$lib/config.js';
 	import CameraIcon from '$lib/components/icons/actions/CameraIcon.svelte';
 	import * as m from '$lib/paraglide/messages';
+	import { BlossomClient } from 'blossom-client-sdk';
 
 	let { userData, signer = null, errors = $bindable({}) } = $props();
 
@@ -11,98 +12,25 @@
 	let fileInputRef = $state(/** @type {HTMLInputElement | null} */ (null));
 
 	/**
-	 * Calculate SHA-256 hash of file
-	 * @param {File} file
-	 * @returns {Promise<string>}
-	 */
-	async function calculateSHA256(file) {
-		const arrayBuffer = await file.arrayBuffer();
-		const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
-		const hashArray = Array.from(new Uint8Array(hashBuffer));
-		const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-		return hashHex;
-	}
-
-	/**
-	 * Create and sign Blossom authorization event
-	 * @param {string} sha256Hash
-	 * @param {string} action
-	 * @returns {Promise<object>}
-	 */
-	async function createAuthorizationEvent(sha256Hash, action = 'upload') {
-		if (!signer) {
-			throw new Error('Signer not available for authorization');
-		}
-
-		const event = {
-			kind: 24242,
-			created_at: Math.floor(Date.now() / 1000),
-			tags: [
-				['t', action],
-				['x', sha256Hash],
-				['expiration', String(Math.floor(Date.now() / 1000) + 3600)] // 1 hour expiration
-			],
-			content: `Upload image to Blossom`
-		};
-
-		return await signer.signEvent(event);
-	}
-
-	/**
-	 * Upload image to Blossom server with authorization
+	 * Upload image to Blossom server using the SDK
 	 * @param {File} file
 	 * @returns {Promise<string>} URL of uploaded image
 	 */
 	async function uploadImageToBlossom(file) {
-		// Calculate SHA-256 hash
-		const sha256Hash = await calculateSHA256(file);
-
-		// Create and sign authorization event if signer is available
-		let authEvent = null;
-		if (signer) {
-			try {
-				authEvent = await createAuthorizationEvent(sha256Hash, 'upload');
-			} catch (error) {
-				console.warn('Failed to create authorization event, uploading without auth:', error);
-			}
+		if (!signer) {
+			throw new Error('Signer not available for authorization');
 		}
 
-		// Prepare form data
-		const formData = new FormData();
-		formData.append('file', file);
+		// Create a signer function compatible with blossom-client-sdk
+		const signerFn = async (/** @type {any} */ event) => {
+			return await signer.signEvent(event);
+		};
 
-		// Prepare headers
-		/** @type {HeadersInit} */
-		const headers = {};
-		if (authEvent) {
-			headers['Authorization'] = `Nostr ${btoa(JSON.stringify(authEvent))}`;
-		}
-
-		// Upload to Blossom server
-		try {
-			const response = await fetch(appConfig.blossom.uploadEndpoint, {
-				method: 'PUT',
-				headers,
-				body: file
-			});
-
-			if (!response.ok) {
-				const errorText = await response.text();
-				throw new Error(`Upload failed: ${response.status} - ${errorText}`);
-			}
-
-			const result = await response.json();
-			
-			// Return the URL from the blob descriptor
-			if (result.url) {
-				return result.url;
-			} else {
-				throw new Error('No URL in response');
-			}
-		} catch (error) {
-			console.error('Blossom upload failed:', error);
-			throw error;
-		}
+		// Create Blossom client and upload
+		const client = new BlossomClient(appConfig.blossom.serverUrl, signerFn);
+		const blob = await client.uploadBlob(file);
+		
+		return blob.url;
 	}
 
 	/**

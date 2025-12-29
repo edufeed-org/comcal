@@ -7,6 +7,7 @@
 	import { appConfig } from '$lib/config.js';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { CloseIcon, PlusIcon } from '$lib/components/icons';
+	import { BlossomClient } from 'blossom-client-sdk';
 
 	/**
 	 * @typedef {Object} UploadedFile
@@ -77,35 +78,7 @@
 	}
 
 	/**
-	 * Create authorization header for blossom upload
-	 * Uses NIP-98 HTTP Auth
-	 * @returns {Promise<string>}
-	 */
-	async function createAuthHeader() {
-		if (!activeUser?.signer) {
-			throw new Error('No signer available. Please log in.');
-		}
-
-		// Create NIP-98 auth event
-		const authEvent = {
-			kind: 24242,
-			created_at: Math.floor(Date.now() / 1000),
-			tags: [
-				['t', 'upload'],
-				['expiration', String(Math.floor(Date.now() / 1000) + 300)] // 5 min expiry
-			],
-			content: 'Upload file to blossom'
-		};
-
-		// Sign the event
-		const signedEvent = await activeUser.signEvent(authEvent);
-		
-		// Encode as base64 for Authorization header
-		return 'Nostr ' + btoa(JSON.stringify(signedEvent));
-	}
-
-	/**
-	 * Upload a single file to blossom
+	 * Upload a single file to blossom using the SDK
 	 * @param {File} file
 	 * @returns {Promise<UploadedFile>}
 	 */
@@ -115,32 +88,28 @@
 			throw new Error(`File "${file.name}" exceeds maximum size of ${formatFileSize(maxSize)}`);
 		}
 
-		// Create auth header
-		const authHeader = await createAuthHeader();
-
-		// Upload to blossom
-		const response = await fetch(appConfig.blossom.uploadEndpoint, {
-			method: 'PUT',
-			headers: {
-				'Authorization': authHeader,
-				'Content-Type': file.type || 'application/octet-stream'
-			},
-			body: file
-		});
-
-		if (!response.ok) {
-			const errorText = await response.text();
-			throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+		if (!activeUser?.signer) {
+			throw new Error('No signer available. Please log in.');
 		}
 
-		const result = await response.json();
+		// Create a signer function compatible with blossom-client-sdk
+		const signer = async (/** @type {any} */ event) => {
+			if (!activeUser) throw new Error('User not available');
+			return await activeUser.signEvent(event);
+		};
+
+		// Create Blossom client
+		const client = new BlossomClient(appConfig.blossom.serverUrl, signer);
+
+		// Upload file using the SDK
+		const blob = await client.uploadBlob(file);
 
 		return {
-			url: result.url,
+			url: blob.url,
 			name: file.name,
 			type: file.type || 'application/octet-stream',
 			size: file.size,
-			sha256: result.sha256
+			sha256: blob.sha256
 		};
 	}
 
@@ -198,6 +167,7 @@
 
 	/**
 	 * Handle drag events
+	 * @param {DragEvent} e
 	 */
 	function handleDragEnter(e) {
 		e.preventDefault();
@@ -205,17 +175,26 @@
 		isDragging = true;
 	}
 
+	/**
+	 * @param {DragEvent} e
+	 */
 	function handleDragLeave(e) {
 		e.preventDefault();
 		e.stopPropagation();
 		isDragging = false;
 	}
 
+	/**
+	 * @param {DragEvent} e
+	 */
 	function handleDragOver(e) {
 		e.preventDefault();
 		e.stopPropagation();
 	}
 
+	/**
+	 * @param {DragEvent} e
+	 */
 	function handleDrop(e) {
 		e.preventDefault();
 		e.stopPropagation();
