@@ -243,7 +243,7 @@
 
 	// Subscribe to targeted publications model
 	const targetedPubsModelSub = eventStore
-		.model(TimelineModel, { kinds: [30222], '#k': ['30023', '30142'] })
+		.model(TimelineModel, { kinds: [30222], '#k': ['30023', '30142', '31922', '31923'] })
 		.subscribe((pubs) => {
 			targetedPubs = pubs || [];
 		});
@@ -289,6 +289,111 @@
 			calendarEvents = events || [];
 			console.log(`🔍 Discover: Loaded ${calendarEvents.length} calendar events`);
 		});
+
+	// Community-specific calendar event loader subscriptions
+	// Note: Plain let (not $state) to avoid infinite loops in $effect
+	/** @type {import('rxjs').Subscription | undefined} */
+	let communityCalendarSub;
+	/** @type {import('rxjs').Subscription | undefined} */
+	let communityTargetedPubsSub;
+	/** @type {import('rxjs').Subscription | undefined} */
+	let communityReferencedEventsSub;
+
+	// Load community-specific calendar events when community filter changes
+	$effect(() => {
+		// Clean up previous subscriptions
+		communityCalendarSub?.unsubscribe();
+		communityTargetedPubsSub?.unsubscribe();
+		communityReferencedEventsSub?.unsubscribe();
+
+		// Only load if a specific community is selected (not 'joined' or null)
+		if (communityFilter && communityFilter !== 'joined') {
+			console.log(`🔍 Discover: Loading calendar events for community: ${communityFilter}`);
+
+			// 1. Load direct calendar events with #h tag
+			communityCalendarSub = eventStore.timeline({
+				kinds: [31922, 31923],
+				'#h': [communityFilter],
+				limit: 50
+			}).subscribe();
+
+			// 2. Load targeted publications for this community
+			communityTargetedPubsSub = eventStore.timeline({
+				kinds: [30222],
+				'#p': [communityFilter],
+				'#k': ['31922', '31923'],
+				limit: 100
+			}).subscribe();
+
+			// 3. Watch targeted publications and load referenced calendar events
+			communityReferencedEventsSub = eventStore.model(TimelineModel, {
+				kinds: [30222],
+				'#p': [communityFilter],
+				'#k': ['31922', '31923'],
+				limit: 100
+			}).subscribe((shareEvents) => {
+				const eventIds = /** @type {Set<string>} */ (new Set());
+				/** @type {Array<{kind: number, pubkey: string, dTag: string}>} */
+				const addressableRefs = [];
+
+				shareEvents.forEach((shareEvent) => {
+					const eTag = getTagValue(shareEvent, 'e');
+					const aTag = getTagValue(shareEvent, 'a');
+
+					if (eTag) {
+						eventIds.add(eTag);
+					}
+					if (aTag) {
+						// Parse addressable reference format: kind:pubkey:d-tag
+						const parts = aTag.split(':');
+						if (parts.length === 3) {
+							const [kind, pubkey, dTag] = parts;
+							addressableRefs.push({
+								kind: parseInt(kind, 10),
+								pubkey,
+								dTag
+							});
+						}
+					}
+				});
+
+				// Load events by ID
+				if (eventIds.size > 0) {
+					const timelineLoader = eventStore.timeline({
+						ids: Array.from(eventIds)
+					});
+					// Handle both Observable and Promise returns
+					if (timelineLoader && typeof timelineLoader.subscribe === 'function') {
+						timelineLoader.subscribe();
+					}
+				}
+
+				// Load addressable events
+				addressableRefs.forEach((ref) => {
+					if (eventStore.addressableLoader) {
+						const loader = eventStore.addressableLoader({
+							kind: ref.kind,
+							pubkey: ref.pubkey,
+							identifier: ref.dTag
+						});
+
+						// Handle both Observable and Promise returns
+						if (loader && typeof loader.subscribe === 'function') {
+							loader.subscribe();
+						}
+					}
+				});
+
+				console.log(`🔍 Discover: Loaded ${eventIds.size} event IDs and ${addressableRefs.length} addressable refs for community`);
+			});
+		}
+
+		return () => {
+			communityCalendarSub?.unsubscribe();
+			communityTargetedPubsSub?.unsubscribe();
+			communityReferencedEventsSub?.unsubscribe();
+		};
+	});
 
 	// Update communities from allCommunities hook
 	$effect(() => {

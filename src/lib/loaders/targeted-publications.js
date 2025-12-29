@@ -62,7 +62,7 @@ export function ambTargetedPublicationsLoader(limit = 100) {
 
 /**
  * Create a timeline loader for feed content targeted publications
- * Loads shares for both articles (30023) and AMB resources (30142)
+ * Loads shares for articles (30023), AMB resources (30142), and calendar events (31922, 31923)
  * @param {number} limit - Maximum number of events to load per batch
  * @returns {Function} Stateful timeline loader function
  */
@@ -72,7 +72,7 @@ export function feedTargetedPublicationsLoader(limit = 200) {
 		appConfig.calendar.defaultRelays,
 		{ 
 			kinds: [30222],
-			'#k': ['30023', '30142'] // Articles and AMB resources
+			'#k': ['30023', '30142', '31922', '31923'] // Articles, AMB resources, and calendar events
 		},
 		{ eventStore, limit }
 	);

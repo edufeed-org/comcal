@@ -60,19 +60,22 @@ export function buildContentToCommunityMap(targetedPubs) {
 /**
  * Get all community pubkeys that a content event is associated with
  * Checks both direct #h tags and targeted publications
- * @param {any} event - The content event (article, AMB resource, etc.)
+ * @param {any} event - The content event (article, AMB resource, calendar event, etc.)
  * @param {Map<string, string[]>} contentToCommunityMap - Map from buildContentToCommunityMap
  * @returns {string[]} Array of community pubkeys
  */
 export function getContentCommunities(event, contentToCommunityMap) {
+	// Handle transformed events (like CalendarEvent) that store raw event in originalEvent
+	const rawEvent = event.originalEvent || event;
+	
 	// Get direct #h tag
-	const hTag = getTagValue(event, 'h');
+	const hTag = getTagValue(rawEvent, 'h');
 
 	// Get from targeted publications by event ID
-	const byId = contentToCommunityMap.get(event.id);
+	const byId = contentToCommunityMap.get(rawEvent.id);
 
 	// Get from targeted publications by addressable reference (using pure function to avoid Svelte 5 mutation errors)
-	const address = getAddressableReference(event);
+	const address = getAddressableReference(rawEvent);
 	const byAddress = address ? contentToCommunityMap.get(address) : undefined;
 
 	// Build array without mutations (Svelte 5 compatible), then dedupe
