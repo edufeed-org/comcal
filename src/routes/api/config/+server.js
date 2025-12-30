@@ -74,7 +74,7 @@ export function GET() {
 			'wss://nos.lol',
 			'wss://nostr.wine',
 		]),
-		ambRelays: parseArray(env.AMB_RELAYS, ['ws://localhost:3334']),
+		ambRelays: parseArray(env.AMB_RELAYS),
 
 		// Calendar
 		calendar: {

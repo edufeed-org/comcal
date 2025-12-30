@@ -79,7 +79,7 @@ const defaultConfig = {
 		fundingText: 'gefördert vom BMBFSFJ (FKZ01PZ24007)'
 	},
 	educational: {
-		ambRelays: ['ws://localhost:3334'],
+		ambRelays: [],
 		searchDebounceMs: 300,
 		vocabularies: {
 			learningResourceType: 'hcrt',
