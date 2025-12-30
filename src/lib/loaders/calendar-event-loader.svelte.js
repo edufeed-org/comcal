@@ -122,7 +122,7 @@ export function useCalendarEventLoader(options) {
 	function startBackgroundLoader() {
 		if (!backgroundLoaderSubscription) {
 			console.log('📅 EventLoader: Starting background loader');
-			backgroundLoaderSubscription = calendarTimelineLoader().subscribe();
+			backgroundLoaderSubscription = calendarTimelineLoader()().subscribe();
 		}
 	}
 

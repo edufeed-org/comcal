@@ -9,7 +9,7 @@
 	import ReactionBar from '$lib/components/reactions/ReactionBar.svelte';
 	import { deleteComment } from '$lib/helpers/comments.js';
 	import { showToast } from '$lib/helpers/toast.js';
-	import { appConfig } from '$lib/config.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import * as m from '$lib/paraglide/messages';
 
 	/**
@@ -93,7 +93,7 @@
 		isDeleting = true;
 		try {
 			await deleteComment(comment, {
-				relays: appConfig.calendar.defaultRelays
+				relays: runtimeConfig.calendar.defaultRelays
 			});
 			showToast(m.comments_delete_success(), 'success');
 		} catch (error) {

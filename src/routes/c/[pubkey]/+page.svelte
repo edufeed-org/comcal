@@ -12,7 +12,7 @@
 	import { ProfileModel } from 'applesauce-core/models';
 	import { profileLoader } from '$lib/loaders/profile.js';
 	import { getProfilePicture } from 'applesauce-core/helpers';
-	import { appConfig } from '$lib/config.js';
+	import { getConfig } from '$lib/stores/config.svelte.js';
 
 	/** @type {import('./$types').PageProps} */
 	let { data } = $props();
@@ -60,10 +60,11 @@
 
 		if (data.pubkey) {
 			// 1. Trigger loader to fetch profile from relays
+			const config = getConfig();
 			const loaderSub = profileLoader({ 
 				kind: 0, 
 				pubkey: data.pubkey, 
-				relays: appConfig.calendar.defaultRelays 
+				relays: config.calendar.defaultRelays 
 			}).subscribe(() => {
 				// Loader automatically populates eventStore
 			});

@@ -8,7 +8,7 @@
  * - URLs (detected and skipped)
  */
 
-import { appConfig } from '$lib/config.js';
+import { getConfig } from '$lib/stores/config.svelte.js';
 
 // Coordinate pattern matchers
 const COORD_PATTERNS = {
@@ -32,10 +32,11 @@ const BASE32 = '0123456789bcdefghjkmnpqrstuvwxyz';
  * @returns {boolean}
  */
 function isGeocodableAddress(location) {
-	const config = appConfig.geocoding.validation;
+	const config = getConfig();
+	const validation = config.geocoding.validation;
 
 	// Must meet minimum length
-	if (location.length < config.minAddressLength) {
+	if (location.length < validation.minAddressLength) {
 		return false;
 	}
 
@@ -53,18 +54,19 @@ function isGeocodableAddress(location) {
  * @returns {boolean}
  */
 function validateGeocodeResult(result) {
-	const config = appConfig.geocoding.validation;
+	const config = getConfig();
+	const validation = config.geocoding.validation;
 
 	// Check confidence score
-	if (result.confidence < config.minConfidenceScore) {
+	if (result.confidence < validation.minConfidenceScore) {
 		console.log(`Geocode result rejected: low confidence (${result.confidence})`);
 		return false;
 	}
 
 	// Check component type
 	const componentType = result.components?._type;
-	if (componentType && config.acceptedComponentTypes.length > 0) {
-		if (!config.acceptedComponentTypes.includes(componentType)) {
+	if (componentType && validation.acceptedComponentTypes.length > 0) {
+		if (!validation.acceptedComponentTypes.includes(componentType)) {
 			console.log(`Geocode result rejected: type '${componentType}' not accepted`);
 			return false;
 		}
@@ -234,7 +236,8 @@ export function getCachedCoordinates(location) {
 
 		if (cached && cached.timestamp) {
 			const age = Date.now() - cached.timestamp;
-			const maxAge = appConfig.geocoding.cacheDurationDays * 24 * 60 * 60 * 1000;
+			const config = getConfig();
+			const maxAge = config.geocoding.cacheDurationDays * 24 * 60 * 60 * 1000;
 
 			if (age < maxAge && isValidCoordinates(cached.lat, cached.lng)) {
 				return { lat: cached.lat, lng: cached.lng };

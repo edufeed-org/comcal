@@ -105,7 +105,7 @@
 	});
 
 	onMount(() => {
-		calendarLoader().subscribe();
+		calendarLoader()().subscribe();
 		loadUserCalendars();
 
 		calendarSubscription = calendarStore.selectedCalendar$.subscribe((calendar) => {

@@ -10,7 +10,7 @@
 	import { CommunityAMBResourceModel } from '$lib/models/community-amb-resource.js';
 	import { profileLoader } from '$lib/loaders/profile.js';
 	import { ProfileModel } from 'applesauce-core/models';
-	import { appConfig } from '$lib/config.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import AMBResourceCard from '$lib/components/educational/AMBResourceCard.svelte';
 	import EducationalFAB from '$lib/components/educational/EducationalFAB.svelte';
 	import * as m from '$lib/paraglide/messages';
@@ -111,7 +111,7 @@
 			const loaderSub = profileLoader({
 				kind: 0,
 				pubkey,
-				relays: appConfig.calendar.defaultRelays
+				relays: runtimeConfig.calendar.defaultRelays
 			}).subscribe();
 
 			// Subscribe to model for profile updates

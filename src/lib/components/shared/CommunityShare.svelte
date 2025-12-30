@@ -21,7 +21,7 @@
 	} from 'applesauce-core/helpers';
 	import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
 	import { PlusIcon, CheckIcon, AlertIcon } from '../icons';
-	import { appConfig } from '$lib/config.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 	/**
 	 * @typedef {Object} Props
@@ -86,7 +86,7 @@
 		// This is critical - without this, we only read from local cache which may be empty
 		const loader = createTimelineLoader(
 			pool,
-			appConfig.calendar.defaultRelays,
+			runtimeConfig.calendar.defaultRelays,
 			{
 				kinds: [30222],
 				authors: [activeUser.pubkey]
@@ -198,10 +198,10 @@
 		const shareEvent = await factory.build({ kind: 30222, tags });
 		const signedEvent = await factory.sign(shareEvent);
 
-		console.log(`🔗 CommunityShare: Publishing share to ${appConfig.calendar.defaultRelays.length} relays`);
+		console.log(`🔗 CommunityShare: Publishing share to ${runtimeConfig.calendar.defaultRelays.length} relays`);
 
 		const result = await publishEvent(signedEvent, {
-			relays: appConfig.calendar.defaultRelays,
+			relays: runtimeConfig.calendar.defaultRelays,
 			logPrefix: 'CommunityShare'
 		});
 
@@ -302,7 +302,7 @@
 		const deleteEvent = await factory.sign(deleteEventTemplate);
 
 		const result = await publishEvent(deleteEvent, {
-			relays: appConfig.calendar.defaultRelays,
+			relays: runtimeConfig.calendar.defaultRelays,
 			logPrefix: 'CommunityShareDelete'
 		});
 

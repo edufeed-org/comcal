@@ -16,7 +16,7 @@
 	import { PlusIcon, CheckIcon, AlertIcon } from '../icons';
 	import { userCalendarLoader } from '$lib/loaders';
 	import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
-	import { appConfig } from '$lib/config.js';
+	import { getConfig } from '$lib/stores/config.svelte.js';
 	import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
 	import { EventFactory } from 'applesauce-factory';
 
@@ -276,7 +276,7 @@
 			const signedEvent = await activeUser.signEvent(eventTemplate);
 
 			// Publish to multiple relays
-			const responses = await pool.publish(appConfig.calendar.defaultRelays, signedEvent);
+			const responses = await pool.publish(getConfig().calendar.defaultRelays, signedEvent);
 
 			// Check if at least one relay accepted the event
 			const hasSuccess = responses.some(response => response.ok);
@@ -343,7 +343,7 @@
 			const signedEvent = await activeUser.signEvent(eventTemplate);
 
 			// Publish to multiple relays
-			const responses = await pool.publish(appConfig.calendar.defaultRelays, signedEvent);
+			const responses = await pool.publish(getConfig().calendar.defaultRelays, signedEvent);
 
 			// Check if at least one relay accepted the event
 			const hasSuccess = responses.some(response => response.ok);

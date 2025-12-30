@@ -1,5 +1,5 @@
 <script>
-	import { appConfig } from '$lib/config.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import CameraIcon from '$lib/components/icons/actions/CameraIcon.svelte';
 	import * as m from '$lib/paraglide/messages';
 	import { BlossomClient } from 'blossom-client-sdk';
@@ -27,7 +27,7 @@
 		};
 
 		// Create Blossom client and upload
-		const client = new BlossomClient(appConfig.blossom.serverUrl, signerFn);
+		const client = new BlossomClient(runtimeConfig.blossom.serverUrl, signerFn);
 		const blob = await client.uploadBlob(file);
 		
 		return blob.url;
@@ -49,8 +49,8 @@
 		}
 
 		// Validate file size
-		if (file.size > appConfig.blossom.maxFileSize) {
-			errors.image = m.avatar_uploader_error_too_large({size: Math.round(appConfig.blossom.maxFileSize / (1024 * 1024))});
+		if (file.size > runtimeConfig.blossom.maxFileSize) {
+			errors.image = m.avatar_uploader_error_too_large({size: Math.round(runtimeConfig.blossom.maxFileSize / (1024 * 1024))});
 			return;
 		}
 
@@ -159,7 +159,7 @@
 				{m.avatar_uploader_help_text()}
 			</p>
 			<p class="text-xs opacity-70">
-				{m.avatar_uploader_max_size({size: Math.round(appConfig.blossom.maxFileSize / (1024 * 1024))})}
+				{m.avatar_uploader_max_size({size: Math.round(runtimeConfig.blossom.maxFileSize / (1024 * 1024))})}
 			</p>
 		</div>
 	</div>

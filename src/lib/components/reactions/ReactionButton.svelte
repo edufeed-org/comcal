@@ -9,7 +9,7 @@
 	import { manager } from '$lib/stores/accounts.svelte.js';
 	import { deleteReaction } from '$lib/helpers/reactions.js';
 	import { showToast } from '$lib/helpers/toast.js';
-	import { appConfig } from '$lib/config.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import * as m from '$lib/paraglide/messages';
 	
 	/** @type {any} */
@@ -61,7 +61,7 @@
 		try {
 			// Delete the reaction event using the helper
 			await deleteReaction(userReactionEvent, {
-				relays: appConfig.calendar.defaultRelays
+				relays: runtimeConfig.calendar.defaultRelays
 			});
 			showToast(m.reactions_remove_success(), 'success');
 		} catch (error) {

@@ -11,7 +11,8 @@ import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
 
 // Global calendar events (kinds 31922, 31923)
-export const calendarTimelineLoader = createTimelineLoader(
+// Lazy factory to ensure relays are read from runtime config at call time, not module load time
+export const calendarTimelineLoader = () => createTimelineLoader(
 	pool,
 	runtimeConfig.calendar.defaultRelays,
 	{
@@ -44,7 +45,8 @@ export const createRelayFilteredCalendarLoader = (customRelays = [], additionalF
 
 // Calendar definition loader for personal calendars (kind 31924)
 // NOTE: This loads ALL calendars without filtering - use userCalendarLoader for user-specific calendars
-export const calendarLoader = createTimelineLoader(
+// Lazy factory to ensure relays are read from runtime config at call time, not module load time
+export const calendarLoader = () => createTimelineLoader(
 	pool,
 	runtimeConfig.calendar.defaultRelays,
 	{

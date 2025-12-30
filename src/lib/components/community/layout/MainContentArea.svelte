@@ -3,7 +3,8 @@
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { ProfileModel } from 'applesauce-core/models';
 	import { profileLoader } from '$lib/loaders/profile.js';
-	import { appConfig } from '$lib/config.js';
+	import { addressLoader } from '$lib/loaders/base.js';
+	import { getConfig } from '$lib/stores/config.svelte.js';
 	import Chat from '../views/Chat.svelte';
 	import CalendarView from '$lib/components/calendar/CalendarView.svelte';
 	import LearningView from '../views/LearningView.svelte';
@@ -25,10 +26,11 @@
 
 		if (selectedCommunityId) {
 			// 1. Trigger loader to fetch profile from relays
+			const config = getConfig();
 			const loaderSub = profileLoader({ 
 				kind: 0, 
 				pubkey: selectedCommunityId, 
-				relays: appConfig.calendar.defaultRelays 
+				relays: config.calendar.defaultRelays 
 			}).subscribe(() => {
 				// Loader automatically populates eventStore
 			});
@@ -58,12 +60,24 @@
 				pubkey: selectedCommunityId
 			};
 
+			const config = getConfig();
+			
+			// 1. Trigger loader to fetch community event from relays
+			const loaderSub = addressLoader({ 
+				...pointer, 
+				relays: config.calendar.defaultRelays 
+			}).subscribe(() => {
+				// Loader automatically populates eventStore
+			});
+
+			// 2. Subscribe to eventStore for reactive updates
 			const sub = eventStore.replaceable(pointer).subscribe((event) => {
 				communikeyEvent = event || null;
 				isLoading = false;
 			});
 
 			return () => {
+				loaderSub.unsubscribe();
 				sub.unsubscribe();
 			};
 		} else {

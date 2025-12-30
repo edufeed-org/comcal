@@ -1,7 +1,7 @@
 <script>
 	import { EventFactory } from 'applesauce-factory';
 	import { publishEvent } from '$lib/helpers/publisher.js';
-	import { appConfig } from '$lib/config.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { generateCommentTags } from '$lib/helpers/commentTags.js';
 	import * as m from '$lib/paraglide/messages';
@@ -61,7 +61,7 @@
 			const tags = generateCommentTags(
 				rootEvent,
 				parentItem,
-				appConfig.calendar.defaultRelays[0] || ''
+				runtimeConfig.calendar.defaultRelays[0] || ''
 			);
 
 			// Create the comment event
@@ -78,7 +78,7 @@
 
 			// Publish to relays
 			const result = await publishEvent(signedEvent, {
-				relays: appConfig.calendar.defaultRelays,
+				relays: runtimeConfig.calendar.defaultRelays,
 				logPrefix: 'Comment'
 			});
 

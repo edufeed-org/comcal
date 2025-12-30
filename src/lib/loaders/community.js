@@ -6,7 +6,8 @@ import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 // Communities list loader (kind 10222)
-export const communikeyTimelineLoader = createTimelineLoader(
+// Lazy factory to ensure relays are read from runtime config at call time, not module load time
+export const communikeyTimelineLoader = () => createTimelineLoader(
 	pool,
 	runtimeConfig.calendar.defaultRelays,
 	{

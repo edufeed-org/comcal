@@ -68,7 +68,7 @@ export function GET() {
 		gitRepo: env.APP_GIT_REPO || 'https://github.com/edufeed-org/comcal',
 
 		// Relays
-		relays: parseArray(env.RELAYS, ['wss://relay-rpi.edufeed.org']),
+		relays: parseArray(env.RELAYS),
 		fallbackRelays: parseArray(env.FALLBACK_RELAYS, [
 			'wss://relay.damus.io',
 			'wss://nos.lol',

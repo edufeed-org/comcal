@@ -9,10 +9,11 @@
 
 	let { children, data } = $props();
 	
-	// Initialize runtime config on app load
+	// Initialize runtime config synchronously on app load (before child components mount)
+	initializeConfig(data.config);
+	
+	// Re-initialize app settings after config is loaded
 	$effect(() => {
-		initializeConfig(data.config);
-		// Re-initialize app settings after config is loaded
 		initializeAppSettings();
 	});
 	

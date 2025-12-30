@@ -2,15 +2,95 @@
  * Runtime Configuration Store
  * This store holds the application configuration loaded from the API endpoint.
  * It provides a reactive way to access config throughout the application.
+ * 
+ * Configuration source of truth: .env file → /api/config endpoint → this store
  */
 
-import { appConfig } from '$lib/config.js';
+/**
+ * Default configuration structure
+ * These are minimal defaults used before the API config loads
+ */
+const defaultConfig = {
+	name: 'ComCal',
+	logo: 'https://blossom.edufeed.org/f22e1410f09a9130757704b6dcd4c34774d2926b9cfd6cf2e4c4675c64d4333b.webp',
+	gitRepo: 'https://github.com/edufeed-org/comcal',
+	calendar: {
+		weekStartDay: 1,
+		locale: 'de-DE',
+		timeFormat: '24h',
+		defaultRelays: [],
+		fallbackRelays: [
+			'wss://relay.damus.io',
+			'wss://nos.lol',
+			'wss://nostr.wine',
+		],
+	},
+	signup: {
+		suggestedUsers: [
+			'npub1f7jar3qnu269uyx5p0e4v24hqxjnxysxudvujza2ur5ehltvdeqsly2fx9',
+			'npub1r30l8j4vmppvq8w23umcyvd3vct4zmfpfkn4c7h2h057rmlfcrmq9xt9ma',
+			'npub1tgftg8kptdrxxg0g3sm3hckuglv3j0uu3way4vylc5qyt0f44m0s3gun6e'
+		]
+	},
+	blossom: {
+		serverUrl: 'https://blossom.edufeed.org',
+		uploadEndpoint: 'https://blossom.edufeed.org/upload',
+		maxFileSize: 5 * 1024 * 1024, // 5MB
+	},
+	geocoding: {
+		cacheDurationDays: 30,
+		validation: {
+			minAddressLength: 10,
+			minConfidenceScore: 5,
+			requireAddressComponents: false,
+			acceptedComponentTypes: [
+				'road', 'house', 'building', 'retail',
+				'commercial', 'industrial', 'residential',
+				'address', 'postcode', 'street', 'neighbourhood',
+				'city', 'town', 'village', 'municipality',
+				'county', 'state', 'country',
+				'amenity', 'venue', 'place', 'locality', 'university'
+			]
+		}
+	},
+	imprint: {
+		enabled: true,
+		organization: 'ComCal GbR',
+		address: {
+			street: '',
+			postalCode: '',
+			city: '',
+			country: ''
+		},
+		contact: {
+			email: 'mail@comcal.net',
+			phone: ''
+		},
+		representative: '',
+		registrationNumber: '',
+		vatId: '',
+		responsibleForContent: ''
+	},
+	educational: {
+		ambRelays: ['ws://localhost:3334'],
+		searchDebounceMs: 300,
+		vocabularies: {
+			learningResourceType: 'hcrt',
+			about: 'hochschulfaechersystematik',
+			audience: 'intendedEndUserRole'
+		}
+	},
+	ui: {
+		defaultLightTheme: 'light',
+		defaultDarkTheme: 'dark'
+	}
+};
 
 /**
  * Runtime configuration state
- * Initialized with defaults from appConfig, then updated with runtime values
+ * Initialized with defaults, then updated with runtime values from API
  */
-let config = $state(appConfig);
+let config = $state(defaultConfig);
 
 /**
  * Track if config has been initialized to prevent re-initialization
@@ -33,57 +113,57 @@ export function initializeConfig(runtimeConfig) {
 
 	// Deep merge runtime config with defaults
 	config = {
-		...appConfig,
-		name: runtimeConfig.appName || appConfig.name,
-		logo: runtimeConfig.appLogo || appConfig.logo,
-		gitRepo: runtimeConfig.gitRepo || appConfig.gitRepo,
+		...defaultConfig,
+		name: runtimeConfig.appName || defaultConfig.name,
+		logo: runtimeConfig.appLogo || defaultConfig.logo,
+		gitRepo: runtimeConfig.gitRepo || defaultConfig.gitRepo,
 		calendar: {
-			...appConfig.calendar,
+			...defaultConfig.calendar,
 			...runtimeConfig.calendar,
 			// Keep the defaultRelays and fallbackRelays from runtime
-			defaultRelays: runtimeConfig.relays || appConfig.calendar.defaultRelays,
-			fallbackRelays: runtimeConfig.fallbackRelays || appConfig.calendar.fallbackRelays,
+			defaultRelays: runtimeConfig.relays || defaultConfig.calendar.defaultRelays,
+			fallbackRelays: runtimeConfig.fallbackRelays || defaultConfig.calendar.fallbackRelays,
 		},
 		signup: {
-			...appConfig.signup,
+			...defaultConfig.signup,
 			...runtimeConfig.signup,
 		},
 		blossom: {
-			...appConfig.blossom,
+			...defaultConfig.blossom,
 			...runtimeConfig.blossom,
 		},
 		geocoding: {
-			...appConfig.geocoding,
+			...defaultConfig.geocoding,
 			...runtimeConfig.geocoding,
 			validation: {
-				...appConfig.geocoding.validation,
+				...defaultConfig.geocoding.validation,
 				...runtimeConfig.geocoding?.validation,
 			}
 		},
 		imprint: {
-			...appConfig.imprint,
+			...defaultConfig.imprint,
 			...runtimeConfig.imprint,
 			address: {
-				...appConfig.imprint.address,
+				...defaultConfig.imprint.address,
 				...runtimeConfig.imprint?.address,
 			},
 			contact: {
-				...appConfig.imprint.contact,
+				...defaultConfig.imprint.contact,
 				...runtimeConfig.imprint?.contact,
 			}
 		},
 		educational: {
-			...appConfig.educational,
+			...defaultConfig.educational,
 			...runtimeConfig.educational,
 			// Use ambRelays from runtime config
-			ambRelays: runtimeConfig.ambRelays || appConfig.educational.ambRelays,
+			ambRelays: runtimeConfig.ambRelays || defaultConfig.educational.ambRelays,
 			vocabularies: {
-				...appConfig.educational.vocabularies,
+				...defaultConfig.educational.vocabularies,
 				...runtimeConfig.educational?.vocabularies,
 			}
 		},
 		ui: {
-			...appConfig.ui,
+			...defaultConfig.ui,
 			...runtimeConfig.ui
 		}
 	};

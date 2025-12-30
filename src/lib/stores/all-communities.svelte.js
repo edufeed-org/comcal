@@ -15,7 +15,7 @@ export function useAllCommunities() {
 	// Initialize global subscription only once
 	if (!globalSubscription) {
 		// Bootstrap EventStore with community loader (feeds events into EventStore)
-		const loaderSubscription = communikeyTimelineLoader().subscribe();
+		const loaderSubscription = communikeyTimelineLoader()().subscribe();
 
 		// Use EventStore timeline for reactive data loading
 		// EventStore automatically handles replaceable event logic (kind 10222 is replaceable: 10000-19999)

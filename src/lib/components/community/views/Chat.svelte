@@ -1,7 +1,7 @@
 <script>
 	import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
 	import { manager } from '$lib/stores/accounts.svelte';
-	import { appConfig } from '$lib/config.js';
+	import { getConfig } from '$lib/stores/config.svelte.js';
 	import { loadUserProfile } from '$lib/loaders';
 	import { getProfilePicture } from 'applesauce-core/helpers';
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
@@ -41,9 +41,10 @@
 		isLoading = true;
 		let initialLoadComplete = false;
 
+		const config = getConfig();
 		// Create a persistent subscription that continues after EOSE
 		const subscription = pool
-			.group(appConfig.calendar.defaultRelays)
+			.group(config.calendar.defaultRelays)
 			.subscription({ kinds: [9], '#h': [derivedCommunityPubkey] })
 			.subscribe({
 				next: (response) => {
@@ -135,7 +136,8 @@
 			console.log('Chat event created:', signedEvent);
 
 			try {
-				const responses = await pool.publish(appConfig.calendar.defaultRelays, signedEvent);
+				const config = getConfig();
+				const responses = await pool.publish(config.calendar.defaultRelays, signedEvent);
 				responses.forEach((response) => {
 					if (response.ok) {
 						console.log(`Event published successfully to ${response.from}`);

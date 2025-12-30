@@ -1,7 +1,7 @@
 <script>
 	import { ChatIcon } from '$lib/components/icons';
 	import { pool } from '$lib/stores/nostr-infrastructure.svelte';
-	import { appConfig } from '$lib/config.js';
+	import { getConfig } from '$lib/stores/config.svelte.js';
 	import * as m from '$lib/paraglide/messages';
 
 	// Props
@@ -26,8 +26,9 @@
 		isLoading = true;
 		error = null;
 
+		const config = getConfig();
 		const sub = pool
-			.group(appConfig.calendar.defaultRelays)
+			.group(config.calendar.defaultRelays)
 			.subscription({ kinds: [9], '#h': [communityId] })
 			.subscribe({
 				next: (/** @type {any} */ response) => {

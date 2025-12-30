@@ -13,7 +13,7 @@
 	} from 'applesauce-core/helpers';
 	import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
 	import { PlusIcon, CheckIcon, AlertIcon } from '../icons';
-	import { appConfig } from '$lib/config.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 	/**
 	 * @typedef {Object} Props
@@ -169,10 +169,10 @@
 		// Sign the event
 		const signedEvent = await factory.sign(shareEvent);
 
-		console.log(`🌐 CommunityCalendarShare: Publishing share to ${appConfig.calendar.defaultRelays.length} relays`);
+		console.log(`🌐 CommunityCalendarShare: Publishing share to ${runtimeConfig.calendar.defaultRelays.length} relays`);
 
 		const result = await publishEvent(signedEvent, {
-			relays: appConfig.calendar.defaultRelays,
+			relays: runtimeConfig.calendar.defaultRelays,
 			logPrefix: 'CommunityShare'
 		});
 
@@ -307,7 +307,7 @@
 
 		// Publish deletion
 		const result = await publishEvent(deleteEvent, {
-			relays: appConfig.calendar.defaultRelays,
+			relays: runtimeConfig.calendar.defaultRelays,
 			logPrefix: 'CommunityShareDelete'
 		});
 

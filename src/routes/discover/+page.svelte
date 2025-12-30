@@ -9,7 +9,7 @@
 	import { ambSearchLoader } from '$lib/loaders/amb-search.js';
 	import { hasActiveFilters, createEmptyFilters } from '$lib/helpers/educational/searchQueryBuilder.js';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-	import { appConfig } from '$lib/config';
+	import { getConfig } from '$lib/stores/config.svelte.js';
 	import { TimelineModel, ProfileModel } from 'applesauce-core/models';
 	import { AMBResourceModel, GlobalCalendarEventModel } from '$lib/models';
 	import { profileLoader } from '$lib/loaders/profile.js';
@@ -228,7 +228,7 @@
 	});
 
 	// Load calendar events
-	calendarTimelineLoader().subscribe({
+	calendarTimelineLoader()().subscribe({
 		error: (/** @type {any} */ error) => {
 			console.error('🔍 Discover: Calendar loader error:', error);
 		}
@@ -416,7 +416,7 @@
 			}
 			searchDebounceTimer = setTimeout(() => {
 				debouncedSearchQuery = searchQuery;
-			}, appConfig.educational?.searchDebounceMs || 300);
+			}, getConfig().educational?.searchDebounceMs || 300);
 		}
 	});
 
@@ -526,7 +526,7 @@
 			const loaderSub = profileLoader({
 				kind: 0,
 				pubkey,
-				relays: appConfig.calendar.defaultRelays
+				relays: getConfig().calendar.defaultRelays
 			}).subscribe({
 				error: (error) => {
 					console.error(`🔍 Discover: Profile loader error for ${pubkey.slice(0, 8)}:`, error);
@@ -563,7 +563,7 @@
 			const loaderSub = profileLoader({
 				kind: 0,
 				pubkey,
-				relays: appConfig.calendar.defaultRelays
+				relays: getConfig().calendar.defaultRelays
 			}).subscribe({
 				error: (error) => {
 					console.error(`🔍 Discover: Community profile loader error:`, error);

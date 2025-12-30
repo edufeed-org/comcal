@@ -6,6 +6,7 @@ import {
   getCommunityCalendarMetadata 
 } from '$lib/helpers/calendar';
 import { nip19 } from 'nostr-tools';
+import { env } from '$env/dynamic/private';
 
 /**
  * Safely encode filename for Content-Disposition header
@@ -115,9 +116,11 @@ async function handleCommunityCalendar(pubkeyOrNpub, url) {
     // Fetch community calendar metadata
     const metadata = await getCommunityCalendarMetadata(communityPubkey);
     
-    // Get default relays and combine with community relays
-    const { appConfig } = await import('$lib/config.js');
-    const allRelays = [...new Set([...appConfig.calendar.defaultRelays, ...metadata.relays])];
+    // Get default relays from environment and combine with community relays
+    const defaultRelays = env.RELAYS 
+      ? env.RELAYS.split(',').map(r => r.trim()).filter(Boolean) 
+      : [];
+    const allRelays = [...new Set([...defaultRelays, ...metadata.relays])];
     
     // Fetch community calendar events with combined relays
     const events = await fetchCommunityCalendarEvents(communityPubkey, allRelays);

@@ -6,7 +6,7 @@
 	import { SimpleAccount } from 'applesauce-accounts/accounts';
 	import { nip19, generateSecretKey, getPublicKey } from 'nostr-tools';
 	import * as nip49 from 'nostr-tools/nip49';
-	import { appConfig } from '$lib/config.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { publishEvents } from '$lib/helpers/publisher.js';
 	import { fetchProfileData } from '$lib/helpers/profile.js';
@@ -561,7 +561,7 @@
 					</p>
 
 					<div class="space-y-3">
-						{#each appConfig.signup.suggestedUsers as npub}
+						{#each runtimeConfig.signup.suggestedUsers as npub}
 							{#await fetchProfileData(npub)}
 								<!-- Loading state for this profile -->
 								<div class="card bg-base-200">

@@ -4,6 +4,7 @@
 	import { EventFactory } from 'applesauce-factory';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { publishEvent } from '$lib/helpers/publisher';
+	import { getConfig } from '$lib/stores/config.svelte.js';
 	import * as m from '$lib/paraglide/messages';
 
 	let { profile, communikeyEvent, communikeyContentTypes, activeTab, onTabChange } = $props();
@@ -42,8 +43,8 @@
 		console.log('Signed Join Event:', signedEvent);
 
 		// Get default relays from config
-		const { appConfig } = await import('$lib/config.js');
-		const allRelays = [...new Set([...appConfig.calendar.defaultRelays])];
+		const config = getConfig();
+		const allRelays = [...new Set([...config.calendar.defaultRelays])];
 
 		const result = await publishEvent(signedEvent, {
 			relays: allRelays,

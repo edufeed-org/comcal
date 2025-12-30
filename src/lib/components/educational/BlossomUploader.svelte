@@ -4,7 +4,7 @@
 -->
 
 <script>
-	import { appConfig } from '$lib/config.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { CloseIcon, PlusIcon } from '$lib/components/icons';
 	import { BlossomClient } from 'blossom-client-sdk';
@@ -23,7 +23,7 @@
 		files = $bindable([]),
 		multiple = true,
 		accept = '*/*',
-		maxSize = appConfig.blossom.maxFileSize,
+		maxSize = runtimeConfig.blossom.maxFileSize,
 		label = 'Upload Files',
 		helpText = '',
 		disabled = false,
@@ -99,7 +99,7 @@
 		};
 
 		// Create Blossom client
-		const client = new BlossomClient(appConfig.blossom.serverUrl, signer);
+		const client = new BlossomClient(runtimeConfig.blossom.serverUrl, signer);
 
 		// Upload file using the SDK
 		const blob = await client.uploadBlob(file);

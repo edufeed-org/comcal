@@ -8,7 +8,7 @@
 	import { ProfileModel } from 'applesauce-core/models';
 	import { profileLoader } from '$lib/loaders/profile.js';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-	import { appConfig } from '$lib/config.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import { getProfilePicture, getDisplayName } from 'applesauce-core/helpers';
 	import * as m from '$lib/paraglide/messages';
 	import ImageWithFallback from './ImageWithFallback.svelte';
@@ -50,7 +50,7 @@
 			const loaderSub = profileLoader({
 				kind: 0,
 				pubkey: pubkey,
-				relays: appConfig.calendar.defaultRelays
+				relays: runtimeConfig.calendar.defaultRelays
 			}).subscribe(() => {
 				// Loader automatically populates eventStore
 			});

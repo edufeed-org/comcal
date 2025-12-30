@@ -4,7 +4,7 @@
 	import ProfileForm from './shared/ProfileForm.svelte';
 	import AvatarUploader from './shared/AvatarUploader.svelte';
 	import { publishEvent } from '$lib/helpers/publisher.js';
-	import { appConfig } from '$lib/config.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import * as m from '$lib/paraglide/messages';
 	
 	let { modalId = 'edit-profile-modal' } = $props();
@@ -148,7 +148,7 @@
 			
 			// Publish to relays
 			const result = await publishEvent(signedEvent, {
-				relays: appConfig.calendar.defaultRelays,
+				relays: runtimeConfig.calendar.defaultRelays,
 				addToStore: true,
 				logPrefix: 'EditProfile'
 			});
