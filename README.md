@@ -335,6 +335,11 @@ Förderkennzeichen: 01PZ24007
 
 ![Logo BMBSFJ](/static/BMBFSFJ.png)
 
+Further development happens under funding of Stiftung Innovation in der Hochschullehre:
+
+![Logo STIL](https://blossom.edufeed.org/c9a88acfbf57042191cfb97bafd288436ae959dd0239d5d47b91aa66465205a3.webp)
+
+
 ## Contributing
 
 Contributions are welcome!
