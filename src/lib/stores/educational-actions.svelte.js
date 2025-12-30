@@ -42,6 +42,7 @@ import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
  * @property {Creator[]} creators - Array of creators
  * @property {string[]} keywords - Array of keywords/tags
  * @property {UploadedFile[]} files - Array of uploaded files
+ * @property {boolean} [isAccessibleForFree] - Whether the resource is freely accessible
  * @property {string} [educationalLevel] - Optional SKOS URI for educational level
  * @property {string} [educationalLevelLabel] - Human-readable label
  */
@@ -138,6 +139,11 @@ function convertFormDataToAMB(formData) {
 			contentSize: file.size,
 			sha256: file.sha256
 		}));
+	}
+
+	// isAccessibleForFree (boolean)
+	if (formData.isAccessibleForFree !== undefined) {
+		amb.isAccessibleForFree = formData.isAccessibleForFree;
 	}
 
 	return amb;

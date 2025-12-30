@@ -66,6 +66,14 @@
 		});
 	});
 
+	// Content type detection - only show "Open Content" for valid external URLs or nostr URIs
+	const hasExternalUrl = $derived(
+		resource.identifier?.startsWith('http://') || resource.identifier?.startsWith('https://')
+	);
+	const shouldShowOpenContentButton = $derived(
+		hasExternalUrl || isNostrUri(resource.identifier)
+	);
+
 	/**
 	 * Navigate to resource detail view
 	 */
@@ -224,8 +232,8 @@
 			</div>
 		{/if}
 
-		<!-- Action Button -->
-		{#if resource.identifier}
+		<!-- Action Button - Only show for external URLs or nostr URIs -->
+		{#if shouldShowOpenContentButton}
 			<div class="pt-2">
 				<button
 					class="btn btn-primary btn-sm"

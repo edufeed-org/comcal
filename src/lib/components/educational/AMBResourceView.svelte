@@ -132,6 +132,17 @@
 		resource.identifier?.startsWith('nostr:') || resource.identifier?.startsWith('naddr1')
 	);
 
+	// Content type detection
+	const hasExternalUrl = $derived(
+		resource.identifier?.startsWith('http://') || resource.identifier?.startsWith('https://')
+	);
+	const hasUploadedFiles = $derived(
+		resource.encodings && resource.encodings.length > 0
+	);
+	const isNostrNativeOnly = $derived(
+		hasUploadedFiles && !hasExternalUrl
+	);
+
 	/**
 	 * Navigate to content - handles both nostr identifiers and external URLs
 	 */
@@ -315,62 +326,33 @@
 	{/if}
 
 
-	<!-- VIEW CONTENT CTA -->
-	{#if resource.identifier}
+	<!-- VIEW CONTENT CTA - Only show for external URLs -->
+	{#if hasExternalUrl}
 		<div class="mb-8 p-6 bg-primary/10 border-2 border-primary rounded-lg">
 			<h2 class="text-xl font-bold text-base-content mb-3">{m.amb_resource_access_content_title()}</h2>
 			<p class="text-sm text-base-content/70 mb-4">
-				{#if isNostrIdentifier}
-					{m.amb_resource_access_content_nostr_desc()}
-				{:else}
-					{m.amb_resource_access_content_external_desc()}
-				{/if}
+				{m.amb_resource_access_content_external_desc()}
 			</p>
 			<button
 				onclick={navigateToContent}
 				class="btn btn-primary btn-lg"
 			>
-				{#if isNostrIdentifier}
-					<!-- Play/View icon for internal content -->
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="w-5 h-5 mr-2"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-						/>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-						/>
-					</svg>
-					{m.amb_resource_view_content()}
-				{:else}
-					<!-- External link icon -->
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="w-5 h-5 mr-2"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-						/>
-					</svg>
-					{m.amb_resource_open_content()}
-				{/if}
+				<!-- External link icon -->
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="w-5 h-5 mr-2"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+					/>
+				</svg>
+				{m.amb_resource_open_content()}
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
 					class="w-4 h-4 ml-2"
@@ -386,11 +368,9 @@
 					/>
 				</svg>
 			</button>
-			{#if !isNostrIdentifier}
-				<div class="mt-3 text-xs text-base-content/60 break-all">
-					{resource.identifier}
-				</div>
-			{/if}
+			<div class="mt-3 text-xs text-base-content/60 break-all">
+				{resource.identifier}
+			</div>
 		</div>
 	{/if}
 
@@ -551,10 +531,21 @@
 		</div>
 	{/if}
 
-	<!-- UPLOADED FILES -->
+	<!-- UPLOADED FILES - Promoted for Nostr-native content -->
 	{#if resource.encodings && resource.encodings.length > 0}
-		<div class="mb-8">
-			<h3 class="text-lg font-semibold text-base-content mb-3">{m.amb_resource_uploaded_files()}</h3>
+		<div class="mb-8 {isNostrNativeOnly ? 'p-6 bg-primary/10 border-2 border-primary rounded-lg' : ''}">
+			<h3 class="text-lg font-semibold text-base-content mb-3">
+				{#if isNostrNativeOnly}
+					{m.amb_resource_access_content_title()}
+				{:else}
+					{m.amb_resource_uploaded_files()}
+				{/if}
+			</h3>
+			{#if isNostrNativeOnly}
+				<p class="text-sm text-base-content/70 mb-4">
+					This content is stored on the Nostr network and available directly without external dependencies.
+				</p>
+			{/if}
 			<div class="space-y-2">
 				{#each resource.encodings as file}
 					<div class="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
@@ -610,6 +601,8 @@
 {#if isOwner}
 	<AMBUploadModal
 		isOpen={showEditModal}
+		editEvent={event}
+		editResource={resource}
 		communityPubkey={event.tags?.find((/** @type {string[]} */ t) => t[0] === 'h')?.[1] || ''}
 		onClose={handleEditModalClose}
 		onPublished={handleResourceUpdated}

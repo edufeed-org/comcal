@@ -21,13 +21,18 @@
 	 * @typedef {import('./CreatorInput.svelte').Creator} Creator
 	 */
 
-	/** @type {{ isOpen?: boolean, communityPubkey?: string, onClose?: () => void, onPublished?: (naddr: string) => void }} */
+	/** @type {{ isOpen?: boolean, communityPubkey?: string, editEvent?: any, editResource?: any, onClose?: () => void, onPublished?: (naddr: string) => void }} */
 	let {
 		isOpen = false,
 		communityPubkey = '',
+		editEvent = null,
+		editResource = null,
 		onClose = () => {},
 		onPublished = () => {}
 	} = $props();
+
+	// Determine if we're in edit mode
+	const isEditMode = $derived(editEvent !== null && editResource !== null);
 
 	// Current wizard step (1-4)
 	let currentStep = $state(1);
@@ -145,61 +150,149 @@
 		}
 	});
 
+	// Import helper functions for extracting data from events
+	import {
+		getAMBName,
+		getAMBDescription,
+		getAMBImage,
+		getAMBIdentifier,
+		getAMBLanguages,
+		getAMBLearningResourceTypes,
+		getAMBSubjects,
+		getAMBKeywords,
+		getAMBLicense,
+		isAMBFree,
+		getAMBEncodings,
+		getAMBCreatorNames
+	} from '$lib/helpers/educational/ambHelpers.js';
+
 	/**
-	 * Reset form to initial state
+	 * Reset form to initial state or prefill with edit data
 	 */
 	async function resetForm() {
 		currentStep = 1;
 		validationErrors = [];
 		isSubmitting = false;
 		submitError = '';
-		identifierManuallyEdited = false;
+		identifierManuallyEdited = isEditMode; // If editing, identifier is already set
 		
-		// Set initial form state
+		// If editing, prefill with existing data
+		if (isEditMode && editEvent && editResource) {
+			// Extract creators from p-tags and creator:name tags
+			const creatorPubkeys = editEvent.tags
+				?.filter((/** @type {string[]} */ t) => t[0] === 'p' && t[3] === 'creator')
+				.map((/** @type {string[]} */ t) => t[1]) || [];
+			
+			const creatorNames = getAMBCreatorNames(editEvent);
+			
+			// Combine pubkey-based creators with name-only creators
+			const editCreators = [];
+			
+			// Add pubkey-based creators
+			for (const pubkey of creatorPubkeys) {
+				try {
+					const profile = await fetchProfileData(pubkey);
+					editCreators.push({
+						name: profile.name || '',
+						type: 'Person',
+						pubkey: pubkey
+					});
+				} catch (error) {
+					console.warn('Failed to fetch profile for creator:', error);
+					editCreators.push({
+						name: '',
+						type: 'Person',
+						pubkey: pubkey
+					});
+				}
+			}
+			
+			// Add name-only creators (those without pubkeys)
+			for (const name of creatorNames) {
+				if (!editCreators.some(c => c.name === name)) {
+					editCreators.push({
+						name: name,
+						type: 'Person'
+					});
+				}
+			}
+			
+			// Get learning resource types and subjects
+			const lrtTypes = getAMBLearningResourceTypes(editEvent, getLocale());
+			const subjects = getAMBSubjects(editEvent, getLocale());
+			
 		formData = {
-			name: '',
-			description: '',
-			inLanguage: 'de',
-			image: '',
-			identifier: '',
-			learningResourceType: [],
-			about: [],
-			keywords: [],
-			creators: activeUser ? [{
+			name: getAMBName(editEvent),
+			description: getAMBDescription(editEvent),
+			inLanguage: getAMBLanguages(editEvent)[0] || 'de',
+			image: getAMBImage(editEvent) || '',
+			identifier: getAMBIdentifier(editEvent) || '',
+			learningResourceType: lrtTypes.map(t => ({ id: t.id, label: t.label })),
+			about: subjects.map(s => ({ id: s.id, label: s.label })),
+			keywords: getAMBKeywords(editEvent),
+			creators: editCreators.length > 0 ? editCreators : (activeUser ? [{
 				name: 'Loading...',
 				type: 'Person',
 				pubkey: activeUser.pubkey
-			}] : [],
-			encodings: [],
+			}] : []),
+			encodings: getAMBEncodings(editEvent).map(enc => ({
+				url: enc.url,
+				name: enc.name,
+				type: enc.mimeType,  // Map mimeType to type for BlossomUploader compatibility
+				size: enc.size,
+				sha256: enc.sha256
+			})),
 			externalUrl: '',
-			license: 'https://creativecommons.org/licenses/by/4.0/',
-			isAccessibleForFree: true
+			license: getAMBLicense(editEvent)?.id || 'https://creativecommons.org/licenses/by/4.0/',
+			isAccessibleForFree: isAMBFree(editEvent)
 		};
-		
-		// Fetch profile for creator name if user is logged in
-		if (activeUser) {
-			try {
-				/** @type {{ name?: string }} */
-				const profile = await fetchProfileData(activeUser.pubkey);
-				// Only update if user hasn't changed and creators still has our placeholder
-				if (formData.creators.length === 1 && 
-					formData.creators[0].pubkey === activeUser.pubkey) {
-					formData.creators = [{
-						name: profile.name || '',
-						type: 'Person',
-						pubkey: activeUser.pubkey
-					}];
-				}
-			} catch (error) {
-				console.warn('Failed to fetch profile for creator in resetForm:', error);
-				// Leave name empty so user can type it
-				if (formData.creators.length === 1 && 
-					formData.creators[0].pubkey === activeUser.pubkey) {
-					formData.creators = [{
-						name: '',
-						type: 'Person',
-						pubkey: activeUser.pubkey
-					}];
+		} else {
+			// Creating new resource - set initial form state
+			formData = {
+				name: '',
+				description: '',
+				inLanguage: 'de',
+				image: '',
+				identifier: '',
+				learningResourceType: [],
+				about: [],
+				keywords: [],
+				creators: activeUser ? [{
+					name: 'Loading...',
+					type: 'Person',
+					pubkey: activeUser.pubkey
+				}] : [],
+				encodings: [],
+				externalUrl: '',
+				license: 'https://creativecommons.org/licenses/by/4.0/',
+				isAccessibleForFree: true
+			};
+			
+			// Fetch profile for creator name if user is logged in
+			if (activeUser) {
+				try {
+					/** @type {{ name?: string }} */
+					const profile = await fetchProfileData(activeUser.pubkey);
+					// Only update if user hasn't changed and creators still has our placeholder
+					if (formData.creators.length === 1 && 
+						formData.creators[0].pubkey === activeUser.pubkey) {
+						formData.creators = [{
+							name: profile.name || '',
+							type: 'Person',
+							pubkey: activeUser.pubkey
+						}];
+					}
+				} catch (error) {
+					console.warn('Failed to fetch profile for creator in resetForm:', error);
+					// Leave name empty so user can type it
+					if (formData.creators.length === 1 && 
+						formData.creators[0].pubkey === activeUser.pubkey) {
+						formData.creators = [{
+							name: '',
+							type: 'Person',
+							pubkey: activeUser.pubkey
+						}];
+					}
 				}
 			}
 		}
@@ -305,28 +398,38 @@
 		try {
 			const actions = createEducationalActions();
 			
-			// Transform formData to the structure expected by educational-actions
-			const resourceData = {
-				name: formData.name,
-				description: formData.description,
-				slug: formData.identifier || generateSlug(formData.name),
-				learningResourceType: formData.learningResourceType[0]?.id || '',
-				learningResourceTypeLabel: formData.learningResourceType[0]?.label || '',
-				about: formData.about.map(s => s.id),
-				aboutLabels: formData.about.map(s => ({ id: s.id, label: s.label })),
-				inLanguage: formData.inLanguage,
-				license: formData.license,
-				creators: formData.creators,
-				keywords: formData.keywords,
-				files: formData.encodings
-			};
+		// Transform formData to the structure expected by educational-actions
+		const resourceData = {
+			name: formData.name,
+			description: formData.description,
+			slug: formData.identifier || generateSlug(formData.name),
+			learningResourceType: formData.learningResourceType[0]?.id || '',
+			learningResourceTypeLabel: formData.learningResourceType[0]?.label || '',
+			about: formData.about.map(s => s.id),
+			aboutLabels: formData.about.map(s => ({ id: s.id, label: s.label })),
+			inLanguage: formData.inLanguage,
+			license: formData.license,
+			creators: formData.creators,
+			keywords: formData.keywords,
+			files: formData.encodings,
+			isAccessibleForFree: formData.isAccessibleForFree
+		};
 			
-			const result = await actions.createResource(resourceData, communityPubkey);
+			let result;
+			if (isEditMode && editEvent) {
+				// Update existing resource
+				result = await actions.updateResource(resourceData, editEvent);
+			} else {
+				// Create new resource
+				result = await actions.createResource(resourceData, communityPubkey);
+			}
 
 			if (result.naddr) {
 				onPublished(result.naddr);
 				handleClose();
-				await goto(`/${result.naddr}`);
+				if (!isEditMode) {
+					await goto(`/${result.naddr}`);
+				}
 			}
 		} catch (error) {
 			console.error('Error publishing resource:', error);
@@ -410,10 +513,10 @@
 		<div class="modal-box max-w-2xl w-full max-h-[90vh] flex flex-col">
 			<!-- Header -->
 			<div class="flex items-center justify-between mb-4 flex-shrink-0">
-				<div>
-					<h2 id="modal-title" class="text-xl font-semibold text-base-content">
-						Create Educational Resource
-					</h2>
+			<div>
+				<h2 id="modal-title" class="text-xl font-semibold text-base-content">
+					{isEditMode ? 'Edit Educational Resource' : 'Create Educational Resource'}
+				</h2>
 					<p class="text-sm text-base-content/60 mt-1">
 						Step {currentStep} of {totalSteps}: {stepTitles[currentStep - 1]}
 					</p>
@@ -510,18 +613,20 @@
 							<label class="label">
 								<span class="label-text font-medium">Identifier (URL-friendly)</span>
 							</label>
-							<input
-								type="text"
-								class="input input-bordered w-full font-mono text-sm"
-								bind:value={formData.identifier}
-								oninput={handleIdentifierInput}
-								placeholder="auto-generated-from-title"
-							/>
-							<label class="label">
-								<span class="label-text-alt text-base-content/60">
-									Used in the URL. Auto-generated from title if empty.
-								</span>
-							</label>
+					<input
+						type="text"
+						class="input input-bordered w-full font-mono text-sm"
+						bind:value={formData.identifier}
+						oninput={handleIdentifierInput}
+						placeholder="auto-generated-from-title"
+						readonly={isEditMode}
+						disabled={isEditMode}
+					/>
+					<label class="label">
+						<span class="label-text-alt text-base-content/60">
+							{isEditMode ? 'Identifier cannot be changed when editing.' : 'Used in the URL. Auto-generated from title if empty.'}
+						</span>
+					</label>
 						</div>
 					</div>
 				{/if}
@@ -753,9 +858,9 @@
 					>
 						{#if isSubmitting}
 							<span class="loading loading-spinner loading-sm"></span>
-							Publishing...
+							{isEditMode ? 'Updating...' : 'Publishing...'}
 						{:else}
-							Publish Resource
+							{isEditMode ? 'Update Resource' : 'Publish Resource'}
 						{/if}
 					</button>
 				{/if}
