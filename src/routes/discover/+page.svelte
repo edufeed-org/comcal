@@ -28,6 +28,7 @@
 	import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte.js';
 	import { useAllCommunities } from '$lib/stores/all-communities.svelte.js';
 	import { manager } from '$lib/stores/accounts.svelte';
+	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import {
 		buildContentToCommunityMap,
 		filterContentByCommunity,
@@ -986,20 +987,47 @@
 						<p class="mt-4 text-base-content/70">{m.discover_loading()}</p>
 					</div>
 				</div>
-			{:else if filteredCommunities.length === 0}
-				<div class="flex justify-center py-12">
-					<div class="text-center">
-						<p class="text-xl text-base-content/70">{m.discover_no_matches()}</p>
-						<p class="mt-2 text-base-content/50">{m.discover_no_matches_subtitle()}</p>
-					</div>
+	{:else if filteredCommunities.length === 0}
+		<div class="flex justify-center py-12">
+			<div class="text-center">
+				<p class="text-xl text-base-content/70">{m.discover_no_matches()}</p>
+				<p class="mt-2 text-base-content/50">{m.discover_no_matches_subtitle()}</p>
+				
+				{#if activeUser}
+					<button
+						class="btn btn-primary mt-6 gap-2"
+						onclick={() => modalStore.openModal('createCommunity')}
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+						</svg>
+						Create Community
+					</button>
+				{/if}
+			</div>
+		</div>
+		{:else}
+			<!-- Create Community CTA (for logged-in users) -->
+			{#if activeUser}
+				<div class="mb-8 flex justify-center">
+					<button
+						class="btn btn-primary btn-lg gap-2"
+						onclick={() => modalStore.openModal('createCommunity')}
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+						</svg>
+						Create Community
+					</button>
 				</div>
-			{:else}
-				<!-- Results count -->
-				<div class="mb-6 text-center text-sm text-base-content/70">
-					{m.discover_results_count({ count: filteredCommunities.length })}
-				</div>
+			{/if}
 
-				<div class="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+			<!-- Results count -->
+			<div class="mb-6 text-center text-sm text-base-content/70">
+				{m.discover_results_count({ count: filteredCommunities.length })}
+			</div>
+
+			<div class="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 					{#each filteredCommunities.slice(0, displayedCommunitiesCount) as community (community.pubkey)}
 						<CommunikeyCard 
 							pubkey={community.pubkey}
