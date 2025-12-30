@@ -12,7 +12,7 @@
 					{runtimeConfig.appName}
 				</a>
 					- Built with <span class="animate-pulse">💜</span> on the nostr protocol,
-					<span>gefördert vom BMBFSFJ (FKZ01PZ24007)</span>
+					<span>{runtimeConfig.footer.fundingText}</span>
 				</p>
 			</div>
 

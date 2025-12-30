@@ -51,14 +51,14 @@
 						<p>{imprint.representative}</p>
 					</div>
 					{/if}
-					<!-- Funding Information -->
-					<div class="mb-6">
-						<h3 class="font-semibold mb-2">Funding</h3>
-						<div class="flex flex-col gap-2">
-							<img src="/BMBFSFJ.png" alt="BMBFSFJ Logo" class="h-auto w-auto" />
-							<p class="text-sm">Förderkennzeichen: 01PZ24007</p>
-						</div>
-					</div>
+			<!-- Funding Information -->
+			<div class="mb-6">
+				<h3 class="font-semibold mb-2">Funding</h3>
+				<div class="flex flex-col gap-2">
+					<img src={imprint.funding.image} alt="Funding Logo" class="h-auto w-auto" />
+					<p class="text-sm">{imprint.funding.text}</p>
+				</div>
+			</div>
 
 					<!-- Optional fields -->
 					{#if imprint.registrationNumber}

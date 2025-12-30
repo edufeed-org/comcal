@@ -69,7 +69,14 @@ const defaultConfig = {
 		representative: '',
 		registrationNumber: '',
 		vatId: '',
-		responsibleForContent: ''
+		responsibleForContent: '',
+		funding: {
+			image: '/BMBFSFJ.png',
+			text: 'Förderkennzeichen: 01PZ24007'
+		}
+	},
+	footer: {
+		fundingText: 'gefördert vom BMBFSFJ (FKZ01PZ24007)'
 	},
 	educational: {
 		ambRelays: ['ws://localhost:3334'],
@@ -140,19 +147,27 @@ export function initializeConfig(runtimeConfig) {
 				...runtimeConfig.geocoding?.validation,
 			}
 		},
-		imprint: {
-			...defaultConfig.imprint,
-			...runtimeConfig.imprint,
-			address: {
-				...defaultConfig.imprint.address,
-				...runtimeConfig.imprint?.address,
-			},
-			contact: {
-				...defaultConfig.imprint.contact,
-				...runtimeConfig.imprint?.contact,
-			}
+	imprint: {
+		...defaultConfig.imprint,
+		...runtimeConfig.imprint,
+		address: {
+			...defaultConfig.imprint.address,
+			...runtimeConfig.imprint?.address,
 		},
-		educational: {
+		contact: {
+			...defaultConfig.imprint.contact,
+			...runtimeConfig.imprint?.contact,
+		},
+		funding: {
+			...defaultConfig.imprint.funding,
+			...runtimeConfig.imprint?.funding,
+		}
+	},
+	footer: {
+		...defaultConfig.footer,
+		...runtimeConfig.footer,
+	},
+	educational: {
 			...defaultConfig.educational,
 			...runtimeConfig.educational,
 			// Use ambRelays from runtime config
@@ -209,6 +224,9 @@ export const runtimeConfig = {
 	},
 	get imprint() {
 		return config.imprint;
+	},
+	get footer() {
+		return config.footer;
 	},
 	get educational() {
 		return config.educational;

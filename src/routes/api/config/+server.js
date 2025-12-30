@@ -117,25 +117,34 @@ export function GET() {
 			}
 		},
 
-		// Imprint
-		imprint: {
-			enabled: parseBool(env.IMPRINT_ENABLED, true),
-			organization: env.IMPRINT_ORGANIZATION || 'ComCal GbR',
-			address: {
-				street: env.IMPRINT_ADDRESS_STREET || '',
-				postalCode: env.IMPRINT_ADDRESS_POSTAL_CODE || '',
-				city: env.IMPRINT_ADDRESS_CITY || '',
-				country: env.IMPRINT_ADDRESS_COUNTRY || ''
-			},
-			contact: {
-				email: env.IMPRINT_CONTACT_EMAIL || 'mail@comcal.net',
-				phone: env.IMPRINT_CONTACT_PHONE || ''
-			},
-			representative: env.IMPRINT_REPRESENTATIVE || '',
-			registrationNumber: env.IMPRINT_REGISTRATION_NUMBER || '',
-			vatId: env.IMPRINT_VAT_ID || '',
-			responsibleForContent: env.IMPRINT_RESPONSIBLE_FOR_CONTENT || ''
+	// Imprint
+	imprint: {
+		enabled: parseBool(env.IMPRINT_ENABLED, true),
+		organization: env.IMPRINT_ORGANIZATION || 'ComCal GbR',
+		address: {
+			street: env.IMPRINT_ADDRESS_STREET || '',
+			postalCode: env.IMPRINT_ADDRESS_POSTAL_CODE || '',
+			city: env.IMPRINT_ADDRESS_CITY || '',
+			country: env.IMPRINT_ADDRESS_COUNTRY || ''
 		},
+		contact: {
+			email: env.IMPRINT_CONTACT_EMAIL || 'mail@comcal.net',
+			phone: env.IMPRINT_CONTACT_PHONE || ''
+		},
+		representative: env.IMPRINT_REPRESENTATIVE || '',
+		registrationNumber: env.IMPRINT_REGISTRATION_NUMBER || '',
+		vatId: env.IMPRINT_VAT_ID || '',
+		responsibleForContent: env.IMPRINT_RESPONSIBLE_FOR_CONTENT || '',
+		funding: {
+			image: env.IMPRINT_FUNDING_IMAGE || '/BMBFSFJ.png',
+			text: env.IMPRINT_FUNDING_TEXT || 'Förderkennzeichen: 01PZ24007'
+		}
+	},
+
+	// Footer
+	footer: {
+		fundingText: env.FOOTER_FUNDING_TEXT || 'gefördert vom BMBFSFJ (FKZ01PZ24007)'
+	},
 
 		// Educational content
 		educational: {
