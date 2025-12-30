@@ -17,14 +17,15 @@
 	import ArticleCard from '$lib/components/article/ArticleCard.svelte';
 	import AMBResourceCard from '$lib/components/educational/AMBResourceCard.svelte';
 	import CalendarEventCard from '$lib/components/calendar/CalendarEventCard.svelte';
-	import CalendarEventDetailsModal from '$lib/components/calendar/CalendarEventDetailsModal.svelte';
 	import CommunityFilterDropdown from '$lib/components/feed/CommunityFilterDropdown.svelte';
 	import CommunikeyCard from '$lib/components/CommunikeyCard.svelte';
 	import LearningContentFilters from '$lib/components/educational/LearningContentFilters.svelte';
 	import { SearchIcon } from '$lib/components/icons';
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import { updateQueryParams, parseFeedFilters } from '$lib/helpers/urlParams.js';
+	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
 	import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte.js';
 	import { useAllCommunities } from '$lib/stores/all-communities.svelte.js';
 	import { manager } from '$lib/stores/accounts.svelte';
@@ -49,9 +50,6 @@
 	let hasMoreAMB = $state(true);
 	let sortBy = $state('newest');
 	let searchQuery = $state('');
-
-	// Selected event for modal
-	let selectedEvent = $state(/** @type {any} */ (null));
 
 	// Learning content filter state
 	/** @type {import('$lib/helpers/educational/searchQueryBuilder.js').SearchFilters} */
@@ -803,11 +801,16 @@
 	}
 
 	/**
-	 * Handle event click - show modal
+	 * Handle event click - navigate to event detail page
 	 * @param {any} event
 	 */
 	function handleEventClick(event) {
-		selectedEvent = event;
+		// Navigate to event detail page using the original event for naddr encoding
+		const originalEvent = event.originalEvent || event;
+		const naddr = encodeEventToNaddr(originalEvent);
+		if (naddr) {
+			goto(`/calendar/event/${naddr}`);
+		}
 	}
 </script>
 
@@ -1116,11 +1119,3 @@
 		{/if}
 	</div>
 </div>
-
-<!-- Event Details Modal -->
-{#if selectedEvent}
-	<CalendarEventDetailsModal
-		event={selectedEvent}
-		onclose={() => (selectedEvent = null)}
-	/>
-{/if}
