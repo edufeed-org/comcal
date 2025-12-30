@@ -17,6 +17,10 @@ services:
       - APP_LOGO=${APP_LOGO}
       - APP_GIT_REPO=${APP_GIT_REPO}
       
+      # Theme Configuration
+      - THEME_DEFAULT_LIGHT=${THEME_DEFAULT_LIGHT:-light}
+      - THEME_DEFAULT_DARK=${THEME_DEFAULT_DARK:-dark}
+      
       # Relays
       - RELAYS=${RELAYS}
       - FALLBACK_RELAYS=${FALLBACK_RELAYS}
