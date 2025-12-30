@@ -6,7 +6,7 @@
 import { EventFactory } from 'applesauce-factory';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { manager } from '$lib/stores/accounts.svelte';
-import { appConfig } from '$lib/config.js';
+import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { validateEventForm, convertFormDataToEvent, createEventTargetingTags } from '../helpers/calendar.js';
 import { calendarStore } from './calendar-events.svelte.js';
 import { getCalendarEventMetadata } from '../helpers/eventUtils.js';
@@ -122,10 +122,10 @@ export function createCalendarActions(communityPubkey) {
 					tags: tags
 				});
 
-				const calendarEvent = await currentAccount.signEvent(eventTemplate);
-				await pool.publish(appConfig.calendar.defaultRelays, calendarEvent);
+			const calendarEvent = await currentAccount.signEvent(eventTemplate);
+			await pool.publish(runtimeConfig.calendar.defaultRelays, calendarEvent);
 
-				// Add dTag property to the event object for calendar management
+			// Add dTag property to the event object for calendar management
 				const eventWithDTag = {
 					...calendarEvent,
 					dTag: dTag
@@ -255,10 +255,10 @@ export function createCalendarActions(communityPubkey) {
 					tags: tags
 				});
 
-				const updatedEvent = await currentAccount.signEvent(eventTemplate);
-				await pool.publish(appConfig.calendar.defaultRelays, updatedEvent);
+			const updatedEvent = await currentAccount.signEvent(eventTemplate);
+			await pool.publish(runtimeConfig.calendar.defaultRelays, updatedEvent);
 
-				// Add dTag property to the event object
+			// Add dTag property to the event object
 				const eventWithDTag = {
 					...updatedEvent,
 					dTag: dTag
@@ -307,11 +307,11 @@ export function createCalendarActions(communityPubkey) {
 					tags: [['e', eventId]]
 				});
 
-				// Sign and publish the deletion event
-				const deletionEvent = await currentAccount.signEvent(eventTemplate);
-				await pool.publish(appConfig.calendar.defaultRelays, deletionEvent);
+			// Sign and publish the deletion event
+			const deletionEvent = await currentAccount.signEvent(eventTemplate);
+			await pool.publish(runtimeConfig.calendar.defaultRelays, deletionEvent);
 
-			} catch (error) {
+		} catch (error) {
 				console.error('Error deleting calendar event:', error);
 				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 				throw new Error(`Failed to delete calendar event: ${errorMessage}`);
@@ -346,11 +346,11 @@ export function createCalendarActions(communityPubkey) {
 					tags: targetingTags
 				});
 
-				// Sign and publish the targeting event
-				const targetingEvent = await currentAccount.signEvent(eventTemplate);
-				await pool.publish(appConfig.calendar.defaultRelays, targetingEvent);
+			// Sign and publish the targeting event
+			const targetingEvent = await currentAccount.signEvent(eventTemplate);
+			await pool.publish(runtimeConfig.calendar.defaultRelays, targetingEvent);
 
-			} catch (error) {
+		} catch (error) {
 				console.error('Error creating targeted publication:', error);
 				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 				throw new Error(`Failed to create targeted publication: ${errorMessage}`);
@@ -392,11 +392,11 @@ export function createCalendarActions(communityPubkey) {
 					]
 				});
 
-			// Sign and publish the calendar event
-			const calendarEvent = await currentAccount.signEvent(eventTemplate);
-			await pool.publish(appConfig.calendar.defaultRelays, calendarEvent);
+		// Sign and publish the calendar event
+		const calendarEvent = await currentAccount.signEvent(eventTemplate);
+		await pool.publish(runtimeConfig.calendar.defaultRelays, calendarEvent);
 
-			console.log('📅 Calendar created successfully:', calendarEvent.id);
+		console.log('📅 Calendar created successfully:', calendarEvent.id);
 			return calendarEvent;
 
 			} catch (error) {
@@ -472,10 +472,10 @@ export function createCalendarActions(communityPubkey) {
 					tags: tags
 				});
 
-				const rsvpEvent = await currentAccount.signEvent(eventTemplate);
-				await pool.publish(appConfig.calendar.defaultRelays, rsvpEvent);
+			const rsvpEvent = await currentAccount.signEvent(eventTemplate);
+			await pool.publish(runtimeConfig.calendar.defaultRelays, rsvpEvent);
 
-				// Add to eventStore for immediate UI update
+			// Add to eventStore for immediate UI update
 				eventStore.add(rsvpEvent);
 				console.log('✅ RSVP created successfully:', rsvpEvent.id, 'Status:', status);
 

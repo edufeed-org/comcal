@@ -7,16 +7,16 @@
  */
 import { createAddressLoader, createEventLoader, createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { appConfig } from '$lib/config.js';
+import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 // Bootstrap EventStore - gives it relay knowledge
 // Includes default relays, fallback relays, and AMB relays for event discovery
 export const addressLoader = createAddressLoader(pool, { 
 	eventStore, 
 	lookupRelays: [
-		...appConfig.calendar.defaultRelays,
-		...appConfig.calendar.fallbackRelays,
-		...appConfig.educational.ambRelays
+		...runtimeConfig.calendar.defaultRelays,
+		...runtimeConfig.calendar.fallbackRelays,
+		...runtimeConfig.educational.ambRelays
 	]
 });
 
@@ -44,7 +44,7 @@ export const eventLoader = createEventLoader(pool, { eventStore });
  */
 export const userDeletionLoader = (userPubkey) => createTimelineLoader(
 	pool,
-	appConfig.calendar.defaultRelays,
+	runtimeConfig.calendar.defaultRelays,
 	{
 		kinds: [5],              // NIP-09 deletion events
 		authors: [userPubkey],   // User's own deletions

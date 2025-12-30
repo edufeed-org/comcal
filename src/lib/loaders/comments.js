@@ -4,7 +4,7 @@
  */
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { appConfig } from '$lib/config.js';
+import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 /**
  * Factory: Create a comment loader for a specific event
@@ -36,7 +36,7 @@ export const createCommentLoader = (eventAddress) => {
 
 	return createTimelineLoader(
 		pool,
-		appConfig.calendar.defaultRelays,
+		runtimeConfig.calendar.defaultRelays,
 		{
 			kinds: [1111], // NIP-22 comments
 			'#A': [eventAddress], // Comments for this specific event (root scope)

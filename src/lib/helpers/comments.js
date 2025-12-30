@@ -6,7 +6,7 @@ import { EventFactory } from 'applesauce-factory';
 import { publishEvent } from './publisher.js';
 import { manager } from '$lib/stores/accounts.svelte.js';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { appConfig } from '$lib/config.js';
+import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 /**
  * Delete a comment event using NIP-09 deletion
@@ -39,7 +39,7 @@ export async function deleteComment(commentEvent, options = {}) {
 	const deleteEvent = await factory.sign(deleteEventTemplate);
 	
 	const result = await publishEvent(deleteEvent, {
-		relays: options.relays || appConfig.calendar.defaultRelays,
+		relays: options.relays || runtimeConfig.calendar.defaultRelays,
 		addToStore: true,
 		logPrefix: 'Comments'
 	});

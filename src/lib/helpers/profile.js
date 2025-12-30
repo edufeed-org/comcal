@@ -1,5 +1,5 @@
 import { profileLoader } from '$lib/loaders/profile.js';
-import { appConfig } from '$lib/config.js';
+import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { getProfilePicture, getProfileContent } from 'applesauce-core/helpers';
 import { nip19 } from 'nostr-tools';
 import { take, timeout, catchError, map, firstValueFrom } from 'rxjs';
@@ -36,7 +36,7 @@ export async function fetchProfileData(identifier) {
 		profileLoader({
 			kind: 0,
 			pubkey,
-			relays: appConfig.calendar.defaultRelays
+			relays: runtimeConfig.calendar.defaultRelays
 		}).pipe(
 			// Take only the first profile event
 			take(1),

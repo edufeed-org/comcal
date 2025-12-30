@@ -3,12 +3,12 @@
  */
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { appConfig } from '$lib/config.js';
+import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 // Communities list loader (kind 10222)
 export const communikeyTimelineLoader = createTimelineLoader(
 	pool,
-	appConfig.calendar.defaultRelays,
+	runtimeConfig.calendar.defaultRelays,
 	{
 		kinds: [10222]
 	},
@@ -20,7 +20,7 @@ export const communikeyTimelineLoader = createTimelineLoader(
 export function createRelationshipLoader(/** @type {string} */ authorPubkey) {
 	return createTimelineLoader(
 		pool,
-		appConfig.calendar.defaultRelays,
+		runtimeConfig.calendar.defaultRelays,
 		{
 			kinds: [30382], // Relationship events
 			authors: [authorPubkey], // Filter by specific author
@@ -35,7 +35,7 @@ export function createRelationshipLoader(/** @type {string} */ authorPubkey) {
 export function createCommunityMembersLoader(/** @type {string} */ communityPubkey) {
 	return createTimelineLoader(
 		pool,
-		appConfig.calendar.defaultRelays,
+		runtimeConfig.calendar.defaultRelays,
 		{
 			kinds: [30382], // Relationship events
 			'#d': [communityPubkey] // Filter by community ID

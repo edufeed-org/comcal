@@ -5,7 +5,7 @@
 import { reactionsLoader } from '$lib/loaders/reactions.js';
 import { normalizeReactionContent, publishReaction, deleteReaction } from '$lib/helpers/reactions.js';
 import { manager } from './accounts.svelte.js';
-import { appConfig } from '$lib/config.js';
+import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { showToast } from '$lib/helpers/toast.js';
 import { eventStore } from './nostr-infrastructure.svelte.js';
 
@@ -64,7 +64,7 @@ class ReactionsStore {
 		});
 
 		// Get relay list
-		const relaySources = relays || appConfig.calendar.defaultRelays;
+		const relaySources = relays || runtimeConfig.calendar.defaultRelays;
 
 		// Subscribe to reactions
 		const subscription = reactionsLoader(event, relaySources).subscribe({

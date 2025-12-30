@@ -1,3 +1,83 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
-@plugin "daisyui";
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark;
+}
+
+/* STIL Light Theme - Based on TransferKiosk design */
+@plugin "daisyui/theme" {
+  name: "stil";
+  default: false;
+  color-scheme: light;
+  
+  /* Primary colors - STIL Orange #E9570D */
+  --color-primary: oklch(0.58 0.19 35);
+  --color-primary-content: oklch(1 0 0);
+  
+  /* Secondary - STIL Grey #414B54 */
+  --color-secondary: oklch(0.38 0.02 250);
+  --color-secondary-content: oklch(1 0 0);
+  
+  /* Accent - Same as primary for consistency */
+  --color-accent: oklch(0.58 0.19 35);
+  --color-accent-content: oklch(1 0 0);
+  
+  /* Neutral colors */
+  --color-neutral: oklch(0.38 0.02 250);
+  --color-neutral-content: oklch(1 0 0);
+  
+  /* Base colors - White background */
+  --color-base-100: oklch(1 0 0);
+  --color-base-200: oklch(0.97 0 0);
+  --color-base-300: oklch(0.94 0 0);
+  --color-base-content: oklch(0.38 0.02 250);
+  
+  /* Feedback colors */
+  --color-info: oklch(0.72 0.11 230);
+  --color-info-content: oklch(1 0 0);
+  --color-success: oklch(0.72 0.15 150);
+  --color-success-content: oklch(1 0 0);
+  --color-warning: oklch(0.82 0.17 85);
+  --color-warning-content: oklch(0.2 0 0);
+  --color-error: oklch(0.65 0.2 25);
+  --color-error-content: oklch(1 0 0);
+}
+
+/* STIL Dark Theme - Dark variant with STIL Orange accent */
+@plugin "daisyui/theme" {
+  name: "stil-dark";
+  default: false;
+  color-scheme: dark;
+  
+  /* Primary colors - STIL Orange #E9570D */
+  --color-primary: oklch(0.58 0.19 35);
+  --color-primary-content: oklch(1 0 0);
+  
+  /* Secondary - Lighter grey for dark mode */
+  --color-secondary: oklch(0.5 0.02 250);
+  --color-secondary-content: oklch(1 0 0);
+  
+  /* Accent - Same orange */
+  --color-accent: oklch(0.58 0.19 35);
+  --color-accent-content: oklch(1 0 0);
+  
+  /* Neutral colors */
+  --color-neutral: oklch(0.3 0.01 250);
+  --color-neutral-content: oklch(0.9 0 0);
+  
+  /* Base colors - Dark background */
+  --color-base-100: oklch(0.22 0.01 250);
+  --color-base-200: oklch(0.18 0.01 250);
+  --color-base-300: oklch(0.14 0.01 250);
+  --color-base-content: oklch(0.9 0 0);
+  
+  /* Feedback colors */
+  --color-info: oklch(0.72 0.11 230);
+  --color-info-content: oklch(0.15 0 0);
+  --color-success: oklch(0.72 0.15 150);
+  --color-success-content: oklch(0.15 0 0);
+  --color-warning: oklch(0.82 0.17 85);
+  --color-warning-content: oklch(0.15 0 0);
+  --color-error: oklch(0.65 0.2 25);
+  --color-error-content: oklch(1 0 0);
+}

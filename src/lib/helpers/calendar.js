@@ -3,7 +3,7 @@
  * Utilities for date formatting, event management, and calendar operations
  */
 
-import { appConfig } from '../config.js';
+import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { validateCalendarEvent } from './eventValidation.js';
 
 /**
@@ -20,8 +20,8 @@ import { validateCalendarEvent } from './eventValidation.js';
 export function formatCalendarDate(date, format) {
 	if (!date || !(date instanceof Date)) return '';
 
-	const locale = appConfig.calendar.locale;
-	const use24Hour = appConfig.calendar.timeFormat === '24h';
+	const locale = runtimeConfig.calendar.locale;
+	const use24Hour = runtimeConfig.calendar.timeFormat === '24h';
 
 	switch (format) {
 		case 'YYYY-MM-DD':
@@ -59,7 +59,7 @@ export function formatCalendarDate(date, format) {
  * @returns {Date[]} Array of 7 dates representing the week
  */
 export function getWeekDates(date) {
-	const weekStartDay = appConfig.calendar.weekStartDay;
+	const weekStartDay = runtimeConfig.calendar.weekStartDay;
 	const startOfWeek = new Date(date);
 	const day = startOfWeek.getDay();
 
@@ -82,7 +82,7 @@ export function getWeekDates(date) {
  * @returns {Date[]} Array of dates for calendar grid (42 days)
  */
 export function getMonthDates(date) {
-	const weekStartDay = appConfig.calendar.weekStartDay;
+	const weekStartDay = runtimeConfig.calendar.weekStartDay;
 	const year = date.getFullYear();
 	const month = date.getMonth();
 
@@ -364,7 +364,7 @@ export function createDateKey(date) {
  * @returns {string[]} Array of weekday abbreviations starting from configured day
  */
 export function getWeekdayHeaders() {
-	const weekStartDay = appConfig.calendar.weekStartDay;
+	const weekStartDay = runtimeConfig.calendar.weekStartDay;
 	const fullWeekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 	// Rotate the array to start from the configured day
@@ -613,8 +613,7 @@ export async function fetchCommunityCalendarEvents(communityPubkey, relays = [])
 					let relayList = relays;
 					// Use default relays as fallback if no relays provided
 					if (relayList.length === 0) {
-						const { appConfig } = await import('$lib/config.js');
-						relayList = appConfig.calendar.defaultRelays;
+						relayList = runtimeConfig.calendar.defaultRelays;
 					}
 					
 					const loadPromise = firstValueFrom(

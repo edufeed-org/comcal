@@ -13,15 +13,23 @@ import { appConfig } from '$lib/config.js';
 let config = $state(appConfig);
 
 /**
+ * Track if config has been initialized to prevent re-initialization
+ */
+let initialized = false;
+
+/**
  * Initialize or update the configuration
  * Called from the root layout after loading config from API
  * @param {any} runtimeConfig - Configuration from API endpoint
  */
 export function initializeConfig(runtimeConfig) {
+	if (initialized) return; // Skip if already initialized
 	if (!runtimeConfig) {
 		console.warn('Runtime config not available, using defaults');
 		return;
 	}
+
+	initialized = true; // Mark as initialized BEFORE modifying state
 
 	// Deep merge runtime config with defaults
 	config = {
@@ -73,6 +81,10 @@ export function initializeConfig(runtimeConfig) {
 				...appConfig.educational.vocabularies,
 				...runtimeConfig.educational?.vocabularies,
 			}
+		},
+		ui: {
+			...appConfig.ui,
+			...runtimeConfig.ui
 		}
 	};
 
@@ -120,5 +132,8 @@ export const runtimeConfig = {
 	},
 	get educational() {
 		return config.educational;
+	},
+	get ui() {
+		return config.ui;
 	}
 };

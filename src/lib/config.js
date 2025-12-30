@@ -129,12 +129,10 @@ export const appConfig = {
 		}
 	},
 
-	// Other app-wide configurations can be added here:
-	// ui: {
-	//   theme: 'auto',
-	//   animations: true,
-	// },
-	// api: {
-	//   timeout: 30000,
-	// },
+	ui: {
+		// Default light theme when system prefers light mode
+		defaultLightTheme: 'light',
+		// Default dark theme when system prefers dark mode
+		defaultDarkTheme: 'dark'
+	}
 };

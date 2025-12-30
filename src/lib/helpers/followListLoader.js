@@ -5,7 +5,7 @@
 
 import { pool } from '$lib/stores/nostr-infrastructure.svelte';
 import { onlyEvents } from 'applesauce-relay/operators';
-import { appConfig } from '$lib/config.js';
+import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 /**
  * @typedef {Object} FollowedProfile
@@ -35,7 +35,7 @@ export function loadFollowList(userPubkey) {
 	return new Promise((resolve, reject) => {
 		console.log('👥 FollowListLoader: Loading follow list for user:', userPubkey);
 
-		const relays = appConfig.calendar.defaultRelays;
+		const relays = runtimeConfig.calendar.defaultRelays;
 		let hasResolved = false;
 
 		// Subscribe to kind 3 events for this user
@@ -129,7 +129,7 @@ export function loadFollowSets(userPubkey) {
 	return new Promise((resolve, reject) => {
 		console.log('👥 FollowListLoader: Loading follow sets (NIP-51) for user:', userPubkey);
 
-		const relays = appConfig.calendar.defaultRelays;
+		const relays = runtimeConfig.calendar.defaultRelays;
 		/** @type {FollowList[]} */
 		const followSets = [];
 		let hasCompleted = false;

@@ -6,7 +6,7 @@
 import { EventFactory } from 'applesauce-factory';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { manager } from '$lib/stores/accounts.svelte';
-import { appConfig } from '$lib/config.js';
+import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { flattenAMBToNostrTags } from '$lib/helpers/educational/ambTransform.js';
 import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
 
@@ -221,15 +221,15 @@ export function createEducationalActions() {
 					tags: tags
 				});
 
-				// Sign and publish
-				const resourceEvent = await currentAccount.signEvent(eventTemplate);
-				await pool.publish(appConfig.calendar.defaultRelays, resourceEvent);
+			// Sign and publish
+			const resourceEvent = await currentAccount.signEvent(eventTemplate);
+			await pool.publish(runtimeConfig.calendar.defaultRelays, resourceEvent);
 
-				// Add to eventStore for immediate UI update
-				eventStore.add(resourceEvent);
+			// Add to eventStore for immediate UI update
+			eventStore.add(resourceEvent);
 
-				// Generate naddr for navigation
-				const naddr = encodeEventToNaddr(resourceEvent, appConfig.calendar.defaultRelays);
+			// Generate naddr for navigation
+			const naddr = encodeEventToNaddr(resourceEvent, runtimeConfig.calendar.defaultRelays);
 
 				console.log('📚 Educational resource created:', resourceEvent.id);
 				console.log('📚 Resource naddr:', naddr);
@@ -308,15 +308,15 @@ export function createEducationalActions() {
 					tags: tags
 				});
 
-				// Sign and publish
-				const updatedEvent = await currentAccount.signEvent(eventTemplate);
-				await pool.publish(appConfig.calendar.defaultRelays, updatedEvent);
+			// Sign and publish
+			const updatedEvent = await currentAccount.signEvent(eventTemplate);
+			await pool.publish(runtimeConfig.calendar.defaultRelays, updatedEvent);
 
-				// Add to eventStore
-				eventStore.add(updatedEvent);
+			// Add to eventStore
+			eventStore.add(updatedEvent);
 
-				// Generate naddr for navigation
-				const naddr = encodeEventToNaddr(updatedEvent, appConfig.calendar.defaultRelays);
+			// Generate naddr for navigation
+			const naddr = encodeEventToNaddr(updatedEvent, runtimeConfig.calendar.defaultRelays);
 
 				console.log('📚 Educational resource updated:', updatedEvent.id);
 
@@ -351,11 +351,11 @@ export function createEducationalActions() {
 					tags: [['e', eventId]]
 				});
 
-				// Sign and publish the deletion event
-				const deletionEvent = await currentAccount.signEvent(eventTemplate);
-				await pool.publish(appConfig.calendar.defaultRelays, deletionEvent);
+			// Sign and publish the deletion event
+			const deletionEvent = await currentAccount.signEvent(eventTemplate);
+			await pool.publish(runtimeConfig.calendar.defaultRelays, deletionEvent);
 
-				console.log('📚 Educational resource deleted:', eventId);
+			console.log('📚 Educational resource deleted:', eventId);
 
 			} catch (error) {
 				console.error('Error deleting educational resource:', error);
@@ -403,11 +403,11 @@ export function createEducationalActions() {
 					tags: tags
 				});
 
-				// Sign and publish
-				const targetingEvent = await currentAccount.signEvent(eventTemplate);
-				await pool.publish(appConfig.calendar.defaultRelays, targetingEvent);
+			// Sign and publish
+			const targetingEvent = await currentAccount.signEvent(eventTemplate);
+			await pool.publish(runtimeConfig.calendar.defaultRelays, targetingEvent);
 
-				// Add to eventStore
+			// Add to eventStore
 				eventStore.add(targetingEvent);
 
 				console.log('📚 Targeted publication created for community:', communityPubkey);

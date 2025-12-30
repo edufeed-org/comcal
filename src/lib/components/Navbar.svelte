@@ -6,8 +6,7 @@
 	import { CalendarIcon, SearchIcon } from './icons';
 	import ProfileAvatar from './shared/ProfileAvatar.svelte';
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
-	import { config } from 'rxjs';
-	import { appConfig } from '$lib/config';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 	// Use the modal store for opening modals
 	const modal = modalStore;
@@ -89,13 +88,13 @@
 	<div class="flex-1">
 		<div class="avatar">
 			<div class="mask w-10 mask-hexagon-2">
-				<img
-					src={`${appConfig.logo}`}
-					alt="App Logo"
-				/>
+			<img
+				src={`${runtimeConfig.appLogo}`}
+				alt="App Logo"
+			/>
 			</div>
 		</div>
-		<a href="/" class="btn text-xl btn-ghost">{m.navbar_brand({ appName: appConfig.name })}</a>
+		<a href="/" class="btn text-xl btn-ghost">{m.navbar_brand({ appName: runtimeConfig.appName })}</a>
 	</div>
 	<div class="flex items-center gap-2">
 		<a href="/discover" class="btn btn-ghost">

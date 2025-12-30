@@ -30,6 +30,21 @@ function parseBool(value, defaultValue) {
 }
 
 /**
+ * Parse theme value
+ * @param {string | undefined} value
+ * @param {'light' | 'dark' | 'stil' | 'stil-dark'} defaultValue
+ * @returns {'light' | 'dark' | 'stil' | 'stil-dark'}
+ */
+function parseTheme(value, defaultValue) {
+	if (!value) return defaultValue;
+	const normalized = value.toLowerCase();
+	if (normalized === 'light' || normalized === 'dark' || normalized === 'stil' || normalized === 'stil-dark') {
+		return normalized;
+	}
+	return defaultValue;
+}
+
+/**
  * Server-only configuration
  * These values should NEVER be sent to the client
  */
@@ -46,4 +61,15 @@ export const serverConfig = {
 	
 	// Add other server-only config here as needed
 	// e.g., database credentials, internal API keys, etc.
+};
+
+/**
+ * Public configuration (safe to send to client)
+ * These values will be exposed via the /api/config endpoint
+ */
+export const publicConfig = {
+	ui: {
+		defaultLightTheme: parseTheme(env.THEME_DEFAULT_LIGHT, 'light'),
+		defaultDarkTheme: parseTheme(env.THEME_DEFAULT_DARK, 'dark')
+	}
 };

@@ -8,7 +8,7 @@ import { of, BehaviorSubject } from 'rxjs';
 import { SvelteSet, SvelteMap } from 'svelte/reactivity';
 import { userCalendarLoader, userDeletionLoader } from '$lib/loaders';
 import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
-import { appConfig } from '$lib/config.js';
+import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
 import { EventFactory } from 'applesauce-factory';
 import { manager } from '$lib/stores/accounts.svelte';
@@ -286,13 +286,13 @@ export function createCalendarManagementStore(userPubkey) {
 				tags: tags
 			});
 
-			// Sign the event
-			const signedEvent = await currentAccount.signEvent(eventTemplate);
+		// Sign the event
+		const signedEvent = await currentAccount.signEvent(eventTemplate);
 
-			// Publish to multiple relays
-			const responses = await pool.publish(appConfig.calendar.defaultRelays, signedEvent);
+		// Publish to multiple relays
+		const responses = await pool.publish(runtimeConfig.calendar.defaultRelays, signedEvent);
 
-			// Check if at least one relay accepted the event
+		// Check if at least one relay accepted the event
 			const hasSuccess = responses.some(response => response.ok);
 
 			if (hasSuccess) {
@@ -389,39 +389,39 @@ export function createCalendarManagementStore(userPubkey) {
 				tags: tags
 			});
 
-			// Sign the event
-			const signedEvent = await currentAccount.signEvent(eventTemplate);
+		// Sign the event
+		const signedEvent = await currentAccount.signEvent(eventTemplate);
 
-			// Publish to multiple relays
-			const responses = await pool.publish(appConfig.calendar.defaultRelays, signedEvent);
+		// Publish to multiple relays
+		const responses = await pool.publish(runtimeConfig.calendar.defaultRelays, signedEvent);
 
-			// Check if at least one relay accepted the event
-			const hasSuccess = responses.some(response => response.ok);
+		// Check if at least one relay accepted the event
+		const hasSuccess = responses.some(response => response.ok);
 
-			if (hasSuccess) {
-				// Add to event store for local caching
-				eventStore.add(signedEvent);
+		if (hasSuccess) {
+			// Add to event store for local caching
+			eventStore.add(signedEvent);
 
-				// Update the calendar in the store with the new event ID and references
-				const updatedCalendar = {
-					...calendar,
-					id: signedEvent.id,
-					eventReferences: updatedEventReferences,
-					createdAt: signedEvent.created_at
-				};
+			// Update the calendar in the store with the new event ID and references
+			const updatedCalendar = {
+				...calendar,
+				id: signedEvent.id,
+				eventReferences: updatedEventReferences,
+				createdAt: signedEvent.created_at
+			};
 
-				// Update the calendar in the store
-				store.calendars = store.calendars.map(c =>
-					c.id === calendarId ? updatedCalendar : c
-				);
+			// Update the calendar in the store
+			store.calendars = store.calendars.map(c =>
+				c.id === calendarId ? updatedCalendar : c
+			);
 
-				// Trigger refresh of calendar events display
-				if (calendarEventsRefreshCallback) {
-					console.log('📅 Calendar Management: Triggering calendar events refresh');
-					calendarEventsRefreshCallback();
-				}
+			// Trigger refresh of calendar events display
+			if (calendarEventsRefreshCallback) {
+				console.log('📅 Calendar Management: Triggering calendar events refresh');
+				calendarEventsRefreshCallback();
+			}
 
-				console.log('📅 Calendar Management: Successfully removed event from calendar:', calendar.title);
+			console.log('📅 Calendar Management: Successfully removed event from calendar:', calendar.title);
 				console.log('📅 Calendar Management: Published to relays:', responses.filter(r => r.ok).map(r => r.from));
 				return true;
 			} else {

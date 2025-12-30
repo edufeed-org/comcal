@@ -1,11 +1,11 @@
 <script>
-	import { appConfig } from '$lib/config.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
-	const imprint = appConfig.imprint;
+	let imprint = $derived(runtimeConfig.imprint);
 </script>
 
 <svelte:head>
-	<title>Imprint - {appConfig.name}</title>
+	<title>Imprint - {runtimeConfig.appName}</title>
 </svelte:head>
 
 <div class="min-h-screen bg-base-100 py-8 px-4">

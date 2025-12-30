@@ -4,6 +4,7 @@
 	import { merge, Subject, Subscription } from 'rxjs';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { appSettings } from '$lib/stores/app-settings.svelte.js';
+	import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
 	import * as m from '$lib/paraglide/messages';
 
 	let accounts = [];
@@ -163,6 +164,17 @@
 			{m.account_manager_empty_state()}
 		</div>
 	{/if}
+
+	<!-- Appearance Settings Section -->
+	<div class="divider mt-12"></div>
+	<div class="mb-6">
+		<h2 class="text-xl font-bold mb-4">Appearance</h2>
+		<div class="card bg-base-100 shadow-xl">
+			<div class="card-body">
+				<ThemeSwitcher />
+			</div>
+		</div>
+	</div>
 
 	<!-- Developer Settings Section -->
 	<div class="divider mt-12"></div>

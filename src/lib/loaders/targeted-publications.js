@@ -9,7 +9,7 @@
  */
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { appConfig } from '$lib/config.js';
+import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 /**
  * Create a timeline loader for all targeted publications (kind 30222)
@@ -20,7 +20,7 @@ import { appConfig } from '$lib/config.js';
 export function allTargetedPublicationsLoader(limit = 200) {
 	return createTimelineLoader(
 		pool,
-		appConfig.calendar.defaultRelays,
+		runtimeConfig.calendar.defaultRelays,
 		{ kinds: [30222] },
 		{ eventStore, limit }
 	);
@@ -34,7 +34,7 @@ export function allTargetedPublicationsLoader(limit = 200) {
 export function articleTargetedPublicationsLoader(limit = 100) {
 	return createTimelineLoader(
 		pool,
-		appConfig.calendar.defaultRelays,
+		runtimeConfig.calendar.defaultRelays,
 		{ 
 			kinds: [30222],
 			'#k': ['30023'] // Only article shares
@@ -51,7 +51,7 @@ export function articleTargetedPublicationsLoader(limit = 100) {
 export function ambTargetedPublicationsLoader(limit = 100) {
 	return createTimelineLoader(
 		pool,
-		appConfig.calendar.defaultRelays,
+		runtimeConfig.calendar.defaultRelays,
 		{ 
 			kinds: [30222],
 			'#k': ['30142'] // Only AMB resource shares
@@ -69,7 +69,7 @@ export function ambTargetedPublicationsLoader(limit = 100) {
 export function feedTargetedPublicationsLoader(limit = 200) {
 	return createTimelineLoader(
 		pool,
-		appConfig.calendar.defaultRelays,
+		runtimeConfig.calendar.defaultRelays,
 		{ 
 			kinds: [30222],
 			'#k': ['30023', '30142', '31922', '31923'] // Articles, AMB resources, and calendar events

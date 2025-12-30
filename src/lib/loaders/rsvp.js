@@ -4,7 +4,7 @@
  */
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { appConfig } from '$lib/config.js';
+import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 /**
  * Factory: Create a timeline loader for calendar event RSVPs
@@ -28,7 +28,7 @@ export const calendarEventRsvpLoader = (calendarEvent) => {
 	
 	return createTimelineLoader(
 		pool,
-		appConfig.calendar.defaultRelays,
+		runtimeConfig.calendar.defaultRelays,
 		{
 			kinds: [31925],           // NIP-52 Calendar Event RSVP kind
 			'#a': [eventCoordinate],  // Filter by calendar event coordinate

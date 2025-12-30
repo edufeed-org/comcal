@@ -3,7 +3,7 @@
  */
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { appConfig } from '$lib/config.js';
+import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 /**
  * Factory: Create a stateful timeline loader for kind 30023 articles with automatic pagination
@@ -14,7 +14,7 @@ import { appConfig } from '$lib/config.js';
 export function articleTimelineLoader(limit = 20) {
 	return createTimelineLoader(
 		pool,
-		appConfig.calendar.defaultRelays,
+		runtimeConfig.calendar.defaultRelays,
 		{ kinds: [30023] },
 		{ eventStore, limit }
 	);

@@ -1,7 +1,7 @@
 import { EventFactory } from 'applesauce-factory';
 import { publishEvent } from './publisher.js';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { appConfig } from '$lib/config.js';
+import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 /**
  * Delete a calendar event using NIP-09 deletion
@@ -59,7 +59,7 @@ export async function deleteCalendarEvent(event, activeUser) {
 
 		// Publish to relays
 		const result = await publishEvent(signedDelete, {
-			relays: appConfig.calendar.defaultRelays,
+			relays: runtimeConfig.calendar.defaultRelays,
 			logPrefix: 'EventDeletion'
 		});
 

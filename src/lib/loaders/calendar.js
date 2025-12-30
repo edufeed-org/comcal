@@ -7,13 +7,13 @@ import { from } from 'rxjs';
 import { mergeMap } from 'rxjs/operators';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { addressLoader } from './base.js';
-import { appConfig } from '$lib/config.js';
+import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
 
 // Global calendar events (kinds 31922, 31923)
 export const calendarTimelineLoader = createTimelineLoader(
 	pool,
-	appConfig.calendar.defaultRelays,
+	runtimeConfig.calendar.defaultRelays,
 	{
 		kinds: [31922, 31923], // NIP-52 calendar events
 		limit: 40
@@ -28,7 +28,7 @@ export const calendarTimelineLoader = createTimelineLoader(
  * @returns {Function} Timeline loader function that returns an Observable
  */
 export const createRelayFilteredCalendarLoader = (customRelays = [], additionalFilters = {}) => {
-	const relaysToUse = customRelays.length > 0 ? customRelays : appConfig.calendar.defaultRelays;
+	const relaysToUse = customRelays.length > 0 ? customRelays : runtimeConfig.calendar.defaultRelays;
 	
 	return createTimelineLoader(
 		pool,
@@ -46,7 +46,7 @@ export const createRelayFilteredCalendarLoader = (customRelays = [], additionalF
 // NOTE: This loads ALL calendars without filtering - use userCalendarLoader for user-specific calendars
 export const calendarLoader = createTimelineLoader(
 	pool,
-	appConfig.calendar.defaultRelays,
+	runtimeConfig.calendar.defaultRelays,
 	{
 		kinds: [31924], // Calendar definitions
 		limit: 100
@@ -62,7 +62,7 @@ export const calendarLoader = createTimelineLoader(
  */
 export const userCalendarLoader = (userPubkey) => createTimelineLoader(
 	pool,
-	appConfig.calendar.defaultRelays,
+	runtimeConfig.calendar.defaultRelays,
 	{
 		kinds: [31924], // Calendar definitions
 		authors: [userPubkey], // Filter by user at relay level
@@ -78,7 +78,7 @@ export const userCalendarLoader = (userPubkey) => createTimelineLoader(
  */
 export const communityCalendarTimelineLoader = (communityPubkey) => createTimelineLoader(
 	pool,
-	appConfig.calendar.defaultRelays,
+	runtimeConfig.calendar.defaultRelays,
 	{
 		kinds: [31922, 31923],
 		'#h': [communityPubkey], // Community targeting
@@ -96,7 +96,7 @@ export const communityCalendarTimelineLoader = (communityPubkey) => createTimeli
  */
 export const targetedPublicationTimelineLoader = (communityPubkey) => createTimelineLoader(
 	pool,
-	appConfig.calendar.defaultRelays,
+	runtimeConfig.calendar.defaultRelays,
 	{
 		kinds: [30222], // Targeted Publication Events
 		'#p': [communityPubkey], // Community targeting

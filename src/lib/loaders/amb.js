@@ -3,7 +3,7 @@
  */
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { appConfig } from '$lib/config.js';
+import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { TimelineModel } from 'applesauce-core/models';
 import { getTagValue } from 'applesauce-core/helpers';
 import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
@@ -14,8 +14,8 @@ import { SvelteSet } from 'svelte/reactivity';
  * @returns {string[]} Deduplicated array of relay URLs
  */
 function getAMBRelays() {
-	const defaultRelays = appConfig.calendar.defaultRelays || [];
-	const ambRelays = appConfig.educational?.ambRelays || [];
+	const defaultRelays = runtimeConfig.calendar.defaultRelays || [];
+	const ambRelays = runtimeConfig.educational?.ambRelays || [];
 	// Combine and deduplicate
 	return [...new Set([...defaultRelays, ...ambRelays])];
 }
@@ -43,7 +43,7 @@ export function ambTimelineLoader(limit = 20) {
 export function ambTargetedPublicationTimelineLoader(communityPubkey) {
 	return createTimelineLoader(
 		pool,
-		appConfig.calendar.defaultRelays,
+		runtimeConfig.calendar.defaultRelays,
 		{
 			kinds: [30222],
 			'#p': [communityPubkey],

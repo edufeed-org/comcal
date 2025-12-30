@@ -42,6 +42,21 @@ function parseBool(value, defaultValue) {
 }
 
 /**
+ * Parse theme value
+ * @param {string | undefined} value
+ * @param {'light' | 'dark' | 'stil' | 'stil-dark'} defaultValue
+ * @returns {'light' | 'dark' | 'stil' | 'stil-dark'}
+ */
+function parseTheme(value, defaultValue) {
+	if (!value) return defaultValue;
+	const normalized = value.toLowerCase();
+	if (normalized === 'light' || normalized === 'dark' || normalized === 'stil' || normalized === 'stil-dark') {
+		return normalized;
+	}
+	return defaultValue;
+}
+
+/**
  * GET /api/config
  * Returns public configuration that can be safely exposed to the browser
  */
@@ -130,6 +145,12 @@ export function GET() {
 				about: env.EDUCATIONAL_VOCAB_ABOUT || 'hochschulfaechersystematik',
 				audience: env.EDUCATIONAL_VOCAB_AUDIENCE || 'intendedEndUserRole'
 			}
+		},
+
+		// UI settings
+		ui: {
+			defaultLightTheme: parseTheme(env.THEME_DEFAULT_LIGHT, 'light'),
+			defaultDarkTheme: parseTheme(env.THEME_DEFAULT_DARK, 'dark')
 		}
 	};
 

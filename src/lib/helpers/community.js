@@ -2,7 +2,7 @@ import { EventFactory } from 'applesauce-factory';
 import { manager } from '$lib/stores/accounts.svelte';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { publishEvent } from './publisher';
-import { appConfig } from '$lib/config';
+import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 /**
  * Join a community by creating a relationship event (kind 30382)
@@ -41,7 +41,7 @@ export async function joinCommunity(communityPubkey, options = {}) {
 		const signedEvent = await factory.sign(relationshipEventTemplate);
 
 		const result = await publishEvent(signedEvent, {
-			relays: options.relays || appConfig.calendar.defaultRelays,
+			relays: options.relays || runtimeConfig.calendar.defaultRelays,
 			addToStore: true,
 			logPrefix: 'CommunityJoin'
 		});
@@ -113,7 +113,7 @@ export async function leaveCommunity(communityPubkey, options = {}) {
 		const deleteEvent = await factory.sign(deleteEventTemplate);
 
 		const result = await publishEvent(deleteEvent, {
-			relays: options.relays || appConfig.calendar.defaultRelays,
+			relays: options.relays || runtimeConfig.calendar.defaultRelays,
 			addToStore: true,
 			logPrefix: 'CommunityLeave'
 		});
