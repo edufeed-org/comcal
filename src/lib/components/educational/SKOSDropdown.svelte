@@ -1,6 +1,7 @@
 <!--
   SKOSDropdown Component
   A reusable dropdown for selecting SKOS concepts with search and multi-select support
+  Using DaisyUI 5 dropdown component
 -->
 
 <script>
@@ -68,8 +69,11 @@
 	});
 
 	// Close dropdown when clicking outside
+	/**
+	 * @param {MouseEvent} event
+	 */
 	function handleClickOutside(event) {
-		if (dropdownRef && !dropdownRef.contains(event.target)) {
+		if (dropdownRef && event.target instanceof Node && !dropdownRef.contains(event.target)) {
 			isOpen = false;
 		}
 	}
@@ -147,7 +151,7 @@
 	}
 </script>
 
-<div class="skos-dropdown form-control w-full" bind:this={dropdownRef}>
+<div class="form-control w-full">
 	<!-- Label -->
 	{#if label}
 		<label class="label">
@@ -160,10 +164,13 @@
 		</label>
 	{/if}
 
-	<!-- Dropdown Trigger -->
-	<div class="relative">
+	<!-- DaisyUI Dropdown -->
+	<div class="dropdown w-full" class:dropdown-open={isOpen} bind:this={dropdownRef}>
+		<!-- Dropdown Trigger -->
 		<button
 			type="button"
+			tabindex="0"
+			role="button"
 			class="input input-bordered w-full flex items-center gap-2 cursor-pointer min-h-[3rem] h-auto py-2 pr-8"
 			class:input-disabled={disabled}
 			onclick={() => !disabled && (isOpen = !isOpen)}
@@ -202,11 +209,11 @@
 			<ChevronDownIcon class_="w-4 h-4 text-base-content/50" />
 		</div>
 
-		<!-- Dropdown Menu -->
-		{#if isOpen && !isLoading && !error}
-			<div class="absolute z-50 top-full left-0 right-0 mt-1 bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-64 overflow-hidden flex flex-col">
+	<!-- Dropdown Menu using DaisyUI dropdown-content -->
+	{#if !isLoading && !error}
+		<div tabindex="0" class="dropdown-content z-[100] mt-1 w-full bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-80 overflow-hidden flex flex-col">
 				<!-- Search Input -->
-				<div class="p-2 border-b border-base-300 sticky top-0 bg-base-100">
+				<div class="p-2 border-b border-base-300 sticky top-0 bg-base-100 z-10">
 					<div class="relative">
 						<SearchIcon class_="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50" />
 						<input
@@ -281,9 +288,3 @@
 		</label>
 	{/if}
 </div>
-
-<style>
-	.skos-dropdown {
-		position: relative;
-	}
-</style>
