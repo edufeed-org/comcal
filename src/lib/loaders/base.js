@@ -9,15 +9,26 @@ import { createAddressLoader, createEventLoader, createTimelineLoader } from 'ap
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
-// Bootstrap EventStore - gives it relay knowledge
-// Includes default relays, fallback relays, and AMB relays for event discovery
-export const addressLoader = createAddressLoader(pool, { 
-	eventStore, 
-	lookupRelays: [
+/**
+ * Get current lookup relays from runtime config
+ * This function is called each time addressLoader is invoked to ensure
+ * we always use the latest relay configuration (including after API config loads)
+ */
+function getLookupRelays() {
+	return [
 		...runtimeConfig.calendar.defaultRelays,
 		...runtimeConfig.calendar.fallbackRelays,
 		...runtimeConfig.educational.ambRelays
-	]
+	];
+}
+
+// Bootstrap EventStore - gives it relay knowledge
+// Uses a getter function for lookupRelays to ensure config updates are reflected
+export const addressLoader = createAddressLoader(pool, { 
+	eventStore, 
+	get lookupRelays() {
+		return getLookupRelays();
+	}
 });
 
 // Connect loaders to EventStore for automatic fetching

@@ -223,13 +223,13 @@ export function createEducationalActions() {
 
 			// Sign and publish
 			const resourceEvent = await currentAccount.signEvent(eventTemplate);
-			await pool.publish(runtimeConfig.calendar.defaultRelays, resourceEvent);
+			await pool.publish(runtimeConfig.educational.ambRelays, resourceEvent);
 
 			// Add to eventStore for immediate UI update
 			eventStore.add(resourceEvent);
 
 			// Generate naddr for navigation
-			const naddr = encodeEventToNaddr(resourceEvent, runtimeConfig.calendar.defaultRelays);
+			const naddr = encodeEventToNaddr(resourceEvent, runtimeConfig.educational.ambRelays);
 
 				console.log('📚 Educational resource created:', resourceEvent.id);
 				console.log('📚 Resource naddr:', naddr);
@@ -310,13 +310,13 @@ export function createEducationalActions() {
 
 			// Sign and publish
 			const updatedEvent = await currentAccount.signEvent(eventTemplate);
-			await pool.publish(runtimeConfig.calendar.defaultRelays, updatedEvent);
+			await pool.publish(runtimeConfig.educational.ambRelays, updatedEvent);
 
 			// Add to eventStore
 			eventStore.add(updatedEvent);
 
 			// Generate naddr for navigation
-			const naddr = encodeEventToNaddr(updatedEvent, runtimeConfig.calendar.defaultRelays);
+			const naddr = encodeEventToNaddr(updatedEvent, runtimeConfig.educational.ambRelays);
 
 				console.log('📚 Educational resource updated:', updatedEvent.id);
 
@@ -353,7 +353,7 @@ export function createEducationalActions() {
 
 			// Sign and publish the deletion event
 			const deletionEvent = await currentAccount.signEvent(eventTemplate);
-			await pool.publish(runtimeConfig.calendar.defaultRelays, deletionEvent);
+			await pool.publish(runtimeConfig.educational.ambRelays, deletionEvent);
 
 			console.log('📚 Educational resource deleted:', eventId);
 
@@ -405,10 +405,10 @@ export function createEducationalActions() {
 
 			// Sign and publish
 			const targetingEvent = await currentAccount.signEvent(eventTemplate);
-			await pool.publish(runtimeConfig.calendar.defaultRelays, targetingEvent);
+			await pool.publish(runtimeConfig.educational.ambRelays, targetingEvent);
 
 			// Add to eventStore
-				eventStore.add(targetingEvent);
+			eventStore.add(targetingEvent);
 
 				console.log('📚 Targeted publication created for community:', communityPubkey);
 

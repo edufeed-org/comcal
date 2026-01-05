@@ -14,6 +14,7 @@
 	import EventDebugPanel from '../shared/EventDebugPanel.svelte';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import { getLabelsWithFallback } from '$lib/helpers/educational/ambTransform.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import * as m from '$lib/paraglide/messages.js';
 
 	// Helper to determine if identifier is a nostr URI
@@ -57,12 +58,18 @@
 		getLabelsWithFallback(resource.tags, 'educationalLevel', getLocale())
 	);
 
-	// Generate naddr for navigation to detail view
+	// Generate naddr for navigation to detail view with relay hints
 	const resourceNaddr = $derived.by(() => {
+		// Get relay hints from resource's seen relays or use AMB relays from config
+		const relayHints = resource.event?.seen_on 
+			? Array.from(resource.event.seen_on).slice(0, 3)
+			: runtimeConfig.educational.ambRelays.slice(0, 3);
+		
 		return nip19.naddrEncode({
 			kind: resource.kind,
 			pubkey: resource.pubkey,
-			identifier: resource.identifier
+			identifier: resource.identifier,
+			relays: relayHints.length > 0 ? relayHints : undefined
 		});
 	});
 
