@@ -3,7 +3,7 @@
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import { dev } from '$app/environment';
-	import { CalendarIcon, SearchIcon } from './icons';
+	import { CalendarIcon, PeopleIcon, SearchIcon } from './icons';
 	import ProfileAvatar from './shared/ProfileAvatar.svelte';
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import { runtimeConfig } from '$lib/stores/config.svelte.js';
@@ -97,6 +97,10 @@
 		<a href="/" class="btn text-xl btn-ghost">{m.navbar_brand({ appName: runtimeConfig.appName })}</a>
 	</div>
 	<div class="flex items-center gap-2">
+		<a href="/communities" class="btn btn-ghost">
+			<PeopleIcon class_="w-5 h-5" />
+			{m.navbar_communities()}
+		</a>
 		<a href="/discover" class="btn btn-ghost">
 			<SearchIcon class_="w-5 h-5" />
 			{m.navbar_discover()}
