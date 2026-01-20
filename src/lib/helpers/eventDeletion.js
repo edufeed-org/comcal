@@ -59,7 +59,7 @@ export async function deleteCalendarEvent(event, activeUser) {
 
 		// Publish to relays
 		const result = await publishEvent(signedDelete, {
-			relays: runtimeConfig.calendar.defaultRelays,
+			relays: runtimeConfig.fallbackRelays || [],
 			logPrefix: 'EventDeletion'
 		});
 

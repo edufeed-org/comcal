@@ -4,8 +4,19 @@
 	import { EventFactory } from 'applesauce-factory';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { publishEvent } from '$lib/helpers/publisher';
-	import { getConfig } from '$lib/stores/config.svelte.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import * as m from '$lib/paraglide/messages';
+
+	/**
+	 * Get communikey relays from app config
+	 * @returns {string[]}
+	 */
+	function getCommunikeyRelays() {
+		return [
+			...(runtimeConfig.appRelays?.communikey || []),
+			...(runtimeConfig.fallbackRelays || [])
+		];
+	}
 
 	let { profile, communikeyEvent, communikeyContentTypes, activeTab, onTabChange } = $props();
 
@@ -42,12 +53,8 @@
 		const signedEvent = await factory.sign(joinEvent);
 		console.log('Signed Join Event:', signedEvent);
 
-		// Get default relays from config
-		const config = getConfig();
-		const allRelays = [...new Set([...config.calendar.defaultRelays])];
-
 		const result = await publishEvent(signedEvent, {
-			relays: allRelays,
+			relays: getCommunikeyRelays(),
 			logPrefix: 'JoinCommunity'
 		});
 

@@ -14,7 +14,7 @@ import { runtimeConfig } from '$lib/stores/config.svelte.js';
  */
 export async function publishEvent(signedEvent, options = {}) {
 	const {
-		relays: customRelays = runtimeConfig.calendar.defaultRelays,
+		relays: customRelays = runtimeConfig.fallbackRelays || [],
 		addToStore = true,
 		logPrefix = 'Publisher'
 	} = options;

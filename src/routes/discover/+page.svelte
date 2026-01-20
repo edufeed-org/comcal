@@ -9,7 +9,7 @@
 	import { ambSearchLoader } from '$lib/loaders/amb-search.js';
 	import { hasActiveFilters, createEmptyFilters } from '$lib/helpers/educational/searchQueryBuilder.js';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-	import { getConfig } from '$lib/stores/config.svelte.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import { TimelineModel, ProfileModel } from 'applesauce-core/models';
 	import { AMBResourceModel, GlobalCalendarEventModel } from '$lib/models';
 	import { profileLoader } from '$lib/loaders/profile.js';
@@ -415,7 +415,7 @@
 			}
 			searchDebounceTimer = setTimeout(() => {
 				debouncedSearchQuery = searchQuery;
-			}, getConfig().educational?.searchDebounceMs || 300);
+			}, runtimeConfig.educational?.searchDebounceMs || 300);
 		}
 	});
 
@@ -525,7 +525,7 @@
 			const loaderSub = profileLoader({
 				kind: 0,
 				pubkey,
-				relays: getConfig().calendar.defaultRelays
+				relays: runtimeConfig.fallbackRelays || []
 			}).subscribe({
 				error: (error) => {
 					console.error(`🔍 Discover: Profile loader error for ${pubkey.slice(0, 8)}:`, error);
@@ -562,7 +562,7 @@
 			const loaderSub = profileLoader({
 				kind: 0,
 				pubkey,
-				relays: getConfig().calendar.defaultRelays
+				relays: runtimeConfig.fallbackRelays || []
 			}).subscribe({
 				error: (error) => {
 					console.error(`🔍 Discover: Community profile loader error:`, error);

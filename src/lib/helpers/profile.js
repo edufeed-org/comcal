@@ -36,7 +36,7 @@ export async function fetchProfileData(identifier) {
 		profileLoader({
 			kind: 0,
 			pubkey,
-			relays: runtimeConfig.calendar.defaultRelays
+			relays: runtimeConfig.fallbackRelays || []
 		}).pipe(
 			// Take only the first profile event
 			take(1),

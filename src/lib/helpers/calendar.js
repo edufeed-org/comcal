@@ -613,7 +613,7 @@ export async function fetchCommunityCalendarEvents(communityPubkey, relays = [])
 					let relayList = relays;
 					// Use default relays as fallback if no relays provided
 					if (relayList.length === 0) {
-						relayList = runtimeConfig.calendar.defaultRelays;
+						relayList = [...(runtimeConfig.appRelays?.calendar || []), ...(runtimeConfig.fallbackRelays || [])];
 					}
 					
 					const loadPromise = firstValueFrom(

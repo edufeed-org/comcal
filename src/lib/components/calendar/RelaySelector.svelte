@@ -5,7 +5,7 @@
 
 <script>
 	import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
-	import { getConfig } from '$lib/stores/config.svelte.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import { FilterIcon, CloseIcon, PlusIcon, RelayIcon } from '../icons';
 
 	// Props
@@ -18,7 +18,7 @@
 	let customRelays = $state(/** @type {string[]} */ ([]));
 
 	// Get default relays from config
-	const defaultRelays = getConfig().calendar.defaultRelays;
+	const defaultRelays = [...(runtimeConfig.appRelays?.calendar || []), ...(runtimeConfig.fallbackRelays || [])];
 
 	/**
 	 * Toggle relay selection

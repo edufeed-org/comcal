@@ -66,16 +66,39 @@ Communities maintain full autonomy—no central server, no data lock-in, no plat
 
 ### Prerequisites
 
-- **Node.js**: v22.16.0 (see `.nvmrc`)
-- **npm**: Comes with Node.js
+- **Node.js**: v22.16.0
+- **pnpm** or **npm**: Package manager
 - **Git**: For cloning the repository
 
-### Installation
+### Option A: NixOS / Nix (Recommended)
+
+If you use NixOS or have Nix installed, the project includes a `flake.nix` that provides the exact development environment:
 
 ```bash
 # Clone the repository
 git clone <repository-url> comcal
 cd comcal
+
+# Allow direnv (auto-activates the environment)
+direnv allow
+
+# Install dependencies
+pnpm install
+```
+
+The flake provides Node.js 22 and pnpm. With direnv configured, the environment activates automatically when you enter the project directory.
+
+**First-time Nix setup:** Ensure you have `direnv` and `nix-direnv` installed, and flakes enabled in your Nix config (`experimental-features = nix-command flakes`).
+
+### Option B: Traditional Setup
+
+```bash
+# Clone the repository
+git clone <repository-url> comcal
+cd comcal
+
+# Use correct Node version (if using nvm)
+nvm use
 
 # Install dependencies
 npm install

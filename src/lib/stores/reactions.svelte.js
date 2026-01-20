@@ -64,7 +64,7 @@ class ReactionsStore {
 		});
 
 		// Get relay list
-		const relaySources = relays || runtimeConfig.calendar.defaultRelays;
+		const relaySources = relays || runtimeConfig.fallbackRelays || [];
 
 		// Subscribe to reactions
 		const subscription = reactionsLoader(event, relaySources).subscribe({

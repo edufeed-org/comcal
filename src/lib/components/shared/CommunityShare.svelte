@@ -86,7 +86,7 @@
 		// This is critical - without this, we only read from local cache which may be empty
 		const loader = createTimelineLoader(
 			pool,
-			runtimeConfig.calendar.defaultRelays,
+			runtimeConfig.fallbackRelays || [],
 			{
 				kinds: [30222],
 				authors: [activeUser.pubkey]
@@ -198,10 +198,10 @@
 		const shareEvent = await factory.build({ kind: 30222, tags });
 		const signedEvent = await factory.sign(shareEvent);
 
-		console.log(`🔗 CommunityShare: Publishing share to ${runtimeConfig.calendar.defaultRelays.length} relays`);
+		console.log(`🔗 CommunityShare: Publishing share to ${runtimeConfig.fallbackRelays || [].length} relays`);
 
 		const result = await publishEvent(signedEvent, {
-			relays: runtimeConfig.calendar.defaultRelays,
+			relays: runtimeConfig.fallbackRelays || [],
 			logPrefix: 'CommunityShare'
 		});
 
@@ -302,7 +302,7 @@
 		const deleteEvent = await factory.sign(deleteEventTemplate);
 
 		const result = await publishEvent(deleteEvent, {
-			relays: runtimeConfig.calendar.defaultRelays,
+			relays: runtimeConfig.fallbackRelays || [],
 			logPrefix: 'CommunityShareDelete'
 		});
 

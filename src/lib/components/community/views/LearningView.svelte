@@ -111,7 +111,7 @@
 			const loaderSub = profileLoader({
 				kind: 0,
 				pubkey,
-				relays: runtimeConfig.calendar.defaultRelays
+				relays: runtimeConfig.fallbackRelays || []
 			}).subscribe();
 
 			// Subscribe to model for profile updates

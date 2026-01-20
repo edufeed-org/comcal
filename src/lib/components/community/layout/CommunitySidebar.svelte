@@ -56,6 +56,7 @@
 								src={getProfilePicture(communityProfile) || `https://robohash.org/${communityPubKey}`}
 								alt={getDisplayName(communityProfile)}
 								class="rounded-full object-cover"
+								onerror={(e) => e.target.src = `https://robohash.org/${communityPubKey}`}
 							/>
 						</div>
 					</div>
@@ -118,6 +119,7 @@
 							src={getProfilePicture(communityProfile) || `https://robohash.org/${communityPubKey}`}
 							alt={getDisplayName(communityProfile)}
 							class="rounded-full object-cover"
+							onerror={(e) => e.target.src = `https://robohash.org/${communityPubKey}`}
 						/>
 					</div>
 				</div>

@@ -16,9 +16,10 @@ import { runtimeConfig } from '$lib/stores/config.svelte.js';
  */
 function getLookupRelays() {
 	return [
-		...runtimeConfig.calendar.defaultRelays,
-		...runtimeConfig.calendar.fallbackRelays,
-		...runtimeConfig.educational.ambRelays
+		...(runtimeConfig.appRelays?.calendar || []),
+		...(runtimeConfig.appRelays?.communikey || []),
+		...(runtimeConfig.appRelays?.educational || []),
+		...(runtimeConfig.fallbackRelays || [])
 	];
 }
 
@@ -55,7 +56,7 @@ export const eventLoader = createEventLoader(pool, { eventStore });
  */
 export const userDeletionLoader = (userPubkey) => createTimelineLoader(
 	pool,
-	runtimeConfig.calendar.defaultRelays,
+	[...(runtimeConfig.appRelays?.calendar || []), ...(runtimeConfig.fallbackRelays || [])],
 	{
 		kinds: [5],              // NIP-09 deletion events
 		authors: [userPubkey],   // User's own deletions

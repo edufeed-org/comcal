@@ -10,14 +10,16 @@ import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
 import { SvelteSet } from 'svelte/reactivity';
 
 /**
- * Get combined relays for AMB resource loading (default + educational AMB relays)
+ * Get combined relays for AMB resource loading (educational app relays + fallback)
  * @returns {string[]} Deduplicated array of relay URLs
  */
 function getAMBRelays() {
-	const defaultRelays = runtimeConfig.calendar.defaultRelays || [];
-	const ambRelays = runtimeConfig.educational?.ambRelays || [];
+	/** @type {string[]} */
+	const educationalRelays = runtimeConfig.appRelays?.educational || [];
+	/** @type {string[]} */
+	const fallbackRelays = runtimeConfig.fallbackRelays || [];
 	// Combine and deduplicate
-	return [...new Set([...defaultRelays, ...ambRelays])];
+	return [...new Set([...educationalRelays, ...fallbackRelays])];
 }
 
 /**
@@ -43,7 +45,7 @@ export function ambTimelineLoader(limit = 20) {
 export function ambTargetedPublicationTimelineLoader(communityPubkey) {
 	return createTimelineLoader(
 		pool,
-		runtimeConfig.calendar.defaultRelays,
+		getAMBRelays(),
 		{
 			kinds: [30222],
 			'#p': [communityPubkey],

@@ -7,6 +7,17 @@ import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 /**
+ * Get calendar relays from app config
+ * @returns {string[]}
+ */
+function getCalendarRelays() {
+	return [
+		...(runtimeConfig.appRelays?.calendar || []),
+		...(runtimeConfig.fallbackRelays || [])
+	];
+}
+
+/**
  * Factory: Create a timeline loader for calendar event RSVPs
  * Loads all RSVP events (kind 31925) that reference a specific calendar event
  * 
@@ -28,7 +39,7 @@ export const calendarEventRsvpLoader = (calendarEvent) => {
 	
 	return createTimelineLoader(
 		pool,
-		runtimeConfig.calendar.defaultRelays,
+		getCalendarRelays(),
 		{
 			kinds: [31925],           // NIP-52 Calendar Event RSVP kind
 			'#a': [eventCoordinate],  // Filter by calendar event coordinate

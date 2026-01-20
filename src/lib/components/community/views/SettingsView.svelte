@@ -6,6 +6,7 @@
 	import { useActiveUser } from '$lib/stores/accounts.svelte';
 	import { showToast } from '$lib/helpers/toast';
 	import { goto } from '$app/navigation';
+	import { modalStore } from '$lib/stores/modal.svelte.js';
 	import CompactCommunityHeader from '$lib/components/community/layout/CompactCommunityHeader.svelte';
 	import * as m from '$lib/paraglide/messages';
 
@@ -13,10 +14,20 @@
 
 	// Use the reusable community membership hook
 	const getJoined = useCommunityMembership(communityId);
-	
+
 	// Get active user for authentication
 	const getActiveUser = useActiveUser();
 	const activeUser = $derived(getActiveUser());
+
+	// Check if current user is the community owner
+	let isOwner = $derived(
+		communikeyEvent?.pubkey && activeUser?.pubkey &&
+		communikeyEvent.pubkey === activeUser.pubkey
+	);
+
+	function handleEditCommunity() {
+		modalStore.openModal('editCommunity', { communityEvent: communikeyEvent });
+	}
 
 	let isLeaving = $state(false);
 
@@ -73,6 +84,7 @@
 									<img
 										src={getProfilePicture(profileEvent) || `https://robohash.org/${communityId}`}
 										alt={getDisplayName(profileEvent)}
+										onerror={(e) => e.target.src = `https://robohash.org/${communityId}`}
 									/>
 								</div>
 							</div>
@@ -117,8 +129,29 @@
 				</div>
 			</div>
 
-			<!-- Admin Settings (Future) -->
-			<!-- This section would show admin controls if user is community admin -->
+			<!-- Admin Settings -->
+			{#if isOwner}
+				<div class="card bg-base-200 shadow-xl mt-6">
+					<div class="card-body">
+						<h2 class="card-title mb-4">{m.community_views_settings_admin_title?.() || 'Admin Settings'}</h2>
+						<p class="text-sm text-base-content/70 mb-4">
+							{m.community_views_settings_admin_description?.() || 'As the community owner, you can edit community settings.'}
+						</p>
+
+						<div class="space-y-3">
+							<button
+								onclick={handleEditCommunity}
+								class="btn btn-primary w-full"
+							>
+								{m.community_views_settings_edit_button?.() || 'Edit Community Settings'}
+							</button>
+							<p class="text-xs text-base-content/60 text-center">
+								{m.community_views_settings_edit_help?.() || 'Configure relays, content types, badge requirements, and more.'}
+							</p>
+						</div>
+					</div>
+				</div>
+			{/if}
 		{:else}
 			<div class="flex items-center justify-center py-12">
 				<div class="loading loading-spinner loading-lg text-primary"></div>

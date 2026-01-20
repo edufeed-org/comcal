@@ -1,13 +1,15 @@
 <script>
 	import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
 	import { manager } from '$lib/stores/accounts.svelte';
-	import { getConfig } from '$lib/stores/config.svelte.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import { loadUserProfile } from '$lib/loaders';
 	import { getProfilePicture } from 'applesauce-core/helpers';
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import NostrIdentifierParser from '$lib/components/shared/NostrIdentifierParser.svelte';
 	import CompactCommunityHeader from '$lib/components/community/layout/CompactCommunityHeader.svelte';
 	import * as m from '$lib/paraglide/messages';
+	import { publishEvent } from '$lib/services/publish-service.js';
+	import { getAppRelaysForCategory } from '$lib/services/app-relay-service.js';
 
 	/** @type {any} */
 	let { communikeyEvent, communityProfile = null, communityPubkey = '' } = $props();
@@ -41,10 +43,11 @@
 		isLoading = true;
 		let initialLoadComplete = false;
 
-		const config = getConfig();
+		// Use communikey relays + fallback for chat messages
+		const chatRelays = [...getAppRelaysForCategory('communikey'), ...(runtimeConfig.fallbackRelays || [])];
 		// Create a persistent subscription that continues after EOSE
 		const subscription = pool
-			.group(config.calendar.defaultRelays)
+			.group(chatRelays)
 			.subscription({ kinds: [9], '#h': [derivedCommunityPubkey] })
 			.subscribe({
 				next: (response) => {
@@ -136,16 +139,14 @@
 			console.log('Chat event created:', signedEvent);
 
 			try {
-				const config = getConfig();
-				const responses = await pool.publish(config.calendar.defaultRelays, signedEvent);
-				responses.forEach((response) => {
-					if (response.ok) {
-						console.log(`Event published successfully to ${response.from}`);
-						eventStore.add(signedEvent);
-					} else {
-						console.log(`Failed to publish event to ${response.from}: ${response.message}`);
-					}
-				});
+				// Publish with community event for proper relay routing
+				const publishResult = await publishEvent(signedEvent, [derivedCommunityPubkey], { communityEvent: communikeyEvent });
+				if (publishResult.success) {
+					console.log(`Chat event published to ${publishResult.successCount} of ${publishResult.relays.length} relays`);
+					eventStore.add(signedEvent);
+				} else {
+					console.log('Failed to publish chat event to any relay');
+				}
 			} catch (error) {
 				console.error('Error publishing to relays:', error);
 			}
@@ -242,7 +243,7 @@
 					<div class="avatar chat-image">
 						<div class="w-8 rounded-full">
 							{#if getUserAvatar(message.pubkey)}
-								<img src={getUserAvatar(message.pubkey)} alt={getUserDisplayName(message.pubkey)} />
+								<img src={getUserAvatar(message.pubkey)} alt={getUserDisplayName(message.pubkey)} onerror={(e) => e.target.src = `https://robohash.org/${message.pubkey}`} />
 							{:else}
 								<div
 									class="flex h-full w-full items-center justify-center bg-primary text-xs text-primary-content"

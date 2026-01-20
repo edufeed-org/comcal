@@ -12,7 +12,18 @@
 	import { ProfileModel } from 'applesauce-core/models';
 	import { profileLoader } from '$lib/loaders/profile.js';
 	import { getProfilePicture } from 'applesauce-core/helpers';
-	import { getConfig } from '$lib/stores/config.svelte.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
+
+	/**
+	 * Get communikey relays from app config
+	 * @returns {string[]}
+	 */
+	function getCommunikeyRelays() {
+		return [
+			...(runtimeConfig.appRelays?.communikey || []),
+			...(runtimeConfig.fallbackRelays || [])
+		];
+	}
 
 	/** @type {import('./$types').PageProps} */
 	let { data } = $props();
@@ -60,11 +71,10 @@
 
 		if (data.pubkey) {
 			// 1. Trigger loader to fetch profile from relays
-			const config = getConfig();
-			const loaderSub = profileLoader({ 
-				kind: 0, 
-				pubkey: data.pubkey, 
-				relays: config.calendar.defaultRelays 
+			const loaderSub = profileLoader({
+				kind: 0,
+				pubkey: data.pubkey,
+				relays: getCommunikeyRelays()
 			}).subscribe(() => {
 				// Loader automatically populates eventStore
 			});

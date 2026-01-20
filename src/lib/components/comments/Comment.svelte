@@ -93,7 +93,7 @@
 		isDeleting = true;
 		try {
 			await deleteComment(comment, {
-				relays: runtimeConfig.calendar.defaultRelays
+				relays: runtimeConfig.fallbackRelays || []
 			});
 			showToast(m.comments_delete_success(), 'success');
 		} catch (error) {

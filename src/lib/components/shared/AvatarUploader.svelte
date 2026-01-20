@@ -1,8 +1,11 @@
 <script>
 	import { runtimeConfig } from '$lib/stores/config.svelte.js';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+	import { manager } from '$lib/stores/accounts.svelte';
 	import CameraIcon from '$lib/components/icons/actions/CameraIcon.svelte';
 	import * as m from '$lib/paraglide/messages';
 	import { BlossomClient } from 'blossom-client-sdk';
+	import { getActiveBlossomServer } from '$lib/services/blossom-settings-service.js';
 
 	let { userData, signer = null, errors = $bindable({}) } = $props();
 
@@ -26,10 +29,14 @@
 			return await signer.signEvent(event);
 		};
 
+		// Get the blossom server (user's preference or default)
+		const userPubkey = manager.active?.pubkey;
+		const serverUrl = getActiveBlossomServer(userPubkey, eventStore);
+
 		// Create Blossom client and upload
-		const client = new BlossomClient(runtimeConfig.blossom.serverUrl, signerFn);
+		const client = new BlossomClient(serverUrl, signerFn);
 		const blob = await client.uploadBlob(file);
-		
+
 		return blob.url;
 	}
 

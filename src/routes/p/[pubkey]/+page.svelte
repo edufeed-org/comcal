@@ -3,11 +3,19 @@
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { getProfilePicture } from 'applesauce-core/helpers';
 	import { profileLoader } from '$lib/loaders/profile.js';
-	import { getConfig } from '$lib/stores/config.svelte.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import NotesTimeline from '$lib/components/notes/NotesTimeline.svelte';
 	import { manager, useActiveUser } from '$lib/stores/accounts.svelte.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
+
+	/**
+	 * Get profile lookup relays from app config
+	 * @returns {string[]}
+	 */
+	function getProfileRelays() {
+		return runtimeConfig.fallbackRelays || [];
+	}
 
 	/** @type {import('./$types').PageProps} */
 	let { data } = $props();
@@ -41,11 +49,10 @@
 		}, 5000);
 
 		// 1. Trigger loader to fetch from relays and populate eventStore
-		const config = getConfig();
-		const loaderSub = profileLoader({ 
-			kind: 0, 
-			pubkey: data.pubkey, 
-			relays: config.calendar.defaultRelays 
+		const loaderSub = profileLoader({
+			kind: 0,
+			pubkey: data.pubkey,
+			relays: getProfileRelays()
 		}).subscribe((event) => {
 			// Store the raw event for developer section
 			if (event) {

@@ -4,11 +4,14 @@
  */
 
 import { EventFactory } from 'applesauce-factory';
-import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { manager } from '$lib/stores/accounts.svelte';
 import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { flattenAMBToNostrTags } from '$lib/helpers/educational/ambTransform.js';
 import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
+import { publishEvent, buildATagWithHint, buildETagWithHint } from '$lib/services/publish-service.js';
+import { getAppRelaysForCategory } from '$lib/services/app-relay-service.js';
+import { getPrimaryWriteRelay } from '$lib/services/relay-service.svelte.js';
 
 /**
  * @typedef {Object} Creator
@@ -49,10 +52,10 @@ import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
 
 /**
  * @typedef {Object} EducationalActions
- * @property {(formData: EducationalFormData, communityPubkey: string) => Promise<{event: import('nostr-tools').NostrEvent, naddr: string}>} createResource
- * @property {(formData: EducationalFormData, existingEvent: import('nostr-tools').NostrEvent) => Promise<{event: import('nostr-tools').NostrEvent, naddr: string}>} updateResource
+ * @property {(formData: EducationalFormData, communityPubkey: string, communityEvent?: Object) => Promise<{event: import('nostr-tools').NostrEvent, naddr: string}>} createResource
+ * @property {(formData: EducationalFormData, existingEvent: import('nostr-tools').NostrEvent, communityEvent?: Object) => Promise<{event: import('nostr-tools').NostrEvent, naddr: string}>} updateResource
  * @property {(eventId: string) => Promise<void>} deleteResource
- * @property {(resourceEvent: import('nostr-tools').NostrEvent, communityPubkey: string) => Promise<void>} createTargetedPublication
+ * @property {(resourceEvent: import('nostr-tools').NostrEvent, communityPubkey: string, communityEvent?: Object) => Promise<void>} createTargetedPublication
  */
 
 /** Kind number for AMB Educational Resource events */
@@ -159,9 +162,10 @@ export function createEducationalActions() {
 		 * Create a new educational resource (kind:30142)
 		 * @param {EducationalFormData} formData - Form data from upload modal
 		 * @param {string} communityPubkey - Target community public key
+		 * @param {Object} [communityEvent] - Optional community definition event (kind 10222) for relay routing
 		 * @returns {Promise<{event: import('nostr-tools').NostrEvent, naddr: string}>}
 		 */
-		async createResource(formData, communityPubkey) {
+		async createResource(formData, communityPubkey, communityEvent = null) {
 			// Get current account from manager
 			const currentAccount = manager.active;
 			if (!currentAccount) {
@@ -203,13 +207,14 @@ export function createEducationalActions() {
 					tags.push(['h', communityPubkey]);
 				}
 
-				// Add p-tags for creators with Nostr pubkeys
+				// Add p-tags for creators with Nostr pubkeys and relay hints
 				if (formData.creators) {
-					formData.creators.forEach(creator => {
+					for (const creator of formData.creators) {
 						if (creator.pubkey) {
-							tags.push(['p', creator.pubkey, '', 'creator']);
+							const relayHint = await getPrimaryWriteRelay(creator.pubkey);
+							tags.push(['p', creator.pubkey, relayHint, 'creator']);
 						}
-					});
+					}
 				}
 
 				// Create the event using EventFactory
@@ -221,22 +226,22 @@ export function createEducationalActions() {
 					tags: tags
 				});
 
-			// Sign and publish
-			const resourceEvent = await currentAccount.signEvent(eventTemplate);
-			await pool.publish(runtimeConfig.educational.ambRelays, resourceEvent);
+				// Sign and publish using outbox + educational relays
+				const resourceEvent = await currentAccount.signEvent(eventTemplate);
+				await publishEvent(resourceEvent, [], { communityEvent });
 
-			// Add to eventStore for immediate UI update
-			eventStore.add(resourceEvent);
+				// Add to eventStore for immediate UI update
+				eventStore.add(resourceEvent);
 
-			// Generate naddr for navigation
-			const naddr = encodeEventToNaddr(resourceEvent, runtimeConfig.educational.ambRelays);
+				// Generate naddr using educational relays for hint
+				const naddr = encodeEventToNaddr(resourceEvent, getAppRelaysForCategory('educational'));
 
 				console.log('📚 Educational resource created:', resourceEvent.id);
 				console.log('📚 Resource naddr:', naddr);
 
 				// Create targeted publication if community is specified
 				if (communityPubkey) {
-					await this.createTargetedPublication(resourceEvent, communityPubkey);
+					await this.createTargetedPublication(resourceEvent, communityPubkey, communityEvent);
 				}
 
 				return { event: resourceEvent, naddr };
@@ -252,9 +257,10 @@ export function createEducationalActions() {
 		 * Update an existing educational resource
 		 * @param {EducationalFormData} formData - Updated form data
 		 * @param {import('nostr-tools').NostrEvent} existingEvent - Existing event to update
+		 * @param {Object} [communityEvent] - Optional community definition event (kind 10222) for relay routing
 		 * @returns {Promise<{event: import('nostr-tools').NostrEvent, naddr: string}>}
 		 */
-		async updateResource(formData, existingEvent) {
+		async updateResource(formData, existingEvent, communityEvent = null) {
 			// Get current account
 			const currentAccount = manager.active;
 			if (!currentAccount) {
@@ -290,13 +296,14 @@ export function createEducationalActions() {
 					tags.push(['h', hTag]);
 				}
 
-				// Add p-tags for creators with Nostr pubkeys
+				// Add p-tags for creators with Nostr pubkeys and relay hints
 				if (formData.creators) {
-					formData.creators.forEach(creator => {
+					for (const creator of formData.creators) {
 						if (creator.pubkey) {
-							tags.push(['p', creator.pubkey, '', 'creator']);
+							const relayHint = await getPrimaryWriteRelay(creator.pubkey);
+							tags.push(['p', creator.pubkey, relayHint, 'creator']);
 						}
-					});
+					}
 				}
 
 				// Create the updated event
@@ -308,15 +315,15 @@ export function createEducationalActions() {
 					tags: tags
 				});
 
-			// Sign and publish
-			const updatedEvent = await currentAccount.signEvent(eventTemplate);
-			await pool.publish(runtimeConfig.educational.ambRelays, updatedEvent);
+				// Sign and publish using outbox + educational relays
+				const updatedEvent = await currentAccount.signEvent(eventTemplate);
+				await publishEvent(updatedEvent, [], { communityEvent });
 
-			// Add to eventStore
-			eventStore.add(updatedEvent);
+				// Add to eventStore
+				eventStore.add(updatedEvent);
 
-			// Generate naddr for navigation
-			const naddr = encodeEventToNaddr(updatedEvent, runtimeConfig.educational.ambRelays);
+				// Generate naddr using educational relays for hint
+				const naddr = encodeEventToNaddr(updatedEvent, getAppRelaysForCategory('educational'));
 
 				console.log('📚 Educational resource updated:', updatedEvent.id);
 
@@ -342,20 +349,21 @@ export function createEducationalActions() {
 			}
 
 			try {
-				// Create a deletion event (kind 5 - NIP-09)
+				// Create a deletion event (kind 5 - NIP-09) with relay hint
 				const eventFactory = new EventFactory();
+				const eTagWithHint = await buildETagWithHint(eventId, currentAccount.pubkey);
 
 				const eventTemplate = await eventFactory.build({
 					kind: 5,
 					content: '',
-					tags: [['e', eventId]]
+					tags: [eTagWithHint]
 				});
 
-			// Sign and publish the deletion event
-			const deletionEvent = await currentAccount.signEvent(eventTemplate);
-			await pool.publish(runtimeConfig.educational.ambRelays, deletionEvent);
+				// Sign and publish the deletion event
+				const deletionEvent = await currentAccount.signEvent(eventTemplate);
+				await publishEvent(deletionEvent, []);
 
-			console.log('📚 Educational resource deleted:', eventId);
+				console.log('📚 Educational resource deleted:', eventId);
 
 			} catch (error) {
 				console.error('Error deleting educational resource:', error);
@@ -368,9 +376,10 @@ export function createEducationalActions() {
 		 * Create a targeted publication event to associate resource with community
 		 * @param {import('nostr-tools').NostrEvent} resourceEvent - The educational resource event
 		 * @param {string} communityPubkey - Target community public key
+		 * @param {Object} [communityEvent] - Optional community definition event (kind 10222) for relay routing
 		 * @returns {Promise<void>}
 		 */
-		async createTargetedPublication(resourceEvent, communityPubkey) {
+		async createTargetedPublication(resourceEvent, communityPubkey, communityEvent = null) {
 			// Get current account
 			const currentAccount = manager.active;
 			if (!currentAccount) {
@@ -387,14 +396,18 @@ export function createEducationalActions() {
 				// Build the coordinate for the 'a' tag
 				const coordinate = `${resourceEvent.kind}:${resourceEvent.pubkey}:${dTag}`;
 
+				// Build tags with relay hints for discoverability
+				const aTagWithHint = await buildATagWithHint(coordinate);
+				const eTagWithHint = await buildETagWithHint(resourceEvent.id, resourceEvent.pubkey);
+
 				// Create targeting event using Communikey spec (kind 30222)
 				const eventFactory = new EventFactory();
 
 				const tags = [
 					['d', `${communityPubkey}:${dTag}`], // Unique d-tag for this publication
 					['h', communityPubkey], // Target community
-					['a', coordinate], // Reference to the resource
-					['e', resourceEvent.id] // Reference to specific event
+					aTagWithHint, // Reference to the resource with relay hint
+					eTagWithHint // Reference to specific event with relay hint
 				];
 
 				const eventTemplate = await eventFactory.build({
@@ -403,12 +416,12 @@ export function createEducationalActions() {
 					tags: tags
 				});
 
-			// Sign and publish
-			const targetingEvent = await currentAccount.signEvent(eventTemplate);
-			await pool.publish(runtimeConfig.educational.ambRelays, targetingEvent);
+				// Sign and publish (kind 30222 uses communikey relays)
+				const targetingEvent = await currentAccount.signEvent(eventTemplate);
+				await publishEvent(targetingEvent, [communityPubkey], { communityEvent });
 
-			// Add to eventStore
-			eventStore.add(targetingEvent);
+				// Add to eventStore
+				eventStore.add(targetingEvent);
 
 				console.log('📚 Targeted publication created for community:', communityPubkey);
 

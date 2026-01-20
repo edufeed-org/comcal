@@ -30,7 +30,7 @@
 	<!-- Community Avatar -->
 	<div class="avatar">
 		<div class="w-10 rounded-full ring-2 ring-base-300">
-			<img src={avatarUrl} alt={displayName} class="object-cover" />
+			<img src={avatarUrl || `https://robohash.org/${communityPubkey}`} alt={displayName} class="object-cover" onerror={(e) => e.target.src = `https://robohash.org/${communityPubkey}`} />
 		</div>
 	</div>
 

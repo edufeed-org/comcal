@@ -14,6 +14,7 @@
 	import ProfileForm from './shared/ProfileForm.svelte';
 	import EditableList from './shared/EditableList.svelte';
 	import LocationInput from './shared/LocationInput.svelte';
+	import ContentTypeBadgeConfig from './shared/ContentTypeBadgeConfig.svelte';
 
 	let { modalId } = $props();
 
@@ -48,20 +49,32 @@
 		useEncryption: false
 	});
 
+	/**
+	 * @typedef {Object} ContentTypeConfig
+	 * @property {boolean} enabled
+	 * @property {{read: string|null, write: string|null}} badges
+	 * @property {string[]} relays
+	 */
+
 	// Community data state
 	let communityData = $state({
 		relays: ['wss://relay.edufeed.org'],
 		blossomServers: ['blossom.edufeed.org'],
 		location: '',
 		description: '',
+		/** @type {Record<string, ContentTypeConfig & {name: string}>} */
 		contentTypes: {
-			calendar: true,
-			chat: true,
-			articles: true,
-			posts: true,
-			wikis: true
+			calendar: { name: 'Calendar', enabled: true, badges: { read: null, write: null }, relays: [] },
+			chat: { name: 'Chat', enabled: true, badges: { read: null, write: null }, relays: [] },
+			articles: { name: 'Articles', enabled: true, badges: { read: null, write: null }, relays: [] },
+			posts: { name: 'Posts', enabled: true, badges: { read: null, write: null }, relays: [] },
+			wikis: { name: 'Wikis', enabled: true, badges: { read: null, write: null }, relays: [] }
 		}
 	});
+
+	// Toggle for advanced badge configuration
+	let showBadgeConfig = $state(false);
+	let showAdvancedRelays = $state(false);
 
 	// UI state
 	let isPublishing = $state(false);
@@ -95,9 +108,15 @@
 					location: '',
 					description: '',
 					contentTypes: {
-						calendar: true, chat: true, articles: true, posts: true, wikis: true
+						calendar: { name: 'Calendar', enabled: true, badges: { read: null, write: null }, relays: [] },
+						chat: { name: 'Chat', enabled: true, badges: { read: null, write: null }, relays: [] },
+						articles: { name: 'Articles', enabled: true, badges: { read: null, write: null }, relays: [] },
+						posts: { name: 'Posts', enabled: true, badges: { read: null, write: null }, relays: [] },
+						wikis: { name: 'Wikis', enabled: true, badges: { read: null, write: null }, relays: [] }
 					}
 				};
+				showBadgeConfig = false;
+				showAdvancedRelays = false;
 				errors = {};
 			}
 		};
@@ -122,7 +141,7 @@
 			}
 
 			// Check if at least one content type is selected
-			const hasContentType = Object.values(communityData.contentTypes).some(Boolean);
+			const hasContentType = Object.values(communityData.contentTypes).some((ct) => ct.enabled);
 			if (!hasContentType) {
 				errors.contentTypes = m.create_community_modal_error_content_types_required();
 				return false;
@@ -153,7 +172,7 @@
 			}
 
 			// Check if at least one content type is selected
-			const hasContentType = Object.values(communityData.contentTypes).some(Boolean);
+			const hasContentType = Object.values(communityData.contentTypes).some((ct) => ct.enabled);
 			if (!hasContentType) {
 				errors.contentTypes = m.create_community_modal_error_content_types_required();
 				return false;
@@ -292,33 +311,79 @@
 				communityTags.push(['description', communityData.description.trim()]);
 			}
 
-			// Add content types
-			if (communityData.contentTypes.calendar) {
+			// Add content types with badge requirements and per-content-type relays
+			if (communityData.contentTypes.calendar.enabled) {
 				communityTags.push(['content', 'Calendar']);
 				communityTags.push(['k', '31922']); // Date-Based Calendar Event
 				communityTags.push(['k', '31923']); // Time-Based Calendar Event
+				// Add badge requirements
+				if (communityData.contentTypes.calendar.badges.write) {
+					communityTags.push(['a', communityData.contentTypes.calendar.badges.write, 'write']);
+				}
+				if (communityData.contentTypes.calendar.badges.read) {
+					communityTags.push(['a', communityData.contentTypes.calendar.badges.read, 'read']);
+				}
+				// Add per-content-type relays
+				communityData.contentTypes.calendar.relays.forEach((r) => {
+					communityTags.push(['r', r, 'content']);
+				});
 			}
 
-			if (communityData.contentTypes.chat) {
+			if (communityData.contentTypes.chat.enabled) {
 				communityTags.push(['content', 'Chat']);
 				communityTags.push(['k', '9']); // Chat Message
+				if (communityData.contentTypes.chat.badges.write) {
+					communityTags.push(['a', communityData.contentTypes.chat.badges.write, 'write']);
+				}
+				if (communityData.contentTypes.chat.badges.read) {
+					communityTags.push(['a', communityData.contentTypes.chat.badges.read, 'read']);
+				}
+				communityData.contentTypes.chat.relays.forEach((r) => {
+					communityTags.push(['r', r, 'content']);
+				});
 			}
 
-			if (communityData.contentTypes.articles) {
+			if (communityData.contentTypes.articles.enabled) {
 				communityTags.push(['content', 'Articles']);
 				communityTags.push(['k', '30023']); // Long-form Content
-				// communityTags.push(['k', '30040']); // Curated Publication Content
+				if (communityData.contentTypes.articles.badges.write) {
+					communityTags.push(['a', communityData.contentTypes.articles.badges.write, 'write']);
+				}
+				if (communityData.contentTypes.articles.badges.read) {
+					communityTags.push(['a', communityData.contentTypes.articles.badges.read, 'read']);
+				}
+				communityData.contentTypes.articles.relays.forEach((r) => {
+					communityTags.push(['r', r, 'content']);
+				});
 			}
 
-			if (communityData.contentTypes.posts) {
+			if (communityData.contentTypes.posts.enabled) {
 				communityTags.push(['content', 'Posts']);
 				communityTags.push(['k', '1']); // Short Text Note
 				communityTags.push(['k', '11']); // Thread
+				if (communityData.contentTypes.posts.badges.write) {
+					communityTags.push(['a', communityData.contentTypes.posts.badges.write, 'write']);
+				}
+				if (communityData.contentTypes.posts.badges.read) {
+					communityTags.push(['a', communityData.contentTypes.posts.badges.read, 'read']);
+				}
+				communityData.contentTypes.posts.relays.forEach((r) => {
+					communityTags.push(['r', r, 'content']);
+				});
 			}
 
-			if (communityData.contentTypes.wikis) {
+			if (communityData.contentTypes.wikis.enabled) {
 				communityTags.push(['content', 'Wikis']);
 				communityTags.push(['k', '30818']); // Wiki article
+				if (communityData.contentTypes.wikis.badges.write) {
+					communityTags.push(['a', communityData.contentTypes.wikis.badges.write, 'write']);
+				}
+				if (communityData.contentTypes.wikis.badges.read) {
+					communityTags.push(['a', communityData.contentTypes.wikis.badges.read, 'read']);
+				}
+				communityData.contentTypes.wikis.relays.forEach((r) => {
+					communityTags.push(['r', r, 'content']);
+				});
 			}
 
 			const communityEvent = {
@@ -393,9 +458,15 @@
 			location: '',
 			description: '',
 			contentTypes: {
-				calendar: true, chat: true, articles: true, posts: true, wikis: true
+				calendar: { name: 'Calendar', enabled: true, badges: { read: null, write: null }, relays: [] },
+				chat: { name: 'Chat', enabled: true, badges: { read: null, write: null }, relays: [] },
+				articles: { name: 'Articles', enabled: true, badges: { read: null, write: null }, relays: [] },
+				posts: { name: 'Posts', enabled: true, badges: { read: null, write: null }, relays: [] },
+				wikis: { name: 'Wikis', enabled: true, badges: { read: null, write: null }, relays: [] }
 			}
 		};
+		showBadgeConfig = false;
+		showAdvancedRelays = false;
 		errors = {};
 	}
 </script>
@@ -519,15 +590,15 @@
 							<!-- Calendar Card -->
 							<button
 								type="button"
-								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.calendar ? 'ring-2 ring-primary' : ''}"
-								onclick={() => communityData.contentTypes.calendar = !communityData.contentTypes.calendar}
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.calendar.enabled ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.calendar.enabled = !communityData.contentTypes.calendar.enabled}
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
 										<span class="font-medium">{m.create_community_modal_content_calendar()}</span>
 										<input
 											type="checkbox"
-											checked={communityData.contentTypes.calendar}
+											checked={communityData.contentTypes.calendar.enabled}
 											class="checkbox checkbox-primary pointer-events-none"
 											tabindex="-1"
 										/>
@@ -538,15 +609,15 @@
 							<!-- Chat Card -->
 							<button
 								type="button"
-								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.chat ? 'ring-2 ring-primary' : ''}"
-								onclick={() => communityData.contentTypes.chat = !communityData.contentTypes.chat}
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.chat.enabled ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.chat.enabled = !communityData.contentTypes.chat.enabled}
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
 										<span class="font-medium">{m.create_community_modal_content_chat()}</span>
 										<input
 											type="checkbox"
-											checked={communityData.contentTypes.chat}
+											checked={communityData.contentTypes.chat.enabled}
 											class="checkbox checkbox-primary pointer-events-none"
 											tabindex="-1"
 										/>
@@ -557,15 +628,15 @@
 							<!-- Articles Card -->
 							<button
 								type="button"
-								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.articles ? 'ring-2 ring-primary' : ''}"
-								onclick={() => communityData.contentTypes.articles = !communityData.contentTypes.articles}
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.articles.enabled ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.articles.enabled = !communityData.contentTypes.articles.enabled}
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
 										<span class="font-medium">{m.create_community_modal_content_articles()}</span>
 										<input
 											type="checkbox"
-											checked={communityData.contentTypes.articles}
+											checked={communityData.contentTypes.articles.enabled}
 											class="checkbox checkbox-primary pointer-events-none"
 											tabindex="-1"
 										/>
@@ -576,15 +647,15 @@
 							<!-- Posts Card -->
 							<button
 								type="button"
-								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.posts ? 'ring-2 ring-primary' : ''}"
-								onclick={() => communityData.contentTypes.posts = !communityData.contentTypes.posts}
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.posts.enabled ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.posts.enabled = !communityData.contentTypes.posts.enabled}
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
 										<span class="font-medium">{m.create_community_modal_content_posts()}</span>
 										<input
 											type="checkbox"
-											checked={communityData.contentTypes.posts}
+											checked={communityData.contentTypes.posts.enabled}
 											class="checkbox checkbox-primary pointer-events-none"
 											tabindex="-1"
 										/>
@@ -595,15 +666,15 @@
 							<!-- Wikis Card -->
 							<button
 								type="button"
-								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.wikis ? 'ring-2 ring-primary' : ''}"
-								onclick={() => communityData.contentTypes.wikis = !communityData.contentTypes.wikis}
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.wikis.enabled ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.wikis.enabled = !communityData.contentTypes.wikis.enabled}
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
 										<span class="font-medium">{m.create_community_modal_content_wikis()}</span>
 										<input
 											type="checkbox"
-											checked={communityData.contentTypes.wikis}
+											checked={communityData.contentTypes.wikis.enabled}
 											class="checkbox checkbox-primary pointer-events-none"
 											tabindex="-1"
 										/>
@@ -617,6 +688,78 @@
 							</label>
 						{/if}
 					</div>
+
+					<!-- Badge Configuration Toggle -->
+					<div class="form-control mt-4">
+						<label class="label cursor-pointer justify-start gap-3">
+							<input
+								type="checkbox"
+								class="toggle toggle-primary"
+								bind:checked={showBadgeConfig}
+							/>
+							<span class="label-text">{m.badge_config_toggle?.() || 'Configure badge-based access control'}</span>
+						</label>
+						<p class="text-xs opacity-70 ml-12">
+							{m.badge_config_toggle_help?.() || 'Require badges (NIP-58) for reading or publishing specific content types'}
+						</p>
+					</div>
+
+					<!-- Badge Configuration Section -->
+					{#if showBadgeConfig}
+						<div class="space-y-4 mt-4">
+							<div class="flex items-center justify-between">
+								<h3 class="text-lg font-semibold">{m.badge_config_title?.() || 'Badge Access Control'}</h3>
+								<label class="label cursor-pointer gap-2">
+									<span class="label-text text-sm">{m.badge_config_show_relays?.() || 'Show relay config'}</span>
+									<input
+										type="checkbox"
+										class="toggle toggle-sm"
+										bind:checked={showAdvancedRelays}
+									/>
+								</label>
+							</div>
+
+							{#if communityData.contentTypes.calendar.enabled}
+								<ContentTypeBadgeConfig
+									bind:contentType={communityData.contentTypes.calendar}
+									authorPubkey={manager.active?.pubkey || ''}
+									showAdvanced={showAdvancedRelays}
+								/>
+							{/if}
+
+							{#if communityData.contentTypes.chat.enabled}
+								<ContentTypeBadgeConfig
+									bind:contentType={communityData.contentTypes.chat}
+									authorPubkey={manager.active?.pubkey || ''}
+									showAdvanced={showAdvancedRelays}
+								/>
+							{/if}
+
+							{#if communityData.contentTypes.articles.enabled}
+								<ContentTypeBadgeConfig
+									bind:contentType={communityData.contentTypes.articles}
+									authorPubkey={manager.active?.pubkey || ''}
+									showAdvanced={showAdvancedRelays}
+								/>
+							{/if}
+
+							{#if communityData.contentTypes.posts.enabled}
+								<ContentTypeBadgeConfig
+									bind:contentType={communityData.contentTypes.posts}
+									authorPubkey={manager.active?.pubkey || ''}
+									showAdvanced={showAdvancedRelays}
+								/>
+							{/if}
+
+							{#if communityData.contentTypes.wikis.enabled}
+								<ContentTypeBadgeConfig
+									bind:contentType={communityData.contentTypes.wikis}
+									authorPubkey={manager.active?.pubkey || ''}
+									showAdvanced={showAdvancedRelays}
+								/>
+							{/if}
+						</div>
+					{/if}
 				</div>
 
 			{:else if currentStep === 2 && useCurrentKeypair}
@@ -658,19 +801,19 @@
 							<div class="card-body">
 								<h3 class="card-title">{m.create_community_modal_confirm_content_types_section()}</h3>
 								<div class="flex flex-wrap gap-2">
-									{#if communityData.contentTypes.calendar}
+									{#if communityData.contentTypes.calendar.enabled}
 										<span class="badge badge-primary">{m.create_community_modal_content_calendar()}</span>
 									{/if}
-									{#if communityData.contentTypes.chat}
+									{#if communityData.contentTypes.chat.enabled}
 										<span class="badge badge-primary">{m.create_community_modal_content_chat()}</span>
 									{/if}
-									{#if communityData.contentTypes.articles}
+									{#if communityData.contentTypes.articles.enabled}
 										<span class="badge badge-primary">{m.create_community_modal_content_articles()}</span>
 									{/if}
-									{#if communityData.contentTypes.posts}
+									{#if communityData.contentTypes.posts.enabled}
 										<span class="badge badge-primary">{m.create_community_modal_content_posts()}</span>
 									{/if}
-									{#if communityData.contentTypes.wikis}
+									{#if communityData.contentTypes.wikis.enabled}
 										<span class="badge badge-primary">{m.create_community_modal_content_wikis()}</span>
 									{/if}
 								</div>
@@ -756,15 +899,15 @@
 							<!-- Calendar Card -->
 							<button
 								type="button"
-								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.calendar ? 'ring-2 ring-primary' : ''}"
-								onclick={() => communityData.contentTypes.calendar = !communityData.contentTypes.calendar}
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.calendar.enabled ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.calendar.enabled = !communityData.contentTypes.calendar.enabled}
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
 										<span class="font-medium">{m.create_community_modal_content_calendar()}</span>
 										<input
 											type="checkbox"
-											checked={communityData.contentTypes.calendar}
+											checked={communityData.contentTypes.calendar.enabled}
 											class="checkbox checkbox-primary pointer-events-none"
 											tabindex="-1"
 										/>
@@ -775,15 +918,15 @@
 							<!-- Chat Card -->
 							<button
 								type="button"
-								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.chat ? 'ring-2 ring-primary' : ''}"
-								onclick={() => communityData.contentTypes.chat = !communityData.contentTypes.chat}
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.chat.enabled ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.chat.enabled = !communityData.contentTypes.chat.enabled}
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
 										<span class="font-medium">{m.create_community_modal_content_chat()}</span>
 										<input
 											type="checkbox"
-											checked={communityData.contentTypes.chat}
+											checked={communityData.contentTypes.chat.enabled}
 											class="checkbox checkbox-primary pointer-events-none"
 											tabindex="-1"
 										/>
@@ -794,15 +937,15 @@
 							<!-- Articles Card -->
 							<button
 								type="button"
-								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.articles ? 'ring-2 ring-primary' : ''}"
-								onclick={() => communityData.contentTypes.articles = !communityData.contentTypes.articles}
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.articles.enabled ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.articles.enabled = !communityData.contentTypes.articles.enabled}
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
 										<span class="font-medium">{m.create_community_modal_content_articles()}</span>
 										<input
 											type="checkbox"
-											checked={communityData.contentTypes.articles}
+											checked={communityData.contentTypes.articles.enabled}
 											class="checkbox checkbox-primary pointer-events-none"
 											tabindex="-1"
 										/>
@@ -813,15 +956,15 @@
 							<!-- Posts Card -->
 							<button
 								type="button"
-								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.posts ? 'ring-2 ring-primary' : ''}"
-								onclick={() => communityData.contentTypes.posts = !communityData.contentTypes.posts}
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.posts.enabled ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.posts.enabled = !communityData.contentTypes.posts.enabled}
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
 										<span class="font-medium">{m.create_community_modal_content_posts()}</span>
 										<input
 											type="checkbox"
-											checked={communityData.contentTypes.posts}
+											checked={communityData.contentTypes.posts.enabled}
 											class="checkbox checkbox-primary pointer-events-none"
 											tabindex="-1"
 										/>
@@ -832,15 +975,15 @@
 							<!-- Wikis Card -->
 							<button
 								type="button"
-								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.wikis ? 'ring-2 ring-primary' : ''}"
-								onclick={() => communityData.contentTypes.wikis = !communityData.contentTypes.wikis}
+								class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.wikis.enabled ? 'ring-2 ring-primary' : ''}"
+								onclick={() => communityData.contentTypes.wikis.enabled = !communityData.contentTypes.wikis.enabled}
 							>
 								<div class="card-body p-4">
 									<div class="flex items-center justify-between">
 										<span class="font-medium">{m.create_community_modal_content_wikis()}</span>
 										<input
 											type="checkbox"
-											checked={communityData.contentTypes.wikis}
+											checked={communityData.contentTypes.wikis.enabled}
 											class="checkbox checkbox-primary pointer-events-none"
 											tabindex="-1"
 										/>
@@ -854,6 +997,78 @@
 							</label>
 						{/if}
 					</div>
+
+					<!-- Badge Configuration Toggle -->
+					<div class="form-control mt-4">
+						<label class="label cursor-pointer justify-start gap-3">
+							<input
+								type="checkbox"
+								class="toggle toggle-primary"
+								bind:checked={showBadgeConfig}
+							/>
+							<span class="label-text">{m.badge_config_toggle?.() || 'Configure badge-based access control'}</span>
+						</label>
+						<p class="text-xs opacity-70 ml-12">
+							{m.badge_config_toggle_help?.() || 'Require badges (NIP-58) for reading or publishing specific content types'}
+						</p>
+					</div>
+
+					<!-- Badge Configuration Section -->
+					{#if showBadgeConfig}
+						<div class="space-y-4 mt-4">
+							<div class="flex items-center justify-between">
+								<h3 class="text-lg font-semibold">{m.badge_config_title?.() || 'Badge Access Control'}</h3>
+								<label class="label cursor-pointer gap-2">
+									<span class="label-text text-sm">{m.badge_config_show_relays?.() || 'Show relay config'}</span>
+									<input
+										type="checkbox"
+										class="toggle toggle-sm"
+										bind:checked={showAdvancedRelays}
+									/>
+								</label>
+							</div>
+
+							{#if communityData.contentTypes.calendar.enabled}
+								<ContentTypeBadgeConfig
+									bind:contentType={communityData.contentTypes.calendar}
+									authorPubkey={userData.publicKey || ''}
+									showAdvanced={showAdvancedRelays}
+								/>
+							{/if}
+
+							{#if communityData.contentTypes.chat.enabled}
+								<ContentTypeBadgeConfig
+									bind:contentType={communityData.contentTypes.chat}
+									authorPubkey={userData.publicKey || ''}
+									showAdvanced={showAdvancedRelays}
+								/>
+							{/if}
+
+							{#if communityData.contentTypes.articles.enabled}
+								<ContentTypeBadgeConfig
+									bind:contentType={communityData.contentTypes.articles}
+									authorPubkey={userData.publicKey || ''}
+									showAdvanced={showAdvancedRelays}
+								/>
+							{/if}
+
+							{#if communityData.contentTypes.posts.enabled}
+								<ContentTypeBadgeConfig
+									bind:contentType={communityData.contentTypes.posts}
+									authorPubkey={userData.publicKey || ''}
+									showAdvanced={showAdvancedRelays}
+								/>
+							{/if}
+
+							{#if communityData.contentTypes.wikis.enabled}
+								<ContentTypeBadgeConfig
+									bind:contentType={communityData.contentTypes.wikis}
+									authorPubkey={userData.publicKey || ''}
+									showAdvanced={showAdvancedRelays}
+								/>
+							{/if}
+						</div>
+					{/if}
 				</div>
 
 			{:else if currentStep === 4 && !useCurrentKeypair}
@@ -898,19 +1113,19 @@
 							<div class="card-body">
 								<h3 class="card-title">{m.create_community_modal_confirm_content_types_section()}</h3>
 								<div class="flex flex-wrap gap-2">
-									{#if communityData.contentTypes.calendar}
+									{#if communityData.contentTypes.calendar.enabled}
 										<span class="badge badge-primary">{m.create_community_modal_content_calendar()}</span>
 									{/if}
-									{#if communityData.contentTypes.chat}
+									{#if communityData.contentTypes.chat.enabled}
 										<span class="badge badge-primary">{m.create_community_modal_content_chat()}</span>
 									{/if}
-									{#if communityData.contentTypes.articles}
+									{#if communityData.contentTypes.articles.enabled}
 										<span class="badge badge-primary">{m.create_community_modal_content_articles()}</span>
 									{/if}
-									{#if communityData.contentTypes.posts}
+									{#if communityData.contentTypes.posts.enabled}
 										<span class="badge badge-primary">{m.create_community_modal_content_posts()}</span>
 									{/if}
-									{#if communityData.contentTypes.wikis}
+									{#if communityData.contentTypes.wikis.enabled}
 										<span class="badge badge-primary">{m.create_community_modal_content_wikis()}</span>
 									{/if}
 								</div>

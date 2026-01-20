@@ -14,16 +14,22 @@ const defaultConfig = {
 	name: 'ComCal',
 	logo: 'https://blossom.edufeed.org/f22e1410f09a9130757704b6dcd4c34774d2926b9cfd6cf2e4c4675c64d4333b.webp',
 	gitRepo: 'https://github.com/edufeed-org/comcal',
+	// NIP-65 relay list discovery relays
+	relayListLookupRelays: [],
+	// Fallback relays for users without kind 10002
+	fallbackRelays: [],
+	// App-specific relays (content goes here IN ADDITION to user's outbox)
+	appRelays: {
+		calendar: [],     // kinds 31922-31925
+		communikey: [],   // kinds 10222, 30222, 30382
+		educational: []   // kind 30142
+	},
+	// Default Blossom servers for new users
+	defaultBlossomServers: [],
 	calendar: {
 		weekStartDay: 1,
 		locale: 'de-DE',
 		timeFormat: '24h',
-		defaultRelays: [],
-		fallbackRelays: [
-			'wss://relay.damus.io',
-			'wss://nos.lol',
-			'wss://nostr.wine',
-		],
 	},
 	signup: {
 		suggestedUsers: [
@@ -33,8 +39,6 @@ const defaultConfig = {
 		]
 	},
 	blossom: {
-		serverUrl: 'https://blossom.edufeed.org',
-		uploadEndpoint: 'https://blossom.edufeed.org/upload',
 		maxFileSize: 5 * 1024 * 1024, // 5MB
 	},
 	geocoding: {
@@ -79,7 +83,6 @@ const defaultConfig = {
 		fundingText: 'gefördert vom BMBFSFJ (FKZ01PZ24007)'
 	},
 	educational: {
-		ambRelays: [],
 		searchDebounceMs: 300,
 		vocabularies: {
 			learningResourceType: 'hcrt',
@@ -124,12 +127,17 @@ export function initializeConfig(runtimeConfig) {
 		name: runtimeConfig.appName || defaultConfig.name,
 		logo: runtimeConfig.appLogo || defaultConfig.logo,
 		gitRepo: runtimeConfig.gitRepo || defaultConfig.gitRepo,
+		relayListLookupRelays: runtimeConfig.relayListLookupRelays || defaultConfig.relayListLookupRelays,
+		fallbackRelays: runtimeConfig.fallbackRelays || defaultConfig.fallbackRelays,
+		appRelays: {
+			calendar: runtimeConfig.calendarRelays || defaultConfig.appRelays.calendar,
+			communikey: runtimeConfig.communikeyRelays || defaultConfig.appRelays.communikey,
+			educational: runtimeConfig.ambRelays || defaultConfig.appRelays.educational,
+		},
+		defaultBlossomServers: runtimeConfig.defaultBlossomServers || defaultConfig.defaultBlossomServers,
 		calendar: {
 			...defaultConfig.calendar,
 			...runtimeConfig.calendar,
-			// Keep the defaultRelays and fallbackRelays from runtime
-			defaultRelays: runtimeConfig.relays || defaultConfig.calendar.defaultRelays,
-			fallbackRelays: runtimeConfig.fallbackRelays || defaultConfig.calendar.fallbackRelays,
 		},
 		signup: {
 			...defaultConfig.signup,
@@ -170,8 +178,6 @@ export function initializeConfig(runtimeConfig) {
 	educational: {
 			...defaultConfig.educational,
 			...runtimeConfig.educational,
-			// Use ambRelays from runtime config
-			ambRelays: runtimeConfig.ambRelays || defaultConfig.educational.ambRelays,
 			vocabularies: {
 				...defaultConfig.educational.vocabularies,
 				...runtimeConfig.educational?.vocabularies,
@@ -209,6 +215,18 @@ export const runtimeConfig = {
 	},
 	get gitRepo() {
 		return config.gitRepo;
+	},
+	get relayListLookupRelays() {
+		return config.relayListLookupRelays;
+	},
+	get fallbackRelays() {
+		return config.fallbackRelays;
+	},
+	get appRelays() {
+		return config.appRelays;
+	},
+	get defaultBlossomServers() {
+		return config.defaultBlossomServers;
 	},
 	get calendar() {
 		return config.calendar;

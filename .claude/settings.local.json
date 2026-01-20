@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(communikey)",
+      "Bash(grep:*)",
+      "mcp__nostr__read_nip",
+      "Skill(applesauce-core)",
+      "Skill(applesauce-relay)",
+      "Bash(npm run build:*)",
+      "Bash(npm run check:*)",
+      "Bash(find:*)"
+    ]
+  }
+}

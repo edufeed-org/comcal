@@ -61,7 +61,7 @@
 		try {
 			// Delete the reaction event using the helper
 			await deleteReaction(userReactionEvent, {
-				relays: runtimeConfig.calendar.defaultRelays
+				relays: runtimeConfig.fallbackRelays || []
 			});
 			showToast(m.reactions_remove_success(), 'success');
 		} catch (error) {

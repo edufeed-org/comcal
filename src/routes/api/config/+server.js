@@ -67,14 +67,22 @@ export function GET() {
 		appLogo: env.APP_LOGO || 'https://blossom.edufeed.org/f22e1410f09a9130757704b6dcd4c34774d2926b9cfd6cf2e4c4675c64d4333b.webp',
 		gitRepo: env.APP_GIT_REPO || 'https://github.com/edufeed-org/comcal',
 
-		// Relays
-		relays: parseArray(env.RELAYS),
-		fallbackRelays: parseArray(env.FALLBACK_RELAYS, [
-			'wss://relay.damus.io',
-			'wss://nos.lol',
-			'wss://nostr.wine',
-		]),
+		// Relays - Fallback for users without kind 10002
+		fallbackRelays: parseArray(env.FALLBACK_RELAYS),
+
+		// App-specific relays (content goes here IN ADDITION to user's outbox)
+		calendarRelays: parseArray(env.CALENDAR_RELAYS),
+		communikeyRelays: parseArray(env.COMMUNIKEY_RELAYS),
 		ambRelays: parseArray(env.AMB_RELAYS),
+
+		// NIP-65 relay list discovery
+		relayListLookupRelays: parseArray(env.RELAY_LIST_LOOKUP_RELAYS),
+
+		// Default Blossom servers
+		defaultBlossomServers: parseArray(env.DEFAULT_BLOSSOM_SERVERS, [
+			'https://blossom.primal.net',
+			'https://cdn.satellite.earth'
+		]),
 
 		// Calendar
 		calendar: {
@@ -94,7 +102,6 @@ export function GET() {
 
 		// Blossom (media uploads)
 		blossom: {
-			uploadEndpoint: env.BLOSSOM_UPLOAD_ENDPOINT || 'https://blossom.edufeed.org/upload',
 			maxFileSize: parseInt(env.BLOSSOM_MAX_FILE_SIZE, 5 * 1024 * 1024), // 5MB default
 		},
 

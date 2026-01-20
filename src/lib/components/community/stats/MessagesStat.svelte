@@ -1,7 +1,7 @@
 <script>
 	import { ChatIcon } from '$lib/components/icons';
 	import { pool } from '$lib/stores/nostr-infrastructure.svelte';
-	import { getConfig } from '$lib/stores/config.svelte.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import * as m from '$lib/paraglide/messages';
 
 	// Props
@@ -12,6 +12,17 @@
 	let messages = $state([]);
 	let isLoading = $state(true);
 	let error = $state(null);
+
+	/**
+	 * Get communikey relays from app config
+	 * @returns {string[]}
+	 */
+	function getCommunikeyRelays() {
+		return [
+			...(runtimeConfig.appRelays?.communikey || []),
+			...(runtimeConfig.fallbackRelays || [])
+		];
+	}
 
 	// Load messages
 	$effect(() => {
@@ -26,9 +37,8 @@
 		isLoading = true;
 		error = null;
 
-		const config = getConfig();
 		const sub = pool
-			.group(config.calendar.defaultRelays)
+			.group(getCommunikeyRelays())
 			.subscription({ kinds: [9], '#h': [communityId] })
 			.subscribe({
 				next: (/** @type {any} */ response) => {

@@ -49,9 +49,9 @@ export function ambSearchLoader(filters, limit = 50) {
 	const config = getConfig();
 	const loader = createTimelineLoader(
 		pool,
-		config.educational.ambRelays,
-		{ 
-			kinds: [30142], 
+		config.appRelays?.educational || [],
+		{
+			kinds: [30142],
 			search: searchQuery
 		},
 		{ eventStore, limit }

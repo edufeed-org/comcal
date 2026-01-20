@@ -30,10 +30,10 @@ export function useUserProfile(pubkey) {
 
 		if (targetPubkey) {
 			// 1. Trigger loader to fetch from relays and populate eventStore
-			const loaderSub = profileLoader({ 
-				kind: 0, 
-				pubkey: targetPubkey, 
-				relays: runtimeConfig.calendar.defaultRelays 
+			const loaderSub = profileLoader({
+				kind: 0,
+				pubkey: targetPubkey,
+				relays: runtimeConfig.fallbackRelays || []
 			}).subscribe(() => {
 				// Loader automatically populates eventStore
 			});

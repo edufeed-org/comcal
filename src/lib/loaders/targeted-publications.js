@@ -1,7 +1,7 @@
 /**
  * Targeted Publications Loader
  * Loads kind 30222 events that share content with communities
- * 
+ *
  * Targeted publications have:
  * - 'p' tag: target community pubkey
  * - 'k' tag: kind of referenced content
@@ -12,6 +12,17 @@ import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 /**
+ * Get relays for targeted publications (communikey + fallback)
+ * @returns {string[]}
+ */
+function getTargetedPublicationRelays() {
+	return [
+		...(runtimeConfig.appRelays?.communikey || []),
+		...(runtimeConfig.fallbackRelays || [])
+	];
+}
+
+/**
  * Create a timeline loader for all targeted publications (kind 30222)
  * Loads shares for articles, AMB resources, and calendar events
  * @param {number} limit - Maximum number of events to load per batch
@@ -20,7 +31,7 @@ import { runtimeConfig } from '$lib/stores/config.svelte.js';
 export function allTargetedPublicationsLoader(limit = 200) {
 	return createTimelineLoader(
 		pool,
-		runtimeConfig.calendar.defaultRelays,
+		getTargetedPublicationRelays(),
 		{ kinds: [30222] },
 		{ eventStore, limit }
 	);
@@ -34,8 +45,8 @@ export function allTargetedPublicationsLoader(limit = 200) {
 export function articleTargetedPublicationsLoader(limit = 100) {
 	return createTimelineLoader(
 		pool,
-		runtimeConfig.calendar.defaultRelays,
-		{ 
+		getTargetedPublicationRelays(),
+		{
 			kinds: [30222],
 			'#k': ['30023'] // Only article shares
 		},
@@ -51,8 +62,8 @@ export function articleTargetedPublicationsLoader(limit = 100) {
 export function ambTargetedPublicationsLoader(limit = 100) {
 	return createTimelineLoader(
 		pool,
-		runtimeConfig.calendar.defaultRelays,
-		{ 
+		getTargetedPublicationRelays(),
+		{
 			kinds: [30222],
 			'#k': ['30142'] // Only AMB resource shares
 		},
@@ -69,8 +80,8 @@ export function ambTargetedPublicationsLoader(limit = 100) {
 export function feedTargetedPublicationsLoader(limit = 200) {
 	return createTimelineLoader(
 		pool,
-		runtimeConfig.calendar.defaultRelays,
-		{ 
+		getTargetedPublicationRelays(),
+		{
 			kinds: [30222],
 			'#k': ['30023', '30142', '31922', '31923'] // Articles, AMB resources, and calendar events
 		},

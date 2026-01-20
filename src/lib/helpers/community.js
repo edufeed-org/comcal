@@ -3,6 +3,7 @@ import { manager } from '$lib/stores/accounts.svelte';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { publishEvent } from './publisher';
 import { runtimeConfig } from '$lib/stores/config.svelte.js';
+import { getPrimaryWriteRelay } from '$lib/services/relay-service.svelte.js';
 
 /**
  * Join a community by creating a relationship event (kind 30382)
@@ -25,15 +26,18 @@ export async function joinCommunity(communityPubkey, options = {}) {
 	try {
 		const factory = new EventFactory({ signer: account.signer });
 
+		// Get relay hint for the community for discoverability
+		const relayHint = await getPrimaryWriteRelay(communityPubkey);
+
 		// Create relationship event (kind 30382)
-		// Tags: d (identifier), n (relationship type), p (community pubkey)
+		// Tags: d (identifier), n (relationship type), p (community pubkey with relay hint)
 		const relationshipEventTemplate = {
 			kind: 30382,
 			content: '',
 			tags: [
 				['d', communityPubkey], // Use community pubkey as identifier
 				['n', 'follow'], // Relationship type: follow
-				['p', communityPubkey] // Reference to community
+				['p', communityPubkey, relayHint] // Reference to community with relay hint
 			],
 			created_at: Math.floor(Date.now() / 1000)
 		};
@@ -41,7 +45,7 @@ export async function joinCommunity(communityPubkey, options = {}) {
 		const signedEvent = await factory.sign(relationshipEventTemplate);
 
 		const result = await publishEvent(signedEvent, {
-			relays: options.relays || runtimeConfig.calendar.defaultRelays,
+			relays: options.relays || runtimeConfig.fallbackRelays || [],
 			addToStore: true,
 			logPrefix: 'CommunityJoin'
 		});
@@ -113,7 +117,7 @@ export async function leaveCommunity(communityPubkey, options = {}) {
 		const deleteEvent = await factory.sign(deleteEventTemplate);
 
 		const result = await publishEvent(deleteEvent, {
-			relays: options.relays || runtimeConfig.calendar.defaultRelays,
+			relays: options.relays || runtimeConfig.fallbackRelays || [],
 			addToStore: true,
 			logPrefix: 'CommunityLeave'
 		});

@@ -119,8 +119,9 @@
 					<li>
 						<button onclick={openLoginModal}>{m.navbar_switch_account()}</button>
 					</li>
-					<!-- TODO: Implement settings functionality -->
-					<!-- <li><button>{m["common.settings"]()}</button></li> -->
+					<li>
+						<a href="/settings" onclick={closeDropdown}>{m.common_settings()}</a>
+					</li>
 					<li><button onclick={handleLogoutCurrent}>{m.navbar_logout_current()}</button></li>
 					{#if accountCount > 1}
 						<li><button onclick={handleLogoutAll}>{m.navbar_logout_all()}</button></li>

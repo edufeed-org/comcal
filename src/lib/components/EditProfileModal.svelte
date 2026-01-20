@@ -148,7 +148,7 @@
 			
 			// Publish to relays
 			const result = await publishEvent(signedEvent, {
-				relays: runtimeConfig.calendar.defaultRelays,
+				relays: runtimeConfig.fallbackRelays || [],
 				addToStore: true,
 				logPrefix: 'EditProfile'
 			});

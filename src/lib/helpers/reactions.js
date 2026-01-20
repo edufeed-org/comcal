@@ -47,7 +47,7 @@ export async function createReaction(targetEvent, content, options = {}) {
 		throw new Error('No account or signer available');
 	}
 	
-	const relays = options.relays || runtimeConfig.calendar.defaultRelays;
+	const relays = options.relays || runtimeConfig.fallbackRelays || [];
 	const mainRelay = relays[0] || '';
 	
 	// Build tags according to NIP-25
@@ -104,7 +104,7 @@ export async function publishReaction(targetEvent, content, options = {}) {
 		
 		// Publish it
 		const result = await publishEvent(reactionEvent, {
-			relays: options.relays || runtimeConfig.calendar.defaultRelays,
+			relays: options.relays || runtimeConfig.fallbackRelays || [],
 			addToStore: true,
 			logPrefix: 'Reactions'
 		});
@@ -151,7 +151,7 @@ export async function deleteReaction(reactionEvent, options = {}) {
 	const deleteEvent = await factory.sign(deleteEventTemplate);
 	
 	const result = await publishEvent(deleteEvent, {
-		relays: options.relays || runtimeConfig.calendar.defaultRelays,
+		relays: options.relays || runtimeConfig.fallbackRelays || [],
 		addToStore: true,
 		logPrefix: 'Reactions'
 	});

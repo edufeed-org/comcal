@@ -6,8 +6,10 @@
 <script>
 	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import { manager } from '$lib/stores/accounts.svelte';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { CloseIcon, PlusIcon } from '$lib/components/icons';
 	import { BlossomClient } from 'blossom-client-sdk';
+	import { getActiveBlossomServer } from '$lib/services/blossom-settings-service.js';
 
 	/**
 	 * @typedef {Object} UploadedFile
@@ -98,8 +100,11 @@
 			return await activeUser.signEvent(event);
 		};
 
+		// Get the blossom server (user's preference or default)
+		const serverUrl = getActiveBlossomServer(activeUser.pubkey, eventStore);
+
 		// Create Blossom client
-		const client = new BlossomClient(runtimeConfig.blossom.serverUrl, signer);
+		const client = new BlossomClient(serverUrl, signer);
 
 		// Upload file using the SDK
 		const blob = await client.uploadBlob(file);

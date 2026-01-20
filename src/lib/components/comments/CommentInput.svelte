@@ -61,7 +61,7 @@
 			const tags = generateCommentTags(
 				rootEvent,
 				parentItem,
-				runtimeConfig.calendar.defaultRelays[0] || ''
+				(runtimeConfig.fallbackRelays || [])[0] || ''
 			);
 
 			// Create the comment event
@@ -78,7 +78,7 @@
 
 			// Publish to relays
 			const result = await publishEvent(signedEvent, {
-				relays: runtimeConfig.calendar.defaultRelays,
+				relays: runtimeConfig.fallbackRelays || [],
 				logPrefix: 'Comment'
 			});
 

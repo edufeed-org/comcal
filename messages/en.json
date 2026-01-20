@@ -878,5 +878,37 @@
 	"amb_resource_related_resources": "Related Resources",
 	"amb_resource_uploaded_files": "Uploaded Files",
 	"amb_resource_discussion": "Discussion",
-  "amb_resource_published": "Published {date}"
+  "amb_resource_published": "Published {date}",
+
+  "badge_selector_label": "Select Badge",
+  "badge_selector_placeholder": "Anyone (no badge required)",
+  "badge_selector_loading": "Loading badges...",
+  "badge_selector_none": "No badges found. Create badges in a badge management app first.",
+  "badge_access_read_label": "Read Access Badge",
+  "badge_access_write_label": "Write Access Badge",
+  "badge_access_anyone": "Anyone can access",
+  "badge_access_read_help": "Users need this badge to view this content",
+  "badge_access_write_help": "Users need this badge to publish this content",
+  "content_relay_label": "Content-Specific Relays",
+  "content_relay_help": "Badge-gated content will use these relays instead of community relays",
+  "badge_config_toggle": "Configure badge-based access control",
+  "badge_config_toggle_help": "Require badges (NIP-58) for reading or publishing specific content types",
+  "badge_config_title": "Badge Access Control",
+  "badge_config_show_relays": "Show relay config",
+
+  "edit_community_modal_title": "Edit Community Settings",
+  "edit_community_modal_error_no_community": "No community data available",
+  "edit_community_modal_error_not_owner": "Only the community owner can edit settings",
+  "edit_community_modal_button_saving": "Saving...",
+  "edit_community_modal_button_save": "Save Changes",
+
+  "community_views_settings_admin_title": "Admin Settings",
+  "community_views_settings_admin_description": "As the community owner, you can edit community settings.",
+  "community_views_settings_edit_button": "Edit Community Settings",
+  "community_views_settings_edit_help": "Configure relays, content types, badge requirements, and more.",
+
+  "badge_required_title": "Badge Required",
+  "badge_required_message": "You need a specific badge to publish {contentType} in this community.",
+  "badge_required_message_with_name": "You need the \"{badgeName}\" badge to publish {contentType} in this community.",
+  "badge_required_contact_admin": "Contact a community admin to request access:"
 }

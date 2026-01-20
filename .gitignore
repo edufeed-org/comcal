@@ -38,3 +38,6 @@ project.inlang
 *.sublime-workspace
 *.sublime-project
 *.code-workspace
+
+# Nix/direnv
+.direnv/

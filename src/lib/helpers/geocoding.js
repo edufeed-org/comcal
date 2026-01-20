@@ -361,7 +361,8 @@ export async function geocodeAddress(address) {
 		console.log(`No geocoding results found for '${address}'`);
 		return null;
 	} catch (error) {
-		console.error('Geocoding error:', error);
+		// Use log instead of error - geocoding failures are expected when not configured
+		console.log('Geocoding unavailable:', error instanceof Error ? error.message : error);
 		return null;
 	}
 }

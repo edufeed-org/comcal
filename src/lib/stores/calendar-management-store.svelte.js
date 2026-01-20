@@ -7,11 +7,11 @@ import { map, catchError } from 'rxjs/operators';
 import { of, BehaviorSubject } from 'rxjs';
 import { SvelteSet, SvelteMap } from 'svelte/reactivity';
 import { userCalendarLoader, userDeletionLoader } from '$lib/loaders';
-import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
-import { runtimeConfig } from '$lib/stores/config.svelte.js';
+import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
 import { EventFactory } from 'applesauce-factory';
 import { manager } from '$lib/stores/accounts.svelte';
+import { publishEvent } from '$lib/services/publish-service.js';
 
 /**
  * @typedef {Object} Calendar
@@ -286,16 +286,13 @@ export function createCalendarManagementStore(userPubkey) {
 				tags: tags
 			});
 
-		// Sign the event
-		const signedEvent = await currentAccount.signEvent(eventTemplate);
+			// Sign the event
+			const signedEvent = await currentAccount.signEvent(eventTemplate);
 
-		// Publish to multiple relays
-		const responses = await pool.publish(runtimeConfig.calendar.defaultRelays, signedEvent);
+			// Publish using outbox model + app relays
+			const publishResult = await publishEvent(signedEvent, []);
 
-		// Check if at least one relay accepted the event
-			const hasSuccess = responses.some(response => response.ok);
-
-			if (hasSuccess) {
+			if (publishResult.success) {
 				// Add to event store for local caching
 				eventStore.add(signedEvent);
 
@@ -319,12 +316,10 @@ export function createCalendarManagementStore(userPubkey) {
 				}
 
 				console.log('📅 Calendar Management: Successfully added event to calendar:', calendar.title);
-				console.log('📅 Calendar Management: Published to relays:', responses.filter(r => r.ok).map(r => r.from));
+				console.log('📅 Calendar Management: Published to', publishResult.successCount, 'of', publishResult.relays.length, 'relays');
 				return true;
 			} else {
-				// Log failed responses for debugging
-				const failedResponses = responses.filter(r => !r.ok);
-				console.error('📅 Calendar Management: Failed to publish to any relay:', failedResponses);
+				console.error('📅 Calendar Management: Failed to publish to any relay');
 				throw new Error('Failed to publish calendar update to any relay');
 			}
 
@@ -389,45 +384,40 @@ export function createCalendarManagementStore(userPubkey) {
 				tags: tags
 			});
 
-		// Sign the event
-		const signedEvent = await currentAccount.signEvent(eventTemplate);
+			// Sign the event
+			const signedEvent = await currentAccount.signEvent(eventTemplate);
 
-		// Publish to multiple relays
-		const responses = await pool.publish(runtimeConfig.calendar.defaultRelays, signedEvent);
+			// Publish using outbox model + app relays
+			const publishResult = await publishEvent(signedEvent, []);
 
-		// Check if at least one relay accepted the event
-		const hasSuccess = responses.some(response => response.ok);
+			if (publishResult.success) {
+				// Add to event store for local caching
+				eventStore.add(signedEvent);
 
-		if (hasSuccess) {
-			// Add to event store for local caching
-			eventStore.add(signedEvent);
+				// Update the calendar in the store with the new event ID and references
+				const updatedCalendar = {
+					...calendar,
+					id: signedEvent.id,
+					eventReferences: updatedEventReferences,
+					createdAt: signedEvent.created_at
+				};
 
-			// Update the calendar in the store with the new event ID and references
-			const updatedCalendar = {
-				...calendar,
-				id: signedEvent.id,
-				eventReferences: updatedEventReferences,
-				createdAt: signedEvent.created_at
-			};
+				// Update the calendar in the store
+				store.calendars = store.calendars.map(c =>
+					c.id === calendarId ? updatedCalendar : c
+				);
 
-			// Update the calendar in the store
-			store.calendars = store.calendars.map(c =>
-				c.id === calendarId ? updatedCalendar : c
-			);
+				// Trigger refresh of calendar events display
+				if (calendarEventsRefreshCallback) {
+					console.log('📅 Calendar Management: Triggering calendar events refresh');
+					calendarEventsRefreshCallback();
+				}
 
-			// Trigger refresh of calendar events display
-			if (calendarEventsRefreshCallback) {
-				console.log('📅 Calendar Management: Triggering calendar events refresh');
-				calendarEventsRefreshCallback();
-			}
-
-			console.log('📅 Calendar Management: Successfully removed event from calendar:', calendar.title);
-				console.log('📅 Calendar Management: Published to relays:', responses.filter(r => r.ok).map(r => r.from));
+				console.log('📅 Calendar Management: Successfully removed event from calendar:', calendar.title);
+				console.log('📅 Calendar Management: Published to', publishResult.successCount, 'of', publishResult.relays.length, 'relays');
 				return true;
 			} else {
-				// Log failed responses for debugging
-				const failedResponses = responses.filter(r => !r.ok);
-				console.error('📅 Calendar Management: Failed to publish to any relay:', failedResponses);
+				console.error('📅 Calendar Management: Failed to publish to any relay');
 				throw new Error('Failed to publish calendar update to any relay');
 			}
 

@@ -15,10 +15,10 @@
 	import { registerCalendarEventsRefreshCallback } from '../../stores/calendar-management-store.svelte.js';
 	import { PlusIcon, CheckIcon, AlertIcon } from '../icons';
 	import { userCalendarLoader } from '$lib/loaders';
-	import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
-	import { getConfig } from '$lib/stores/config.svelte.js';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
 	import { EventFactory } from 'applesauce-factory';
+	import { publishEvent } from '$lib/services/publish-service.js';
 
 	/**
 	 * @typedef {Object} Calendar
@@ -275,13 +275,10 @@
 			// Sign the event
 			const signedEvent = await activeUser.signEvent(eventTemplate);
 
-			// Publish to multiple relays
-			const responses = await pool.publish(getConfig().calendar.defaultRelays, signedEvent);
+			// Publish using outbox model + app relays
+			const publishResult = await publishEvent(signedEvent, []);
 
-			// Check if at least one relay accepted the event
-			const hasSuccess = responses.some(response => response.ok);
-
-			if (hasSuccess) {
+			if (publishResult.success) {
 				// Add to event store for local caching
 				eventStore.add(signedEvent);
 
@@ -342,13 +339,10 @@
 			// Sign the event
 			const signedEvent = await activeUser.signEvent(eventTemplate);
 
-			// Publish to multiple relays
-			const responses = await pool.publish(getConfig().calendar.defaultRelays, signedEvent);
+			// Publish using outbox model + app relays
+			const publishResult = await publishEvent(signedEvent, []);
 
-			// Check if at least one relay accepted the event
-			const hasSuccess = responses.some(response => response.ok);
-
-			if (hasSuccess) {
+			if (publishResult.success) {
 				// Add to event store for local caching
 				eventStore.add(signedEvent);
 

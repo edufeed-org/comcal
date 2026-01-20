@@ -22,10 +22,10 @@ export async function GET({ url }) {
 		throw error(400, 'Query parameter "q" must be at least 3 characters');
 	}
 
-	const apiKey = serverConfig.geocoding.apiKey;
+	const apiKey = serverConfig.geocoding?.apiKey;
 	if (!apiKey) {
-		console.error('OpenCage API key not configured');
-		throw error(500, 'Geocoding service not configured');
+		// Return graceful response instead of error - geocoding is optional
+		return json({ success: false, error: 'not_configured' });
 	}
 
 	try {

@@ -4,7 +4,7 @@
 	import { ProfileModel } from 'applesauce-core/models';
 	import { profileLoader } from '$lib/loaders/profile.js';
 	import { addressLoader } from '$lib/loaders/base.js';
-	import { getConfig } from '$lib/stores/config.svelte.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import Chat from '../views/Chat.svelte';
 	import CalendarView from '$lib/components/calendar/CalendarView.svelte';
 	import LearningView from '../views/LearningView.svelte';
@@ -12,6 +12,17 @@
 	import ActivityView from '../views/ActivityView.svelte';
 	import SettingsView from '../views/SettingsView.svelte';
 	import * as m from '$lib/paraglide/messages';
+
+	/**
+	 * Get communikey relays from app config
+	 * @returns {string[]}
+	 */
+	function getCommunikeyRelays() {
+		return [
+			...(runtimeConfig.appRelays?.communikey || []),
+			...(runtimeConfig.fallbackRelays || [])
+		];
+	}
 
 	let { selectedCommunityId, selectedContentType, onKindNavigation } = $props();
 
@@ -26,11 +37,10 @@
 
 		if (selectedCommunityId) {
 			// 1. Trigger loader to fetch profile from relays
-			const config = getConfig();
-			const loaderSub = profileLoader({ 
-				kind: 0, 
-				pubkey: selectedCommunityId, 
-				relays: config.calendar.defaultRelays 
+			const loaderSub = profileLoader({
+				kind: 0,
+				pubkey: selectedCommunityId,
+				relays: getCommunikeyRelays()
 			}).subscribe(() => {
 				// Loader automatically populates eventStore
 			});
@@ -60,12 +70,10 @@
 				pubkey: selectedCommunityId
 			};
 
-			const config = getConfig();
-			
 			// 1. Trigger loader to fetch community event from relays
-			const loaderSub = addressLoader({ 
-				...pointer, 
-				relays: config.calendar.defaultRelays 
+			const loaderSub = addressLoader({
+				...pointer,
+				relays: getCommunikeyRelays()
 			}).subscribe(() => {
 				// Loader automatically populates eventStore
 			});

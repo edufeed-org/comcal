@@ -1,7 +1,18 @@
 <script>
 	import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
 	import { useActiveUser } from '$lib/stores/accounts.svelte';
-	import { getConfig } from '$lib/stores/config.svelte.js';
+	import { runtimeConfig } from '$lib/stores/config.svelte.js';
+
+	/**
+	 * Get calendar relays from app config
+	 * @returns {string[]}
+	 */
+	function getCalendarRelays() {
+		return [
+			...(runtimeConfig.appRelays?.calendar || []),
+			...(runtimeConfig.fallbackRelays || [])
+		];
+	}
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import { encodeEventToNaddr, hexToNpub } from '$lib/helpers/nostrUtils';
 	import { showToast } from '$lib/helpers/toast.js';
@@ -82,7 +93,7 @@
 
 		// Query for calendars (kind 31924) that reference this event
 		const subscription = pool
-			.group(getConfig().calendar.defaultRelays)
+			.group(getCalendarRelays())
 			.subscription({
 				kinds: [31924],
 				'#a': [eventAddress]
@@ -483,7 +494,7 @@
 				<div class="card-body">
 				<h2 class="card-title text-2xl">Reactions</h2>
 				<div class="mt-4">
-					<ReactionBar event={rawEvent} relays={getConfig().calendar.defaultRelays} />
+					<ReactionBar event={rawEvent} relays={getCalendarRelays()} />
 				</div>
 				</div>
 			</div>

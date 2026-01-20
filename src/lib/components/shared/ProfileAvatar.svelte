@@ -50,7 +50,7 @@
 			const loaderSub = profileLoader({
 				kind: 0,
 				pubkey: pubkey,
-				relays: runtimeConfig.calendar.defaultRelays
+				relays: runtimeConfig.fallbackRelays || []
 			}).subscribe(() => {
 				// Loader automatically populates eventStore
 			});

@@ -63,7 +63,7 @@
 		// Get relay hints from resource's seen relays or use AMB relays from config
 		const relayHints = resource.event?.seen_on 
 			? Array.from(resource.event.seen_on).slice(0, 3)
-			: runtimeConfig.educational.ambRelays.slice(0, 3);
+			: runtimeConfig.appRelays.educational.slice(0, 3);
 		
 		return nip19.naddrEncode({
 			kind: resource.kind,

@@ -162,7 +162,7 @@ export function useCalendarEventLoader(options) {
 
 		// Use default relays from config if no specific relays selected
 		const relaysToUse =
-			selectedRelays.length > 0 ? selectedRelays : runtimeConfig.calendar.defaultRelays;
+			selectedRelays.length > 0 ? selectedRelays : [...(runtimeConfig.appRelays?.calendar || []), ...(runtimeConfig.fallbackRelays || [])];
 			loadByRelays(relaysToUse, selectedAuthors);
 		} else {
 			// Default behavior: use EventStore model

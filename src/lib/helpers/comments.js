@@ -39,7 +39,7 @@ export async function deleteComment(commentEvent, options = {}) {
 	const deleteEvent = await factory.sign(deleteEventTemplate);
 	
 	const result = await publishEvent(deleteEvent, {
-		relays: options.relays || runtimeConfig.calendar.defaultRelays,
+		relays: options.relays || runtimeConfig.fallbackRelays || [],
 		addToStore: true,
 		logPrefix: 'Comments'
 	});

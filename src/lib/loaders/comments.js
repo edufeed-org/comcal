@@ -36,7 +36,7 @@ export const createCommentLoader = (eventAddress) => {
 
 	return createTimelineLoader(
 		pool,
-		runtimeConfig.calendar.defaultRelays,
+		runtimeConfig.fallbackRelays || [],
 		{
 			kinds: [1111], // NIP-22 comments
 			'#A': [eventAddress], // Comments for this specific event (root scope)

@@ -169,10 +169,10 @@
 		// Sign the event
 		const signedEvent = await factory.sign(shareEvent);
 
-		console.log(`🌐 CommunityCalendarShare: Publishing share to ${runtimeConfig.calendar.defaultRelays.length} relays`);
+		console.log(`🌐 CommunityCalendarShare: Publishing share to ${runtimeConfig.fallbackRelays || [].length} relays`);
 
 		const result = await publishEvent(signedEvent, {
-			relays: runtimeConfig.calendar.defaultRelays,
+			relays: runtimeConfig.fallbackRelays || [],
 			logPrefix: 'CommunityShare'
 		});
 
@@ -307,7 +307,7 @@
 
 		// Publish deletion
 		const result = await publishEvent(deleteEvent, {
-			relays: runtimeConfig.calendar.defaultRelays,
+			relays: runtimeConfig.fallbackRelays || [],
 			logPrefix: 'CommunityShareDelete'
 		});
 

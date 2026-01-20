@@ -4,12 +4,12 @@
  */
 
 import { EventFactory } from 'applesauce-factory';
-import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { manager } from '$lib/stores/accounts.svelte';
-import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { validateEventForm, convertFormDataToEvent, createEventTargetingTags } from '../helpers/calendar.js';
 import { calendarStore } from './calendar-events.svelte.js';
 import { getCalendarEventMetadata } from '../helpers/eventUtils.js';
+import { publishEvent, buildATagWithHint, buildETagWithHint, buildPTagsWithHints } from '$lib/services/publish-service.js';
 
 /**
  * @typedef {import('../types/calendar.js').CalendarEvent} CalendarEvent
@@ -28,9 +28,10 @@ export function createCalendarActions(communityPubkey) {
 		 * Create a new calendar event
 		 * @param {EventFormData} formData - Event form data
 		 * @param {string} targetCommunityPubkey - Target community public key
+		 * @param {Object} [communityEvent] - Optional community definition event (kind 10222) for relay routing
 		 * @returns {Promise<any>}
 		 */
-		async createEvent(formData, targetCommunityPubkey) {
+		async createEvent(formData, targetCommunityPubkey, communityEvent = null) {
 			// Validate form data
 			const validationErrors = validateEventForm(formData);
 			if (validationErrors.length > 0) {
@@ -123,7 +124,7 @@ export function createCalendarActions(communityPubkey) {
 				});
 
 			const calendarEvent = await currentAccount.signEvent(eventTemplate);
-			await pool.publish(runtimeConfig.calendar.defaultRelays, calendarEvent);
+			await publishEvent(calendarEvent, [], { communityEvent });
 
 			// Add dTag property to the event object for calendar management
 				const eventWithDTag = {
@@ -152,9 +153,10 @@ export function createCalendarActions(communityPubkey) {
 		 * Update an existing calendar event
 		 * @param {EventFormData} formData - Event form data
 		 * @param {any} existingEvent - Existing raw Nostr event to update
+		 * @param {Object} [communityEvent] - Optional community definition event (kind 10222) for relay routing
 		 * @returns {Promise<any>}
 		 */
-		async updateEvent(formData, existingEvent) {
+		async updateEvent(formData, existingEvent, communityEvent = null) {
 			// Validate form data
 			const validationErrors = validateEventForm(formData);
 			if (validationErrors.length > 0) {
@@ -256,7 +258,7 @@ export function createCalendarActions(communityPubkey) {
 				});
 
 			const updatedEvent = await currentAccount.signEvent(eventTemplate);
-			await pool.publish(runtimeConfig.calendar.defaultRelays, updatedEvent);
+			await publishEvent(updatedEvent, [], { communityEvent });
 
 			// Add dTag property to the event object
 				const eventWithDTag = {
@@ -298,20 +300,21 @@ export function createCalendarActions(communityPubkey) {
 			}
 
 			try {
-				// Create a deletion event (kind 5)
+				// Create a deletion event (kind 5) with relay hint for discoverability
 				const eventFactory = new EventFactory();
-				
+				const eTagWithHint = await buildETagWithHint(eventId, currentAccount.pubkey);
+
 				const eventTemplate = await eventFactory.build({
 					kind: 5,
 					content: '',
-					tags: [['e', eventId]]
+					tags: [eTagWithHint]
 				});
 
 			// Sign and publish the deletion event
 			const deletionEvent = await currentAccount.signEvent(eventTemplate);
-			await pool.publish(runtimeConfig.calendar.defaultRelays, deletionEvent);
+			await publishEvent(deletionEvent, []);
 
-		} catch (error) {
+			} catch (error) {
 				console.error('Error deleting calendar event:', error);
 				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 				throw new Error(`Failed to delete calendar event: ${errorMessage}`);
@@ -322,9 +325,10 @@ export function createCalendarActions(communityPubkey) {
 		 * Create a targeted publication event to associate calendar event with community
 		 * @param {string} eventId - Calendar event ID
 		 * @param {string} targetCommunityPubkey - Target community public key
+		 * @param {Object} [communityEvent] - Optional community definition event (kind 10222) for relay routing
 		 * @returns {Promise<void>}
 		 */
-		async createTargetedPublication(eventId, targetCommunityPubkey) {
+		async createTargetedPublication(eventId, targetCommunityPubkey, communityEvent = null) {
 			// Get current account
 			const currentAccount = manager.active;
 			if (!currentAccount) {
@@ -334,10 +338,11 @@ export function createCalendarActions(communityPubkey) {
 			try {
 				// Create targeting event using Communikey spec (kind 30222)
 				const eventFactory = new EventFactory();
-				
-				// Build targeting tags
+
+				// Build targeting tags with relay hints for discoverability
 				const targetingTags = createEventTargetingTags(targetCommunityPubkey);
-				targetingTags.push(['e', eventId]);
+				const eTagWithHint = await buildETagWithHint(eventId, currentAccount.pubkey);
+				targetingTags.push(eTagWithHint);
 				targetingTags.push(['d', eventId]);
 
 				const eventTemplate = await eventFactory.build({
@@ -346,11 +351,11 @@ export function createCalendarActions(communityPubkey) {
 					tags: targetingTags
 				});
 
-			// Sign and publish the targeting event
+			// Sign and publish the targeting event (kind 30222 uses communikey relays)
 			const targetingEvent = await currentAccount.signEvent(eventTemplate);
-			await pool.publish(runtimeConfig.calendar.defaultRelays, targetingEvent);
+			await publishEvent(targetingEvent, [targetCommunityPubkey], { communityEvent });
 
-		} catch (error) {
+			} catch (error) {
 				console.error('Error creating targeted publication:', error);
 				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 				throw new Error(`Failed to create targeted publication: ${errorMessage}`);
@@ -392,11 +397,11 @@ export function createCalendarActions(communityPubkey) {
 					]
 				});
 
-		// Sign and publish the calendar event
-		const calendarEvent = await currentAccount.signEvent(eventTemplate);
-		await pool.publish(runtimeConfig.calendar.defaultRelays, calendarEvent);
+			// Sign and publish the calendar event
+			const calendarEvent = await currentAccount.signEvent(eventTemplate);
+			await publishEvent(calendarEvent, []);
 
-		console.log('📅 Calendar created successfully:', calendarEvent.id);
+			console.log('📅 Calendar created successfully:', calendarEvent.id);
 			return calendarEvent;
 
 			} catch (error) {
@@ -445,16 +450,18 @@ export function createCalendarActions(communityPubkey) {
 				// Create the RSVP event using EventFactory (NIP-52 kind 31925)
 				const eventFactory = new EventFactory();
 
-				// Build RSVP tags according to NIP-52
+				// Build RSVP tags according to NIP-52 with relay hints for discoverability
+				const aTagWithHint = await buildATagWithHint(eventCoordinate);
 				const tags = [
 					['d', rsvpDTag], // Unique identifier (same for updates)
-					['a', eventCoordinate], // Required: reference to calendar event
+					aTagWithHint, // Required: reference to calendar event with relay hint
 					['status', status] // Required: accepted/declined/tentative
 				];
 
-				// Add optional event ID reference
+				// Add optional event ID reference with relay hint
 				if (calendarEvent.id) {
-					tags.push(['e', calendarEvent.id]);
+					const eTagWithHint = await buildETagWithHint(calendarEvent.id, eventPubkey);
+					tags.push(eTagWithHint);
 				}
 
 				// Add optional free/busy status (ignored if declined)
@@ -462,8 +469,9 @@ export function createCalendarActions(communityPubkey) {
 					tags.push(['fb', freeBusy]);
 				}
 
-				// Add optional reference to event author
-				tags.push(['p', eventPubkey]);
+				// Add optional reference to event author with relay hint
+				const pTagsWithHints = await buildPTagsWithHints([eventPubkey]);
+				tags.push(pTagsWithHints[0]);
 
 				// Build and sign the RSVP event
 				const eventTemplate = await eventFactory.build({
@@ -473,7 +481,8 @@ export function createCalendarActions(communityPubkey) {
 				});
 
 			const rsvpEvent = await currentAccount.signEvent(eventTemplate);
-			await pool.publish(runtimeConfig.calendar.defaultRelays, rsvpEvent);
+			// Include event author in tagged pubkeys for outbox routing
+			await publishEvent(rsvpEvent, [eventPubkey]);
 
 			// Add to eventStore for immediate UI update
 				eventStore.add(rsvpEvent);
