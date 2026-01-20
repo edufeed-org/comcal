@@ -19,6 +19,7 @@
 	import CalendarEventCard from '$lib/components/calendar/CalendarEventCard.svelte';
 	import CommunityFilterDropdown from '$lib/components/feed/CommunityFilterDropdown.svelte';
 	import CommunikeyCard from '$lib/components/CommunikeyCard.svelte';
+	import ContentCardSkeleton from '$lib/components/shared/ContentCardSkeleton.svelte';
 	import LearningContentFilters from '$lib/components/educational/LearningContentFilters.svelte';
 	import { SearchIcon } from '$lib/components/icons';
 	import { page } from '$app/stores';
@@ -50,6 +51,16 @@
 	let hasMoreAMB = $state(true);
 	let sortBy = $state('newest');
 	let searchQuery = $state('');
+
+	// Debounced search for main content filtering (learning tab has its own debouncing)
+	let debouncedMainSearchQuery = $state('');
+	/** @type {ReturnType<typeof setTimeout> | undefined} */
+	let mainSearchDebounceTimer;
+
+	// Lazy rendering - track which items are visible
+	let visibleItemIds = $state(/** @type {Set<string>} */ (new Set()));
+	/** @type {IntersectionObserver | undefined} */
+	let cardObserver;
 
 	// Learning content filter state
 	/** @type {import('$lib/helpers/educational/searchQueryBuilder.js').SearchFilters} */
@@ -90,6 +101,63 @@
 		});
 		return () => subscription.unsubscribe();
 	});
+
+	// Debounce search query for main content (not learning tab which has its own)
+	$effect(() => {
+		// Learning tab has its own debouncing, so sync immediately
+		if (contentType === 'learning') {
+			debouncedMainSearchQuery = searchQuery;
+			return;
+		}
+
+		clearTimeout(mainSearchDebounceTimer);
+		mainSearchDebounceTimer = setTimeout(() => {
+			debouncedMainSearchQuery = searchQuery;
+		}, 300);
+
+		return () => clearTimeout(mainSearchDebounceTimer);
+	});
+
+	// IntersectionObserver for lazy rendering cards
+	$effect(() => {
+		cardObserver = new IntersectionObserver(
+			(entries) => {
+				let changed = false;
+				for (const entry of entries) {
+					const id = entry.target.getAttribute('data-item-id');
+					if (!id) continue;
+
+					if (entry.isIntersecting && !visibleItemIds.has(id)) {
+						visibleItemIds.add(id);
+						changed = true;
+					}
+					// Keep items rendered once visible to avoid re-render costs
+				}
+				if (changed) {
+					visibleItemIds = new Set(visibleItemIds);
+				}
+			},
+			{ rootMargin: '400px' } // Pre-render items 400px before viewport
+		);
+
+		return () => cardObserver?.disconnect();
+	});
+
+	/**
+	 * Svelte action for observing card visibility
+	 * @param {HTMLElement} node
+	 * @param {string} itemId
+	 */
+	function observeCard(node, itemId) {
+		node.setAttribute('data-item-id', itemId);
+		cardObserver?.observe(node);
+		return {
+			destroy: () => cardObserver?.unobserve(node),
+			update: (/** @type {string} */ newId) => {
+				node.setAttribute('data-item-id', newId);
+			}
+		};
+	}
 
 	// Community hooks
 	const getJoinedCommunities = useJoinedCommunitiesList();
@@ -190,9 +258,7 @@
 					console.error('🔍 Learning search error:', error);
 					isLearningSearchActive = false;
 				},
-				complete: () => {
-					console.log('🔍 Learning search complete, results:', learningSearchResults.length);
-				}
+				complete: () => {}
 			});
 		} else {
 			// No active filters, use normal timeline loading
@@ -203,8 +269,6 @@
 
 	// Batch size for loading
 	const BATCH_SIZE = 20;
-
-	console.log('🔍 Discover: Setting up content loading');
 
 	// Step 1: Create stateful loaders
 	const articleLoader = articleTimelineLoader(BATCH_SIZE);
@@ -240,53 +304,96 @@
 		}
 	});
 
-	// Subscribe to targeted publications model
+	// Debounced state update timers - prevents blocking on every event arrival
+	/** @type {ReturnType<typeof setTimeout> | undefined} */
+	let articlesUpdateTimer;
+	/** @type {ReturnType<typeof setTimeout> | undefined} */
+	let ambUpdateTimer;
+	/** @type {ReturnType<typeof setTimeout> | undefined} */
+	let calendarUpdateTimer;
+	/** @type {ReturnType<typeof setTimeout> | undefined} */
+	let targetedPubsUpdateTimer;
+
+	// Pending data from subscriptions
+	let pendingArticles = /** @type {any[] | null} */ (null);
+	let pendingAmbResources = /** @type {any[] | null} */ (null);
+	let pendingCalendarEvents = /** @type {any[] | null} */ (null);
+	let pendingTargetedPubs = /** @type {any[] | null} */ (null);
+
+	// Subscribe to targeted publications model (debounced)
 	const targetedPubsModelSub = eventStore
 		.model(TimelineModel, { kinds: [30222], '#k': ['30023', '30142', '31922', '31923'] })
 		.subscribe((pubs) => {
-			targetedPubs = pubs || [];
+			pendingTargetedPubs = pubs || [];
+			clearTimeout(targetedPubsUpdateTimer);
+			targetedPubsUpdateTimer = setTimeout(() => {
+				if (pendingTargetedPubs) {
+					targetedPubs = pendingTargetedPubs;
+					pendingTargetedPubs = null;
+				}
+			}, 100);
 		});
 
-	// Subscribe to articles
+	// Subscribe to articles (debounced)
 	const articleModelSub = eventStore
 		.model(TimelineModel, { kinds: [30023] })
 		.subscribe((timeline) => {
-			const previousCount = articles.length;
-			articles = timeline || [];
-			const currentCount = articles.length;
+			pendingArticles = timeline || [];
+			clearTimeout(articlesUpdateTimer);
+			articlesUpdateTimer = setTimeout(() => {
+				if (pendingArticles) {
+					const previousCount = articles.length;
+					articles = pendingArticles;
+					const currentCount = articles.length;
+					pendingArticles = null;
 
-			if (isLoadingMore) {
-				const newArticlesReceived = currentCount - previousCount;
-				if (newArticlesReceived === 0) {
-					hasMoreArticles = false;
+					if (isLoadingMore) {
+						const newArticlesReceived = currentCount - previousCount;
+						if (newArticlesReceived === 0) {
+							hasMoreArticles = false;
+						}
+					}
+
+					isLoading = false;
 				}
-			}
-
-			isLoading = false;
+			}, 100);
 		});
 
-	// Subscribe to AMB resources
+	// Subscribe to AMB resources (debounced)
 	const ambModelSub = eventStore.model(AMBResourceModel, []).subscribe((resources) => {
-		const previousCount = ambResources.length;
-		ambResources = resources || [];
-		const currentCount = ambResources.length;
+		pendingAmbResources = resources || [];
+		clearTimeout(ambUpdateTimer);
+		ambUpdateTimer = setTimeout(() => {
+			if (pendingAmbResources) {
+				const previousCount = ambResources.length;
+				ambResources = pendingAmbResources;
+				const currentCount = ambResources.length;
+				pendingAmbResources = null;
 
-		if (isLoadingMore) {
-			const newResourcesReceived = currentCount - previousCount;
-			if (newResourcesReceived === 0) {
-				hasMoreAMB = false;
+				if (isLoadingMore) {
+					const newResourcesReceived = currentCount - previousCount;
+					if (newResourcesReceived === 0) {
+						hasMoreAMB = false;
+					}
+				}
+
+				isLoading = false;
 			}
-		}
-
-		isLoading = false;
+		}, 100);
 	});
 
-	// Subscribe to calendar events
+	// Subscribe to calendar events (debounced)
 	const calendarModelSub = eventStore
 		.model(GlobalCalendarEventModel, [])
 		.subscribe((/** @type {any[]} */ events) => {
-			calendarEvents = events || [];
-			console.log(`🔍 Discover: Loaded ${calendarEvents.length} calendar events`);
+			pendingCalendarEvents = events || [];
+			clearTimeout(calendarUpdateTimer);
+			calendarUpdateTimer = setTimeout(() => {
+				if (pendingCalendarEvents) {
+					calendarEvents = pendingCalendarEvents;
+					pendingCalendarEvents = null;
+				}
+			}, 100);
 		});
 
 	// Community-specific calendar event loader subscriptions
@@ -307,7 +414,6 @@
 
 		// Only load if a specific community is selected (not 'joined' or null)
 		if (communityFilter && communityFilter !== 'joined') {
-			console.log(`🔍 Discover: Loading calendar events for community: ${communityFilter}`);
 
 			// 1. Load direct calendar events with #h tag
 			communityCalendarSub = eventStore.timeline({
@@ -383,8 +489,7 @@
 					}
 				});
 
-				console.log(`🔍 Discover: Loaded ${eventIds.size} event IDs and ${addressableRefs.length} addressable refs for community`);
-			});
+							});
 		}
 
 		return () => {
@@ -397,7 +502,6 @@
 	// Update communities from allCommunities hook
 	$effect(() => {
 		communities = allCommunities || [];
-		console.log(`🔍 Discover: Loaded ${communities.length} communities`);
 	});
 
 	// Auto-focus search input on mount
@@ -502,95 +606,245 @@
 		}
 	});
 
-	// Load author profiles
-	let profileLoaderSubs = /** @type {any[]} */ ([]);
-	let profileModelSubs = /** @type {any[]} */ ([]);
+	// Profile loading - incremental with batching to avoid blocking navigation
+	/** @type {Map<string, {loader: any, model: any}>} */
+	let profileSubscriptions = new Map();
 	let profilesMap = new Map();
+	/** @type {Set<string>} */
+	let pendingProfilePubkeys = new Set();
+	/** @type {ReturnType<typeof setTimeout> | undefined} */
+	let profileLoadTimer;
+	let isLoadingProfiles = false;
+	/** @type {ReturnType<typeof setTimeout> | undefined} */
+	let profileMapUpdateTimer;
 
+	// Collect new author pubkeys (debounced)
 	$effect(() => {
-		profileLoaderSubs.forEach((s) => s.unsubscribe());
-		profileModelSubs.forEach((s) => s.unsubscribe());
-		profileLoaderSubs = [];
-		profileModelSubs = [];
-
 		const articlePubkeys = articles.map((a) => a.pubkey);
 		const ambPubkeys = ambResources.map((r) => r.pubkey);
 		const eventPubkeys = calendarEvents.map((e) => e.pubkey);
-		const communityPubkeys = communities.map((c) => getTagValue(c, 'd') || c.pubkey);
-		const authorPubkeys = [...new Set([...articlePubkeys, ...ambPubkeys, ...eventPubkeys, ...communityPubkeys])];
+		const communityContentPubkeys = communities.map((c) => getTagValue(c, 'd') || c.pubkey);
 
-		if (authorPubkeys.length === 0) return;
+		const allPubkeys = new Set([
+			...articlePubkeys,
+			...ambPubkeys,
+			...eventPubkeys,
+			...communityContentPubkeys
+		]);
 
-		authorPubkeys.forEach((pubkey) => {
-			const loaderSub = profileLoader({
-				kind: 0,
-				pubkey,
-				relays: runtimeConfig.fallbackRelays || []
-			}).subscribe({
-				error: (error) => {
-					console.error(`🔍 Discover: Profile loader error for ${pubkey.slice(0, 8)}:`, error);
-				}
-			});
-			profileLoaderSubs.push(loaderSub);
+		let hasNewPubkeys = false;
+		for (const pubkey of allPubkeys) {
+			if (!profileSubscriptions.has(pubkey) && !pendingProfilePubkeys.has(pubkey)) {
+				pendingProfilePubkeys.add(pubkey);
+				hasNewPubkeys = true;
+			}
+		}
 
-			const modelSub = eventStore.model(ProfileModel, { pubkey }).subscribe((profile) => {
-				if (profile) {
-					profilesMap.set(pubkey, profile);
-					authorProfiles = new Map(profilesMap);
-				}
-			});
-			profileModelSubs.push(modelSub);
-		});
+		if (hasNewPubkeys) {
+			clearTimeout(profileLoadTimer);
+			profileLoadTimer = setTimeout(loadPendingProfiles, 150);
+		}
 	});
 
-	// Load community profiles
-	let communityProfileLoaderSubs = /** @type {any[]} */ ([]);
-	let communityProfileModelSubs = /** @type {any[]} */ ([]);
+	/**
+	 * Load pending profiles in batches, yielding to event loop between batches
+	 */
+	function loadPendingProfiles() {
+		if (pendingProfilePubkeys.size === 0 || isLoadingProfiles) return;
+
+		isLoadingProfiles = true;
+		const pubkeysToLoad = Array.from(pendingProfilePubkeys);
+		pendingProfilePubkeys.clear();
+
+		const BATCH_SIZE = 5;
+		let currentIndex = 0;
+
+		function processNextBatch() {
+			if (!profileSubscriptions) {
+				isLoadingProfiles = false;
+				return;
+			}
+
+			const batchEnd = Math.min(currentIndex + BATCH_SIZE, pubkeysToLoad.length);
+
+			for (let i = currentIndex; i < batchEnd; i++) {
+				const pubkey = pubkeysToLoad[i];
+				if (profileSubscriptions.has(pubkey)) continue;
+
+				const loaderSub = profileLoader({
+					kind: 0,
+					pubkey,
+					relays: runtimeConfig.fallbackRelays || []
+				}).subscribe({
+					error: () => {}
+				});
+
+				const modelSub = eventStore.model(ProfileModel, { pubkey }).subscribe((profile) => {
+					if (profile && profilesMap) {
+						profilesMap.set(pubkey, profile);
+						scheduleProfileMapUpdate();
+					}
+				});
+
+				profileSubscriptions.set(pubkey, { loader: loaderSub, model: modelSub });
+			}
+
+			currentIndex = batchEnd;
+
+			if (currentIndex < pubkeysToLoad.length) {
+				setTimeout(processNextBatch, 0);
+			} else {
+				isLoadingProfiles = false;
+				if (pendingProfilePubkeys.size > 0) {
+					setTimeout(loadPendingProfiles, 50);
+				}
+			}
+		}
+
+		processNextBatch();
+	}
+
+	function scheduleProfileMapUpdate() {
+		clearTimeout(profileMapUpdateTimer);
+		profileMapUpdateTimer = setTimeout(() => {
+			authorProfiles = new Map(profilesMap);
+		}, 50);
+	}
+
+	// Community profile loading - incremental with batching
+	/** @type {Map<string, {loader: any, model: any}>} */
+	let communityProfileSubscriptions = new Map();
 	let communityProfilesMap = new Map();
+	/** @type {Set<string>} */
+	let pendingCommunityProfilePubkeys = new Set();
+	/** @type {ReturnType<typeof setTimeout> | undefined} */
+	let communityProfileLoadTimer;
+	let isLoadingCommunityProfiles = false;
+	/** @type {ReturnType<typeof setTimeout> | undefined} */
+	let communityProfileMapUpdateTimer;
 
+	// Collect new community pubkeys (debounced)
 	$effect(() => {
-		communityProfileLoaderSubs.forEach((s) => s.unsubscribe());
-		communityProfileModelSubs.forEach((s) => s.unsubscribe());
-		communityProfileLoaderSubs = [];
-		communityProfileModelSubs = [];
-
 		const communityPubkeys = allCommunities.map((c) => c.pubkey);
 
-		if (communityPubkeys.length === 0) return;
+		let hasNewPubkeys = false;
+		for (const pubkey of communityPubkeys) {
+			if (!communityProfileSubscriptions.has(pubkey) && !pendingCommunityProfilePubkeys.has(pubkey)) {
+				pendingCommunityProfilePubkeys.add(pubkey);
+				hasNewPubkeys = true;
+			}
+		}
 
-		communityPubkeys.forEach((pubkey) => {
-			const loaderSub = profileLoader({
-				kind: 0,
-				pubkey,
-				relays: runtimeConfig.fallbackRelays || []
-			}).subscribe({
-				error: (error) => {
-					console.error(`🔍 Discover: Community profile loader error:`, error);
-				}
-			});
-			communityProfileLoaderSubs.push(loaderSub);
-
-			const modelSub = eventStore.model(ProfileModel, { pubkey }).subscribe((profile) => {
-				if (profile) {
-					communityProfilesMap.set(pubkey, profile);
-					communityProfiles = new Map(communityProfilesMap);
-				}
-			});
-			communityProfileModelSubs.push(modelSub);
-		});
+		if (hasNewPubkeys) {
+			clearTimeout(communityProfileLoadTimer);
+			communityProfileLoadTimer = setTimeout(loadPendingCommunityProfiles, 150);
+		}
 	});
 
-	// Cleanup subscriptions
+	function loadPendingCommunityProfiles() {
+		if (pendingCommunityProfilePubkeys.size === 0 || isLoadingCommunityProfiles) return;
+
+		isLoadingCommunityProfiles = true;
+		const pubkeysToLoad = Array.from(pendingCommunityProfilePubkeys);
+		pendingCommunityProfilePubkeys.clear();
+
+		const BATCH_SIZE = 5;
+		let currentIndex = 0;
+
+		function processNextBatch() {
+			if (!communityProfileSubscriptions) {
+				isLoadingCommunityProfiles = false;
+				return;
+			}
+
+			const batchEnd = Math.min(currentIndex + BATCH_SIZE, pubkeysToLoad.length);
+
+			for (let i = currentIndex; i < batchEnd; i++) {
+				const pubkey = pubkeysToLoad[i];
+				if (communityProfileSubscriptions.has(pubkey)) continue;
+
+				const loaderSub = profileLoader({
+					kind: 0,
+					pubkey,
+					relays: runtimeConfig.fallbackRelays || []
+				}).subscribe({
+					error: () => {}
+				});
+
+				const modelSub = eventStore.model(ProfileModel, { pubkey }).subscribe((profile) => {
+					if (profile && communityProfilesMap) {
+						communityProfilesMap.set(pubkey, profile);
+						scheduleCommunityProfileMapUpdate();
+					}
+				});
+
+				communityProfileSubscriptions.set(pubkey, { loader: loaderSub, model: modelSub });
+			}
+
+			currentIndex = batchEnd;
+
+			if (currentIndex < pubkeysToLoad.length) {
+				setTimeout(processNextBatch, 0);
+			} else {
+				isLoadingCommunityProfiles = false;
+				if (pendingCommunityProfilePubkeys.size > 0) {
+					setTimeout(loadPendingCommunityProfiles, 50);
+				}
+			}
+		}
+
+		processNextBatch();
+	}
+
+	function scheduleCommunityProfileMapUpdate() {
+		clearTimeout(communityProfileMapUpdateTimer);
+		communityProfileMapUpdateTimer = setTimeout(() => {
+			communityProfiles = new Map(communityProfilesMap);
+		}, 50);
+	}
+
+	// Cleanup subscriptions on component destroy
 	$effect(() => {
 		return () => {
+			// Clear model subscription update timers
+			clearTimeout(articlesUpdateTimer);
+			clearTimeout(ambUpdateTimer);
+			clearTimeout(calendarUpdateTimer);
+			clearTimeout(targetedPubsUpdateTimer);
+
+			// Clear profile loading timers
+			clearTimeout(profileLoadTimer);
+			clearTimeout(profileMapUpdateTimer);
+			clearTimeout(communityProfileLoadTimer);
+			clearTimeout(communityProfileMapUpdateTimer);
+
+			// Unsubscribe all profile subscriptions
+			for (const { loader, model } of profileSubscriptions.values()) {
+				loader?.unsubscribe();
+				model?.unsubscribe();
+			}
+			profileSubscriptions.clear();
+
+			// Unsubscribe all community profile subscriptions
+			for (const { loader, model } of communityProfileSubscriptions.values()) {
+				loader?.unsubscribe();
+				model?.unsubscribe();
+			}
+			communityProfileSubscriptions.clear();
+
+			// Clear pending sets
+			pendingProfilePubkeys.clear();
+			pendingCommunityProfilePubkeys.clear();
+
+			// Clear maps
+			profilesMap.clear();
+			communityProfilesMap.clear();
+
+			// Unsubscribe model subscriptions
 			articleModelSub.unsubscribe();
 			ambModelSub.unsubscribe();
 			calendarModelSub.unsubscribe();
 			targetedPubsModelSub.unsubscribe();
-			profileLoaderSubs.forEach((s) => s.unsubscribe());
-			profileModelSubs.forEach((s) => s.unsubscribe());
-			communityProfileLoaderSubs.forEach((s) => s.unsubscribe());
-			communityProfileModelSubs.forEach((s) => s.unsubscribe());
 		};
 	});
 
@@ -638,23 +892,84 @@
 		return Array.from(tags).sort();
 	});
 
-	// Combined and filtered content
-	const combinedContent = $derived.by(() => {
+	// Helper functions for filtering (extracted for cleaner derivations)
+	/**
+	 * Check if an item matches text search query
+	 * @param {{type: string, data: any}} item
+	 * @param {string} query - lowercase query
+	 * @param {Map<string, any>} profiles
+	 * @returns {boolean}
+	 */
+	function matchesTextSearch(item, query, profiles) {
+		const pubkey = item.data.pubkey;
+		const profile = profiles.get(pubkey);
+		const name = profile?.name?.toLowerCase() || '';
+		const displayName = profile?.display_name?.toLowerCase() || '';
+
+		if (item.type === 'article') {
+			const title = getTagValue(item.data, 'title')?.toLowerCase() || '';
+			const summary = getTagValue(item.data, 'summary')?.toLowerCase() || '';
+			return title.includes(query) || summary.includes(query) || name.includes(query) || displayName.includes(query);
+		} else if (item.type === 'amb') {
+			const resourceName = item.data.name?.toLowerCase() || '';
+			const description = item.data.description?.toLowerCase() || '';
+			return resourceName.includes(query) || description.includes(query) || name.includes(query) || displayName.includes(query);
+		} else if (item.type === 'event') {
+			const title = item.data.title?.toLowerCase() || '';
+			const summary = item.data.summary?.toLowerCase() || '';
+			const locations = item.data.locations?.join(' ').toLowerCase() || '';
+			return title.includes(query) || summary.includes(query) || locations.includes(query) || name.includes(query) || displayName.includes(query);
+		}
+		return false;
+	}
+
+	/**
+	 * Check if an item matches selected tags
+	 * @param {{type: string, data: any}} item
+	 * @param {string[]} tags
+	 * @returns {boolean}
+	 */
+	function matchesTagFilter(item, tags) {
+		if (item.type === 'article') {
+			const articleTags = item.data.tags?.filter((/** @type {any} */ t) => t[0] === 't').map((/** @type {any} */ t) => t[1].toLowerCase()) || [];
+			return tags.some((tag) => articleTags.includes(tag.toLowerCase()));
+		} else if (item.type === 'amb') {
+			const keywords = item.data.keywords?.map((/** @type {string} */ k) => k.toLowerCase()) || [];
+			return tags.some((tag) => keywords.includes(tag.toLowerCase()));
+		} else if (item.type === 'event') {
+			const eventTags = item.data.hashtags?.map((/** @type {string} */ t) => t.toLowerCase()) || [];
+			return tags.some((tag) => eventTags.includes(tag.toLowerCase()));
+		}
+		return false;
+	}
+
+	/**
+	 * Get timestamp for sorting
+	 * @param {{type: string, data: any}} item
+	 * @returns {number}
+	 */
+	function getItemTimestamp(item) {
+		if (item.type === 'article') {
+			return getArticlePublished(item.data) || 0;
+		} else if (item.type === 'amb') {
+			return item.data.publishedDate || 0;
+		} else {
+			return item.data.start || 0;
+		}
+	}
+
+	// Combined and filtered content - split into pipeline for better reactivity
+	// Step 1: Build raw items (only runs when source arrays change)
+	const rawItems = $derived.by(() => {
 		/** @type {Array<{type: string, data: any}>} */
 		let items = [];
 
 		if (contentType === 'events' || contentType === 'all') {
-			items = [
-				...items,
-				...calendarEvents.map((e) => ({ type: 'event', data: e }))
-			];
+			items = [...items, ...calendarEvents.map((e) => ({ type: 'event', data: e }))];
 		}
 
 		if (contentType === 'learning' || contentType === 'all') {
-			// When learning filters are active and we're on the learning tab, use search results
 			if (contentType === 'learning' && isLearningSearchActive) {
-				// Use search results from NIP-50 query
-				// Search results are raw events, need to convert to model format
 				const searchResultIds = new Set(learningSearchResults.map((e) => e.id));
 				const filteredAmbResources = ambResources.filter((r) => searchResultIds.has(r.event?.id || r.id));
 				items = [...items, ...filteredAmbResources.map((r) => ({ type: 'amb', data: r }))];
@@ -667,113 +982,42 @@
 			items = [...items, ...articles.map((a) => ({ type: 'article', data: a }))];
 		}
 
-		// Note: Communities are handled separately, not in combinedContent
-		// They use the CommunikeyCard component directly
+		return items;
+	});
 
-		// Apply community filter
-		if (communityFilter) {
-			items = filterContentByCommunity(
-				items,
-				communityFilter,
-				/** @type {string[]} */ (joinedCommunityPubkeys),
-				contentToCommunityMap
-			);
+	// Step 2: Apply community filter (only runs when community filter or rawItems change)
+	const communityFilteredItems = $derived.by(() => {
+		if (!communityFilter) return rawItems;
+		return filterContentByCommunity(
+			rawItems,
+			communityFilter,
+			/** @type {string[]} */ (joinedCommunityPubkeys),
+			contentToCommunityMap
+		);
+	});
+
+	// Step 3: Apply text search (only runs when search query changes)
+	const searchFilteredItems = $derived.by(() => {
+		if (!debouncedMainSearchQuery.trim() || (contentType === 'learning' && isLearningSearchActive)) {
+			return communityFilteredItems;
 		}
+		const query = debouncedMainSearchQuery.toLowerCase();
+		return communityFilteredItems.filter((item) => matchesTextSearch(item, query, authorProfiles));
+	});
 
-		// Apply text search filter (skip for learning tab when NIP-50 search is active)
-		if (searchQuery.trim() && !(contentType === 'learning' && isLearningSearchActive)) {
-			const query = searchQuery.toLowerCase();
-			items = items.filter((item) => {
-				const pubkey = item.data.pubkey;
-				const profile = authorProfiles.get(pubkey);
-				const name = profile?.name?.toLowerCase() || '';
-				const displayName = profile?.display_name?.toLowerCase() || '';
+	// Step 4: Apply tag filter (only runs when selected tags change)
+	const tagFilteredItems = $derived.by(() => {
+		if (selectedTags.length === 0) return searchFilteredItems;
+		return searchFilteredItems.filter((item) => matchesTagFilter(item, selectedTags));
+	});
 
-				if (item.type === 'article') {
-					const title = getTagValue(item.data, 'title')?.toLowerCase() || '';
-					const summary = getTagValue(item.data, 'summary')?.toLowerCase() || '';
-					return (
-						title.includes(query) ||
-						summary.includes(query) ||
-						name.includes(query) ||
-						displayName.includes(query)
-					);
-				} else if (item.type === 'amb') {
-					const resourceName = item.data.name?.toLowerCase() || '';
-					const description = item.data.description?.toLowerCase() || '';
-					return (
-						resourceName.includes(query) ||
-						description.includes(query) ||
-						name.includes(query) ||
-						displayName.includes(query)
-					);
-				} else if (item.type === 'event') {
-					const title = item.data.title?.toLowerCase() || '';
-					const summary = item.data.summary?.toLowerCase() || '';
-					const locations = item.data.locations?.join(' ').toLowerCase() || '';
-					return (
-						title.includes(query) ||
-						summary.includes(query) ||
-						locations.includes(query) ||
-						name.includes(query) ||
-						displayName.includes(query)
-					);
-				}
-				return false;
-			});
-		}
-
-		// Apply tag filter
-		if (selectedTags.length > 0) {
-			items = items.filter((item) => {
-				if (item.type === 'article') {
-					const articleTags =
-						item.data.tags
-							?.filter((/** @type {any} */ t) => t[0] === 't')
-							.map((/** @type {any} */ t) => t[1].toLowerCase()) || [];
-					return selectedTags.some((tag) => articleTags.includes(tag.toLowerCase()));
-				} else if (item.type === 'amb') {
-					const keywords =
-						item.data.keywords?.map((/** @type {string} */ k) => k.toLowerCase()) || [];
-					return selectedTags.some((tag) => keywords.includes(tag.toLowerCase()));
-				} else if (item.type === 'event') {
-					const eventTags =
-						item.data.hashtags?.map((/** @type {string} */ t) => t.toLowerCase()) || [];
-					return selectedTags.some((tag) => eventTags.includes(tag.toLowerCase()));
-				}
-				return false;
-			});
-		}
-
-		// Sort
-		const sorted = [...items].sort((a, b) => {
-			let aDate, bDate;
-
-			if (a.type === 'article') {
-				aDate = getArticlePublished(a.data);
-			} else if (a.type === 'amb') {
-				aDate = a.data.publishedDate;
-			} else {
-				aDate = a.data.start;
-			}
-
-			if (b.type === 'article') {
-				bDate = getArticlePublished(b.data);
-			} else if (b.type === 'amb') {
-				bDate = b.data.publishedDate;
-			} else {
-				bDate = b.data.start;
-			}
-
-			if (sortBy === 'newest') {
-				return bDate - aDate;
-			} else if (sortBy === 'oldest') {
-				return aDate - bDate;
-			}
-			return 0;
+	// Step 5: Sort (only runs when filtered items or sort order changes)
+	const combinedContent = $derived.by(() => {
+		return [...tagFilteredItems].sort((a, b) => {
+			const aDate = getItemTimestamp(a);
+			const bDate = getItemTimestamp(b);
+			return sortBy === 'newest' ? bDate - aDate : aDate - bDate;
 		});
-
-		return sorted;
 	});
 
 	const displayedContent = $derived(combinedContent);
@@ -1079,25 +1323,31 @@
 				</div>
 			</div>
 		{:else}
-			<!-- Content Grid -->
+			<!-- Content Grid with lazy rendering -->
 			<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 				{#each displayedContent as item (item.data.id)}
-					{#if item.type === 'article'}
-						<ArticleCard
-							article={item.data}
-							authorProfile={authorProfiles.get(item.data.pubkey)}
-						/>
-					{:else if item.type === 'amb'}
-						<AMBResourceCard
-							resource={item.data}
-							authorProfile={authorProfiles.get(item.data.pubkey)}
-						/>
-					{:else if item.type === 'event'}
-						<CalendarEventCard
-							event={item.data}
-							onEventClick={handleEventClick}
-						/>
-					{/if}
+					<div use:observeCard={item.data.id} class="min-h-[320px]">
+						{#if visibleItemIds.has(item.data.id)}
+							{#if item.type === 'article'}
+								<ArticleCard
+									article={item.data}
+									authorProfile={authorProfiles.get(item.data.pubkey)}
+								/>
+							{:else if item.type === 'amb'}
+								<AMBResourceCard
+									resource={item.data}
+									authorProfile={authorProfiles.get(item.data.pubkey)}
+								/>
+							{:else if item.type === 'event'}
+								<CalendarEventCard
+									event={item.data}
+									onEventClick={handleEventClick}
+								/>
+							{/if}
+						{:else}
+							<ContentCardSkeleton />
+						{/if}
+					</div>
 				{/each}
 			</div>
 
