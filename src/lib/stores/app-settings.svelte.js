@@ -14,6 +14,7 @@ const STORAGE_KEY = 'app-settings';
  * @property {boolean} debugMode
  * @property {'default' | 'stil'} themeFamily
  * @property {'light' | 'dark' | 'system'} colorMode
+ * @property {boolean} gatedMode
  */
 
 /**
@@ -55,7 +56,8 @@ function getDefaultSettings() {
 	return {
 		debugMode: false,
 		themeFamily,
-		colorMode: 'system' // Always default to system, but with correct theme family
+		colorMode: 'system', // Always default to system, but with correct theme family
+		gatedMode: runtimeConfig.gatedMode?.default ?? false
 	};
 }
 
@@ -72,7 +74,8 @@ function migrateSettings(stored) {
 		return {
 			debugMode: stored.debugMode ?? defaults.debugMode,
 			themeFamily: stored.themeFamily ?? defaults.themeFamily,
-			colorMode: stored.colorMode ?? defaults.colorMode
+			colorMode: stored.colorMode ?? defaults.colorMode,
+			gatedMode: stored.gatedMode ?? defaults.gatedMode
 		};
 	}
 	
@@ -101,7 +104,8 @@ function migrateSettings(stored) {
 	return {
 		debugMode: stored.debugMode ?? defaults.debugMode,
 		themeFamily,
-		colorMode
+		colorMode,
+		gatedMode: stored.gatedMode ?? defaults.gatedMode
 	};
 }
 
@@ -262,5 +266,52 @@ export const appSettings = {
 	 */
 	get effectiveTheme() {
 		return effectiveTheme;
+	},
+
+	/**
+	 * Get gated mode status
+	 * Returns forced value if GATED_MODE_FORCE is true, otherwise user preference
+	 * @returns {boolean}
+	 */
+	get gatedMode() {
+		// If force is enabled, always return true regardless of user preference
+		if (runtimeConfig.gatedMode?.force) {
+			return true;
+		}
+		return settings.gatedMode;
+	},
+
+	/**
+	 * Set gated mode status
+	 * No-op if GATED_MODE_FORCE is true
+	 * @param {boolean} value
+	 */
+	set gatedMode(value) {
+		// Don't allow changes if force mode is enabled
+		if (runtimeConfig.gatedMode?.force) {
+			return;
+		}
+		settings.gatedMode = value;
+		saveSettings(settings);
+	},
+
+	/**
+	 * Check if gated mode can be toggled by user
+	 * @returns {boolean}
+	 */
+	get canToggleGatedMode() {
+		return !runtimeConfig.gatedMode?.force;
+	},
+
+	/**
+	 * Toggle gated mode
+	 * Reloads page to ensure all subscriptions use the new relay configuration
+	 */
+	toggleGatedMode() {
+		this.gatedMode = !this.gatedMode;
+		// Reload page to kill active subscriptions and refetch with new relay set
+		if (browser) {
+			window.location.reload();
+		}
 	}
 };

@@ -22,6 +22,7 @@
 	} from '$lib/services/app-relay-service.js';
 	import { createAppRelaySetLoader } from '$lib/loaders/app-relay-set-loader.js';
 	import { publishEvent } from '$lib/services/publish-service.js';
+	import { appSettings } from '$lib/stores/app-settings.svelte.js';
 	import * as m from '$lib/paraglide/messages';
 
 	// Use $state + $effect for reactive RxJS subscription bridge (Svelte 5 pattern)
@@ -929,6 +930,65 @@
 					</div>
 				</div>
 			{/if}
+
+			<!-- Gated Mode Card -->
+			<div class="card bg-base-200 shadow-xl mt-6" transition:fade={{ duration: 200 }}>
+				<div class="card-body">
+					<h2 class="card-title text-2xl mb-2">
+						<span class="text-2xl">{m.settings_gated_mode_title()}</span>
+					</h2>
+					<p class="text-base-content/70 mb-6">
+						{m.settings_gated_mode_description()}
+					</p>
+
+					<div class="form-control">
+						<label class="label cursor-pointer justify-start gap-4">
+							<input
+								type="checkbox"
+								class="toggle toggle-primary"
+								checked={appSettings.gatedMode}
+								disabled={!appSettings.canToggleGatedMode}
+								onchange={() => appSettings.toggleGatedMode()}
+							/>
+							<div class="flex flex-col">
+								<span class="label-text font-medium">
+									{m.settings_gated_mode_label()}
+								</span>
+								{#if !appSettings.canToggleGatedMode}
+									<span class="label-text-alt text-warning">
+										{m.settings_gated_mode_forced()}
+									</span>
+								{/if}
+							</div>
+						</label>
+					</div>
+
+					<div class="mt-4 p-4 bg-base-100 rounded-lg">
+						<h3 class="font-semibold mb-2">{m.settings_gated_mode_current_status()}</h3>
+						{#if appSettings.gatedMode}
+							<div class="flex items-center gap-2 text-success">
+								<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+								</svg>
+								<span>{m.settings_gated_mode_enabled_status()}</span>
+							</div>
+							<p class="text-sm text-base-content/60 mt-2">
+								{m.settings_gated_mode_enabled_description()}
+							</p>
+						{:else}
+							<div class="flex items-center gap-2 text-base-content/70">
+								<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
+								</svg>
+								<span>{m.settings_gated_mode_disabled_status()}</span>
+							</div>
+							<p class="text-sm text-base-content/60 mt-2">
+								{m.settings_gated_mode_disabled_description()}
+							</p>
+						{/if}
+					</div>
+				</div>
+			</div>
 		{/if}
 	</div>
 </div>

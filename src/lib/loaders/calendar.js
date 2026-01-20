@@ -7,19 +7,8 @@ import { from } from 'rxjs';
 import { mergeMap } from 'rxjs/operators';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { addressLoader } from './base.js';
-import { runtimeConfig } from '$lib/stores/config.svelte.js';
+import { getCalendarRelays } from '$lib/helpers/relay-helper.js';
 import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
-
-/**
- * Get calendar relays from app config
- * @returns {string[]}
- */
-function getCalendarRelays() {
-	return [
-		...(runtimeConfig.appRelays?.calendar || []),
-		...(runtimeConfig.fallbackRelays || [])
-	];
-}
 
 // Global calendar events (kinds 31922, 31923)
 // Lazy factory to ensure relays are read from runtime config at call time, not module load time

@@ -21,6 +21,10 @@ export const CATEGORIES = {
 	educational: {
 		kinds: [30142],
 		label: 'Educational Resources'
+	},
+	longform: {
+		kinds: [30023],
+		label: 'Articles & Long-form Content'
 	}
 };
 
@@ -68,7 +72,7 @@ export function getUserRelaySetOverride(category) {
 
 /**
  * Get server default relays for a category
- * @param {string} category - 'calendar' | 'communikey' | 'educational'
+ * @param {string} category - 'calendar' | 'communikey' | 'educational' | 'longform'
  * @returns {string[]}
  */
 export function getDefaultRelaysForCategory(category) {
@@ -79,6 +83,8 @@ export function getDefaultRelaysForCategory(category) {
 			return runtimeConfig.appRelays?.communikey || [];
 		case 'educational':
 			return runtimeConfig.appRelays?.educational || [];
+		case 'longform':
+			return runtimeConfig.appRelays?.longform || [];
 		default:
 			return [];
 	}
@@ -118,6 +124,7 @@ export function kindToAppRelayCategory(kind) {
 	if ([31922, 31923, 31924, 31925].includes(kind)) return 'calendar';
 	if ([10222, 30222, 30382].includes(kind)) return 'communikey';
 	if ([30142].includes(kind)) return 'educational';
+	if ([30023].includes(kind)) return 'longform';
 	return null;
 }
 

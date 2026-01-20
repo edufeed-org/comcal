@@ -7,28 +7,14 @@
  */
 import { createAddressLoader, createEventLoader, createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { runtimeConfig } from '$lib/stores/config.svelte.js';
-
-/**
- * Get current lookup relays from runtime config
- * This function is called each time addressLoader is invoked to ensure
- * we always use the latest relay configuration (including after API config loads)
- */
-function getLookupRelays() {
-	return [
-		...(runtimeConfig.appRelays?.calendar || []),
-		...(runtimeConfig.appRelays?.communikey || []),
-		...(runtimeConfig.appRelays?.educational || []),
-		...(runtimeConfig.fallbackRelays || [])
-	];
-}
+import { getAllLookupRelays, getCalendarRelays } from '$lib/helpers/relay-helper.js';
 
 // Bootstrap EventStore - gives it relay knowledge
 // Uses a getter function for lookupRelays to ensure config updates are reflected
-export const addressLoader = createAddressLoader(pool, { 
-	eventStore, 
+export const addressLoader = createAddressLoader(pool, {
+	eventStore,
 	get lookupRelays() {
-		return getLookupRelays();
+		return getAllLookupRelays();
 	}
 });
 
@@ -56,7 +42,7 @@ export const eventLoader = createEventLoader(pool, { eventStore });
  */
 export const userDeletionLoader = (userPubkey) => createTimelineLoader(
 	pool,
-	[...(runtimeConfig.appRelays?.calendar || []), ...(runtimeConfig.fallbackRelays || [])],
+	getCalendarRelays(),
 	{
 		kinds: [5],              // NIP-09 deletion events
 		authors: [userPubkey],   // User's own deletions

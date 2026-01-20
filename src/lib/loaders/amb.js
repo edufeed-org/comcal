@@ -3,7 +3,7 @@
  */
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { runtimeConfig } from '$lib/stores/config.svelte.js';
+import { getEducationalRelays } from '$lib/helpers/relay-helper.js';
 import { TimelineModel } from 'applesauce-core/models';
 import { getTagValue } from 'applesauce-core/helpers';
 import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
@@ -11,15 +11,11 @@ import { SvelteSet } from 'svelte/reactivity';
 
 /**
  * Get combined relays for AMB resource loading (educational app relays + fallback)
+ * Respects gated mode - when active, fallback relays are excluded
  * @returns {string[]} Deduplicated array of relay URLs
  */
 function getAMBRelays() {
-	/** @type {string[]} */
-	const educationalRelays = runtimeConfig.appRelays?.educational || [];
-	/** @type {string[]} */
-	const fallbackRelays = runtimeConfig.fallbackRelays || [];
-	// Combine and deduplicate
-	return [...new Set([...educationalRelays, ...fallbackRelays])];
+	return getEducationalRelays();
 }
 
 /**

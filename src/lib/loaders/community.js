@@ -3,18 +3,7 @@
  */
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { runtimeConfig } from '$lib/stores/config.svelte.js';
-
-/**
- * Get communikey relays from app config
- * @returns {string[]}
- */
-function getCommunikeyRelays() {
-	return [
-		...(runtimeConfig.appRelays?.communikey || []),
-		...(runtimeConfig.fallbackRelays || [])
-	];
-}
+import { getCommunikeyRelays } from '$lib/helpers/relay-helper.js';
 
 // Communities list loader (kind 10222)
 // Lazy factory to ensure relays are read from runtime config at call time, not module load time

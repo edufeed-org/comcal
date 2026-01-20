@@ -244,9 +244,15 @@ The `.env.example` file contains all available configuration options. Key catego
 - `APP_GIT_REPO`: Git repository URL
 
 **Nostr Relays**
-- `RELAYS`: Primary relays for calendar events (comma-separated)
-- `FALLBACK_RELAYS`: Fallback relays for event discovery
-- `AMB_RELAYS`: Educational content relays with NIP-50 search support
+- `FALLBACK_RELAYS`: Fallback relays for event discovery (used when gated mode is off)
+- `CALENDAR_RELAYS`: App-specific relays for calendar events (kinds 31922-31925)
+- `COMMUNIKEY_RELAYS`: App-specific relays for community events (kinds 10222, 30222, 30382)
+- `AMB_RELAYS`: Educational content relays with NIP-50 search support (kind 30142)
+- `LONGFORM_CONTENT_RELAY`: App-specific relay for articles (kind 30023)
+
+**Gated Mode**
+- `GATED_MODE_DEFAULT`: Default state for gated mode (true/false). When enabled, app fetches only from app-specific relays
+- `GATED_MODE_FORCE`: When true, users cannot disable gated mode - useful for institutional deployments
 
 **Calendar Settings**
 - `CALENDAR_WEEK_START_DAY`: Week start day (0=Sunday, 1=Monday)

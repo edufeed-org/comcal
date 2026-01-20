@@ -22,7 +22,13 @@ const defaultConfig = {
 	appRelays: {
 		calendar: [],     // kinds 31922-31925
 		communikey: [],   // kinds 10222, 30222, 30382
-		educational: []   // kind 30142
+		educational: [],  // kind 30142
+		longform: []      // kind 30023
+	},
+	// Gated mode: when enabled, fetch only from app relays (exclude fallback relays)
+	gatedMode: {
+		default: false,   // Default state for new users
+		force: false      // When true, users cannot disable gated mode
 	},
 	// Default Blossom servers for new users
 	defaultBlossomServers: [],
@@ -133,6 +139,11 @@ export function initializeConfig(runtimeConfig) {
 			calendar: runtimeConfig.calendarRelays || defaultConfig.appRelays.calendar,
 			communikey: runtimeConfig.communikeyRelays || defaultConfig.appRelays.communikey,
 			educational: runtimeConfig.ambRelays || defaultConfig.appRelays.educational,
+			longform: runtimeConfig.longformContentRelays || defaultConfig.appRelays.longform,
+		},
+		gatedMode: {
+			default: runtimeConfig.gatedMode?.default ?? defaultConfig.gatedMode.default,
+			force: runtimeConfig.gatedMode?.force ?? defaultConfig.gatedMode.force,
 		},
 		defaultBlossomServers: runtimeConfig.defaultBlossomServers || defaultConfig.defaultBlossomServers,
 		calendar: {
@@ -251,5 +262,8 @@ export const runtimeConfig = {
 	},
 	get ui() {
 		return config.ui;
+	},
+	get gatedMode() {
+		return config.gatedMode;
 	}
 };

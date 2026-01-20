@@ -9,17 +9,15 @@
  */
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { runtimeConfig } from '$lib/stores/config.svelte.js';
+import { getCommunikeyRelays } from '$lib/helpers/relay-helper.js';
 
 /**
  * Get relays for targeted publications (communikey + fallback)
+ * Respects gated mode - when active, fallback relays are excluded
  * @returns {string[]}
  */
 function getTargetedPublicationRelays() {
-	return [
-		...(runtimeConfig.appRelays?.communikey || []),
-		...(runtimeConfig.fallbackRelays || [])
-	];
+	return getCommunikeyRelays();
 }
 
 /**
