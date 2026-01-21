@@ -6,10 +6,12 @@
 <script>
 	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import { manager } from '$lib/stores/accounts.svelte';
-	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+	import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
 	import { CloseIcon, PlusIcon } from '$lib/components/icons';
 	import { BlossomClient } from 'blossom-client-sdk';
 	import { getActiveBlossomServer } from '$lib/services/blossom-settings-service.js';
+	import { createBlossomServerLoader } from '$lib/loaders/blossom-server-loader.js';
+	import { getRelayListLookupRelays } from '$lib/services/relay-service.svelte.js';
 
 	/**
 	 * @typedef {Object} UploadedFile
@@ -47,6 +49,17 @@
 			activeUser = user;
 		});
 		return () => subscription.unsubscribe();
+	});
+
+	// Load user's blossom server list (kind 10063) so getActiveBlossomServer() can find it
+	$effect(() => {
+		if (!activeUser?.pubkey) return;
+
+		const lookupRelays = getRelayListLookupRelays();
+		const loader = createBlossomServerLoader(pool, lookupRelays, eventStore, activeUser.pubkey);
+		const subscription = loader()().subscribe();
+
+		return () => subscription?.unsubscribe();
 	});
 
 	/**

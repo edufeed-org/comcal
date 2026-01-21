@@ -2,7 +2,8 @@
 	import * as m from '$lib/paraglide/messages';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
-	import { publishEvents } from '$lib/helpers/publisher.js';
+	import { publishEvent } from '$lib/services/publish-service.js';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import EditableList from './shared/EditableList.svelte';
 	import LocationInput from './shared/LocationInput.svelte';
 	import ContentTypeBadgeConfig from './shared/ContentTypeBadgeConfig.svelte';
@@ -350,11 +351,11 @@
 
 			const signedEvent = await signer.signEvent(communityUpdateEvent);
 
-			const publishResult = await publishEvents([signedEvent], {
-				logPrefix: 'EditCommunityModal'
-			});
+			// Publish using outbox model + communikey relays (for kind 10222)
+			const publishResult = await publishEvent(signedEvent);
 
 			if (publishResult.success) {
+				eventStore.add(signedEvent);
 				console.log('EditCommunityModal: Successfully updated community');
 				closeModal();
 			} else {

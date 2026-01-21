@@ -3,7 +3,7 @@
 	import { useUserProfile } from '../../stores/user-profile.svelte.js';
 	import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
 	import { EventFactory } from 'applesauce-factory';
-	import { publishEvent } from '../../helpers/publisher.js';
+	import { publishEvent } from '$lib/services/publish-service.js';
 	import {
 		getTagValue,
 		getDisplayName,
@@ -169,12 +169,10 @@
 		// Sign the event
 		const signedEvent = await factory.sign(shareEvent);
 
-		console.log(`🌐 CommunityCalendarShare: Publishing share to ${runtimeConfig.fallbackRelays || [].length} relays`);
+		console.log(`🌐 CommunityCalendarShare: Publishing share using outbox model + communikey relays`);
 
-		const result = await publishEvent(signedEvent, {
-			relays: runtimeConfig.fallbackRelays || [],
-			logPrefix: 'CommunityShare'
-		});
+		// Publish using outbox model + communikey relays (for kind 30222)
+		const result = await publishEvent(signedEvent, [communityPubkey]);
 
 		if (result.success) {
 			// Add to event store immediately for local update
@@ -305,11 +303,8 @@
 		// Sign the deletion event
 		const deleteEvent = await factory.sign(deleteEventTemplate);
 
-		// Publish deletion
-		const result = await publishEvent(deleteEvent, {
-			relays: runtimeConfig.fallbackRelays || [],
-			logPrefix: 'CommunityShareDelete'
-		});
+		// Publish deletion using outbox model
+		const result = await publishEvent(deleteEvent);
 
 		if (result.success) {
 			// Add deletion event to EventStore immediately

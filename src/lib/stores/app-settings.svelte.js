@@ -7,6 +7,7 @@ import { browser } from '$app/environment';
 import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 const STORAGE_KEY = 'app-settings';
+const CONFIG_DEFAULTS_KEY = 'app-settings-config-defaults';
 
 /**
  * Default settings
@@ -16,6 +17,35 @@ const STORAGE_KEY = 'app-settings';
  * @property {'light' | 'dark' | 'system'} colorMode
  * @property {boolean} gatedMode
  */
+
+/**
+ * Get stored config defaults from localStorage
+ * Used to detect when deployment theme settings have changed
+ * @returns {{lightTheme: string, darkTheme: string} | null}
+ */
+function getStoredConfigDefaults() {
+	if (!browser) return null;
+	try {
+		const stored = localStorage.getItem(CONFIG_DEFAULTS_KEY);
+		return stored ? JSON.parse(stored) : null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Save current config defaults to localStorage
+ * @param {string} lightTheme
+ * @param {string} darkTheme
+ */
+function saveConfigDefaults(lightTheme, darkTheme) {
+	if (!browser) return;
+	try {
+		localStorage.setItem(CONFIG_DEFAULTS_KEY, JSON.stringify({ lightTheme, darkTheme }));
+	} catch (e) {
+		console.error('Failed to save config defaults:', e);
+	}
+}
 
 /**
  * Map theme name to themeFamily and colorMode
@@ -168,24 +198,51 @@ let initialized = false;
 /**
  * Initialize app settings with runtime config
  * Called from the layout after runtime config is loaded
- * Only updates settings if no localStorage value exists
+ * Handles both new users and detecting when deployment defaults change
  */
 export function initializeAppSettings() {
 	if (!browser || initialized) return;
 	initialized = true; // Mark as initialized BEFORE modifying state
-	
+
+	// Get current runtime config theme defaults
+	const currentLightTheme = runtimeConfig.ui?.defaultLightTheme || 'light';
+	const currentDarkTheme = runtimeConfig.ui?.defaultDarkTheme || 'dark';
+
+	// Check what config defaults were last time
+	const storedConfigDefaults = getStoredConfigDefaults();
+
 	// Check if user has saved preferences
 	const stored = localStorage.getItem(STORAGE_KEY);
-	if (stored) {
-		// User has preferences, don't override them
+
+	if (!stored) {
+		// New user - apply runtime config defaults
+		const defaults = getDefaultSettings();
+		settings = defaults;
+		saveSettings(settings);
+		saveConfigDefaults(currentLightTheme, currentDarkTheme);
+		console.log('App settings initialized with runtime config defaults:', defaults);
 		return;
 	}
-	
-	// No saved preferences - apply runtime config defaults
-	const defaults = getDefaultSettings();
-	settings = defaults;
-	
-	console.log('App settings initialized with runtime config defaults:', defaults);
+
+	// Existing user - check if deployment theme defaults have changed
+	const configChanged = storedConfigDefaults && (
+		storedConfigDefaults.lightTheme !== currentLightTheme ||
+		storedConfigDefaults.darkTheme !== currentDarkTheme
+	);
+
+	if (configChanged && settings.colorMode === 'system') {
+		// Config defaults changed and user is on system mode - update theme family
+		// Users who manually chose light/dark keep their preference
+		const { themeFamily } = parseThemeToSettings(
+			/** @type {'light' | 'dark' | 'stil' | 'stil-dark'} */ (currentLightTheme)
+		);
+		settings.themeFamily = themeFamily;
+		saveSettings(settings);
+		console.log('App settings updated with new deployment theme defaults:', { themeFamily });
+	}
+
+	// Always save current config defaults for future comparison
+	saveConfigDefaults(currentLightTheme, currentDarkTheme);
 }
 
 /**

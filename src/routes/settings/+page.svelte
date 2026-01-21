@@ -23,6 +23,7 @@
 	import { createAppRelaySetLoader } from '$lib/loaders/app-relay-set-loader.js';
 	import { publishEvent } from '$lib/services/publish-service.js';
 	import { appSettings } from '$lib/stores/app-settings.svelte.js';
+	import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
 	import * as m from '$lib/paraglide/messages';
 
 	// Use $state + $effect for reactive RxJS subscription bridge (Svelte 5 pattern)
@@ -547,6 +548,19 @@
 		<div class="text-center mb-8">
 			<h1 class="text-4xl font-bold mb-2">{m.common_settings()}</h1>
 			<p class="text-base-content/70">Manage your Nostr preferences</p>
+		</div>
+
+		<!-- Appearance Card (visible to all users) -->
+		<div class="card bg-base-200 shadow-xl mb-6">
+			<div class="card-body">
+				<h2 class="card-title text-2xl mb-2">
+					<span class="text-2xl">Appearance</span>
+				</h2>
+				<p class="text-base-content/70 mb-6">
+					Customize the look and feel of the application.
+				</p>
+				<ThemeSwitcher />
+			</div>
 		</div>
 
 		{#if !activeAccount}

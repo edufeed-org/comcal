@@ -8,6 +8,8 @@ import { TimelineModel } from 'applesauce-core/models';
 import { getTagValue } from 'applesauce-core/helpers';
 import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
 import { SvelteSet } from 'svelte/reactivity';
+import { onlyEvents } from 'applesauce-relay/operators';
+import { mapEventsToStore } from 'applesauce-core/observable';
 
 /**
  * Get combined relays for AMB resource loading (educational app relays + fallback)
@@ -72,12 +74,14 @@ export function useAMBCommunityLoader(communityPubkey) {
 
 	console.log('📚 AMBLoader: Starting community loader for', communityPubkey.slice(0, 8));
 
-	// 1. Load direct community resources (kind 30142 with h-tag)
-	const directResourcesSub = eventStore.timeline({
-		kinds: [30142],
-		'#h': [communityPubkey],
-		limit: 50
-	}).subscribe();
+	// 1. Load direct community resources (kind 30142 with h-tag) from network
+	const directResourcesLoader = createTimelineLoader(
+		pool,
+		getAMBRelays(),
+		{ kinds: [30142], '#h': [communityPubkey] },
+		{ eventStore, limit: 50 }
+	);
+	const directResourcesSub = directResourcesLoader().subscribe();
 	subscriptions.set('directResources', directResourcesSub);
 
 	// 2. Load targeted publications (kind 30222) referencing AMB resources
@@ -116,15 +120,14 @@ export function useAMBCommunityLoader(communityPubkey) {
 			}
 		});
 
-		// Start loader for events by ID
+		// Start loader for events by ID - fetch from network
 		if (eventIds.size > 0) {
 			console.log('📚 AMBLoader: Loading', eventIds.size, 'referenced resources by ID');
-			const timelineLoader = eventStore.timeline({
-				ids: Array.from(eventIds)
-			});
-			if (timelineLoader && typeof timelineLoader.subscribe === 'function') {
-				timelineLoader.subscribe();
-			}
+			const refByIdSub = pool
+				.subscription(getAMBRelays(), { ids: Array.from(eventIds) })
+				.pipe(onlyEvents(), mapEventsToStore(eventStore))
+				.subscribe();
+			subscriptions.set(`refById-${Date.now()}`, refByIdSub);
 		}
 
 		// Start loaders for addressable events

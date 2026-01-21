@@ -99,6 +99,13 @@ const defaultConfig = {
 	ui: {
 		defaultLightTheme: 'light',
 		defaultDarkTheme: 'dark'
+	},
+	// Favicon configuration (allows whitelabel override)
+	favicon: {
+		ico: '/favicon.ico',
+		svg: '/favicon.svg',
+		png32: '/favicon-32x32.png',
+		png16: '/favicon-16x16.png'
 	}
 };
 
@@ -197,6 +204,10 @@ export function initializeConfig(runtimeConfig) {
 		ui: {
 			...defaultConfig.ui,
 			...runtimeConfig.ui
+		},
+		favicon: {
+			...defaultConfig.favicon,
+			...runtimeConfig.favicon
 		}
 	};
 
@@ -265,5 +276,8 @@ export const runtimeConfig = {
 	},
 	get gatedMode() {
 		return config.gatedMode;
+	},
+	get favicon() {
+		return config.favicon;
 	}
 };

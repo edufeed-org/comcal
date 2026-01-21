@@ -1,7 +1,7 @@
 import { ProfileModel } from 'applesauce-core/models';
 import { profileLoader } from '$lib/loaders/profile.js';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { runtimeConfig } from '$lib/stores/config.svelte.js';
+import { getCommunikeyRelays } from '$lib/helpers/relay-helper.js';
 import { useActiveUser } from '$lib/stores/accounts.svelte';
 
 /**
@@ -33,7 +33,7 @@ export function useUserProfile(pubkey) {
 			const loaderSub = profileLoader({
 				kind: 0,
 				pubkey: targetPubkey,
-				relays: runtimeConfig.fallbackRelays || []
+				relays: getCommunikeyRelays()
 			}).subscribe(() => {
 				// Loader automatically populates eventStore
 			});

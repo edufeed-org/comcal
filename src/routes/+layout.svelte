@@ -3,7 +3,7 @@
 	import Navbar from '$lib/components/Navbar.svelte';
 	import ModalManager from '$lib/components/ModalManager.svelte';
 	import Footer from '$lib/components/Footer.svelte';
-	import { initializeConfig } from '$lib/stores/config.svelte.js';
+	import { initializeConfig, runtimeConfig } from '$lib/stores/config.svelte.js';
 	import { appSettings, initializeAppSettings } from '$lib/stores/app-settings.svelte.js';
 	import { browser } from '$app/environment';
 
@@ -24,6 +24,13 @@
 		}
 	});
 </script>
+
+<svelte:head>
+	<link rel="icon" type="image/x-icon" href={runtimeConfig.favicon?.ico || '/favicon.ico'}>
+	<link rel="icon" type="image/svg+xml" href={runtimeConfig.favicon?.svg || '/favicon.svg'}>
+	<link rel="icon" type="image/png" sizes="32x32" href={runtimeConfig.favicon?.png32 || '/favicon-32x32.png'}>
+	<link rel="icon" type="image/png" sizes="16x16" href={runtimeConfig.favicon?.png16 || '/favicon-16x16.png'}>
+</svelte:head>
 
 <Navbar />
 <ModalManager />

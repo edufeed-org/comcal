@@ -3,10 +3,9 @@
  * Handles creating and deleting comments
  */
 import { EventFactory } from 'applesauce-factory';
-import { publishEvent } from './publisher.js';
+import { publishEvent } from '$lib/services/publish-service.js';
 import { manager } from '$lib/stores/accounts.svelte.js';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 /**
  * Delete a comment event using NIP-09 deletion
@@ -38,10 +37,9 @@ export async function deleteComment(commentEvent, options = {}) {
 	// Sign the deletion event
 	const deleteEvent = await factory.sign(deleteEventTemplate);
 	
-	const result = await publishEvent(deleteEvent, {
-		relays: options.relays || runtimeConfig.fallbackRelays || [],
-		addToStore: true,
-		logPrefix: 'Comments'
+	// Publish deletion using outbox model
+	const result = await publishEvent(deleteEvent, [], {
+		additionalRelays: options.relays || []
 	});
 	
 	// Explicitly add deletion event to EventStore after successful publish

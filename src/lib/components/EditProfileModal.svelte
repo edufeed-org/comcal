@@ -3,8 +3,8 @@
 	import { manager } from '$lib/stores/accounts.svelte.js';
 	import ProfileForm from './shared/ProfileForm.svelte';
 	import AvatarUploader from './shared/AvatarUploader.svelte';
-	import { publishEvent } from '$lib/helpers/publisher.js';
-	import { runtimeConfig } from '$lib/stores/config.svelte.js';
+	import { publishEvent } from '$lib/services/publish-service.js';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import * as m from '$lib/paraglide/messages';
 	
 	let { modalId = 'edit-profile-modal' } = $props();
@@ -146,14 +146,12 @@
 			// Sign the event
 			const signedEvent = await manager.active.signer.signEvent(event);
 			
-			// Publish to relays
-			const result = await publishEvent(signedEvent, {
-				relays: runtimeConfig.fallbackRelays || [],
-				addToStore: true,
-				logPrefix: 'EditProfile'
-			});
-			
+			// Publish using outbox model
+			const result = await publishEvent(signedEvent);
+
 			if (result.success) {
+				// Add to EventStore for immediate UI updates
+				eventStore.add(signedEvent);
 				console.log('Profile updated successfully');
 				submitSuccess = true;
 				

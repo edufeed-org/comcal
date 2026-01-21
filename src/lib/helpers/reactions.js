@@ -3,10 +3,10 @@
  * Handles creating, publishing, and deleting reactions
  */
 import { EventFactory } from 'applesauce-factory';
-import { publishEvent } from './publisher.js';
+import { publishEvent } from '$lib/services/publish-service.js';
 import { manager } from '$lib/stores/accounts.svelte.js';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { runtimeConfig } from '$lib/stores/config.svelte.js';
+import { getPrimaryWriteRelay } from '$lib/services/relay-service.svelte.js';
 
 /**
  * Check if an event is addressable (replaceable)
@@ -42,31 +42,31 @@ function getEventAddress(event) {
  */
 export async function createReaction(targetEvent, content, options = {}) {
 	const account = manager.active;
-	
+
 	if (!account?.signer) {
 		throw new Error('No account or signer available');
 	}
-	
-	const relays = options.relays || runtimeConfig.fallbackRelays || [];
-	const mainRelay = relays[0] || '';
-	
+
+	// Get relay hint for the target event author
+	const relayHint = options.relays?.[0] || await getPrimaryWriteRelay(targetEvent.pubkey);
+
 	// Build tags according to NIP-25
 	const tags = [];
-	
+
 	// Always add 'e' tag with event id
-	tags.push(['e', targetEvent.id, mainRelay, targetEvent.pubkey]);
-	
+	tags.push(['e', targetEvent.id, relayHint, targetEvent.pubkey]);
+
 	// Add 'p' tag for the event author
-	tags.push(['p', targetEvent.pubkey, mainRelay]);
-	
+	tags.push(['p', targetEvent.pubkey, relayHint]);
+
 	// For addressable events, add 'a' tag
 	if (isAddressableEvent(targetEvent)) {
 		const address = getEventAddress(targetEvent);
 		if (address) {
-			tags.push(['a', address, mainRelay, targetEvent.pubkey]);
+			tags.push(['a', address, relayHint, targetEvent.pubkey]);
 		}
 	}
-	
+
 	// Add 'k' tag with the kind of the reacted event
 	tags.push(['k', String(targetEvent.kind)]);
 	
@@ -101,14 +101,17 @@ export async function publishReaction(targetEvent, content, options = {}) {
 	try {
 		// Create the reaction event
 		const reactionEvent = await createReaction(targetEvent, content, options);
-		
-		// Publish it
-		const result = await publishEvent(reactionEvent, {
-			relays: options.relays || runtimeConfig.fallbackRelays || [],
-			addToStore: true,
-			logPrefix: 'Reactions'
+
+		// Publish using outbox model (tags target event author)
+		const result = await publishEvent(reactionEvent, [targetEvent.pubkey], {
+			additionalRelays: options.relays || []
 		});
-		
+
+		// Add to EventStore for immediate UI updates
+		if (result.success) {
+			eventStore.add(reactionEvent);
+		}
+
 		return {
 			...result,
 			event: reactionEvent
@@ -150,10 +153,9 @@ export async function deleteReaction(reactionEvent, options = {}) {
 	// Sign the deletion event
 	const deleteEvent = await factory.sign(deleteEventTemplate);
 	
-	const result = await publishEvent(deleteEvent, {
-		relays: options.relays || runtimeConfig.fallbackRelays || [],
-		addToStore: true,
-		logPrefix: 'Reactions'
+	// Publish deletion using outbox model
+	const result = await publishEvent(deleteEvent, [], {
+		additionalRelays: options.relays || []
 	});
 	
 	// Explicitly add deletion event to EventStore after successful publish

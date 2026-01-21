@@ -11,7 +11,7 @@
 	import { EventFactory } from 'applesauce-factory';
 	import { createTimelineLoader } from 'applesauce-loaders/loaders';
 	import { TimelineModel } from 'applesauce-core/models';
-	import { publishEvent } from '../../helpers/publisher.js';
+	import { publishEvent } from '$lib/services/publish-service.js';
 	import {
 		getTagValue,
 		getDisplayName,
@@ -22,6 +22,7 @@
 	import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
 	import { PlusIcon, CheckIcon, AlertIcon } from '../icons';
 	import { runtimeConfig } from '$lib/stores/config.svelte.js';
+	import { getCommunikeyRelays } from '$lib/helpers/relay-helper.js';
 
 	/**
 	 * @typedef {Object} Props
@@ -198,12 +199,10 @@
 		const shareEvent = await factory.build({ kind: 30222, tags });
 		const signedEvent = await factory.sign(shareEvent);
 
-		console.log(`🔗 CommunityShare: Publishing share to ${runtimeConfig.fallbackRelays || [].length} relays`);
+		console.log(`🔗 CommunityShare: Publishing share using outbox model + communikey relays`);
 
-		const result = await publishEvent(signedEvent, {
-			relays: runtimeConfig.fallbackRelays || [],
-			logPrefix: 'CommunityShare'
-		});
+		// Publish using outbox model + communikey relays (for kind 30222)
+		const result = await publishEvent(signedEvent, [communityPubkey]);
 
 		if (result.success) {
 			eventStore.add(signedEvent);
@@ -301,10 +300,8 @@
 		const deleteEventTemplate = await factory.delete([shareEvent]);
 		const deleteEvent = await factory.sign(deleteEventTemplate);
 
-		const result = await publishEvent(deleteEvent, {
-			relays: runtimeConfig.fallbackRelays || [],
-			logPrefix: 'CommunityShareDelete'
-		});
+		// Publish deletion using outbox model
+		const result = await publishEvent(deleteEvent);
 
 		if (result.success) {
 			eventStore.add(deleteEvent);

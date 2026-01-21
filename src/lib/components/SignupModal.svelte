@@ -8,7 +8,8 @@
 	import * as nip49 from 'nostr-tools/nip49';
 	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
-	import { publishEvents } from '$lib/helpers/publisher.js';
+	import { publishEvent } from '$lib/services/publish-service.js';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { fetchProfileData } from '$lib/helpers/profile.js';
 	import CopyIcon from './icons/actions/CopyIcon.svelte';
 	import CheckIcon from './icons/ui/CheckIcon.svelte';
@@ -262,18 +263,28 @@
 				signedContactsEvent = await signer.signEvent(contactsEvent);
 			}
 
-			// Prepare events to publish
-			const eventsToPublish = [signedMetadataEvent];
-			if (signedContactsEvent) {
-				eventsToPublish.push(signedContactsEvent);
+			// Publish metadata event (kind 0) using outbox model
+			const metadataResult = await publishEvent(signedMetadataEvent);
+			if (metadataResult.success) {
+				eventStore.add(signedMetadataEvent);
 			}
 
-			// Publish events to relays using the generic publisher
-			const publishResult = await publishEvents(eventsToPublish, {
-				logPrefix: 'SignupModal'
-			});
+			// Publish contacts event (kind 3) if users selected
+			let contactsSuccess = true;
+			if (signedContactsEvent) {
+				// Extract tagged pubkeys from contacts for outbox model
+				const taggedPubkeys = userData.selectedFollows.map((/** @type {any} */ user) => {
+					const decoded = nip19.decode(user.npub);
+					return String(decoded.data);
+				});
+				const contactsResult = await publishEvent(signedContactsEvent, taggedPubkeys);
+				contactsSuccess = contactsResult.success;
+				if (contactsResult.success) {
+					eventStore.add(signedContactsEvent);
+				}
+			}
 
-			if (publishResult.success) {
+			if (metadataResult.success || contactsSuccess) {
 				// Add account to manager after successful publishing
 				if (!manager.getAccountForPubkey(userData.publicKey)) {
 					manager.addAccount(account);

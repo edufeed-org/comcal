@@ -1,8 +1,7 @@
 import { EventFactory } from 'applesauce-factory';
 import { manager } from '$lib/stores/accounts.svelte';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { publishEvent } from './publisher';
-import { runtimeConfig } from '$lib/stores/config.svelte.js';
+import { publishEvent } from '$lib/services/publish-service.js';
 import { getPrimaryWriteRelay } from '$lib/services/relay-service.svelte.js';
 
 /**
@@ -44,10 +43,9 @@ export async function joinCommunity(communityPubkey, options = {}) {
 
 		const signedEvent = await factory.sign(relationshipEventTemplate);
 
-		const result = await publishEvent(signedEvent, {
-			relays: options.relays || runtimeConfig.fallbackRelays || [],
-			addToStore: true,
-			logPrefix: 'CommunityJoin'
+		// Publish using outbox model + communikey relays (for kind 30382)
+		const result = await publishEvent(signedEvent, [communityPubkey], {
+			additionalRelays: options.relays || []
 		});
 
 		if (result.success) {
@@ -116,10 +114,9 @@ export async function leaveCommunity(communityPubkey, options = {}) {
 		const deleteEventTemplate = await factory.delete([relationshipEvent]);
 		const deleteEvent = await factory.sign(deleteEventTemplate);
 
-		const result = await publishEvent(deleteEvent, {
-			relays: options.relays || runtimeConfig.fallbackRelays || [],
-			addToStore: true,
-			logPrefix: 'CommunityLeave'
+		// Publish deletion using outbox model
+		const result = await publishEvent(deleteEvent, [], {
+			additionalRelays: options.relays || []
 		});
 
 		if (result.success) {

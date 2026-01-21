@@ -5,7 +5,8 @@
 	import { SimpleSigner } from 'applesauce-signers';
 	import { SimpleAccount } from 'applesauce-accounts/accounts';
 	import { modalStore } from '$lib/stores/modal.svelte.js';
-	import { publishEvents } from '$lib/helpers/publisher.js';
+	import { publishEvent } from '$lib/services/publish-service.js';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { hexToNpub } from '$lib/helpers/nostrUtils.js';
 	import ChevronLeftIcon from './icons/ui/ChevronLeftIcon.svelte';
 	import ChevronRightIcon from './icons/ui/ChevronRightIcon.svelte';
@@ -269,10 +270,11 @@
 				};
 
 				const signedProfileEvent = await signer.signEvent(profileEvent);
-				await publishEvents([signedProfileEvent], {
-					logPrefix: 'CreateCommunityModal:Profile'
-				});
-				console.log('CreateCommunityModal: Profile event published');
+				const profileResult = await publishEvent(signedProfileEvent);
+				if (profileResult.success) {
+					eventStore.add(signedProfileEvent);
+					console.log('CreateCommunityModal: Profile event published');
+				}
 			}
 
 			if (!account || !signer) {
@@ -412,13 +414,19 @@
 			// Sign the relationship event
 			const signedRelationshipEvent = await signer.signEvent(relationshipEvent);
 
-			// Publish community and relationship events
-			const eventsToPublish = [signedCommunityEvent, signedRelationshipEvent];
-			const publishResult = await publishEvents(eventsToPublish, {
-				logPrefix: 'CreateCommunityModal'
-			});
+			// Publish community event (kind 10222) - uses communikey relays
+			const communityResult = await publishEvent(signedCommunityEvent);
+			if (communityResult.success) {
+				eventStore.add(signedCommunityEvent);
+			}
 
-			if (publishResult.success) {
+			// Publish relationship event (kind 30382) - uses communikey relays
+			const relationshipResult = await publishEvent(signedRelationshipEvent, [account.pubkey]);
+			if (relationshipResult.success) {
+				eventStore.add(signedRelationshipEvent);
+			}
+
+			if (communityResult.success || relationshipResult.success) {
 				console.log('CreateCommunityModal: Successfully created community');
 
 				// Navigate to the newly created community

@@ -165,6 +165,29 @@ docker compose logs -f   # View logs
 - **Nostr Protocol**: Decentralized event protocol
 - **Applesauce**: Suite of libraries for Nostr interaction
 
+### Theming & Customization
+
+Comcal supports **customizable themes** for institutional branding:
+
+| Theme | Description |
+|-------|-------------|
+| `light` | Default light theme |
+| `dark` | Default dark theme |
+| `stil` | STIL institutional branding (orange accent) |
+| `stil-dark` | STIL dark variant |
+
+Users can choose between theme families and light/dark/system color modes via Settings.
+
+**Configuration** (`.env`):
+```env
+THEME_DEFAULT_LIGHT=stil       # Default theme for light mode
+THEME_DEFAULT_DARK=stil-dark   # Default theme for dark mode
+```
+
+**Icons** are organized in `src/lib/components/icons/` by category (ui, actions, social, calendar) with a consistent wrapper pattern using `currentColor` for theme compatibility.
+
+See `CLAUDE.md` for detailed developer documentation on theming and icons.
+
 
 ## Deployment
 

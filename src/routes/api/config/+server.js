@@ -174,6 +174,14 @@ export function GET() {
 		ui: {
 			defaultLightTheme: parseTheme(env.THEME_DEFAULT_LIGHT, 'light'),
 			defaultDarkTheme: parseTheme(env.THEME_DEFAULT_DARK, 'dark')
+		},
+
+		// Favicon configuration (allows whitelabel override)
+		favicon: {
+			ico: env.FAVICON_ICO || '/favicon.ico',
+			svg: env.FAVICON_SVG || '/favicon.svg',
+			png32: env.FAVICON_32 || '/favicon-32x32.png',
+			png16: env.FAVICON_16 || '/favicon-16x16.png'
 		}
 	};
 

@@ -4,7 +4,8 @@
 	import { manager } from '$lib/stores/accounts.svelte';
 	import CalendarCreationModal from '$lib/components/calendar/CalendarCreationModal.svelte';
 	import { EventFactory } from 'applesauce-factory';
-	import { publishEvent } from '$lib/helpers/publisher.js';
+	import { publishEvent } from '$lib/services/publish-service.js';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
 	import { showToast } from '$lib/helpers/toast.js';
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
@@ -100,12 +101,11 @@
 			// Sign the event
 			const signedEvent = await activeUser.signEvent(eventTemplate);
 
-			// Publish using the generic publisher utility
-			const publishResult = await publishEvent(signedEvent, {
-				logPrefix: '📅 Calendar Management'
-			});
+			// Publish using outbox model + calendar relays (for kind 31924)
+			const publishResult = await publishEvent(signedEvent);
 
 			if (publishResult.success) {
+				eventStore.add(signedEvent);
 				// Force refresh to show changes immediately
 				await calendarManagement.refresh();
 
@@ -168,12 +168,11 @@
 			// Sign the deletion event
 			const signedDeletionEvent = await activeUser.signEvent(deletionEventTemplate);
 
-			// Publish using the generic publisher utility
-			const publishResult = await publishEvent(signedDeletionEvent, {
-				logPrefix: '📅 Calendar Management'
-			});
+			// Publish deletion using outbox model
+			const publishResult = await publishEvent(signedDeletionEvent);
 
 			if (publishResult.success) {
+				eventStore.add(signedDeletionEvent);
 				// Force refresh to show changes immediately
 				await calendarManagement.refresh();
 

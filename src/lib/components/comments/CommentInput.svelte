@@ -1,7 +1,7 @@
 <script>
 	import { EventFactory } from 'applesauce-factory';
-	import { publishEvent } from '$lib/helpers/publisher.js';
-	import { runtimeConfig } from '$lib/stores/config.svelte.js';
+	import { publishEvent } from '$lib/services/publish-service.js';
+	import { getPrimaryWriteRelay } from '$lib/services/relay-service.svelte.js';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { generateCommentTags } from '$lib/helpers/commentTags.js';
 	import * as m from '$lib/paraglide/messages';
@@ -57,11 +57,14 @@
 				signer: activeUser.signer
 			});
 
+			// Get relay hint for the root event author
+			const relayHint = await getPrimaryWriteRelay(rootEvent.pubkey);
+
 			// Generate NIP-22 tags
 			const tags = generateCommentTags(
 				rootEvent,
 				parentItem,
-				(runtimeConfig.fallbackRelays || [])[0] || ''
+				relayHint
 			);
 
 			// Create the comment event
@@ -76,11 +79,8 @@
 
 			console.log('Comment event created:', signedEvent);
 
-			// Publish to relays
-			const result = await publishEvent(signedEvent, {
-				relays: runtimeConfig.fallbackRelays || [],
-				logPrefix: 'Comment'
-			});
+			// Publish using outbox model (tag root event author for discoverability)
+			const result = await publishEvent(signedEvent, [rootEvent.pubkey]);
 
 			if (result.success) {
 				console.log('Comment published successfully');

@@ -19,7 +19,7 @@
 				}
 			}
 		}
-		// No communities or not logged in - go to discover
-		goto('/discover', { replaceState: true });
+		// No communities or not logged in - go to discover communities tab
+		goto('/discover?type=communities', { replaceState: true });
 	});
 </script>
