@@ -3,7 +3,6 @@
 	import { SimpleAccount } from 'applesauce-accounts/accounts';
 	import { merge, Subject, Subscription } from 'rxjs';
 	import { manager } from '$lib/stores/accounts.svelte';
-	import { appSettings } from '$lib/stores/app-settings.svelte.js';
 	import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
 	import * as m from '$lib/paraglide/messages';
 
@@ -172,30 +171,6 @@
 		<div class="card bg-base-100 shadow-xl">
 			<div class="card-body">
 				<ThemeSwitcher />
-			</div>
-		</div>
-	</div>
-
-	<!-- Developer Settings Section -->
-	<div class="divider mt-12"></div>
-	<div class="mb-6">
-		<h2 class="text-xl font-bold mb-4">{m.settings_developer_title()}</h2>
-		<div class="card bg-base-100 shadow-xl">
-			<div class="card-body">
-				<div class="form-control">
-					<label class="label cursor-pointer justify-start gap-4">
-						<input
-							type="checkbox"
-							class="toggle toggle-primary"
-							checked={appSettings.debugMode}
-							onchange={(e) => appSettings.debugMode = e.currentTarget.checked}
-						/>
-						<div>
-							<span class="label-text font-medium">{m.settings_debug_mode_label()}</span>
-							<p class="text-sm text-base-content/60">{m.settings_debug_mode_description()}</p>
-						</div>
-					</label>
-				</div>
 			</div>
 		</div>
 	</div>

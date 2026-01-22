@@ -10,6 +10,7 @@
 	import ImageWithFallback from '../shared/ImageWithFallback.svelte';
 	import ReactionBar from '../reactions/ReactionBar.svelte';
 	import EventTags from '../calendar/EventTags.svelte';
+	import EventDebugPanel from '../shared/EventDebugPanel.svelte';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
 
 	/**
@@ -159,6 +160,13 @@
 		{#if !compact}
 			<div class="pt-2">
 				<ReactionBar event={article} />
+			</div>
+		{/if}
+
+		<!-- Debug Panel -->
+		{#if !compact}
+			<div onclick={(e) => e.stopPropagation()}>
+				<EventDebugPanel event={article} />
 			</div>
 		{/if}
 	</div>

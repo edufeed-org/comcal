@@ -1003,6 +1003,32 @@
 					</div>
 				</div>
 			</div>
+
+			<!-- Developer Settings Card -->
+			<div class="card bg-base-200 shadow-xl mt-6" transition:fade={{ duration: 200 }}>
+				<div class="card-body">
+					<h2 class="card-title text-2xl mb-2">
+						<span class="text-2xl">{m.settings_developer_title()}</span>
+					</h2>
+					<p class="text-base-content/70 mb-6">
+						{m.settings_debug_mode_description()}
+					</p>
+
+					<div class="form-control">
+						<label class="label cursor-pointer justify-start gap-4">
+							<input
+								type="checkbox"
+								class="toggle toggle-primary"
+								checked={appSettings.debugMode}
+								onchange={(e) => appSettings.debugMode = e.currentTarget.checked}
+							/>
+							<span class="label-text font-medium">
+								{m.settings_debug_mode_label()}
+							</span>
+						</label>
+					</div>
+				</div>
+			</div>
 		{/if}
 	</div>
 </div>
