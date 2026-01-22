@@ -27,7 +27,7 @@ memory-bank
 .clineignore
 .clinerules
 
-data/
+/data/
 
 #i18n
 project.inlang
@@ -41,3 +41,7 @@ project.inlang
 
 # Nix/direnv
 .direnv/
+
+.claude/
+CLAUDE.md
+
