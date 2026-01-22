@@ -1,4 +1,4 @@
-# Comcal - Decentralized Community App with a Calendar
+# Edufeed - Decentralized Community App with a Calendar and other stuff
 
 [![Node.js](https://img.shields.io/badge/Node.js-v22.16.0-green)](https://nodejs.org/) [![SvelteKit](https://img.shields.io/badge/SvelteKit-2.1.2-orange)](https://kit.svelte.dev/) [![Docker](https://img.shields.io/badge/Docker-Ready-blue)](https://www.docker.com/)
 
