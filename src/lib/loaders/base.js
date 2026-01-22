@@ -28,10 +28,13 @@ export const eventLoader = createEventLoader(pool, { eventStore });
 /**
  * Factory: Create a timeline loader for user's deletion events (NIP-09)
  * This is a general-purpose deletion loader that can be used for any deletable content.
- * 
+ *
+ * Fetches from all lookup relays (app relays + fallback) to ensure deletions are found
+ * regardless of which relays the user published them to.
+ *
  * @param {string} userPubkey - The pubkey of the user whose deletions to load
  * @returns {Function} Timeline loader function that returns an Observable
- * 
+ *
  * @example
  * // Load a user's deletion events
  * const deletionLoader = userDeletionLoader(userPubkey);
@@ -42,7 +45,7 @@ export const eventLoader = createEventLoader(pool, { eventStore });
  */
 export const userDeletionLoader = (userPubkey) => createTimelineLoader(
 	pool,
-	getCalendarRelays(),
+	getAllLookupRelays(), // Use all lookup relays to find deletions published anywhere
 	{
 		kinds: [5],              // NIP-09 deletion events
 		authors: [userPubkey],   // User's own deletions

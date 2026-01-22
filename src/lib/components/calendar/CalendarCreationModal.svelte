@@ -6,6 +6,7 @@
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { CloseIcon, AlertIcon } from '$lib/components/icons';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils';
+	import { getCalendarRelays } from '$lib/helpers/relay-helper.js';
 	import * as m from '$lib/paraglide/messages';
 
 	/**
@@ -61,8 +62,9 @@
 					await calendarManagement.refresh();
 				}
 
-				// Generate naddr and navigate to calendar page
-				const naddr = encodeEventToNaddr(resultCalendar, []);
+				// Generate naddr with relay hints and navigate to calendar page
+				const relayHints = getCalendarRelays().slice(0, 3); // Limit to 3 per NIP-19
+				const naddr = encodeEventToNaddr(resultCalendar, relayHints);
 				console.log('Navigating to newly created calendar:', naddr);
 
 				// Call optional success callback

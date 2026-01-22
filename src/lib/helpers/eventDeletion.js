@@ -1,6 +1,7 @@
 import { EventFactory } from 'applesauce-factory';
-import { publishEvent } from '$lib/services/publish-service.js';
+import { publishEventOptimistic } from '$lib/services/publish-service.js';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+import { getCalendarRelays } from '$lib/helpers/relay-helper.js';
 
 /**
  * Delete a calendar event using NIP-09 deletion
@@ -56,21 +57,18 @@ export async function deleteCalendarEvent(event, activeUser) {
 			created_at: signedDelete.created_at
 		});
 
-		// Publish using outbox model (deletion events go to user's write relays)
-		const result = await publishEvent(signedDelete);
+		// OPTIMISTIC UI: Add to EventStore IMMEDIATELY
+		// This triggers automatic filtering in Models and removes the event from UI instantly
+		eventStore.add(signedDelete);
+		console.log('✅ Deletion event added to EventStore (optimistic)');
 
-		if (result.success) {
-			console.log('✅ Deletion event published successfully');
+		// Publish in background - user sees instant deletion, toast shows progress
+		// Deletions go to user's write relays AND calendar relays so they're found when loading events
+		publishEventOptimistic(signedDelete, [], {
+			additionalRelays: getCalendarRelays()
+		});
 
-			// Add to EventStore - this triggers automatic filtering in Models
-			// and removes the referenced event from all subscriptions
-			eventStore.add(signedDelete);
-
-			return { success: true };
-		} else {
-			console.error('❌ Failed to publish deletion event');
-			return { success: false, error: 'Failed to publish deletion event' };
-		}
+		return { success: true };
 	} catch (error) {
 		console.error('Failed to delete event:', error);
 		const errorMessage = error instanceof Error ? error.message : 'Unknown error';

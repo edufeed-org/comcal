@@ -6,11 +6,62 @@
  * 2. App-specific relays: based on event kind (calendar, communikey, educational)
  * 3. Community relays: if event targets a community (h-tag present)
  */
-import { pool } from '$lib/stores/nostr-infrastructure.svelte.js';
+import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte.js';
 import { getPublishRelays, getPrimaryWriteRelay } from './relay-service.svelte.js';
 import { getAppRelaysForCategory, kindToAppRelayCategory } from './app-relay-service.js';
 import { getRelaysForKind, getCommunityGlobalRelays } from '$lib/helpers/communityRelays.js';
 import { manager } from '$lib/stores/accounts.svelte.js';
+import { isWarmAndAuthenticated, warmRelays } from './relay-warming-service.svelte.js';
+
+/**
+ * @typedef {Object} PublishStatus
+ * @property {string} eventId - Event ID being published
+ * @property {'pending' | 'publishing' | 'success' | 'failed'} status
+ * @property {number} successCount - Number of successful relay publishes
+ * @property {number} totalRelays - Total number of relays
+ * @property {string} [error] - Error message if failed
+ */
+
+/** @type {Map<string, PublishStatus>} */
+const publishStatusMap = new Map();
+
+/** @type {Set<(status: PublishStatus) => void>} */
+const statusListeners = new Set();
+
+/**
+ * Subscribe to publish status updates
+ * @param {(status: PublishStatus) => void} callback
+ * @returns {() => void} Unsubscribe function
+ */
+export function subscribeToPublishStatus(callback) {
+	statusListeners.add(callback);
+	return () => statusListeners.delete(callback);
+}
+
+/**
+ * Get current publish status for an event
+ * @param {string} eventId
+ * @returns {PublishStatus | undefined}
+ */
+export function getPublishStatus(eventId) {
+	return publishStatusMap.get(eventId);
+}
+
+/**
+ * Notify all listeners of status update
+ * @param {PublishStatus} status
+ */
+function notifyStatusUpdate(status) {
+	publishStatusMap.set(status.eventId, status);
+	statusListeners.forEach((cb) => cb(status));
+
+	// Auto-cleanup after 10 seconds for completed statuses
+	if (status.status === 'success' || status.status === 'failed') {
+		setTimeout(() => {
+			publishStatusMap.delete(status.eventId);
+		}, 10000);
+	}
+}
 
 /**
  * Publish an event using outbox model + app relays + community relays
@@ -24,7 +75,8 @@ import { manager } from '$lib/stores/accounts.svelte.js';
  * @returns {Promise<{success: boolean, relays: string[], successCount: number}>}
  */
 export async function publishEvent(signedEvent, taggedPubkeys = [], opts = {}) {
-	const { timeout = 15000, communityEvent = null, additionalRelays = [] } = opts;
+	// Reduced timeout from 15s to 5s - warm connections should be fast
+	const { timeout = 5000, communityEvent = null, additionalRelays = [] } = opts;
 	const relaySet = new Set();
 
 	// 1. Outbox model: author's write relays + tagged users' read relays
@@ -54,13 +106,19 @@ export async function publishEvent(signedEvent, taggedPubkeys = [], opts = {}) {
 
 	const publishRelays = Array.from(relaySet);
 
+	// Fire-and-forget warming for cold relays (don't block publishing)
+	const coldRelays = publishRelays.filter((url) => !isWarmAndAuthenticated(url));
+	if (coldRelays.length > 0 && manager.active?.signer) {
+		warmRelays(coldRelays, manager.active.signer);
+	}
+
 	// Publish to all calculated relays with timeout
 	const publishPromises = publishRelays.map(async (relayUrl) => {
 		try {
 			const relay = pool.relay(relayUrl);
 
-			// Authenticate if we have a signer (NIP-42)
-			if (manager.active?.signer) {
+			// Skip authentication for already-warm-and-authenticated relays
+			if (!isWarmAndAuthenticated(relayUrl) && manager.active?.signer) {
 				try {
 					await relay.authenticate(manager.active.signer);
 				} catch (authErr) {
@@ -107,6 +165,124 @@ export function publishEventInBackground(signedEvent, taggedPubkeys = [], onComp
 			console.error('Background publish failed:', error);
 			if (onComplete) onComplete({ success: false, relays: [], successCount: 0, error });
 		});
+}
+
+/**
+ * Optimistic publish - adds event to EventStore immediately, publishes in background
+ * Returns as soon as ONE relay succeeds. Shows alert if all relays fail.
+ *
+ * @param {Object} signedEvent - The signed Nostr event
+ * @param {string[]} taggedPubkeys - Array of pubkeys tagged in the event (p tags)
+ * @param {Object} opts - Options
+ * @param {number} opts.timeout - Timeout per relay in ms (default 5000)
+ * @param {Object} opts.communityEvent - Community definition event if community-targeted
+ * @param {string[]} opts.additionalRelays - Additional relays to publish to
+ * @param {(status: PublishStatus) => void} opts.onStatusChange - Callback for status updates
+ * @returns {void} Returns immediately after adding to EventStore
+ */
+export function publishEventOptimistic(signedEvent, taggedPubkeys = [], opts = {}) {
+	const { timeout = 5000, communityEvent = null, additionalRelays = [], onStatusChange } = opts;
+
+	// 1. Immediately add to EventStore for instant UI update
+	eventStore.update(signedEvent);
+
+	// 2. Initialize status
+	const status = {
+		eventId: signedEvent.id,
+		status: /** @type {'pending' | 'publishing' | 'success' | 'failed'} */ ('pending'),
+		successCount: 0,
+		totalRelays: 0
+	};
+	notifyStatusUpdate(status);
+	onStatusChange?.(status);
+
+	// 3. Calculate relays and publish in background
+	(async () => {
+		const relaySet = new Set();
+
+		// Outbox model: author's write relays + tagged users' read relays
+		const outboxRelays = await getPublishRelays(signedEvent.pubkey, taggedPubkeys);
+		outboxRelays.forEach((r) => relaySet.add(r));
+
+		// App-specific relay for content type
+		const category = kindToAppRelayCategory(signedEvent.kind);
+		if (category) {
+			getAppRelaysForCategory(category).forEach((r) => relaySet.add(r));
+		}
+
+		// Community relays if community-targeted
+		if (communityEvent) {
+			getAppRelaysForCategory('communikey').forEach((r) => relaySet.add(r));
+			getRelaysForKind(communityEvent, signedEvent.kind).forEach((r) => relaySet.add(r));
+			getCommunityGlobalRelays(communityEvent).forEach((r) => relaySet.add(r));
+		}
+
+		// Additional relays
+		additionalRelays.forEach((r) => relaySet.add(r));
+
+		const publishRelays = Array.from(relaySet);
+		status.totalRelays = publishRelays.length;
+		status.status = 'publishing';
+		notifyStatusUpdate({ ...status });
+		onStatusChange?.({ ...status });
+
+		// Fire-and-forget warming for cold relays
+		const coldRelays = publishRelays.filter((url) => !isWarmAndAuthenticated(url));
+		if (coldRelays.length > 0 && manager.active?.signer) {
+			warmRelays(coldRelays, manager.active.signer);
+		}
+
+		let firstSuccess = false;
+
+		// Publish to all relays, update status as each completes
+		const publishPromises = publishRelays.map(async (relayUrl) => {
+			try {
+				const relay = pool.relay(relayUrl);
+
+				// Skip authentication for warm relays
+				if (!isWarmAndAuthenticated(relayUrl) && manager.active?.signer) {
+					try {
+						await relay.authenticate(manager.active.signer);
+					} catch {
+						// Continue anyway
+					}
+				}
+
+				await relay.publish(signedEvent, { timeout });
+
+				// Update success count
+				status.successCount++;
+
+				// Mark as success on first successful publish
+				if (!firstSuccess) {
+					firstSuccess = true;
+					status.status = 'success';
+				}
+
+				notifyStatusUpdate({ ...status });
+				onStatusChange?.({ ...status });
+
+				return { relay: relayUrl, success: true };
+			} catch (err) {
+				console.warn(`Failed to publish to ${relayUrl}:`, err);
+				return { relay: relayUrl, success: false, error: err };
+			}
+		});
+
+		// Wait for all to complete
+		await Promise.allSettled(publishPromises);
+
+		// If no relays succeeded, mark as failed and remove from EventStore
+		if (status.successCount === 0) {
+			status.status = 'failed';
+			status.error = 'Failed to publish to any relay';
+			notifyStatusUpdate({ ...status });
+			onStatusChange?.({ ...status });
+
+			// Remove optimistically added event since publish failed completely
+			eventStore.remove(signedEvent);
+		}
+	})();
 }
 
 /**

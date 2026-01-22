@@ -3,6 +3,7 @@
 	import Navbar from '$lib/components/Navbar.svelte';
 	import ModalManager from '$lib/components/ModalManager.svelte';
 	import Footer from '$lib/components/Footer.svelte';
+	import PublishStatusToast from '$lib/components/shared/PublishStatusToast.svelte';
 	import { initializeConfig, runtimeConfig } from '$lib/stores/config.svelte.js';
 	import { appSettings, initializeAppSettings } from '$lib/stores/app-settings.svelte.js';
 	import { browser } from '$app/environment';
@@ -23,6 +24,16 @@
 			document.documentElement.setAttribute('data-theme', appSettings.effectiveTheme);
 		}
 	});
+
+	// Pre-warm app relays on app init (fire-and-forget)
+	$effect(() => {
+		if (browser) {
+			import('$lib/services/relay-warming-service.svelte.js').then(({ warmAppRelays, startHealthCheck }) => {
+				warmAppRelays();
+				startHealthCheck();
+			});
+		}
+	});
 </script>
 
 <svelte:head>
@@ -36,3 +47,4 @@
 <ModalManager />
 {@render children?.()}
 <Footer />
+<PublishStatusToast />

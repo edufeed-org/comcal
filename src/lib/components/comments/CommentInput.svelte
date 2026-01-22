@@ -1,6 +1,6 @@
 <script>
 	import { EventFactory } from 'applesauce-factory';
-	import { publishEvent } from '$lib/services/publish-service.js';
+	import { publishEventOptimistic } from '$lib/services/publish-service.js';
 	import { getPrimaryWriteRelay } from '$lib/services/relay-service.svelte.js';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { generateCommentTags } from '$lib/helpers/commentTags.js';
@@ -48,8 +48,10 @@
 
 		if (!activeUser || !content.trim() || !rootEvent) return;
 
-		isPosting = true;
+		const commentContent = content.trim();
+		content = ''; // Clear input immediately for instant feedback
 		error = '';
+		isPosting = true; // Show loading during signing (may require user approval)
 
 		try {
 			// Create EventFactory for the user
@@ -70,35 +72,29 @@
 			// Create the comment event
 			const commentEvent = await factory.build({
 				kind: 1111,
-				content: content.trim(),
+				content: commentContent,
 				tags
 			});
 
-			// Sign the event
+			// Sign the event (may require user approval in browser extension)
 			const signedEvent = await factory.sign(commentEvent);
+			isPosting = false; // Signing complete
 
 			console.log('Comment event created:', signedEvent);
 
-			// Publish using outbox model (tag root event author for discoverability)
-			const result = await publishEvent(signedEvent, [rootEvent.pubkey]);
+			// Add to eventStore immediately for instant UI update
+			eventStore.add(signedEvent);
 
-			if (result.success) {
-				console.log('Comment published successfully');
-				eventStore.add(signedEvent);
+			// Call callback immediately (optimistic)
+			onCommentPosted(signedEvent);
 
-				// Clear input
-				content = '';
-
-				// Call callback
-				onCommentPosted(signedEvent);
-			} else {
-				console.error('Failed to publish comment');
-				error = m.comments_input_publish_error();
-			}
+			// Publish optimistically in background (returns immediately)
+			publishEventOptimistic(signedEvent, [rootEvent.pubkey]);
 		} catch (err) {
 			console.error('Failed to post comment:', err);
 			error = m.comments_input_generic_error();
-		} finally {
+			// Restore content if signing failed
+			content = commentContent;
 			isPosting = false;
 		}
 	}

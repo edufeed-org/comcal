@@ -64,6 +64,16 @@
 		}
 	});
 
+	// Pre-warm community relays when community event is loaded
+	$effect(() => {
+		if (communikeyEvent) {
+			import('$lib/services/relay-warming-service.svelte.js').then(({ warmCommunityRelays }) => {
+				const signer = activeUser()?.signer || null;
+				warmCommunityRelays(communikeyEvent, signer);
+			});
+		}
+	});
+
 	// Load community profile for header display
 	$effect(() => {
 		// Reset profile when community changes

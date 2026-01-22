@@ -8,7 +8,7 @@
 	import NostrIdentifierParser from '$lib/components/shared/NostrIdentifierParser.svelte';
 	import CompactCommunityHeader from '$lib/components/community/layout/CompactCommunityHeader.svelte';
 	import * as m from '$lib/paraglide/messages';
-	import { publishEvent } from '$lib/services/publish-service.js';
+	import { publishEventOptimistic } from '$lib/services/publish-service.js';
 	import { getAppRelaysForCategory } from '$lib/services/app-relay-service.js';
 
 	/** @type {any} */
@@ -118,45 +118,34 @@
 
 		if (!activeUser || !newMessage.trim() || !derivedCommunityPubkey) return;
 
-		isSending = true;
+		const messageContent = newMessage.trim();
+		newMessage = ''; // Clear input immediately for instant feedback
+		isSending = true; // Show loading during signing
 
 		try {
 			// Create kind 9 event with community h-tag
 			const chatEvent = {
 				kind: 9,
-				content: newMessage.trim(),
+				content: messageContent,
 				tags: [['h', derivedCommunityPubkey]],
 				created_at: Math.floor(Date.now() / 1000),
 				pubkey: activeUser.pubkey
 			};
 
-			// Sign and publish the event
+			// Sign the event (may require user approval in browser extension)
 			const signedEvent = await activeUser.signer.signEvent(chatEvent);
+			isSending = false; // Signing complete
 
 			// Add immediately to local messages for instant UI feedback
 			messages = [...messages, signedEvent].sort((a, b) => a.created_at - b.created_at);
+			eventStore.add(signedEvent);
 
-			console.log('Chat event created:', signedEvent);
-
-			try {
-				// Publish with community event for proper relay routing
-				const publishResult = await publishEvent(signedEvent, [derivedCommunityPubkey], { communityEvent: communikeyEvent });
-				if (publishResult.success) {
-					console.log(`Chat event published to ${publishResult.successCount} of ${publishResult.relays.length} relays`);
-					eventStore.add(signedEvent);
-				} else {
-					console.log('Failed to publish chat event to any relay');
-				}
-			} catch (error) {
-				console.error('Error publishing to relays:', error);
-			}
-
-			// Clear input
-			newMessage = '';
+			// Publish optimistically in background (returns immediately)
+			publishEventOptimistic(signedEvent, [derivedCommunityPubkey], { communityEvent: communikeyEvent });
 		} catch (error) {
 			console.error('Failed to send message:', error);
-			// TODO: Show error toast/notification
-		} finally {
+			// Restore message if signing failed
+			newMessage = messageContent;
 			isSending = false;
 		}
 	}

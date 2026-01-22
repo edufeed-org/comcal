@@ -52,6 +52,26 @@ async function initializeAccountPersistence() {
 			console.error('❌ Failed to save active account:', error);
 		}
 	});
+
+	// Step 5: Pre-warm relays when user logs in
+	manager.active$.subscribe(async (account) => {
+		if (account) {
+			// Use dynamic import to avoid circular dependencies
+			const { warmUserRelays, warmAppRelays, clearWarmStatus } = await import(
+				'$lib/services/relay-warming-service.svelte.js'
+			);
+
+			// Warm user's write relays and app relays with authentication
+			warmUserRelays(account.pubkey, account.signer);
+			warmAppRelays(account.signer);
+		} else {
+			// User logged out - clear warm status
+			const { clearWarmStatus } = await import(
+				'$lib/services/relay-warming-service.svelte.js'
+			);
+			clearWarmStatus();
+		}
+	});
 }
 
 // Initialize persistence when module loads (client-side only)

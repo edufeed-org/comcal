@@ -9,7 +9,7 @@ import { manager } from '$lib/stores/accounts.svelte';
 import { validateEventForm, convertFormDataToEvent, createEventTargetingTags } from '../helpers/calendar.js';
 import { calendarStore } from './calendar-events.svelte.js';
 import { getCalendarEventMetadata } from '../helpers/eventUtils.js';
-import { publishEvent, buildATagWithHint, buildETagWithHint, buildPTagsWithHints } from '$lib/services/publish-service.js';
+import { publishEvent, publishEventOptimistic, buildATagWithHint, buildETagWithHint, buildPTagsWithHints } from '$lib/services/publish-service.js';
 
 /**
  * @typedef {import('../types/calendar.js').CalendarEvent} CalendarEvent
@@ -124,7 +124,6 @@ export function createCalendarActions(communityPubkey) {
 				});
 
 			const calendarEvent = await currentAccount.signEvent(eventTemplate);
-			await publishEvent(calendarEvent, [], { communityEvent });
 
 			// Add dTag property to the event object for calendar management
 				const eventWithDTag = {
@@ -134,10 +133,13 @@ export function createCalendarActions(communityPubkey) {
 
 				// Transform the raw Nostr event to CalendarEvent format for immediate UI display
 				const transformedEvent = getCalendarEventMetadata(eventWithDTag);
-				
+
 				// Add the transformed event to the calendar store for immediate UI update
 				calendarStore.setEvents([...calendarStore.events, transformedEvent]);
 				console.log('📅 Calendar Actions: Added transformed event to store');
+
+			// Publish optimistically in background (returns immediately)
+			publishEventOptimistic(calendarEvent, [], { communityEvent });
 
 				// Return the created event so caller can handle sharing/adding to calendars
 				return eventWithDTag;
@@ -258,7 +260,6 @@ export function createCalendarActions(communityPubkey) {
 				});
 
 			const updatedEvent = await currentAccount.signEvent(eventTemplate);
-			await publishEvent(updatedEvent, [], { communityEvent });
 
 			// Add dTag property to the event object
 				const eventWithDTag = {
@@ -268,14 +269,17 @@ export function createCalendarActions(communityPubkey) {
 
 				// Transform the raw Nostr event to CalendarEvent format for immediate UI display
 				const transformedEvent = getCalendarEventMetadata(eventWithDTag);
-				
-				// Update the event in the calendar store
+
+				// Update the event in the calendar store immediately
 				const currentEvents = calendarStore.events;
-				const updatedEvents = currentEvents.map(evt => 
+				const updatedEvents = currentEvents.map(evt =>
 					evt.id === existingEvent.id ? transformedEvent : evt
 				);
 				calendarStore.setEvents(updatedEvents);
 				console.log('📅 Calendar Actions: Updated event in store');
+
+			// Publish optimistically in background
+			publishEventOptimistic(updatedEvent, [], { communityEvent });
 
 				// Return the updated event
 				return eventWithDTag;

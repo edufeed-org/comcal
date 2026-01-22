@@ -8,6 +8,7 @@
 	import { goto } from '$app/navigation';
 	import { validateEventForm, getCurrentTimezone } from '../../helpers/calendar.js';
 	import { encodeEventToNaddr } from '../../helpers/nostrUtils.js';
+	import { getCalendarRelays } from '$lib/helpers/relay-helper.js';
 	import { useCalendarActions } from '../../stores/calendar-actions.svelte.js';
 	import { useCalendarManagement } from '../../stores/calendar-management-store.svelte.js';
 	import { useJoinedCommunitiesList } from '../../stores/joined-communities-list.svelte.js';
@@ -244,8 +245,9 @@
 						);
 					}
 					
-					// Generate naddr and navigate to event page
-					const naddr = encodeEventToNaddr(resultEvent, []);
+					// Generate naddr with relay hints and navigate to event page
+					const relayHints = getCalendarRelays().slice(0, 3); // Limit to 3 per NIP-19
+					const naddr = encodeEventToNaddr(resultEvent, relayHints);
 					console.log('Navigating to newly created event:', naddr);
 					
 					onEventCreated();

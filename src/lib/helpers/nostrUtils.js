@@ -2,6 +2,7 @@ import { nip19 } from "nostr-tools";
 import { eventLoader, addressLoader } from "$lib/loaders";
 import { firstValueFrom } from "rxjs";
 import { getCalendarEventStart, getSeenRelays } from "applesauce-core/helpers";
+import { eventStore } from "$lib/stores/nostr-infrastructure.svelte.js";
 
 
 /**
@@ -190,7 +191,13 @@ export const fetchEventById = async (
         const decoded = nip19.decode(identifier);
         if (decoded.type === "naddr") {
           const data = decoded.data;
-          
+
+          // CHECK EVENTSTORE FIRST for optimistically added events
+          const localEvent = eventStore.getReplaceable(data.kind, data.pubkey, data.identifier);
+          if (localEvent) {
+            return localEvent;
+          }
+
           // Create address pointer with relay hints
           /** @type {{ kind: number; pubkey: string; identifier: string; relays?: string[] }} */
           const addressPointer = {
@@ -198,13 +205,13 @@ export const fetchEventById = async (
             pubkey: data.pubkey,
             identifier: data.identifier
           };
-          
+
           // Include relay hints if present (addressLoader will prioritize them)
           if (data.relays && data.relays.length > 0) {
             addressPointer.relays = data.relays;
           }
-          
-          // Use addressLoader for addressable events
+
+          // Use addressLoader for addressable events (fetches from relays)
           const event$ = addressLoader(addressPointer);
           const event = await firstValueFrom(event$, { defaultValue: null });
           return event || null;
