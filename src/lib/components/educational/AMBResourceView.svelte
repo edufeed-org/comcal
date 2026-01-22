@@ -79,7 +79,7 @@
 		window.location.reload();
 	}
 
-	// Parse related resources from 'a' tags
+	// Parse related resources from 'a' tags (includes relay hints when available)
 	const relatedResources = $derived.by(() => {
 		return (
 			event.tags
@@ -87,11 +87,13 @@
 				.map((/** @type {any} */ t) => {
 					try {
 						const [kind, pubkey, identifier] = t[1].split(':');
+						const relayHint = t[2]; // a-tag format: ['a', 'kind:pubkey:d-tag', 'relay-hint']
 						return {
 							naddr: nip19.naddrEncode({
 								kind: parseInt(kind),
 								pubkey,
-								identifier
+								identifier,
+								relays: relayHint ? [relayHint] : undefined
 							}),
 							raw: t[1],
 							label: identifier || t[1]

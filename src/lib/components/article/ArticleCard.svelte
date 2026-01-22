@@ -10,7 +10,7 @@
 	import ImageWithFallback from '../shared/ImageWithFallback.svelte';
 	import ReactionBar from '../reactions/ReactionBar.svelte';
 	import EventTags from '../calendar/EventTags.svelte';
-	import { nip19 } from 'nostr-tools';
+	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
 
 	/**
 	 * @typedef {Object} Props
@@ -59,21 +59,10 @@
 		getProfilePicture(authorProfile) || `https://robohash.org/${article.pubkey}`
 	);
 
-	// Generate naddr for the article
+	// Generate naddr for the article (includes relay hints for discoverability)
 	const articleNaddr = $derived.by(() => {
-		try {
-			const dTag = article.tags?.find((/** @type {any} */ t) => t[0] === 'd');
-			if (!dTag?.[1]) return null;
-			
-			return nip19.naddrEncode({
-				kind: article.kind,
-				pubkey: article.pubkey,
-				identifier: dTag[1]
-			});
-		} catch (error) {
-			console.error('Error encoding naddr:', error);
-			return null;
-		}
+		const naddr = encodeEventToNaddr(article);
+		return naddr || null;
 	});
 
 	/**
