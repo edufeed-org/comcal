@@ -16,6 +16,7 @@
 	import { getLabelsWithFallback } from '$lib/helpers/educational/ambTransform.js';
 	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import * as m from '$lib/paraglide/messages.js';
+	import MarkdownRenderer from '../shared/MarkdownRenderer.svelte';
 
 	// Helper to determine if identifier is a nostr URI
 	/**
@@ -189,9 +190,7 @@
 
 		<!-- Description -->
 		{#if resource.description && !compact}
-			<p class="text-base-content/70 text-sm line-clamp-3">
-				{resource.description}
-			</p>
+			<MarkdownRenderer content={resource.description} class="text-base-content/70 text-sm line-clamp-3" />
 		{/if}
 
 		<!-- Metadata Badges -->

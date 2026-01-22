@@ -15,6 +15,7 @@
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { transformRsvps } from '$lib/helpers/rsvpUtils.js';
 	import ImageWithFallback from '../shared/ImageWithFallback.svelte';
+	import MarkdownRenderer from '../shared/MarkdownRenderer.svelte';
 
 	/**
 	 * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
@@ -195,9 +196,7 @@
 
 	<!-- Event Summary (full mode only) -->
 	{#if event.summary && !compact}
-		<div class="text-sm text-base-content/80 mb-3 line-clamp-2 break-words">
-			{event.summary}
-		</div>
+		<MarkdownRenderer content={event.summary} class="text-sm text-base-content/80 mb-3 line-clamp-2 break-words" />
 	{/if}
 
 	<!-- Event Type Badge and Creation Date (full mode only) -->

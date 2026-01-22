@@ -20,6 +20,7 @@
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import { getLabelsWithFallback } from '$lib/helpers/educational/ambTransform.js';
 	import * as m from '$lib/paraglide/messages.js';
+	import MarkdownRenderer from '../shared/MarkdownRenderer.svelte';
 
 	/**
 	 * @typedef {Object} Props
@@ -216,9 +217,7 @@
 
 		<!-- Description -->
 		{#if resource.description}
-			<p class="text-xl text-base-content/80 mb-6">
-				{resource.description}
-			</p>
+			<MarkdownRenderer content={resource.description} class="prose prose-lg max-w-none text-base-content/80 mb-6" />
 		{/if}
 
 		<!-- Metadata bar -->

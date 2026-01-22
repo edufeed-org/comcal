@@ -11,6 +11,7 @@
 	import LocationLink from '../LocationLink.svelte';
 	import { CopyIcon } from '$lib/components/icons';
 	import { getCalendarEventStart, getCalendarEventEnd } from 'applesauce-core/helpers';
+	import MarkdownRenderer from '../MarkdownRenderer.svelte';
 
 	let { identifier, decoded, inline = false } = $props();
 
@@ -138,9 +139,7 @@
 					</div>
 
 					{#if event.summary}
-						<p class="text-sm text-base-content/60 mt-2 line-clamp-2">
-							{event.summary}
-						</p>
+						<MarkdownRenderer content={event.summary} class="text-sm text-base-content/60 mt-2 line-clamp-2" />
 					{/if}
 				</div>
 			</div>
