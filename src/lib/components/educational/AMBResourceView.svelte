@@ -21,6 +21,9 @@
 	import { getLabelsWithFallback } from '$lib/helpers/educational/ambTransform.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import MarkdownRenderer from '../shared/MarkdownRenderer.svelte';
+	import { deleteEvent } from '$lib/helpers/eventDeletion.js';
+	import { showToast } from '$lib/helpers/toast.js';
+	import { TrashIcon } from '$lib/components/icons';
 
 	/**
 	 * @typedef {Object} Props
@@ -53,6 +56,10 @@
 	// Edit modal state
 	let showEditModal = $state(false);
 
+	// Delete state
+	let showDeleteConfirmation = $state(false);
+	let isDeletingResource = $state(false);
+
 	// Check if current user owns this resource
 	const isOwner = $derived(activeUser?.pubkey === event.pubkey);
 
@@ -78,6 +85,32 @@
 		showEditModal = false;
 		// Refresh the page to show updated content
 		window.location.reload();
+	}
+
+	/**
+	 * Handle resource deletion
+	 */
+	async function handleDeleteResource() {
+		if (!activeUser || !event) return;
+
+		isDeletingResource = true;
+		try {
+			const result = await deleteEvent(event, activeUser);
+
+			if (result.success) {
+				showToast('Resource deleted successfully', 'success');
+				showDeleteConfirmation = false;
+				// Navigate to discover page
+				goto('/discover');
+			} else {
+				showToast(result.error || 'Failed to delete resource', 'error');
+			}
+		} catch (error) {
+			console.error('Failed to delete resource:', error);
+			showToast('An error occurred while deleting the resource', 'error');
+		} finally {
+			isDeletingResource = false;
+		}
 	}
 
 	// Parse related resources from 'a' tags (includes relay hints when available)
@@ -287,6 +320,14 @@
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
 						</svg>
 						Edit
+					</button>
+					<button
+						class="btn btn-outline btn-error btn-sm"
+						onclick={() => (showDeleteConfirmation = true)}
+						aria-label="Delete resource"
+					>
+						<TrashIcon class="w-4 h-4" />
+						Delete
 					</button>
 				{/if}
 				{#if activeUser}
@@ -608,4 +649,39 @@
 		onClose={handleEditModalClose}
 		onPublished={handleResourceUpdated}
 	/>
+{/if}
+
+<!-- Delete Confirmation Modal -->
+{#if showDeleteConfirmation}
+	<div class="modal modal-open">
+		<div class="modal-box">
+			<h3 class="text-lg font-bold">Delete Resource?</h3>
+			<p class="py-4">
+				Are you sure you want to delete <strong>{resource.name}</strong>?
+				<br />
+				This action cannot be undone.
+			</p>
+			<div class="modal-action">
+				<button
+					class="btn"
+					onclick={() => (showDeleteConfirmation = false)}
+					disabled={isDeletingResource}
+				>
+					Cancel
+				</button>
+				<button
+					class="btn btn-error"
+					onclick={handleDeleteResource}
+					disabled={isDeletingResource}
+				>
+					{#if isDeletingResource}
+						<span class="loading loading-spinner loading-sm"></span>
+						Deleting...
+					{:else}
+						Delete Resource
+					{/if}
+				</button>
+			</div>
+		</div>
+	</div>
 {/if}

@@ -54,7 +54,6 @@ import { getPrimaryWriteRelay } from '$lib/services/relay-service.svelte.js';
  * @typedef {Object} EducationalActions
  * @property {(formData: EducationalFormData, communityPubkey: string, communityEvent?: Object) => Promise<{event: import('nostr-tools').NostrEvent, naddr: string}>} createResource
  * @property {(formData: EducationalFormData, existingEvent: import('nostr-tools').NostrEvent, communityEvent?: Object) => Promise<{event: import('nostr-tools').NostrEvent, naddr: string}>} updateResource
- * @property {(eventId: string) => Promise<void>} deleteResource
  * @property {(resourceEvent: import('nostr-tools').NostrEvent, communityPubkey: string, communityEvent?: Object) => Promise<void>} createTargetedPublication
  */
 
@@ -333,42 +332,6 @@ export function createEducationalActions() {
 				console.error('Error updating educational resource:', error);
 				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 				throw new Error(`Failed to update educational resource: ${errorMessage}`);
-			}
-		},
-
-		/**
-		 * Delete an educational resource
-		 * @param {string} eventId - Event ID to delete
-		 * @returns {Promise<void>}
-		 */
-		async deleteResource(eventId) {
-			// Get current account
-			const currentAccount = manager.active;
-			if (!currentAccount) {
-				throw new Error('No account selected. Please log in to delete resources.');
-			}
-
-			try {
-				// Create a deletion event (kind 5 - NIP-09) with relay hint
-				const eventFactory = new EventFactory();
-				const eTagWithHint = await buildETagWithHint(eventId, currentAccount.pubkey);
-
-				const eventTemplate = await eventFactory.build({
-					kind: 5,
-					content: '',
-					tags: [eTagWithHint]
-				});
-
-				// Sign and publish the deletion event
-				const deletionEvent = await currentAccount.signEvent(eventTemplate);
-				await publishEvent(deletionEvent, []);
-
-				console.log('📚 Educational resource deleted:', eventId);
-
-			} catch (error) {
-				console.error('Error deleting educational resource:', error);
-				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-				throw new Error(`Failed to delete educational resource: ${errorMessage}`);
 			}
 		},
 
