@@ -9,7 +9,7 @@ import { manager } from '$lib/stores/accounts.svelte';
 import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { flattenAMBToNostrTags } from '$lib/helpers/educational/ambTransform.js';
 import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
-import { publishEvent, buildATagWithHint, buildETagWithHint } from '$lib/services/publish-service.js';
+import { publishEvent, publishEventOptimistic, buildATagWithHint, buildETagWithHint } from '$lib/services/publish-service.js';
 import { getAppRelaysForCategory } from '$lib/services/app-relay-service.js';
 import { getPrimaryWriteRelay } from '$lib/services/relay-service.svelte.js';
 
@@ -48,6 +48,7 @@ import { getPrimaryWriteRelay } from '$lib/services/relay-service.svelte.js';
  * @property {boolean} [isAccessibleForFree] - Whether the resource is freely accessible
  * @property {string} [educationalLevel] - Optional SKOS URI for educational level
  * @property {string} [educationalLevelLabel] - Human-readable label
+ * @property {string[]} [externalUrls] - Array of external reference URLs (r-tags)
  */
 
 /**
@@ -64,14 +65,25 @@ const AMB_RESOURCE_KIND = 30142;
 const TARGETED_PUBLICATION_KIND = 30222;
 
 /**
+ * Generate a random 8-character identifier
+ * @returns {string} Random alphanumeric ID
+ */
+function generateRandomId() {
+	return Math.random().toString(36).substring(2, 10);
+}
+
+/**
  * Converts form data to AMB-structured metadata object
  * @param {EducationalFormData} formData - Form data from the upload modal
  * @returns {Object} AMB metadata object ready for flattening
  */
 function convertFormDataToAMB(formData) {
+	// Use provided slug/URL or generate random ID
+	const identifier = formData.slug?.trim() || generateRandomId();
+
 	/** @type {Record<string, any>} */
 	const amb = {
-		id: formData.slug,
+		id: identifier,
 		name: formData.name,
 		description: formData.description,
 		inLanguage: formData.inLanguage,
@@ -178,9 +190,7 @@ export function createEducationalActions() {
 			if (!formData.description?.trim()) {
 				throw new Error('Resource description is required');
 			}
-			if (!formData.slug?.trim()) {
-				throw new Error('Resource identifier (slug) is required');
-			}
+			// Note: slug is optional - will auto-generate random ID if empty
 			if (!formData.learningResourceType) {
 				throw new Error('Learning resource type is required');
 			}
@@ -216,6 +226,15 @@ export function createEducationalActions() {
 					}
 				}
 
+				// Add r-tags for external reference URLs (NIP-24)
+				if (formData.externalUrls?.length > 0) {
+					for (const url of formData.externalUrls) {
+						if (url.trim()) {
+							tags.push(['r', url.trim()]);
+						}
+					}
+				}
+
 				// Create the event using EventFactory
 				const eventFactory = new EventFactory();
 
@@ -225,12 +244,9 @@ export function createEducationalActions() {
 					tags: tags
 				});
 
-				// Sign and publish using outbox + educational relays
+				// Sign and publish optimistically (adds to store immediately)
 				const resourceEvent = await currentAccount.signEvent(eventTemplate);
-				await publishEvent(resourceEvent, [], { communityEvent });
-
-				// Add to eventStore for immediate UI update
-				eventStore.add(resourceEvent);
+				publishEventOptimistic(resourceEvent, [], { communityEvent });
 
 				// Generate naddr using educational relays for hint
 				const naddr = encodeEventToNaddr(resourceEvent, getAppRelaysForCategory('educational'));
@@ -305,6 +321,15 @@ export function createEducationalActions() {
 					}
 				}
 
+				// Add r-tags for external reference URLs (NIP-24)
+				if (formData.externalUrls?.length > 0) {
+					for (const url of formData.externalUrls) {
+						if (url.trim()) {
+							tags.push(['r', url.trim()]);
+						}
+					}
+				}
+
 				// Create the updated event
 				const eventFactory = new EventFactory();
 
@@ -314,12 +339,9 @@ export function createEducationalActions() {
 					tags: tags
 				});
 
-				// Sign and publish using outbox + educational relays
+				// Sign and publish optimistically (adds to store immediately)
 				const updatedEvent = await currentAccount.signEvent(eventTemplate);
-				await publishEvent(updatedEvent, [], { communityEvent });
-
-				// Add to eventStore
-				eventStore.add(updatedEvent);
+				publishEventOptimistic(updatedEvent, [], { communityEvent });
 
 				// Generate naddr using educational relays for hint
 				const naddr = encodeEventToNaddr(updatedEvent, getAppRelaysForCategory('educational'));
@@ -379,12 +401,9 @@ export function createEducationalActions() {
 					tags: tags
 				});
 
-				// Sign and publish (kind 30222 uses communikey relays)
+				// Sign and publish optimistically (kind 30222 uses communikey relays)
 				const targetingEvent = await currentAccount.signEvent(eventTemplate);
-				await publishEvent(targetingEvent, [communityPubkey], { communityEvent });
-
-				// Add to eventStore
-				eventStore.add(targetingEvent);
+				publishEventOptimistic(targetingEvent, [communityPubkey], { communityEvent });
 
 				console.log('📚 Targeted publication created for community:', communityPubkey);
 

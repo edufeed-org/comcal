@@ -11,6 +11,7 @@
 	import SKOSDropdown from './SKOSDropdown.svelte';
 	import BlossomUploader from './BlossomUploader.svelte';
 	import CreatorInput from './CreatorInput.svelte';
+	import ExternalUrlInput from './ExternalUrlInput.svelte';
 	import { createEducationalActions } from '$lib/stores/educational-actions.svelte.js';
 	import { fetchProfileData } from '$lib/helpers/profile.js';
 	import * as m from '$lib/paraglide/messages';
@@ -55,7 +56,7 @@
 		// Content & Creators (Step 3)
 		creators: /** @type {Creator[]} */ ([]),
 		encodings: /** @type {UploadedFile[]} */ ([]),
-		externalUrl: '',
+		externalUrls: /** @type {string[]} */ ([]),
 
 		// Rights (Step 4)
 		license: 'https://creativecommons.org/licenses/by/4.0/',
@@ -67,8 +68,8 @@
 	let isSubmitting = $state(false);
 	let submitError = $state('');
 
-	// Track if user manually edited the identifier
-	let identifierManuallyEdited = $state(false);
+	// URL validation for identifier field
+	let identifierUrlError = $state('');
 
 	// Get active user
 	let activeUser = $state(manager.active);
@@ -163,7 +164,8 @@
 		getAMBLicense,
 		isAMBFree,
 		getAMBEncodings,
-		getAMBCreatorNames
+		getAMBCreatorNames,
+		getAMBExternalUrls
 	} from '$lib/helpers/educational/ambHelpers.js';
 
 	/**
@@ -174,7 +176,7 @@
 		validationErrors = [];
 		isSubmitting = false;
 		submitError = '';
-		identifierManuallyEdited = isEditMode; // If editing, identifier is already set
+		identifierUrlError = '';
 		
 		// If editing, prefill with existing data
 		if (isEditMode && editEvent && editResource) {
@@ -242,7 +244,7 @@
 				size: enc.size,
 				sha256: enc.sha256
 			})),
-			externalUrl: '',
+			externalUrls: getAMBExternalUrls(editEvent),
 			license: getAMBLicense(editEvent)?.id || 'https://creativecommons.org/licenses/by/4.0/',
 			isAccessibleForFree: isAMBFree(editEvent)
 		};
@@ -263,7 +265,7 @@
 					pubkey: activeUser.pubkey
 				}] : [],
 				encodings: [],
-				externalUrl: '',
+				externalUrls: [],
 				license: 'https://creativecommons.org/licenses/by/4.0/',
 				isAccessibleForFree: true
 			};
@@ -299,31 +301,29 @@
 	}
 
 	/**
-	 * Generate slug from title
-	 * @param {string} title
-	 * @returns {string}
+	 * Validate URL format
+	 * @param {string} url
+	 * @returns {boolean}
 	 */
-	function generateSlug(title) {
-		return title
-			.toLowerCase()
-			.replace(/[äöüß]/g, (c) => ({ 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'ß': 'ss' }[c] || c))
-			.replace(/[^a-z0-9]+/g, '-')
-			.replace(/^-|-$/g, '')
-			.slice(0, 50);
+	function isValidUrl(url) {
+		if (!url?.trim()) return true; // Empty is valid (will auto-generate)
+		try {
+			const parsed = new URL(url.trim());
+			return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+		} catch {
+			return false;
+		}
 	}
 
-	// Auto-generate identifier from name (only if not manually edited)
-	$effect(() => {
-		if (formData.name && !identifierManuallyEdited) {
-			formData.identifier = generateSlug(formData.name);
-		}
-	});
-
 	/**
-	 * Handle manual identifier input
+	 * Handle identifier URL blur - validate on focus loss
 	 */
-	function handleIdentifierInput() {
-		identifierManuallyEdited = true;
+	function handleIdentifierBlur() {
+		if (formData.identifier?.trim() && !isValidUrl(formData.identifier)) {
+			identifierUrlError = 'Please enter a valid URL or leave empty';
+		} else {
+			identifierUrlError = '';
+		}
 	}
 
 	/**
@@ -335,6 +335,11 @@
 
 		switch (currentStep) {
 			case 1:
+				// Validate URL if provided
+				if (formData.identifier?.trim() && !isValidUrl(formData.identifier)) {
+					validationErrors.push('Resource URL must be a valid URL or left empty');
+					identifierUrlError = 'Please enter a valid URL or leave empty';
+				}
 				if (!formData.name.trim()) {
 					validationErrors.push('Title is required');
 				}
@@ -402,7 +407,7 @@
 		const resourceData = {
 			name: formData.name,
 			description: formData.description,
-			slug: formData.identifier || generateSlug(formData.name),
+			slug: formData.identifier?.trim() || '', // Empty = will auto-generate random ID
 			learningResourceType: formData.learningResourceType[0]?.id || '',
 			learningResourceTypeLabel: formData.learningResourceType[0]?.label || '',
 			about: formData.about.map(s => s.id),
@@ -412,7 +417,8 @@
 			creators: formData.creators,
 			keywords: formData.keywords,
 			files: formData.encodings,
-			isAccessibleForFree: formData.isAccessibleForFree
+			isAccessibleForFree: formData.isAccessibleForFree,
+			externalUrls: formData.externalUrls
 		};
 			
 			let result;
@@ -557,6 +563,34 @@
 				<!-- Step 1: Basic Info -->
 				{#if currentStep === 1}
 					<div class="space-y-4">
+						<!-- Resource URL (Identifier) - First field -->
+						<div class="form-control">
+							<label class="label">
+								<span class="label-text font-medium">Resource URL (optional)</span>
+							</label>
+							<input
+								type="url"
+								class="input input-bordered w-full"
+								class:input-error={identifierUrlError}
+								bind:value={formData.identifier}
+								onblur={handleIdentifierBlur}
+								placeholder="https://example.com/my-resource"
+								readonly={isEditMode}
+								disabled={isEditMode}
+							/>
+							{#if identifierUrlError}
+								<label class="label">
+									<span class="label-text-alt text-error">{identifierUrlError}</span>
+								</label>
+							{:else}
+								<label class="label">
+									<span class="label-text-alt text-base-content/60">
+										{isEditMode ? 'URL cannot be changed when editing.' : 'Enter the URL where this content is hosted. Leave empty to auto-generate an identifier.'}
+									</span>
+								</label>
+							{/if}
+						</div>
+
 						<!-- Title -->
 						<div class="form-control">
 							<label class="label">
@@ -606,27 +640,6 @@
 								bind:value={formData.image}
 								placeholder="https://..."
 							/>
-						</div>
-
-						<!-- Identifier -->
-						<div class="form-control">
-							<label class="label">
-								<span class="label-text font-medium">Identifier (URL-friendly)</span>
-							</label>
-					<input
-						type="text"
-						class="input input-bordered w-full font-mono text-sm"
-						bind:value={formData.identifier}
-						oninput={handleIdentifierInput}
-						placeholder="auto-generated-from-title"
-						readonly={isEditMode}
-						disabled={isEditMode}
-					/>
-					<label class="label">
-						<span class="label-text-alt text-base-content/60">
-							{isEditMode ? 'Identifier cannot be changed when editing.' : 'Used in the URL. Auto-generated from title if empty.'}
-						</span>
-					</label>
 						</div>
 					</div>
 				{/if}
@@ -705,23 +718,12 @@
 							multiple={true}
 						/>
 
-						<!-- External URL -->
-						<div class="form-control">
-							<label class="label">
-								<span class="label-text font-medium">External Content URL (optional)</span>
-							</label>
-							<input
-								type="url"
-								class="input input-bordered w-full"
-								bind:value={formData.externalUrl}
-								placeholder="https://youtube.com/... or other URL"
-							/>
-							<label class="label">
-								<span class="label-text-alt text-base-content/60">
-									Link to external content (YouTube, Vimeo, website, etc.)
-								</span>
-							</label>
-						</div>
+						<!-- External URLs -->
+						<ExternalUrlInput
+							bind:urls={formData.externalUrls}
+							label="External References (optional)"
+							helpText="Add links to external content (YouTube, Vimeo, websites, etc.)"
+						/>
 					</div>
 				{/if}
 
@@ -794,6 +796,12 @@
 									<dt class="w-28 text-base-content/60">License:</dt>
 									<dd class="flex-1">{licenseOptions.find((l) => l.id === formData.license)?.label}</dd>
 								</div>
+								{#if formData.externalUrls.length > 0}
+									<div class="flex">
+										<dt class="w-28 text-base-content/60">External URLs:</dt>
+										<dd class="flex-1">{formData.externalUrls.length} link(s)</dd>
+									</div>
+								{/if}
 							</dl>
 						</div>
 

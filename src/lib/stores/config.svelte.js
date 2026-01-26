@@ -16,6 +16,8 @@ const defaultConfig = {
 	gitRepo: 'https://github.com/edufeed-org/comcal',
 	// NIP-65 relay list discovery relays
 	relayListLookupRelays: [],
+	// Profile indexer relays for bulk profile lookups
+	indexerRelays: [],
 	// Fallback relays for users without kind 10002
 	fallbackRelays: [],
 	// App-specific relays (content goes here IN ADDITION to user's outbox)
@@ -141,6 +143,7 @@ export function initializeConfig(runtimeConfig) {
 		logo: runtimeConfig.appLogo || defaultConfig.logo,
 		gitRepo: runtimeConfig.gitRepo || defaultConfig.gitRepo,
 		relayListLookupRelays: runtimeConfig.relayListLookupRelays || defaultConfig.relayListLookupRelays,
+		indexerRelays: runtimeConfig.indexerRelays || defaultConfig.indexerRelays,
 		fallbackRelays: runtimeConfig.fallbackRelays || defaultConfig.fallbackRelays,
 		appRelays: {
 			calendar: runtimeConfig.calendarRelays || defaultConfig.appRelays.calendar,
@@ -240,6 +243,9 @@ export const runtimeConfig = {
 	},
 	get relayListLookupRelays() {
 		return config.relayListLookupRelays;
+	},
+	get indexerRelays() {
+		return config.indexerRelays;
 	},
 	get fallbackRelays() {
 		return config.fallbackRelays;

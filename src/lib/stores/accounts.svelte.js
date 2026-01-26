@@ -72,6 +72,18 @@ async function initializeAccountPersistence() {
 			clearWarmStatus();
 		}
 	});
+
+	// Step 6: Load contacts for follow list search when user logs in
+	manager.active$.subscribe(async (account) => {
+		// Use dynamic import to avoid circular dependencies
+		const { contactsStore } = await import('./contacts.svelte.js');
+
+		if (account) {
+			contactsStore.loadContacts(account.pubkey);
+		} else {
+			contactsStore.clear();
+		}
+	});
 }
 
 // Initialize persistence when module loads (client-side only)

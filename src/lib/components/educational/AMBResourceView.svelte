@@ -19,6 +19,8 @@
 	import AMBUploadModal from './AMBUploadModal.svelte';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import { getLabelsWithFallback } from '$lib/helpers/educational/ambTransform.js';
+	import { buildAMBJsonLd } from '$lib/helpers/educational/ambJsonLd.js';
+	import { page } from '$app/stores';
 	import * as m from '$lib/paraglide/messages.js';
 	import MarkdownRenderer from '../shared/MarkdownRenderer.svelte';
 	import { deleteEvent } from '$lib/helpers/eventDeletion.js';
@@ -163,36 +165,30 @@
 		resource.publishedDate ? new Date(resource.publishedDate * 1000) : null
 	);
 
-	// Determine if the identifier is a nostr URI or an external URL
-	const isNostrIdentifier = $derived(
-		resource.identifier?.startsWith('nostr:') || resource.identifier?.startsWith('naddr1')
-	);
+	// JSON-LD structured data for SEO
+	const pageUrl = $derived($page.url.href);
+	const jsonLd = $derived(buildAMBJsonLd(event, resource, pageUrl));
 
 	// Content type detection
-	const hasExternalUrl = $derived(
+	// Check if d-tag (identifier) contains a URL - this means the resource itself IS an external link
+	const hasIdentifierUrl = $derived(
 		resource.identifier?.startsWith('http://') || resource.identifier?.startsWith('https://')
 	);
+	// Check if r-tags contain external reference URLs (for display)
+	const hasExternalRefs = $derived(resource.externalUrls && resource.externalUrls.length > 0);
 	const hasUploadedFiles = $derived(
 		resource.encodings && resource.encodings.length > 0
 	);
 	const isNostrNativeOnly = $derived(
-		hasUploadedFiles && !hasExternalUrl
+		hasUploadedFiles && !hasIdentifierUrl
 	);
 
 	/**
-	 * Navigate to content - handles both nostr identifiers and external URLs
+	 * Navigate to content URL (from d-tag identifier)
 	 */
 	function navigateToContent() {
 		if (!resource.identifier) return;
-		
-		if (isNostrIdentifier) {
-			// Handle nostr identifiers - strip 'nostr:' prefix if present
-			const naddr = resource.identifier.replace(/^nostr:/, '');
-			goto(`/${naddr}`);
-		} else {
-			// External URL - open in new tab
-			window.open(resource.identifier, '_blank', 'noopener,noreferrer');
-		}
+		window.open(resource.identifier, '_blank', 'noopener,noreferrer');
 	}
 
 	/**
@@ -229,6 +225,7 @@
 <svelte:head>
 	<title>{resource.name} - Communikey</title>
 	<meta name="description" content={resource.description || 'Educational resource on Communikey'} />
+	{@html `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`}
 </svelte:head>
 
 <article class="amb-resource-view max-w-4xl mx-auto">
@@ -368,8 +365,8 @@
 	{/if}
 
 
-	<!-- VIEW CONTENT CTA - Only show for external URLs -->
-	{#if hasExternalUrl}
+	<!-- VIEW CONTENT CTA - Only show when d-tag identifier contains a URL -->
+	{#if hasIdentifierUrl}
 		<div class="mb-8 p-6 bg-primary/10 border-2 border-primary rounded-lg">
 			<h2 class="text-xl font-bold text-base-content mb-3">{m.amb_resource_access_content_title()}</h2>
 			<p class="text-sm text-base-content/70 mb-4">
@@ -626,6 +623,34 @@
 		</div>
 	{/if}
 
+	<!-- EXTERNAL REFERENCES (r-tags) - Additional reference URLs -->
+	{#if hasExternalRefs}
+		<div class="mb-8">
+			<h3 class="text-lg font-semibold text-base-content mb-3">
+				External Reference{resource.externalUrls.length > 1 ? 's' : ''}
+			</h3>
+			<div class="space-y-2">
+				{#each resource.externalUrls as url}
+					<div class="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
+						<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-base-content/60 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+						</svg>
+						<a
+							href={url}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="link link-primary truncate flex-1"
+						>
+							{url}
+						</a>
+						<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-base-content/40 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+						</svg>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{/if}
 
 	<!-- REACTIONS (Nostr-first: Primary interaction) -->
 	<div class="mb-8 py-4 border-y border-base-300">

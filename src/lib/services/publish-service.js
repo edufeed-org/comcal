@@ -11,7 +11,29 @@ import { getPublishRelays, getPrimaryWriteRelay } from './relay-service.svelte.j
 import { getAppRelaysForCategory, kindToAppRelayCategory } from './app-relay-service.js';
 import { getRelaysForKind, getCommunityGlobalRelays } from '$lib/helpers/communityRelays.js';
 import { manager } from '$lib/stores/accounts.svelte.js';
-import { isWarmAndAuthenticated, warmRelays } from './relay-warming-service.svelte.js';
+import { isWarmAndAuthenticated } from './relay-warming-service.svelte.js';
+
+/**
+ * Authenticate with a relay, with timeout
+ * @param {import('applesauce-relay').Relay} relay
+ * @param {any} signer
+ * @param {number} timeout
+ * @returns {Promise<boolean>} Whether auth succeeded
+ */
+async function authenticateRelay(relay, signer, timeout = 3000) {
+	try {
+		await Promise.race([
+			relay.authenticate(signer),
+			new Promise((_, reject) =>
+				setTimeout(() => reject(new Error('Auth timeout')), timeout)
+			)
+		]);
+		return true;
+	} catch {
+		// Auth not required or timed out - continue anyway
+		return false;
+	}
+}
 
 /**
  * @typedef {Object} PublishStatus
@@ -106,24 +128,14 @@ export async function publishEvent(signedEvent, taggedPubkeys = [], opts = {}) {
 
 	const publishRelays = Array.from(relaySet);
 
-	// Fire-and-forget warming for cold relays (don't block publishing)
-	const coldRelays = publishRelays.filter((url) => !isWarmAndAuthenticated(url));
-	if (coldRelays.length > 0 && manager.active?.signer) {
-		warmRelays(coldRelays, manager.active.signer);
-	}
-
 	// Publish to all calculated relays with timeout
 	const publishPromises = publishRelays.map(async (relayUrl) => {
 		try {
 			const relay = pool.relay(relayUrl);
 
-			// Skip authentication for already-warm-and-authenticated relays
+			// Authenticate if not already warm+authenticated (with 3s timeout)
 			if (!isWarmAndAuthenticated(relayUrl) && manager.active?.signer) {
-				try {
-					await relay.authenticate(manager.active.signer);
-				} catch (authErr) {
-					// Auth failed or not required - continue with publish
-				}
+				await authenticateRelay(relay, manager.active.signer, 3000);
 			}
 
 			await relay.publish(signedEvent, { timeout });
@@ -184,7 +196,7 @@ export function publishEventOptimistic(signedEvent, taggedPubkeys = [], opts = {
 	const { timeout = 5000, communityEvent = null, additionalRelays = [], onStatusChange } = opts;
 
 	// 1. Immediately add to EventStore for instant UI update
-	eventStore.update(signedEvent);
+	eventStore.add(signedEvent);
 
 	// 2. Initialize status
 	const status = {
@@ -226,12 +238,6 @@ export function publishEventOptimistic(signedEvent, taggedPubkeys = [], opts = {
 		notifyStatusUpdate({ ...status });
 		onStatusChange?.({ ...status });
 
-		// Fire-and-forget warming for cold relays
-		const coldRelays = publishRelays.filter((url) => !isWarmAndAuthenticated(url));
-		if (coldRelays.length > 0 && manager.active?.signer) {
-			warmRelays(coldRelays, manager.active.signer);
-		}
-
 		let firstSuccess = false;
 
 		// Publish to all relays, update status as each completes
@@ -239,13 +245,9 @@ export function publishEventOptimistic(signedEvent, taggedPubkeys = [], opts = {
 			try {
 				const relay = pool.relay(relayUrl);
 
-				// Skip authentication for warm relays
+				// Authenticate if not already warm+authenticated (with 3s timeout)
 				if (!isWarmAndAuthenticated(relayUrl) && manager.active?.signer) {
-					try {
-						await relay.authenticate(manager.active.signer);
-					} catch {
-						// Continue anyway
-					}
+					await authenticateRelay(relay, manager.active.signer, 3000);
 				}
 
 				await relay.publish(signedEvent, { timeout });

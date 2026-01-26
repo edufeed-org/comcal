@@ -181,6 +181,25 @@ export function getAMBIdentifier(event) {
 }
 
 /**
+ * Extracts the external reference URL from r-tag (NIP-24)
+ * @param {any} event - AMB event (kind 30142)
+ * @returns {string|null} External URL or null
+ * @deprecated Use getAMBExternalUrls for multiple URLs support
+ */
+export function getAMBExternalUrl(event) {
+	return getTagValue(event.tags, 'r');
+}
+
+/**
+ * Extracts all external reference URLs from r-tags (NIP-24)
+ * @param {any} event - AMB event (kind 30142)
+ * @returns {string[]} Array of external URLs
+ */
+export function getAMBExternalUrls(event) {
+	return getTagValues(event.tags, 'r');
+}
+
+/**
  * Extracts uploaded files/encodings from an AMB event
  * @param {any} event - AMB event (kind 30142)
  * @returns {Array<{url: string, mimeType: string, size: number, sha256?: string, name?: string}>} Array of uploaded files
@@ -245,6 +264,8 @@ export function formatAMBResource(event, lang = 'en') {
 		resourceURLs: getAMBResourceURLs(event),
 		primaryURL: getAMBPrimaryURL(event),
 		encodings: getAMBEncodings(event),
+		externalUrl: getAMBExternalUrl(event), // Deprecated: use externalUrls
+		externalUrls: getAMBExternalUrls(event),
 		tags: event.tags, // Keep original tags for reference
 		rawEvent: event // Keep original raw Nostr event for debug purposes
 	};

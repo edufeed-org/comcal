@@ -85,6 +85,9 @@ export function GET() {
 		// NIP-65 relay list discovery
 		relayListLookupRelays: parseArray(env.RELAY_LIST_LOOKUP_RELAYS),
 
+		// Profile indexer relays for bulk profile lookups
+		indexerRelays: parseArray(env.INDEXER_RELAYS),
+
 		// Default Blossom servers
 		defaultBlossomServers: parseArray(env.DEFAULT_BLOSSOM_SERVERS, [
 			'https://blossom.primal.net',

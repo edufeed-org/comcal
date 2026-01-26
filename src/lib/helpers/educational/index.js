@@ -32,5 +32,9 @@ export {
 	getAMBResourceURLs,
 	getAMBPrimaryURL,
 	getAMBIdentifier,
+	getAMBExternalUrl,
 	formatAMBResource
 } from './ambHelpers.js';
+
+// JSON-LD builder for SEO/structured data
+export { buildAMBJsonLd } from './ambJsonLd.js';
