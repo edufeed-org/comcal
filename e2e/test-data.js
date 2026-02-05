@@ -1,5 +1,5 @@
 import { getPublicKey, finalizeEvent } from 'nostr-tools/pure';
-import { npubEncode } from 'nostr-tools/nip19';
+import { npubEncode, naddrEncode } from 'nostr-tools/nip19';
 
 const AUTHOR_COUNT = 4;
 const COMMUNITY_COUNT = 30;
@@ -268,6 +268,22 @@ export function generateTestEvents() {
 		);
 	}
 
+	// Kind 1 text notes for content authors (5 per author)
+	for (let i = 0; i < AUTHOR_COUNT; i++) {
+		for (let j = 0; j < 5; j++) {
+			const noteIndex = i * 5 + j;
+			events.push(
+				make(
+					contentAuthors[i],
+					1,
+					[],
+					`Test note ${j} from Author ${i}: Discussing ${subjects[noteIndex % subjects.length]}`,
+					BASE + (195 + noteIndex) * 600
+				)
+			);
+		}
+	}
+
 	// Kind 0 profiles for community authors
 	for (let i = 0; i < COMMUNITY_COUNT; i++) {
 		events.push(
@@ -293,6 +309,44 @@ export const TEST_COMMUNITY = {
 	npub: npubEncode(communityAuthors[0].pk)
 };
 
+/** First test author info for profile page E2E tests */
+export const TEST_AUTHOR = {
+	pubkey: contentAuthors[0].pk,
+	npub: npubEncode(contentAuthors[0].pk),
+	name: 'Test Author 0'
+};
+
+/** Pre-encoded naddr strings for event detail page E2E tests.
+ * Include relay hint so addressLoader knows where to fetch from. */
+const RELAY_URL = 'ws://localhost:9737';
+
+export const TEST_NADDRS = {
+	article: naddrEncode({
+		kind: 30023,
+		pubkey: contentAuthors[0].pk,
+		identifier: 'article-0',
+		relays: [RELAY_URL]
+	}),
+	calendarDate: naddrEncode({
+		kind: 31922,
+		pubkey: contentAuthors[0].pk,
+		identifier: 'date-event-0',
+		relays: [RELAY_URL]
+	}),
+	calendarTime: naddrEncode({
+		kind: 31923,
+		pubkey: contentAuthors[0].pk,
+		identifier: 'time-event-0',
+		relays: [RELAY_URL]
+	}),
+	amb: naddrEncode({
+		kind: 30142,
+		pubkey: contentAuthors[0].pk,
+		identifier: 'https://example.com/resource-0',
+		relays: [RELAY_URL]
+	})
+};
+
 /** Event counts for test assertions */
 export const TEST_COUNTS = {
 	articles: 50,
@@ -302,5 +356,6 @@ export const TEST_COUNTS = {
 	calendarTotal: 50,
 	communities: 30,
 	communityAMB: 5,
-	communityChat: 5
+	communityChat: 5,
+	notesPerAuthor: 5
 };
