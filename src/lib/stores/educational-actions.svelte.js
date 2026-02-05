@@ -10,7 +10,7 @@ import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { flattenAMBToNostrTags } from '$lib/helpers/educational/ambTransform.js';
 import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
 import { publishEvent, publishEventOptimistic, buildATagWithHint, buildETagWithHint } from '$lib/services/publish-service.js';
-import { getAppRelaysForCategory } from '$lib/services/app-relay-service.js';
+import { getAppRelaysForCategory } from '$lib/services/app-relay-service.svelte.js';
 import { getPrimaryWriteRelay } from '$lib/services/relay-service.svelte.js';
 
 /**

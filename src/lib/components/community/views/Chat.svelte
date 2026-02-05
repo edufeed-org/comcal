@@ -2,14 +2,14 @@
 	import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { runtimeConfig } from '$lib/stores/config.svelte.js';
-	import { loadUserProfile } from '$lib/loaders';
+	import { useProfileMap } from '$lib/stores/profile-map.svelte.js';
 	import { getProfilePicture } from 'applesauce-core/helpers';
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import NostrIdentifierParser from '$lib/components/shared/NostrIdentifierParser.svelte';
 	import CompactCommunityHeader from '$lib/components/community/layout/CompactCommunityHeader.svelte';
 	import * as m from '$lib/paraglide/messages';
 	import { publishEventOptimistic } from '$lib/services/publish-service.js';
-	import { getAppRelaysForCategory } from '$lib/services/app-relay-service.js';
+	import { getAppRelaysForCategory } from '$lib/services/app-relay-service.svelte.js';
 
 	/** @type {any} */
 	let { communikeyEvent, communityProfile = null, communityPubkey = '' } = $props();
@@ -19,8 +19,10 @@
 	let messages = $state([]);
 	/** @type {any} */
 	let activeUser = $state(null);
-	/** @type {Map<string, any>} */
-	let userProfiles = $state(new Map());
+	const getUserProfiles = useProfileMap(() =>
+		messages.filter((m) => m && m.pubkey).map((m) => m.pubkey)
+	);
+	let userProfiles = $derived(getUserProfiles());
 	let newMessage = $state('');
 	let isLoading = $state(true);
 	let isSending = $state(false);
@@ -83,31 +85,6 @@
 		return () => subscription.unsubscribe();
 	});
 
-	// Load profiles for message authors
-	$effect(() => {
-		const uniquePubkeys = [...new Set(messages.filter((m) => m && m.pubkey).map((m) => m.pubkey))];
-
-		uniquePubkeys.forEach((pubkey) => {
-			if (!userProfiles.has(pubkey)) {
-				// Use the proper profile loader with kind 0 for user profiles
-				const profileSubscription = loadUserProfile(0, pubkey).subscribe({
-					next: (/** @type {any} */ profile) => {
-						if (profile) {
-							userProfiles.set(pubkey, profile);
-							userProfiles = new Map(userProfiles); // Trigger reactivity
-						}
-					},
-					error: (/** @type {any} */ error) => {
-						console.error('Profile loading error:', error);
-					}
-				});
-
-				// Store subscription for cleanup
-				userProfiles.set(pubkey, { loading: true, subscription: profileSubscription });
-				userProfiles = new Map(userProfiles);
-			}
-		});
-	});
 
 	// Send message function
 	/**
@@ -172,7 +149,7 @@
 	function getUserDisplayName(pubkey) {
 		if (!pubkey) return 'Unknown User';
 		const profile = userProfiles.get(pubkey);
-		if (profile && !profile.loading) {
+		if (profile) {
 			return profile.display_name || profile.name || pubkey.slice(0, 8) + '...';
 		}
 		return pubkey.slice(0, 8) + '...';
@@ -185,7 +162,7 @@
 	function getUserAvatar(pubkey) {
 		if (!pubkey) return null;
 		const profile = userProfiles.get(pubkey);
-		if (profile && !profile.loading) {
+		if (profile) {
 			return getProfilePicture(profile);
 		}
 		return null;

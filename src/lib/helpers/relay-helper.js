@@ -9,6 +9,7 @@
  */
 import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { appSettings } from '$lib/stores/app-settings.svelte.js';
+import { getAppRelaysForCategory } from '$lib/services/app-relay-service.svelte.js';
 
 /**
  * Check if gated mode is currently active
@@ -34,7 +35,7 @@ export function getFallbackRelays() {
  * @returns {string[]}
  */
 export function getCalendarRelays() {
-	const appRelays = runtimeConfig.appRelays?.calendar || [];
+	const appRelays = getAppRelaysForCategory('calendar');
 	return [...appRelays, ...getFallbackRelays()];
 }
 
@@ -43,7 +44,7 @@ export function getCalendarRelays() {
  * @returns {string[]}
  */
 export function getCommunikeyRelays() {
-	const appRelays = runtimeConfig.appRelays?.communikey || [];
+	const appRelays = getAppRelaysForCategory('communikey');
 	return [...appRelays, ...getFallbackRelays()];
 }
 
@@ -52,7 +53,7 @@ export function getCommunikeyRelays() {
  * @returns {string[]}
  */
 export function getEducationalRelays() {
-	const appRelays = runtimeConfig.appRelays?.educational || [];
+	const appRelays = getAppRelaysForCategory('educational');
 	const combined = [...appRelays, ...getFallbackRelays()];
 	return [...new Set(combined)]; // Deduplicate
 }
@@ -62,7 +63,7 @@ export function getEducationalRelays() {
  * @returns {string[]}
  */
 export function getArticleRelays() {
-	const appRelays = runtimeConfig.appRelays?.longform || [];
+	const appRelays = getAppRelaysForCategory('longform');
 	// If no longform relays configured, use fallback relays only (but gated mode still applies)
 	if (appRelays.length === 0) {
 		return getFallbackRelays();
@@ -77,10 +78,10 @@ export function getArticleRelays() {
  */
 export function getAllLookupRelays() {
 	return [
-		...(runtimeConfig.appRelays?.calendar || []),
-		...(runtimeConfig.appRelays?.communikey || []),
-		...(runtimeConfig.appRelays?.educational || []),
-		...(runtimeConfig.appRelays?.longform || []),
+		...getAppRelaysForCategory('calendar'),
+		...getAppRelaysForCategory('communikey'),
+		...getAppRelaysForCategory('educational'),
+		...getAppRelaysForCategory('longform'),
 		...getFallbackRelays()
 	];
 }

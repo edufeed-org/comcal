@@ -134,16 +134,11 @@ export function useAMBCommunityLoader(communityPubkey) {
 		if (addressableRefs.length > 0) {
 			console.log('📚 AMBLoader: Loading', addressableRefs.length, 'referenced resources by address');
 			addressableRefs.forEach((ref) => {
-				if (eventStore.addressableLoader) {
-					const loader = eventStore.addressableLoader({
-						kind: ref.kind,
-						pubkey: ref.pubkey,
-						identifier: ref.dTag
-					});
-					if (loader && typeof loader.subscribe === 'function') {
-						loader.subscribe();
-					}
-				}
+				/** @type {any} */ (eventStore.addressableLoader)({
+					kind: ref.kind,
+					pubkey: ref.pubkey,
+					identifier: ref.dTag
+				}).subscribe();
 			});
 		}
 	});

@@ -8,7 +8,7 @@
 import { Observable } from 'rxjs';
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { getConfig } from '$lib/stores/config.svelte.js';
+import { getEducationalRelays } from '$lib/helpers/relay-helper.js';
 import { buildSearchQuery, hasActiveFilters } from '$lib/helpers/educational/searchQueryBuilder.js';
 
 /**
@@ -46,10 +46,9 @@ export function ambSearchLoader(filters, limit = 50) {
 
 	// Use applesauce's createTimelineLoader with NIP-50 search filter
 	// This properly serializes the REQ message according to Nostr protocol
-	const config = getConfig();
 	const loader = createTimelineLoader(
 		pool,
-		config.appRelays?.educational || [],
+		getEducationalRelays(),
 		{
 			kinds: [30142],
 			search: searchQuery

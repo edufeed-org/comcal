@@ -14,11 +14,16 @@
       {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
+            chromium
             nodejs_22
             pnpm
+            playwright-driver.browsers
           ];
 
           shellHook = ''
+            export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
+            export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
+            export CHROMIUM_BIN=${pkgs.chromium}/bin/chromium
             echo "Comcal dev environment loaded - Node $(node --version)"
           '';
         };

@@ -10,6 +10,7 @@
 -->
 <script>
 	import { getDisplayName } from 'applesauce-core/helpers';
+	import * as m from '$lib/paraglide/messages';
 
 	/**
 	 * @typedef {Object} CommunityOption
@@ -64,11 +65,13 @@
 	}
 </script>
 
-<div class="flex items-center gap-2">
-	<label for="community-filter" class="text-sm font-medium text-base-content">Community:</label>
+<div class="form-control w-full">
+	<label for="community-filter" class="label">
+		<span class="label-text font-medium">{m.discover_community_label()}</span>
+	</label>
 	<select
 		id="community-filter"
-		class="select select-bordered select-sm min-w-[180px]"
+		class="select select-bordered w-full"
 		value={value ?? ''}
 		onchange={handleChange}
 		{disabled}
@@ -83,7 +86,7 @@
 		{#if joinedCommunities.length > 0}
 			<optgroup label="Joined">
 				{#each joinedCommunities as community}
-					<option value={community.pubkey}>🏠 {community.name}</option>
+					<option value={community.pubkey}>{community.name}</option>
 				{/each}
 			</optgroup>
 		{/if}
@@ -92,7 +95,7 @@
 		{#if discoverCommunities.length > 0}
 			<optgroup label="Discover">
 				{#each discoverCommunities as community}
-					<option value={community.pubkey}>🔍 {community.name}</option>
+					<option value={community.pubkey}>{community.name}</option>
 				{/each}
 			</optgroup>
 		{/if}

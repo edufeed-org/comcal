@@ -1,0 +1,172 @@
+/**
+ * ArticleCard Component Tests
+ *
+ * Tests both default card variant and new list variant rendering.
+ *
+ * @vitest-environment jsdom
+ */
+import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { render } from '@testing-library/svelte';
+import ArticleCard from '../article/ArticleCard.svelte';
+
+// Mock dependencies
+vi.mock('$lib/stores/app-settings.svelte.js', () => ({
+	appSettings: { debugMode: false, gatedMode: false }
+}));
+// Mock heavy sub-components to avoid deep dependency chains
+vi.mock('../reactions/ReactionBar.svelte', () => ({ default: () => ({}) }));
+vi.mock('../shared/EventDebugPanel.svelte', () => ({ default: () => ({}) }));
+vi.mock('../calendar/EventTags.svelte', () => ({ default: () => ({}) }));
+vi.mock('../shared/ImageWithFallback.svelte', () => ({ default: () => ({}) }));
+vi.mock('$lib/paraglide/messages', () => ({
+	event_tags_view_all_tooltip: () => '',
+	event_tags_more_count: () => '',
+	debug_panel_raw_nostr_event: () => '',
+	common_copied: () => '',
+	common_copy: () => ''
+}));
+vi.mock('$app/navigation', () => ({
+	goto: vi.fn()
+}));
+vi.mock('applesauce-core/helpers', () => ({
+	getArticleTitle: (event) => event.tags?.find((t) => t[0] === 'title')?.[1] || 'Untitled',
+	getArticleImage: (event) => event.tags?.find((t) => t[0] === 'image')?.[1] || null,
+	getProfilePicture: (profile) => profile?.picture || null,
+	getDisplayName: (profile, fallback) => profile?.name || fallback
+}));
+vi.mock('$lib/helpers/calendar.js', () => ({
+	formatCalendarDate: () => 'Jan 15'
+}));
+vi.mock('$lib/helpers/nostrUtils.js', () => ({
+	encodeEventToNaddr: () => 'naddr1test'
+}));
+
+const mockArticle = {
+	id: 'a'.repeat(64),
+	pubkey: 'b'.repeat(64),
+	kind: 30023,
+	created_at: Math.floor(Date.now() / 1000),
+	content: 'This is a test article with some content for testing purposes.',
+	tags: [
+		['title', 'Test Article Title'],
+		['image', 'https://example.com/image.jpg'],
+		['summary', 'A short summary of the article'],
+		['t', 'svelte'],
+		['t', 'nostr']
+	],
+	sig: 'c'.repeat(128)
+};
+
+const mockAuthorProfile = {
+	name: 'Test Author',
+	picture: 'https://example.com/avatar.jpg'
+};
+
+describe('ArticleCard', () => {
+	describe('default (card) variant', () => {
+		it('renders as vertical card layout by default', () => {
+			const { container } = render(ArticleCard, {
+				props: { article: mockArticle, authorProfile: mockAuthorProfile }
+			});
+
+			const card = container.querySelector('.article-card');
+			expect(card).toBeTruthy();
+		});
+
+		it('shows article title', () => {
+			const { container } = render(ArticleCard, {
+				props: { article: mockArticle, authorProfile: mockAuthorProfile }
+			});
+
+			expect(container.textContent).toContain('Test Article Title');
+		});
+	});
+
+	describe('list variant', () => {
+		it('renders with list-variant class', () => {
+			const { container } = render(ArticleCard, {
+				props: { article: mockArticle, authorProfile: mockAuthorProfile, variant: 'list' }
+			});
+
+			const listItem = container.querySelector('.article-card-list');
+			expect(listItem).toBeTruthy();
+		});
+
+		it('renders as horizontal flex row', () => {
+			const { container } = render(ArticleCard, {
+				props: { article: mockArticle, authorProfile: mockAuthorProfile, variant: 'list' }
+			});
+
+			const listItem = container.querySelector('.article-card-list');
+			expect(listItem).toBeTruthy();
+			// Should have flex row layout
+			const style = window.getComputedStyle(listItem);
+			expect(listItem.classList.contains('flex')).toBe(true);
+		});
+
+		it('shows a small square thumbnail', () => {
+			const { container } = render(ArticleCard, {
+				props: { article: mockArticle, authorProfile: mockAuthorProfile, variant: 'list' }
+			});
+
+			const thumbnail = container.querySelector('.article-card-list .list-thumbnail');
+			expect(thumbnail).toBeTruthy();
+		});
+
+		it('shows title text', () => {
+			const { container } = render(ArticleCard, {
+				props: { article: mockArticle, authorProfile: mockAuthorProfile, variant: 'list' }
+			});
+
+			expect(container.textContent).toContain('Test Article Title');
+		});
+
+		it('shows author name and date', () => {
+			const { container } = render(ArticleCard, {
+				props: { article: mockArticle, authorProfile: mockAuthorProfile, variant: 'list' }
+			});
+
+			expect(container.textContent).toContain('Test Author');
+			expect(container.textContent).toContain('Jan 15');
+		});
+
+		it('does not show reaction bar', () => {
+			const { container } = render(ArticleCard, {
+				props: { article: mockArticle, authorProfile: mockAuthorProfile, variant: 'list' }
+			});
+
+			const reactionBar = container.querySelector('.article-card-list [data-testid="reaction-bar"]');
+			expect(reactionBar).toBeFalsy();
+		});
+
+		it('does not show tags', () => {
+			const { container } = render(ArticleCard, {
+				props: { article: mockArticle, authorProfile: mockAuthorProfile, variant: 'list' }
+			});
+
+			// In list mode, EventTags should not render
+			const listItem = container.querySelector('.article-card-list');
+			const tagElements = listItem?.querySelectorAll('.badge');
+			expect(tagElements?.length || 0).toBe(0);
+		});
+
+		it('does not show Read Article button', () => {
+			const { container } = render(ArticleCard, {
+				props: { article: mockArticle, authorProfile: mockAuthorProfile, variant: 'list' }
+			});
+
+			const btn = container.querySelector('.article-card-list .btn');
+			expect(btn).toBeFalsy();
+		});
+
+		it('is clickable', () => {
+			const { container } = render(ArticleCard, {
+				props: { article: mockArticle, authorProfile: mockAuthorProfile, variant: 'list' }
+			});
+
+			const listItem = container.querySelector('.article-card-list');
+			expect(listItem?.getAttribute('role')).toBe('button');
+			expect(listItem?.getAttribute('tabindex')).toBe('0');
+		});
+	});
+});

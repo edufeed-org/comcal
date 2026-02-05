@@ -81,3 +81,20 @@
   --color-error: oklch(0.65 0.2 25);
   --color-error-content: oklch(1 0 0);
 }
+
+/*
+ * Custom dropdown trigger that matches DaisyUI .select appearance.
+ * Use on non-<select> elements (e.g. <button>) alongside .select:
+ *   <button class="select select-bordered select-trigger">
+ *
+ * Allows the element to grow when content (e.g. multi-select badges)
+ * exceeds the default height, while matching native select otherwise.
+ * Hides the DaisyUI CSS chevron since custom dropdowns render their own.
+ */
+.select.select-trigger {
+  height: auto;
+  min-height: var(--size);
+  text-align: left;
+  cursor: pointer;
+  background-image: none;
+}

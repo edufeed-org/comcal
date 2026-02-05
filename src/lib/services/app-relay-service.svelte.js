@@ -40,10 +40,11 @@ export function getRelaySetDTag(category) {
 }
 
 /**
- * Cache for user's relay set overrides (populated by subscriptions)
+ * Reactive cache for user's relay set overrides (populated by subscriptions).
+ * Uses $state so Svelte $derived expressions re-evaluate when cache changes.
  * @type {Map<string, string[]>}
  */
-const userOverrideCache = new Map();
+let userOverrideCache = $state(new Map());
 
 /**
  * Update the cache for a category (called from subscription in settings page)
@@ -51,14 +52,16 @@ const userOverrideCache = new Map();
  * @param {string[]} relays - Relay URLs
  */
 export function updateUserOverrideCache(category, relays) {
-	userOverrideCache.set(category, relays);
+	const next = new Map(userOverrideCache);
+	next.set(category, relays);
+	userOverrideCache = next;
 }
 
 /**
  * Clear the cache (on logout)
  */
 export function clearUserOverrideCache() {
-	userOverrideCache.clear();
+	userOverrideCache = new Map();
 }
 
 /**

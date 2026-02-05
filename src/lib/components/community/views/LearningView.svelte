@@ -8,9 +8,7 @@
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { useAMBCommunityLoader } from '$lib/loaders/amb.js';
 	import { CommunityAMBResourceModel } from '$lib/models/community-amb-resource.js';
-	import { profileLoader } from '$lib/loaders/profile.js';
-	import { ProfileModel } from 'applesauce-core/models';
-	import { runtimeConfig } from '$lib/stores/config.svelte.js';
+	import { useProfileMap } from '$lib/stores/profile-map.svelte.js';
 	import AMBResourceCard from '$lib/components/educational/AMBResourceCard.svelte';
 	import EducationalFAB from '$lib/components/educational/EducationalFAB.svelte';
 	import * as m from '$lib/paraglide/messages';
@@ -28,7 +26,8 @@
 	let resources = $state(/** @type {any[]} */ ([]));
 	let isLoading = $state(true);
 	let error = $state(/** @type {string | null} */ (null));
-	let authorProfiles = $state(/** @type {Map<string, any>} */ (new Map()));
+	const getAuthorProfiles = useProfileMap(() => resources.map((r) => r.pubkey));
+	let authorProfiles = $derived(getAuthorProfiles());
 
 	// Loader cleanup reference (plain let - not $state to avoid triggering $effect re-runs)
 	let loaderCleanup = /** @type {(() => void) | null} */ (null);
@@ -66,10 +65,6 @@
 						console.log('📚 LearningView: Received', loadedResources.length, 'resources');
 						resources = loadedResources;
 						isLoading = false;
-
-						// Load author profiles for resources
-						const authorPubkeys = [...new Set(loadedResources.map((r) => r.pubkey))];
-						loadAuthorProfiles(authorPubkeys);
 					},
 					error: (err) => {
 						console.error('📚 LearningView: Error loading resources:', err);
@@ -99,34 +94,6 @@
 		};
 	});
 
-	/**
-	 * Load author profiles for the given pubkeys
-	 * @param {string[]} pubkeys
-	 */
-	function loadAuthorProfiles(pubkeys) {
-		pubkeys.forEach((pubkey) => {
-			if (authorProfiles.has(pubkey)) return;
-
-			// Start loader for this author
-			const loaderSub = profileLoader({
-				kind: 0,
-				pubkey,
-				relays: runtimeConfig.fallbackRelays || []
-			}).subscribe();
-
-			// Subscribe to model for profile updates
-			const modelSub = eventStore.model(ProfileModel, pubkey).subscribe((profile) => {
-				if (profile) {
-					authorProfiles.set(pubkey, profile);
-					// Trigger reactivity
-					authorProfiles = new Map(authorProfiles);
-				}
-			});
-
-			// Note: These subscriptions are intentionally not cleaned up
-			// as profiles are cached and reused across the app
-		});
-	}
 </script>
 
 <div class="learning-view p-4">

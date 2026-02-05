@@ -3,7 +3,7 @@
  * Following applesauce loader pattern
  */
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
-import { getRelaySetDTag, CATEGORIES } from '$lib/services/app-relay-service.js';
+import { getRelaySetDTag, CATEGORIES } from '$lib/services/app-relay-service.svelte.js';
 
 /**
  * Creates a loader for a user's app-specific relay sets (kind 30002)

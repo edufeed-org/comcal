@@ -24,8 +24,11 @@
 	let {
 		event,
 		compact = false,
+		variant = 'card',
 		onEventClick = () => {}
 	} = $props();
+
+	const isList = $derived(variant === 'list');
 
 	// Load RSVPs for this event
 	const rsvpData = $derived(event.originalEvent ? useCalendarEventRsvps(event.originalEvent) : { rsvps: [], loading: false });
@@ -63,6 +66,53 @@
 
 </script>
 
+{#if isList}
+	<!-- List variant: horizontal row -->
+	<div
+		class="calendar-event-card-list flex items-center gap-3 p-3 bg-base-100 border border-base-300 rounded-lg hover:shadow-sm hover:border-primary transition-shadow cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 {isAllDay ? 'border-l-4 border-l-info' : ''} {isMultiDay ? 'border-l-4 border-l-secondary' : ''}"
+		role="button"
+		tabindex="0"
+		onclick={handleClick}
+		onkeydown={handleKeydown}
+	>
+		<div class="list-thumbnail w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-base-200">
+			{#if event.image}
+				<ImageWithFallback
+					src={event.image}
+					alt={event.title}
+					fallbackType="event"
+					class="w-full h-full object-cover"
+				/>
+			{:else}
+				<div class="w-full h-full flex items-center justify-center text-base-content/30 text-2xl">📅</div>
+			{/if}
+		</div>
+		<div class="flex-1 min-w-0">
+			<div class="font-semibold text-base-content truncate">{event.title}</div>
+			<div class="text-sm text-base-content/60 truncate">
+				{formatCalendarDate(startDate, 'short')}
+				{#if isMultiDay && endDate}
+					- {formatCalendarDate(endDate, 'short')}
+				{/if}
+				{#if !isAllDay}
+					· {formatCalendarDate(startDate, 'time')}
+					{#if endDate}
+						- {formatCalendarDate(endDate, 'time')}
+					{/if}
+				{:else}
+					· {m.event_card_all_day()}
+				{/if}
+			</div>
+			{#if event.locations && event.locations.length > 0}
+				<div class="text-sm text-base-content/50 truncate">
+					📍 {event.locations[0].name || event.locations[0].address || ''}
+				</div>
+			{:else if event.summary}
+				<div class="text-sm text-base-content/50 truncate">{event.summary}</div>
+			{/if}
+		</div>
+	</div>
+{:else}
 <div
 	class="calendar-event-card w-full max-w-full bg-base-100 border border-base-300 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 {compact
 		? 'p-2 text-sm'
@@ -246,3 +296,4 @@
 		</div>
 	</div>
 </div>
+{/if}

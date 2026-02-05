@@ -3,7 +3,7 @@
  * For NIP-51 relay sets with app-specific d-tags
  */
 import { map, distinctUntilChanged } from 'rxjs/operators';
-import { getRelaySetDTag, parseRelaySetEvent } from '$lib/services/app-relay-service.js';
+import { getRelaySetDTag, parseRelaySetEvent } from '$lib/services/app-relay-service.svelte.js';
 
 /**
  * Model for app-specific relay set (kind 30002)

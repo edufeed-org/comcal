@@ -8,20 +8,33 @@
 	} from '$lib/loaders';
 	import { ambSearchLoader } from '$lib/loaders/amb-search.js';
 	import { hasActiveFilters, createEmptyFilters } from '$lib/helpers/educational/searchQueryBuilder.js';
-	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+	import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { runtimeConfig } from '$lib/stores/config.svelte.js';
-	import { TimelineModel, ProfileModel } from 'applesauce-core/models';
+	import { createTimelineLoader } from 'applesauce-loaders/loaders';
+	import {
+		getEducationalRelays,
+		getArticleRelays,
+		getCalendarRelays,
+		getCommunikeyRelays
+	} from '$lib/helpers/relay-helper.js';
+	import { TimelineModel } from 'applesauce-core/models';
 	import { AMBResourceModel, GlobalCalendarEventModel } from '$lib/models';
-	import { profileLoader } from '$lib/loaders/profile.js';
+	import { useProfileMap } from '$lib/stores/profile-map.svelte.js';
 	import { getArticlePublished, getTagValue } from 'applesauce-core/helpers';
 	import ArticleCard from '$lib/components/article/ArticleCard.svelte';
 	import AMBResourceCard from '$lib/components/educational/AMBResourceCard.svelte';
 	import CalendarEventCard from '$lib/components/calendar/CalendarEventCard.svelte';
 	import CommunityFilterDropdown from '$lib/components/feed/CommunityFilterDropdown.svelte';
+	import RelayFilterDropdown from '$lib/components/feed/RelayFilterDropdown.svelte';
+	import { getAppRelaysForCategory } from '$lib/services/app-relay-service.svelte.js';
+	import { getSeenRelays } from 'applesauce-core/helpers/relays';
+	import { normalizeURL } from 'applesauce-core/helpers';
 	import CommunikeyCard from '$lib/components/CommunikeyCard.svelte';
 	import ContentCardSkeleton from '$lib/components/shared/ContentCardSkeleton.svelte';
 	import LearningContentFilters from '$lib/components/educational/LearningContentFilters.svelte';
 	import { SearchIcon } from '$lib/components/icons';
+	import { timer, debounceTime } from 'rxjs';
+	import { takeUntil } from 'rxjs/operators';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { getLocale } from '$lib/paraglide/runtime.js';
@@ -39,16 +52,30 @@
 	import * as m from '$lib/paraglide/messages';
 
 	// State management
-	let articles = $state(/** @type {any[]} */ ([]));
-	let ambResources = $state(/** @type {any[]} */ ([]));
-	let calendarEvents = $state(/** @type {any[]} */ ([]));
-	let targetedPubs = $state(/** @type {any[]} */ ([]));
-	let authorProfiles = $state(/** @type {Map<string, any>} */ (new Map()));
-	let communityProfiles = $state(/** @type {Map<string, any>} */ (new Map()));
+	// Use $state.raw() for event data arrays to avoid deep proxying.
+	// Svelte 5's $state() proxy breaks Symbol-based properties (e.g. getSeenRelays)
+	// because Set.prototype.has() fails on proxied Sets.
+	// These arrays are always replaced entirely, so $state.raw() preserves reactivity.
+	let articles = $state.raw(/** @type {any[]} */ ([]));
+	let ambResources = $state.raw(/** @type {any[]} */ ([]));
+	let calendarEvents = $state.raw(/** @type {any[]} */ ([]));
+	let targetedPubs = $state.raw(/** @type {any[]} */ ([]));
+	const getAuthorProfiles = useProfileMap(() => new Set([
+		...articles.map((a) => a.pubkey),
+		...ambResources.map((r) => r.pubkey),
+		...calendarEvents.map((e) => e.pubkey),
+		...communities.map((c) => getTagValue(c, 'd') || c.pubkey)
+	]));
+	const getCommunityProfiles = useProfileMap(() =>
+		allCommunities.map((c) => c.pubkey)
+	);
+	let authorProfiles = $derived(getAuthorProfiles());
+	let communityProfiles = $derived(getCommunityProfiles());
 	let isLoading = $state(true);
 	let isLoadingMore = $state(false);
 	let hasMoreArticles = $state(true);
 	let hasMoreAMB = $state(true);
+	let hasMoreCalendarEvents = $state(true);
 	let sortBy = $state('newest');
 	let searchQuery = $state('');
 
@@ -88,10 +115,21 @@
 	const initialFilters = parseFeedFilters($page.url.searchParams);
 	let selectedTags = $state(/** @type {string[]} */ (initialFilters.tags));
 	let communityFilter = $state(/** @type {string | null} */ (initialFilters.community));
+	let relayFilter = $state(/** @type {string | null} */ (null));
 
 	// Initialize contentType from URL, with validation
 	const initialContentType = VALID_CONTENT_TYPES.includes(initialFilters.type) ? initialFilters.type : 'all';
 	let contentType = $state(initialContentType); // 'events', 'learning', 'articles', 'communities', 'all'
+
+	// Relay filter: map current tab to relay category
+	const tabRelayCategory = $derived(
+		contentType === 'events' ? 'calendar' :
+		contentType === 'learning' ? 'educational' :
+		contentType === 'articles' ? 'longform' : null
+	);
+	const availableRelays = $derived(
+		tabRelayCategory ? getAppRelaysForCategory(tabRelayCategory) : []
+	);
 
 	// Active user state
 	let activeUser = $state(manager.active);
@@ -214,9 +252,10 @@
 	 */
 	function handleContentTypeChange(newType) {
 		contentType = newType;
+		relayFilter = null;
 		// Update URL - use null for 'all' to keep URL clean
 		updateQueryParams($page.url.searchParams, { type: newType === 'all' ? null : newType });
-		
+
 		// Reset learning filters when switching away from learning tab
 		if (newType !== 'learning') {
 			learningFilters = createEmptyFilters();
@@ -267,133 +306,141 @@
 		}
 	}
 
-	// Batch size for loading
+	// Batch sizes for loading
 	const BATCH_SIZE = 20;
+	const CALENDAR_BATCH_SIZE = 40; // Matches limit in calendarTimelineLoader
+	const BATCH_TIMEOUT = 15_000; // Safety timeout per batch (handles relays that hang on EOSE)
 
 	// Step 1: Create stateful loaders
 	const articleLoader = articleTimelineLoader(BATCH_SIZE);
 	const ambLoader = ambTimelineLoader(BATCH_SIZE);
+	const calendarLoader = calendarTimelineLoader();
 	const targetedPubsLoader = feedTargetedPublicationsLoader(200);
 
-	// Step 2: Initial load
-	articleLoader().subscribe({
+	// Step 2: Initial load (subscriptions captured for cleanup on destroy)
+	const initialArticleSub = articleLoader().subscribe({
+		complete: () => { isLoading = false; },
 		error: (/** @type {any} */ error) => {
 			console.error('🔍 Discover: Article loader error:', error);
 			isLoading = false;
 		}
 	});
 
-	ambLoader().subscribe({
+	const initialAmbSub = ambLoader().subscribe({
+		complete: () => { isLoading = false; },
 		error: (/** @type {any} */ error) => {
 			console.error('🔍 Discover: AMB loader error:', error);
 			isLoading = false;
 		}
 	});
 
-	// Load calendar events
-	calendarTimelineLoader()().subscribe({
+	const initialCalendarSub = calendarLoader().subscribe({
+		complete: () => { isLoading = false; },
 		error: (/** @type {any} */ error) => {
 			console.error('🔍 Discover: Calendar loader error:', error);
+			isLoading = false;
 		}
 	});
 
-	// Load targeted publications for community mapping
-	targetedPubsLoader().subscribe({
+	const initialTargetedPubsSub = targetedPubsLoader().subscribe({
 		error: (/** @type {any} */ error) => {
 			console.error('🔍 Discover: Targeted publications loader error:', error);
 		}
 	});
 
-	// Debounced state update timers - prevents blocking on every event arrival
-	/** @type {ReturnType<typeof setTimeout> | undefined} */
-	let articlesUpdateTimer;
-	/** @type {ReturnType<typeof setTimeout> | undefined} */
-	let ambUpdateTimer;
-	/** @type {ReturnType<typeof setTimeout> | undefined} */
-	let calendarUpdateTimer;
-	/** @type {ReturnType<typeof setTimeout> | undefined} */
-	let targetedPubsUpdateTimer;
+	// Supplemental relay loading: when user override relays arrive (kind 30002),
+	// the initial loaders above won't include them because they resolved relays
+	// at mount time before the async cache populated. This $effect watches for
+	// relay changes and creates additional loaders for any new relays.
+	const initialEducationalRelays = new Set(getEducationalRelays());
+	const initialArticleRelays = new Set(getArticleRelays());
+	const initialCalendarRelays = new Set(getCalendarRelays());
+	const initialCommunikeyRelays = new Set(getCommunikeyRelays());
 
-	// Pending data from subscriptions
-	let pendingArticles = /** @type {any[] | null} */ (null);
-	let pendingAmbResources = /** @type {any[] | null} */ (null);
-	let pendingCalendarEvents = /** @type {any[] | null} */ (null);
-	let pendingTargetedPubs = /** @type {any[] | null} */ (null);
+	$effect(() => {
+		/** @type {import('rxjs').Subscription[]} */
+		const supplementalSubs = [];
 
-	// Subscribe to targeted publications model (debounced)
-	const targetedPubsModelSub = eventStore
-		.model(TimelineModel, { kinds: [30222], '#k': ['30023', '30142', '31922', '31923'] })
-		.subscribe((pubs) => {
-			pendingTargetedPubs = pubs || [];
-			clearTimeout(targetedPubsUpdateTimer);
-			targetedPubsUpdateTimer = setTimeout(() => {
-				if (pendingTargetedPubs) {
-					targetedPubs = pendingTargetedPubs;
-					pendingTargetedPubs = null;
-				}
-			}, 100);
-		});
+		const currentEducational = getEducationalRelays();
+		const newEducational = currentEducational.filter((r) => !initialEducationalRelays.has(r));
+		if (newEducational.length > 0) {
+			newEducational.forEach((r) => initialEducationalRelays.add(r));
+			const loader = createTimelineLoader(
+				pool, newEducational, { kinds: [30142] }, { eventStore, limit: BATCH_SIZE }
+			);
+			supplementalSubs.push(loader().subscribe());
+		}
 
-	// Subscribe to articles (debounced)
-	const articleModelSub = eventStore
-		.model(TimelineModel, { kinds: [30023] })
-		.subscribe((timeline) => {
-			pendingArticles = timeline || [];
-			clearTimeout(articlesUpdateTimer);
-			articlesUpdateTimer = setTimeout(() => {
-				if (pendingArticles) {
-					const previousCount = articles.length;
-					articles = pendingArticles;
-					const currentCount = articles.length;
-					pendingArticles = null;
+		const currentArticle = getArticleRelays();
+		const newArticle = currentArticle.filter((r) => !initialArticleRelays.has(r));
+		if (newArticle.length > 0) {
+			newArticle.forEach((r) => initialArticleRelays.add(r));
+			const loader = createTimelineLoader(
+				pool, newArticle, { kinds: [30023] }, { eventStore, limit: BATCH_SIZE }
+			);
+			supplementalSubs.push(loader().subscribe());
+		}
 
-					if (isLoadingMore) {
-						const newArticlesReceived = currentCount - previousCount;
-						if (newArticlesReceived === 0) {
-							hasMoreArticles = false;
-						}
-					}
+		const currentCalendar = getCalendarRelays();
+		const newCalendar = currentCalendar.filter((r) => !initialCalendarRelays.has(r));
+		if (newCalendar.length > 0) {
+			newCalendar.forEach((r) => initialCalendarRelays.add(r));
+			const loader = createTimelineLoader(
+				pool, newCalendar, { kinds: [31922, 31923], limit: 40 }, { eventStore }
+			);
+			supplementalSubs.push(loader().subscribe());
+		}
 
-					isLoading = false;
-				}
-			}, 100);
-		});
+		const currentCommunikey = getCommunikeyRelays();
+		const newCommunikey = currentCommunikey.filter((r) => !initialCommunikeyRelays.has(r));
+		if (newCommunikey.length > 0) {
+			newCommunikey.forEach((r) => initialCommunikeyRelays.add(r));
+			const loader = createTimelineLoader(
+				pool, newCommunikey,
+				{ kinds: [30222], '#k': ['30023', '30142', '31922', '31923'] },
+				{ eventStore, limit: 200 }
+			);
+			supplementalSubs.push(loader().subscribe());
+		}
 
-	// Subscribe to AMB resources (debounced)
-	const ambModelSub = eventStore.model(AMBResourceModel, []).subscribe((resources) => {
-		pendingAmbResources = resources || [];
-		clearTimeout(ambUpdateTimer);
-		ambUpdateTimer = setTimeout(() => {
-			if (pendingAmbResources) {
-				const previousCount = ambResources.length;
-				ambResources = pendingAmbResources;
-				const currentCount = ambResources.length;
-				pendingAmbResources = null;
-
-				if (isLoadingMore) {
-					const newResourcesReceived = currentCount - previousCount;
-					if (newResourcesReceived === 0) {
-						hasMoreAMB = false;
-					}
-				}
-
-				isLoading = false;
-			}
-		}, 100);
+		return () => {
+			supplementalSubs.forEach((sub) => sub.unsubscribe());
+		};
 	});
 
-	// Subscribe to calendar events (debounced)
-	const calendarModelSub = eventStore
-		.model(GlobalCalendarEventModel, [])
-		.subscribe((/** @type {any[]} */ events) => {
-			pendingCalendarEvents = events || [];
-			clearTimeout(calendarUpdateTimer);
-			calendarUpdateTimer = setTimeout(() => {
-				if (pendingCalendarEvents) {
-					calendarEvents = pendingCalendarEvents;
-					pendingCalendarEvents = null;
-				}
-			}, 100);
+	// Subscribe to targeted publications model (debounced via RxJS)
+	const targetedPubsModelSub = eventStore
+		.model(TimelineModel, { kinds: [30222], '#k': ['30023', '30142', '31922', '31923'] })
+		.pipe(debounceTime(100))
+		.subscribe((pubs) => {
+			targetedPubs = pubs || [];
+		});
+
+	// Subscribe to articles (debounced via RxJS)
+	const articleModelSub = eventStore
+		.model(TimelineModel, { kinds: [30023] })
+		.pipe(debounceTime(100))
+		.subscribe((timeline) => {
+			articles = timeline || [];
+			isLoading = false;
+		});
+
+	// Subscribe to AMB resources (debounced via RxJS)
+	const ambModelSub = /** @type {import('rxjs').Observable<any[]>} */ (
+		eventStore.model(AMBResourceModel, [])
+	).pipe(debounceTime(100))
+		.subscribe((resources) => {
+			ambResources = resources || [];
+			isLoading = false;
+		});
+
+	// Subscribe to calendar events (debounced via RxJS)
+	const calendarModelSub = /** @type {import('rxjs').Observable<any[]>} */ (
+		eventStore.model(GlobalCalendarEventModel, [])
+	).pipe(debounceTime(100))
+		.subscribe((events) => {
+			calendarEvents = events || [];
+			isLoading = false;
 		});
 
 	// Community-specific calendar event loader subscriptions
@@ -415,15 +462,15 @@
 		// Only load if a specific community is selected (not 'joined' or null)
 		if (communityFilter && communityFilter !== 'joined') {
 
-			// 1. Load direct calendar events with #h tag
-			communityCalendarSub = eventStore.timeline({
+			// 1. Subscribe to direct calendar events with #h tag (uses TimelineModel for deletion filtering)
+			communityCalendarSub = eventStore.model(TimelineModel, {
 				kinds: [31922, 31923],
 				'#h': [communityFilter],
 				limit: 50
 			}).subscribe();
 
-			// 2. Load targeted publications for this community
-			communityTargetedPubsSub = eventStore.timeline({
+			// 2. Subscribe to targeted publications for this community
+			communityTargetedPubsSub = eventStore.model(TimelineModel, {
 				kinds: [30222],
 				'#p': [communityFilter],
 				'#k': ['31922', '31923'],
@@ -462,31 +509,22 @@
 					}
 				});
 
-				// Load events by ID
+				// Load events by ID (TimelineModel filters deletions)
 				if (eventIds.size > 0) {
-					const timelineLoader = eventStore.timeline({
+					const referencedSub = eventStore.model(TimelineModel, {
 						ids: Array.from(eventIds)
-					});
-					// Handle both Observable and Promise returns
-					if (timelineLoader && typeof timelineLoader.subscribe === 'function') {
-						timelineLoader.subscribe();
-					}
+					}).subscribe();
+					// Note: this sub is not tracked individually — cleaned up when
+					// communityReferencedEventsSub is unsubscribed and effect re-runs
 				}
 
 				// Load addressable events
 				addressableRefs.forEach((ref) => {
-					if (eventStore.addressableLoader) {
-						const loader = eventStore.addressableLoader({
-							kind: ref.kind,
-							pubkey: ref.pubkey,
-							identifier: ref.dTag
-						});
-
-						// Handle both Observable and Promise returns
-						if (loader && typeof loader.subscribe === 'function') {
-							loader.subscribe();
-						}
-					}
+					/** @type {any} */ (eventStore.addressableLoader)({
+						kind: ref.kind,
+						pubkey: ref.pubkey,
+						identifier: ref.dTag
+					}).subscribe();
 				});
 
 							});
@@ -528,37 +566,17 @@
 	 */
 	function loadMoreContent() {
 		const hasMore =
+			(contentType === 'events' && hasMoreCalendarEvents) ||
 			(contentType === 'articles' && hasMoreArticles) ||
 			(contentType === 'learning' && hasMoreAMB) ||
 			(contentType === 'communities' && hasMoreCommunities) ||
-			(contentType === 'all' && (hasMoreArticles || hasMoreAMB));
+			(contentType === 'all' && (hasMoreArticles || hasMoreAMB || hasMoreCalendarEvents));
 
 		if (isLoadingMore || !hasMore) return;
 
 		isLoadingMore = true;
 
-		if (contentType === 'articles' || contentType === 'all') {
-			if (hasMoreArticles) {
-				articleLoader().subscribe({
-					error: (/** @type {any} */ error) => {
-						console.error('🔍 Discover: Article pagination error:', error);
-					}
-				});
-			}
-		}
-
-		if (contentType === 'learning' || contentType === 'all') {
-			if (hasMoreAMB) {
-				ambLoader().subscribe({
-					error: (/** @type {any} */ error) => {
-						console.error('🔍 Discover: AMB pagination error:', error);
-					}
-				});
-			}
-		}
-
 		if (contentType === 'communities') {
-			// For communities, we just increase the display count
 			const currentCount = displayedCommunitiesCount;
 			const totalCount = filteredCommunities.length;
 			if (currentCount < totalCount) {
@@ -570,11 +588,95 @@
 			return;
 		}
 
-		setTimeout(() => {
-			if (isLoadingMore) {
+		// Use loader next/complete callbacks to track batch completion
+		let pendingLoaders = 0;
+
+		function onLoaderDone() {
+			pendingLoaders--;
+			if (pendingLoaders <= 0) {
 				isLoadingMore = false;
+				// The IntersectionObserver won't re-fire if sentinel is still in viewport.
+				// Manually re-check after DOM settles.
+				requestAnimationFrame(() => {
+					const sentinel = document.getElementById('load-more-sentinel');
+					if (!sentinel) return;
+					const rect = sentinel.getBoundingClientRect();
+					if (rect.top < window.innerHeight + 200) {
+						loadMoreContent();
+					}
+				});
 			}
-		}, 10000);
+		}
+
+		if (contentType === 'events' || contentType === 'all') {
+			if (hasMoreCalendarEvents) {
+				pendingLoaders++;
+				let count = 0;
+				calendarLoader().pipe(takeUntil(timer(BATCH_TIMEOUT))).subscribe({
+					next: () => { count++; },
+					complete: () => {
+						if (count < CALENDAR_BATCH_SIZE) hasMoreCalendarEvents = false;
+						onLoaderDone();
+					},
+					error: (/** @type {any} */ error) => {
+						console.error('🔍 Discover: Calendar pagination error:', error);
+						onLoaderDone();
+					}
+				});
+			}
+		}
+
+		if (contentType === 'articles' || contentType === 'all') {
+			if (hasMoreArticles) {
+				pendingLoaders++;
+				let count = 0;
+				articleLoader().pipe(takeUntil(timer(BATCH_TIMEOUT))).subscribe({
+					next: () => { count++; },
+					complete: () => {
+						if (count < BATCH_SIZE) hasMoreArticles = false;
+						onLoaderDone();
+					},
+					error: (/** @type {any} */ error) => {
+						console.error('🔍 Discover: Article pagination error:', error);
+						onLoaderDone();
+					}
+				});
+			}
+		}
+
+			if (contentType === 'learning' || contentType === 'all') {
+			// Skip AMB pagination when learning search is active - search results are a single batch
+			if (hasMoreAMB && !(contentType === 'learning' && isLearningSearchActive)) {
+				pendingLoaders++;
+				let count = 0;
+				const ambCountBefore = ambResources.length;
+				ambLoader().pipe(takeUntil(timer(BATCH_TIMEOUT))).subscribe({
+					next: () => { count++; },
+					complete: () => {
+						if (count < BATCH_SIZE) {
+							hasMoreAMB = false;
+							onLoaderDone();
+						} else {
+							// Kind 30142 is addressable/replaceable: store.add() returns non-null
+							// for older versions of existing events, inflating count. Wait for the
+							// model debounce (100ms) to settle, then check if content actually grew.
+							setTimeout(() => {
+								if (ambResources.length <= ambCountBefore) hasMoreAMB = false;
+								onLoaderDone();
+							}, 200);
+						}
+					},
+					error: (/** @type {any} */ error) => {
+						console.error('🔍 Discover: AMB pagination error:', error);
+						onLoaderDone();
+					}
+				});
+			}
+		}
+
+		if (pendingLoaders === 0) {
+			isLoadingMore = false;
+		}
 	}
 
 	// Filtered communities for the Communities tab
@@ -606,239 +708,14 @@
 		}
 	});
 
-	// Profile loading - incremental with batching to avoid blocking navigation
-	/** @type {Map<string, {loader: any, model: any}>} */
-	let profileSubscriptions = new Map();
-	let profilesMap = new Map();
-	/** @type {Set<string>} */
-	let pendingProfilePubkeys = new Set();
-	/** @type {ReturnType<typeof setTimeout> | undefined} */
-	let profileLoadTimer;
-	let isLoadingProfiles = false;
-	/** @type {ReturnType<typeof setTimeout> | undefined} */
-	let profileMapUpdateTimer;
-
-	// Collect new author pubkeys (debounced)
-	$effect(() => {
-		const articlePubkeys = articles.map((a) => a.pubkey);
-		const ambPubkeys = ambResources.map((r) => r.pubkey);
-		const eventPubkeys = calendarEvents.map((e) => e.pubkey);
-		const communityContentPubkeys = communities.map((c) => getTagValue(c, 'd') || c.pubkey);
-
-		const allPubkeys = new Set([
-			...articlePubkeys,
-			...ambPubkeys,
-			...eventPubkeys,
-			...communityContentPubkeys
-		]);
-
-		let hasNewPubkeys = false;
-		for (const pubkey of allPubkeys) {
-			if (!profileSubscriptions.has(pubkey) && !pendingProfilePubkeys.has(pubkey)) {
-				pendingProfilePubkeys.add(pubkey);
-				hasNewPubkeys = true;
-			}
-		}
-
-		if (hasNewPubkeys) {
-			clearTimeout(profileLoadTimer);
-			profileLoadTimer = setTimeout(loadPendingProfiles, 150);
-		}
-	});
-
-	/**
-	 * Load pending profiles in batches, yielding to event loop between batches
-	 */
-	function loadPendingProfiles() {
-		if (pendingProfilePubkeys.size === 0 || isLoadingProfiles) return;
-
-		isLoadingProfiles = true;
-		const pubkeysToLoad = Array.from(pendingProfilePubkeys);
-		pendingProfilePubkeys.clear();
-
-		const BATCH_SIZE = 5;
-		let currentIndex = 0;
-
-		function processNextBatch() {
-			if (!profileSubscriptions) {
-				isLoadingProfiles = false;
-				return;
-			}
-
-			const batchEnd = Math.min(currentIndex + BATCH_SIZE, pubkeysToLoad.length);
-
-			for (let i = currentIndex; i < batchEnd; i++) {
-				const pubkey = pubkeysToLoad[i];
-				if (profileSubscriptions.has(pubkey)) continue;
-
-				const loaderSub = profileLoader({
-					kind: 0,
-					pubkey,
-					relays: runtimeConfig.fallbackRelays || []
-				}).subscribe({
-					error: () => {}
-				});
-
-				const modelSub = eventStore.model(ProfileModel, { pubkey }).subscribe((profile) => {
-					if (profile && profilesMap) {
-						profilesMap.set(pubkey, profile);
-						scheduleProfileMapUpdate();
-					}
-				});
-
-				profileSubscriptions.set(pubkey, { loader: loaderSub, model: modelSub });
-			}
-
-			currentIndex = batchEnd;
-
-			if (currentIndex < pubkeysToLoad.length) {
-				setTimeout(processNextBatch, 0);
-			} else {
-				isLoadingProfiles = false;
-				if (pendingProfilePubkeys.size > 0) {
-					setTimeout(loadPendingProfiles, 50);
-				}
-			}
-		}
-
-		processNextBatch();
-	}
-
-	function scheduleProfileMapUpdate() {
-		clearTimeout(profileMapUpdateTimer);
-		profileMapUpdateTimer = setTimeout(() => {
-			authorProfiles = new Map(profilesMap);
-		}, 50);
-	}
-
-	// Community profile loading - incremental with batching
-	/** @type {Map<string, {loader: any, model: any}>} */
-	let communityProfileSubscriptions = new Map();
-	let communityProfilesMap = new Map();
-	/** @type {Set<string>} */
-	let pendingCommunityProfilePubkeys = new Set();
-	/** @type {ReturnType<typeof setTimeout> | undefined} */
-	let communityProfileLoadTimer;
-	let isLoadingCommunityProfiles = false;
-	/** @type {ReturnType<typeof setTimeout> | undefined} */
-	let communityProfileMapUpdateTimer;
-
-	// Collect new community pubkeys (debounced)
-	$effect(() => {
-		const communityPubkeys = allCommunities.map((c) => c.pubkey);
-
-		let hasNewPubkeys = false;
-		for (const pubkey of communityPubkeys) {
-			if (!communityProfileSubscriptions.has(pubkey) && !pendingCommunityProfilePubkeys.has(pubkey)) {
-				pendingCommunityProfilePubkeys.add(pubkey);
-				hasNewPubkeys = true;
-			}
-		}
-
-		if (hasNewPubkeys) {
-			clearTimeout(communityProfileLoadTimer);
-			communityProfileLoadTimer = setTimeout(loadPendingCommunityProfiles, 150);
-		}
-	});
-
-	function loadPendingCommunityProfiles() {
-		if (pendingCommunityProfilePubkeys.size === 0 || isLoadingCommunityProfiles) return;
-
-		isLoadingCommunityProfiles = true;
-		const pubkeysToLoad = Array.from(pendingCommunityProfilePubkeys);
-		pendingCommunityProfilePubkeys.clear();
-
-		const BATCH_SIZE = 5;
-		let currentIndex = 0;
-
-		function processNextBatch() {
-			if (!communityProfileSubscriptions) {
-				isLoadingCommunityProfiles = false;
-				return;
-			}
-
-			const batchEnd = Math.min(currentIndex + BATCH_SIZE, pubkeysToLoad.length);
-
-			for (let i = currentIndex; i < batchEnd; i++) {
-				const pubkey = pubkeysToLoad[i];
-				if (communityProfileSubscriptions.has(pubkey)) continue;
-
-				const loaderSub = profileLoader({
-					kind: 0,
-					pubkey,
-					relays: runtimeConfig.fallbackRelays || []
-				}).subscribe({
-					error: () => {}
-				});
-
-				const modelSub = eventStore.model(ProfileModel, { pubkey }).subscribe((profile) => {
-					if (profile && communityProfilesMap) {
-						communityProfilesMap.set(pubkey, profile);
-						scheduleCommunityProfileMapUpdate();
-					}
-				});
-
-				communityProfileSubscriptions.set(pubkey, { loader: loaderSub, model: modelSub });
-			}
-
-			currentIndex = batchEnd;
-
-			if (currentIndex < pubkeysToLoad.length) {
-				setTimeout(processNextBatch, 0);
-			} else {
-				isLoadingCommunityProfiles = false;
-				if (pendingCommunityProfilePubkeys.size > 0) {
-					setTimeout(loadPendingCommunityProfiles, 50);
-				}
-			}
-		}
-
-		processNextBatch();
-	}
-
-	function scheduleCommunityProfileMapUpdate() {
-		clearTimeout(communityProfileMapUpdateTimer);
-		communityProfileMapUpdateTimer = setTimeout(() => {
-			communityProfiles = new Map(communityProfilesMap);
-		}, 50);
-	}
-
 	// Cleanup subscriptions on component destroy
 	$effect(() => {
 		return () => {
-			// Clear model subscription update timers
-			clearTimeout(articlesUpdateTimer);
-			clearTimeout(ambUpdateTimer);
-			clearTimeout(calendarUpdateTimer);
-			clearTimeout(targetedPubsUpdateTimer);
-
-			// Clear profile loading timers
-			clearTimeout(profileLoadTimer);
-			clearTimeout(profileMapUpdateTimer);
-			clearTimeout(communityProfileLoadTimer);
-			clearTimeout(communityProfileMapUpdateTimer);
-
-			// Unsubscribe all profile subscriptions
-			for (const { loader, model } of profileSubscriptions.values()) {
-				loader?.unsubscribe();
-				model?.unsubscribe();
-			}
-			profileSubscriptions.clear();
-
-			// Unsubscribe all community profile subscriptions
-			for (const { loader, model } of communityProfileSubscriptions.values()) {
-				loader?.unsubscribe();
-				model?.unsubscribe();
-			}
-			communityProfileSubscriptions.clear();
-
-			// Clear pending sets
-			pendingProfilePubkeys.clear();
-			pendingCommunityProfilePubkeys.clear();
-
-			// Clear maps
-			profilesMap.clear();
-			communityProfilesMap.clear();
+			// Unsubscribe initial loader subscriptions
+			initialArticleSub.unsubscribe();
+			initialAmbSub.unsubscribe();
+			initialCalendarSub.unsubscribe();
+			initialTargetedPubsSub.unsubscribe();
 
 			// Unsubscribe model subscriptions
 			articleModelSub.unsubscribe();
@@ -850,16 +727,31 @@
 
 	// Intersection Observer for infinite scroll
 	$effect(() => {
-		const hasContent = articles.length > 0 || ambResources.length > 0;
-		const hasMore = hasMoreArticles || hasMoreAMB;
-		if (!hasContent || !hasMore) return;
+		let hasContent = false;
+		let hasMore = false;
+
+		if (contentType === 'events') {
+			hasContent = calendarEvents.length > 0;
+			hasMore = hasMoreCalendarEvents;
+		} else if (contentType === 'learning') {
+			hasContent = ambResources.length > 0;
+			hasMore = hasMoreAMB && !isLearningSearchActive;
+		} else if (contentType === 'articles') {
+			hasContent = articles.length > 0;
+			hasMore = hasMoreArticles;
+		} else if (contentType === 'all') {
+			hasContent = articles.length > 0 || ambResources.length > 0 || calendarEvents.length > 0;
+			hasMore = hasMoreArticles || hasMoreAMB || hasMoreCalendarEvents;
+		}
+
+		if (!hasContent || !hasMore || isLoading) return;
 
 		const sentinel = document.getElementById('load-more-sentinel');
 		if (!sentinel) return;
 
 		const observer = new IntersectionObserver(
 			(entries) => {
-				if (entries[0].isIntersecting) {
+				if (entries[0].isIntersecting && !isLoadingMore) {
 					loadMoreContent();
 				}
 			},
@@ -996,22 +888,32 @@
 		);
 	});
 
-	// Step 3: Apply text search (only runs when search query changes)
-	const searchFilteredItems = $derived.by(() => {
-		if (!debouncedMainSearchQuery.trim() || (contentType === 'learning' && isLearningSearchActive)) {
-			return communityFilteredItems;
-		}
-		const query = debouncedMainSearchQuery.toLowerCase();
-		return communityFilteredItems.filter((item) => matchesTextSearch(item, query, authorProfiles));
+	// Step 3: Apply relay filter (only runs when relay filter changes)
+	const relayFilteredItems = $derived.by(() => {
+		if (!relayFilter) return communityFilteredItems;
+		const normalizedFilter = normalizeURL(relayFilter);
+		return communityFilteredItems.filter((item) => {
+			const event = item.data?.rawEvent || item.data?.originalEvent || item.data;
+			return getSeenRelays(event)?.has(normalizedFilter);
+		});
 	});
 
-	// Step 4: Apply tag filter (only runs when selected tags change)
+	// Step 4: Apply text search (only runs when search query changes)
+	const searchFilteredItems = $derived.by(() => {
+		if (!debouncedMainSearchQuery.trim() || (contentType === 'learning' && isLearningSearchActive)) {
+			return relayFilteredItems;
+		}
+		const query = debouncedMainSearchQuery.toLowerCase();
+		return relayFilteredItems.filter((item) => matchesTextSearch(item, query, authorProfiles));
+	});
+
+	// Step 5: Apply tag filter (only runs when selected tags change)
 	const tagFilteredItems = $derived.by(() => {
 		if (selectedTags.length === 0) return searchFilteredItems;
 		return searchFilteredItems.filter((item) => matchesTagFilter(item, selectedTags));
 	});
 
-	// Step 5: Sort (only runs when filtered items or sort order changes)
+	// Step 6: Sort (only runs when filtered items or sort order changes)
 	const combinedContent = $derived.by(() => {
 		return [...tagFilteredItems].sort((a, b) => {
 			const aDate = getItemTimestamp(a);
@@ -1082,30 +984,35 @@
 			<div class="tabs tabs-boxed bg-transparent justify-center py-4">
 				<button
 					class="tab {contentType === 'all' ? 'tab-active' : ''}"
+					data-testid="tab-all"
 					onclick={() => handleContentTypeChange('all')}
 				>
 					{m.discover_tab_all()}
 				</button>
 				<button
 					class="tab {contentType === 'events' ? 'tab-active' : ''}"
+					data-testid="tab-events"
 					onclick={() => handleContentTypeChange('events')}
 				>
 					{m.discover_tab_events()}
 				</button>
 				<button
 					class="tab {contentType === 'learning' ? 'tab-active' : ''}"
+					data-testid="tab-learning"
 					onclick={() => handleContentTypeChange('learning')}
 				>
 					{m.discover_tab_learning()}
 				</button>
 				<button
 					class="tab {contentType === 'articles' ? 'tab-active' : ''}"
+					data-testid="tab-articles"
 					onclick={() => handleContentTypeChange('articles')}
 				>
 					{m.discover_tab_articles()}
 				</button>
 				<button
 					class="tab {contentType === 'communities' ? 'tab-active' : ''}"
+					data-testid="tab-communities"
 					onclick={() => handleContentTypeChange('communities')}
 				>
 					{m.discover_tab_communities()}
@@ -1115,45 +1022,45 @@
 	</div>
 
 	<!-- Unified Filter Section (shown for all content types) -->
-	<div class="container mx-auto px-4 py-6">
-		<!-- Search Row - shown for all content types -->
-		<div class="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-center md:justify-between">
-			<!-- Search Input -->
-			<div class="flex-1 max-w-xl">
-				<div class="join w-full">
-					<div class="join-item flex items-center bg-base-100 pl-4">
-						{#if contentType === 'learning' && isLearningSearchActive && learningSearchResults.length === 0}
-							<span class="loading loading-spinner loading-sm text-primary"></span>
-						{:else}
-							<SearchIcon class_="h-5 w-5 text-base-content/50" />
-						{/if}
-					</div>
-					<input
-						bind:this={searchInputRef}
-						type="text"
-						placeholder={m.discover_content_search_placeholder()}
-						bind:value={searchQuery}
-						class="input input-bordered join-item w-full"
-						aria-label={m.discover_content_search_aria()}
-					/>
-					{#if searchQuery}
-						<button
-							type="button"
-							class="btn btn-ghost join-item"
-							onclick={() => (searchQuery = '')}
-							aria-label={m.discover_content_clear_search()}
-						>
-							✕
-						</button>
-					{/if}
-				</div>
+	<div class="container mx-auto px-4 py-6 space-y-4">
+		<!-- Row 1: Search Input -->
+		<div class="relative w-full">
+			<div class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+				{#if contentType === 'learning' && isLearningSearchActive && learningSearchResults.length === 0}
+					<span class="loading loading-spinner loading-sm text-primary"></span>
+				{:else}
+					<SearchIcon class_="h-5 w-5 text-base-content/50" />
+				{/if}
 			</div>
+			<input
+				bind:this={searchInputRef}
+				type="text"
+				placeholder={m.discover_content_search_placeholder()}
+				bind:value={searchQuery}
+				class="input input-bordered w-full pl-9 pr-10"
+				aria-label={m.discover_content_search_aria()}
+			/>
+			{#if searchQuery}
+				<button
+					type="button"
+					class="absolute right-2 top-1/2 -translate-y-1/2 btn btn-ghost btn-sm btn-circle"
+					onclick={() => (searchQuery = '')}
+					aria-label={m.discover_content_clear_search()}
+				>
+					✕
+				</button>
+			{/if}
+		</div>
 
+		<!-- Row 2: All dropdown filters in a unified row -->
+		<div class="flex flex-wrap gap-4 items-end">
 			<!-- Sort (not shown for communities) -->
 			{#if contentType !== 'communities'}
-				<div class="flex items-center gap-2">
-					<label for="sort" class="text-sm font-medium text-base-content">{m.discover_sort_label()}</label>
-					<select id="sort" bind:value={sortBy} class="select-bordered select select-sm">
+				<div class="form-control w-full sm:w-auto sm:min-w-[160px]">
+					<label for="sort" class="label">
+						<span class="label-text font-medium">{m.discover_sort_label()}</span>
+					</label>
+					<select id="sort" bind:value={sortBy} class="select select-bordered w-full">
 						<option value="newest">{m.discover_sort_newest()}</option>
 						<option value="oldest">{m.discover_sort_oldest()}</option>
 					</select>
@@ -1162,29 +1069,43 @@
 
 			<!-- Community Filter (shown for all except communities tab, only for logged-in users) -->
 			{#if activeUser && contentType !== 'communities'}
-				<CommunityFilterDropdown
-					value={communityFilter}
-					joinedCommunities={communityOptions.joined}
-					discoverCommunities={communityOptions.discover}
-					onchange={handleCommunityFilterChange}
-				/>
+				<div class="w-full sm:w-auto sm:min-w-[200px]">
+					<CommunityFilterDropdown
+						value={communityFilter}
+						joinedCommunities={communityOptions.joined}
+						discoverCommunities={communityOptions.discover}
+						onchange={handleCommunityFilterChange}
+					/>
+				</div>
+			{/if}
+
+			<!-- Relay Filter (shown for tabs with app-specific relays) -->
+			{#if tabRelayCategory && availableRelays.length > 0}
+				<div class="w-full sm:w-auto sm:min-w-[200px]">
+					<RelayFilterDropdown
+						relays={availableRelays}
+						value={relayFilter}
+						onchange={(v) => { relayFilter = v; }}
+						settingsCategory={tabRelayCategory}
+					/>
+				</div>
+			{/if}
+
+			<!-- Learning Content SKOS Filters (shown only on learning tab) -->
+			{#if contentType === 'learning'}
+				<div class="w-full sm:flex-1 sm:min-w-[200px]">
+					<LearningContentFilters
+						onfilterchange={handleLearningFilterChange}
+						isSearching={isLearningSearchActive && learningSearchResults.length === 0}
+						searchText={debouncedSearchQuery}
+					/>
+				</div>
 			{/if}
 		</div>
 
-		<!-- Learning Content Filters (SKOS dropdowns - shown only on learning tab) -->
-		{#if contentType === 'learning'}
-			<div class="mt-4">
-				<LearningContentFilters 
-					onfilterchange={handleLearningFilterChange}
-					isSearching={isLearningSearchActive && learningSearchResults.length === 0}
-					searchText={debouncedSearchQuery}
-				/>
-			</div>
-		{/if}
-
 		<!-- Tag Filter (not shown for communities or learning) -->
 		{#if contentType !== 'communities' && contentType !== 'learning' && allTags.length > 0}
-			<div class="mt-4">
+			<div>
 				<div class="mb-2 text-sm font-medium text-base-content">{m.discover_filter_by_topic()}</div>
 				<div class="flex flex-wrap gap-2">
 					{#each allTags.slice(0, 20) as tag}
@@ -1214,7 +1135,7 @@
 
 		<!-- Results count (not shown for communities which has its own) -->
 		{#if contentType !== 'communities' && displayedContent.length > 0}
-			<div class="mt-4 text-center text-sm text-base-content/70">
+			<div class="text-center text-sm text-base-content/70">
 				{m.discover_results_count({ count: displayedContent.length })}
 				{#if hasMoreArticles || hasMoreAMB}
 					<span class="ml-2 text-primary">• {m.discover_scroll_for_more()}</span>
@@ -1323,29 +1244,32 @@
 				</div>
 			</div>
 		{:else}
-			<!-- Content Grid with lazy rendering -->
-			<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+			<!-- Content List with lazy rendering -->
+			<div class="flex flex-col gap-3" data-testid="content-list">
 				{#each displayedContent as item (item.data.id)}
-					<div use:observeCard={item.data.id} class="min-h-[320px]">
+					<div use:observeCard={item.data.id} class="min-h-[80px]" data-testid="content-card">
 						{#if visibleItemIds.has(item.data.id)}
 							{#if item.type === 'article'}
 								<ArticleCard
 									article={item.data}
 									authorProfile={authorProfiles.get(item.data.pubkey)}
+									variant="list"
 								/>
 							{:else if item.type === 'amb'}
 								<AMBResourceCard
 									resource={item.data}
 									authorProfile={authorProfiles.get(item.data.pubkey)}
+									variant="list"
 								/>
 							{:else if item.type === 'event'}
 								<CalendarEventCard
 									event={item.data}
 									onEventClick={handleEventClick}
+									variant="list"
 								/>
 							{/if}
 						{:else}
-							<ContentCardSkeleton />
+							<ContentCardSkeleton variant="list" />
 						{/if}
 					</div>
 				{/each}
@@ -1360,7 +1284,10 @@
 							<p class="mt-4 text-base-content/70">{m.discover_loading_more()}</p>
 						</div>
 					</div>
-				{:else if !hasMoreArticles && !hasMoreAMB}
+				{:else if (contentType === 'events' && !hasMoreCalendarEvents) ||
+						(contentType === 'learning' && !hasMoreAMB && !isLearningSearchActive) ||
+						(contentType === 'articles' && !hasMoreArticles) ||
+						(contentType === 'all' && !hasMoreArticles && !hasMoreAMB && !hasMoreCalendarEvents)}
 					<div class="flex justify-center">
 						<p class="text-base-content/50">{m.discover_no_more_content()}</p>
 					</div>

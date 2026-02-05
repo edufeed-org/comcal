@@ -53,7 +53,40 @@ async function initializeAccountPersistence() {
 		}
 	});
 
-	// Step 5: Pre-warm relays when user logs in
+	// Step 5: Load user's app-specific relay sets (kind 30002) on login
+	manager.active$.subscribe(async (account) => {
+		const {
+			clearUserOverrideCache,
+			updateUserOverrideCache,
+			CATEGORIES,
+			getRelaySetDTag,
+			parseRelaySetEvent
+		} = await import('$lib/services/app-relay-service.svelte.js');
+
+		if (!account) {
+			clearUserOverrideCache();
+			return;
+		}
+
+		const { pool, eventStore } = await import('$lib/stores/nostr-infrastructure.svelte');
+		const { createAppRelaySetLoader } = await import('$lib/loaders/app-relay-set-loader.js');
+		const { getRelayListLookupRelays } = await import('$lib/services/relay-service.svelte.js');
+
+		const lookupRelays = getRelayListLookupRelays();
+		const loader = createAppRelaySetLoader(pool, lookupRelays, eventStore, account.pubkey);
+		loader()().subscribe();
+
+		// Subscribe to each category and populate cache
+		for (const category of Object.keys(CATEGORIES)) {
+			const dTag = getRelaySetDTag(category);
+			eventStore.replaceable(30002, account.pubkey, dTag).subscribe((event) => {
+				const relays = parseRelaySetEvent(event);
+				updateUserOverrideCache(category, relays);
+			});
+		}
+	});
+
+	// Step 6: Pre-warm relays when user logs in (after relay sets loaded above)
 	manager.active$.subscribe(async (account) => {
 		if (account) {
 			// Use dynamic import to avoid circular dependencies
@@ -73,7 +106,7 @@ async function initializeAccountPersistence() {
 		}
 	});
 
-	// Step 6: Load contacts for follow list search when user logs in
+	// Step 7: Load contacts for follow list search when user logs in
 	manager.active$.subscribe(async (account) => {
 		// Use dynamic import to avoid circular dependencies
 		const { contactsStore } = await import('./contacts.svelte.js');

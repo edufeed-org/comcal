@@ -31,10 +31,13 @@
 	 * @property {any} resource - Formatted AMB resource object
 	 * @property {any} [authorProfile] - Author's profile
 	 * @property {boolean} [compact=false] - Compact display mode
+	 * @property {'card'|'list'} [variant='card'] - Display variant
 	 */
 
 	/** @type {Props} */
-	let { resource, authorProfile = null, compact = false } = $props();
+	let { resource, authorProfile = null, compact = false, variant = 'card' } = $props();
+
+	const isList = $derived(variant === 'list');
 
 	// Get author info
 	const authorName = $derived(
@@ -117,6 +120,46 @@
 	}
 </script>
 
+{#if isList}
+	<!-- List variant: horizontal row -->
+	<div
+		class="amb-card-list flex items-center gap-3 p-3 bg-base-100 border border-base-300 rounded-lg hover:shadow-sm hover:border-secondary transition-shadow cursor-pointer focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-opacity-50"
+		role="button"
+		tabindex="0"
+		onclick={navigateToDetail}
+		onkeydown={handleKeydown}
+	>
+		<div class="list-thumbnail w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-base-200">
+			{#if resource.image}
+				<ImageWithFallback
+					src={resource.image}
+					alt={resource.name}
+					fallbackType="article"
+					class="w-full h-full object-cover"
+				/>
+			{:else}
+				<div class="w-full h-full flex items-center justify-center text-base-content/30 text-2xl">📚</div>
+			{/if}
+		</div>
+		<div class="flex-1 min-w-0">
+			<div class="flex items-center gap-2">
+				<span class="font-semibold text-base-content truncate">{resource.name}</span>
+				{#if localizedLearningResourceTypes.length > 0}
+					<span class="badge badge-primary badge-xs flex-shrink-0">{localizedLearningResourceTypes[0].label}</span>
+				{/if}
+			</div>
+			<div class="text-sm text-base-content/60 truncate">
+				{authorName} · {formatCalendarDate(publishedAt, 'short')}
+				{#if resource.license}
+					· {resource.license.label}
+				{/if}
+			</div>
+			{#if resource.description}
+				<div class="text-sm text-base-content/50 truncate">{resource.description}</div>
+			{/if}
+		</div>
+	</div>
+{:else}
 <div
 	class="amb-card bg-base-100 border border-base-300 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer hover:border-secondary {compact
 		? 'p-3'
@@ -308,6 +351,8 @@
 		{/if}
 	</div>
 </div>
+
+{/if}
 
 <style>
 	.amb-card {

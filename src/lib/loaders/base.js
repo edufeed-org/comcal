@@ -24,6 +24,7 @@ eventStore.replaceableLoader = addressLoader;
 
 // Event resolution loader for fetching specific events by ID
 export const eventLoader = createEventLoader(pool, { eventStore });
+eventStore.eventLoader = eventLoader;
 
 /**
  * Factory: Create a timeline loader for user's deletion events (NIP-09)

@@ -45,3 +45,7 @@ project.inlang
 .claude/
 CLAUDE.md
 
+# Playwright
+test-results/
+playwright-report/
+

@@ -171,8 +171,8 @@
 			type="button"
 			tabindex="0"
 			role="button"
-			class="input input-bordered w-full flex items-center gap-2 cursor-pointer min-h-[3rem] h-auto py-2 pr-8"
-			class:input-disabled={disabled}
+			class="select select-bordered select-trigger w-full pr-8"
+			class:select-disabled={disabled}
 			onclick={() => !disabled && (isOpen = !isOpen)}
 			onkeydown={handleKeydown}
 			{disabled}
@@ -183,7 +183,7 @@
 			{:else if error}
 				<span class="text-error text-sm">{error}</span>
 			{:else if selected.length === 0}
-				<span class="text-base-content/50">{placeholder}</span>
+				<span class="text-base-content/70">{placeholder}</span>
 			{:else}
 				<!-- Selected items -->
 				<div class="flex flex-wrap gap-1.5">

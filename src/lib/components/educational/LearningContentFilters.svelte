@@ -107,7 +107,7 @@
 
 <div class="learning-content-filters space-y-4">
 	<!-- Filter Dropdowns -->
-	<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 		<!-- Learning Resource Type -->
 		<SKOSDropdown
 			vocabularyKey="learningResourceType"

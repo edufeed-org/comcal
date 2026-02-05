@@ -241,34 +241,26 @@ export function useCalendarEventLoader(options) {
 			// Collect author pubkey for deletion loader
 			authorPubkeys.add(parsed.pubkey);
 
-			const loader = eventStore.addressableLoader?.({
+			/** @type {any} */ (eventStore.addressableLoader)({
 				kind: parsed.kind,
 				pubkey: parsed.pubkey,
 				identifier: parsed.dTag
-			});
+			}).subscribe((/** @type {any} */ event) => {
+				console.log(
+					`📅 EventLoader: Successfully loaded event:`,
+					event.id,
+					getCalendarEventTitle(event)
+				);
+				const calendarEvent = getCalendarEventMetadata(event);
 
-			if (loader) {
-				// Type assertion to handle Observable vs Promise return type
-				const observableLoader = /** @type {any} */ (loader);
-				if (typeof observableLoader.subscribe === 'function') {
-					observableLoader.subscribe((/** @type {any} */ event) => {
-						console.log(
-							`📅 EventLoader: Successfully loaded event:`,
-							event.id,
-							getCalendarEventTitle(event)
-						);
-						const calendarEvent = getCalendarEventMetadata(event);
-
-						if (!eventMap.has(calendarEvent.id)) {
-							eventMap.set(calendarEvent.id, calendarEvent);
-							options.onEventsUpdate(Array.from(eventMap.values()));
-							console.log(`📅 EventLoader: Added unique event, total: ${eventMap.size}`);
-						} else {
-							console.log(`📅 EventLoader: Skipped duplicate event:`, calendarEvent.id);
-						}
-					});
+				if (!eventMap.has(calendarEvent.id)) {
+					eventMap.set(calendarEvent.id, calendarEvent);
+					options.onEventsUpdate(Array.from(eventMap.values()));
+					console.log(`📅 EventLoader: Added unique event, total: ${eventMap.size}`);
+				} else {
+					console.log(`📅 EventLoader: Skipped duplicate event:`, calendarEvent.id);
 				}
-			}
+			});
 		});
 		
 		// Start deletion loaders for all authors at once (parallel pattern)
@@ -422,18 +414,11 @@ export function useCalendarEventLoader(options) {
 				
 				// Start loaders for addressable events
 				addressableRefs.forEach((ref) => {
-					if (eventStore.addressableLoader) {
-						const loader = eventStore.addressableLoader({
-							kind: ref.kind,
-							pubkey: ref.pubkey,
-							identifier: ref.dTag
-						});
-						
-						// Handle both Observable and Promise returns
-						if (loader && typeof loader.subscribe === 'function') {
-							loader.subscribe();
-						}
-					}
+					/** @type {any} */ (eventStore.addressableLoader)({
+						kind: ref.kind,
+						pubkey: ref.pubkey,
+						identifier: ref.dTag
+					}).subscribe();
 				});
 			});
 			

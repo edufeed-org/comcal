@@ -8,7 +8,7 @@
  */
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte.js';
 import { getPublishRelays, getPrimaryWriteRelay } from './relay-service.svelte.js';
-import { getAppRelaysForCategory, kindToAppRelayCategory } from './app-relay-service.js';
+import { getAppRelaysForCategory, kindToAppRelayCategory } from './app-relay-service.svelte.js';
 import { getRelaysForKind, getCommunityGlobalRelays } from '$lib/helpers/communityRelays.js';
 import { manager } from '$lib/stores/accounts.svelte.js';
 import { isWarmAndAuthenticated } from './relay-warming-service.svelte.js';

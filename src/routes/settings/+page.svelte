@@ -19,7 +19,7 @@
 		getDefaultRelaysForCategory,
 		parseRelaySetEvent,
 		updateUserOverrideCache
-	} from '$lib/services/app-relay-service.js';
+	} from '$lib/services/app-relay-service.svelte.js';
 	import { createAppRelaySetLoader } from '$lib/loaders/app-relay-set-loader.js';
 	import { publishEvent } from '$lib/services/publish-service.js';
 	import { appSettings } from '$lib/stores/app-settings.svelte.js';

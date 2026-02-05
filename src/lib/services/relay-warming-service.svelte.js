@@ -4,7 +4,7 @@
  * to make publishing feel instant.
  */
 import { pool } from '$lib/stores/nostr-infrastructure.svelte.js';
-import { getAppRelaysForCategory, CATEGORIES } from './app-relay-service.js';
+import { getAppRelaysForCategory, CATEGORIES } from './app-relay-service.svelte.js';
 import { fetchRelayList } from './relay-service.svelte.js';
 import { getAllCommunityRelays } from '$lib/helpers/communityRelays.js';
 
