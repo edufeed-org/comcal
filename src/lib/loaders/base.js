@@ -1,23 +1,30 @@
 /**
  * Base loaders that bootstrap EventStore with relay knowledge.
  * These must be created before EventStore can intelligently fetch data.
- * 
+ *
  * The loaders connect the EventStore to the relay pool, enabling automatic
  * data fetching without explicit configuration in each component.
  */
-import { createAddressLoader, createEventLoader, createUnifiedEventLoader, createTimelineLoader } from 'applesauce-loaders/loaders';
-import { timer } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import {
+  createAddressLoader,
+  createEventLoader,
+  createUnifiedEventLoader,
+  createTimelineLoader
+} from 'applesauce-loaders/loaders';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { getAllLookupRelays, getCalendarRelays } from '$lib/helpers/relay-helper.js';
+import { getAllLookupRelays } from '$lib/helpers/relay-helper.js';
 
 /**
  * Pool wrapper with per-request timeout for use with createTimelineLoader.
  * v5's pool.request() uses completeOnEose() which waits for ALL relays.
  * If any relay hangs (never sends EOSE), the request never completes,
  * blocking loadBackwardBlocks' loading flag and preventing pagination.
- * This wrapper ensures requests complete within the timeout, allowing
- * pagination to proceed with whatever events were already received.
+ *
+ * This wrapper uses pool.request()'s built-in timeout option to ensure
+ * requests complete within the timeout, allowing pagination to proceed
+ * with whatever events were already received. The timeout also ensures
+ * the observable properly signals complete() even when no events are found,
+ * allowing loading states to transition to empty states.
  *
  * The timeout must be short enough that loadBackwardBlocks' loading flag
  * clears before pagination is triggered (typically 2-3s after page load).
@@ -26,16 +33,15 @@ import { getAllLookupRelays, getCalendarRelays } from '$lib/helpers/relay-helper
  * @param {import('nostr-tools').Filter} filters
  * @returns {import('rxjs').Observable<any>}
  */
-export const timedPool = (relays, filters) =>
-	pool.request(relays, filters).pipe(takeUntil(timer(2_000)));
+export const timedPool = (relays, filters) => pool.request(relays, filters, { timeout: 2000 });
 
 // Standalone address loader for direct use in components/loaders
 // Uses a getter function for lookupRelays to ensure config updates are reflected
 export const addressLoader = createAddressLoader(pool, {
-	eventStore,
-	get lookupRelays() {
-		return getAllLookupRelays();
-	}
+  eventStore,
+  get lookupRelays() {
+    return getAllLookupRelays();
+  }
 });
 
 // Standalone event-by-ID loader for direct use
@@ -43,10 +49,10 @@ export const eventLoader = createEventLoader(pool, { eventStore });
 
 // Unified loader for EventStore - handles both EventPointer and AddressPointer
 const unifiedLoader = createUnifiedEventLoader(pool, {
-	eventStore,
-	get lookupRelays() {
-		return getAllLookupRelays();
-	}
+  eventStore,
+  get lookupRelays() {
+    return getAllLookupRelays();
+  }
 });
 eventStore.eventLoader = unifiedLoader;
 
@@ -68,13 +74,14 @@ eventStore.eventLoader = unifiedLoader;
  *   console.log('Deletion event:', deletionEvent);
  * });
  */
-export const userDeletionLoader = (userPubkey) => createTimelineLoader(
-	timedPool,
-	getAllLookupRelays(), // Use all lookup relays to find deletions published anywhere
-	{
-		kinds: [5],              // NIP-09 deletion events
-		authors: [userPubkey],   // User's own deletions
-		limit: 500               // Higher limit since deletions accumulate over time
-	},
-	{ eventStore }
-);
+export const userDeletionLoader = (userPubkey) =>
+  createTimelineLoader(
+    timedPool,
+    getAllLookupRelays(), // Use all lookup relays to find deletions published anywhere
+    {
+      kinds: [5], // NIP-09 deletion events
+      authors: [userPubkey], // User's own deletions
+      limit: 500 // Higher limit since deletions accumulate over time
+    },
+    { eventStore }
+  );
