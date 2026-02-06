@@ -4,11 +4,13 @@
 		articleTimelineLoader,
 		ambTimelineLoader,
 		feedTargetedPublicationsLoader,
-		calendarTimelineLoader
+		calendarTimelineLoader,
+		addressLoader,
+		timedPool
 	} from '$lib/loaders';
 	import { ambSearchLoader } from '$lib/loaders/amb-search.js';
 	import { hasActiveFilters, createEmptyFilters } from '$lib/helpers/educational/searchQueryBuilder.js';
-	import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { runtimeConfig } from '$lib/stores/config.svelte.js';
 	import { createTimelineLoader } from 'applesauce-loaders/loaders';
 	import {
@@ -20,7 +22,8 @@
 	import { TimelineModel } from 'applesauce-core/models';
 	import { AMBResourceModel, GlobalCalendarEventModel } from '$lib/models';
 	import { useProfileMap } from '$lib/stores/profile-map.svelte.js';
-	import { getArticlePublished, getTagValue } from 'applesauce-core/helpers';
+	import { getTagValue } from 'applesauce-core/helpers';
+	import { getArticlePublished } from 'applesauce-common/helpers';
 	import ArticleCard from '$lib/components/article/ArticleCard.svelte';
 	import AMBResourceCard from '$lib/components/educational/AMBResourceCard.svelte';
 	import CalendarEventCard from '$lib/components/calendar/CalendarEventCard.svelte';
@@ -309,7 +312,7 @@
 	// Batch sizes for loading
 	const BATCH_SIZE = 20;
 	const CALENDAR_BATCH_SIZE = 40; // Matches limit in calendarTimelineLoader
-	const BATCH_TIMEOUT = 15_000; // Safety timeout per batch (handles relays that hang on EOSE)
+	const BATCH_TIMEOUT = 4_000; // Safety timeout per batch (timedPool is 2s + buffer)
 
 	// Step 1: Create stateful loaders
 	const articleLoader = articleTimelineLoader(BATCH_SIZE);
@@ -366,7 +369,7 @@
 		if (newEducational.length > 0) {
 			newEducational.forEach((r) => initialEducationalRelays.add(r));
 			const loader = createTimelineLoader(
-				pool, newEducational, { kinds: [30142] }, { eventStore, limit: BATCH_SIZE }
+				timedPool, newEducational, { kinds: [30142] }, { eventStore, limit: BATCH_SIZE }
 			);
 			supplementalSubs.push(loader().subscribe());
 		}
@@ -376,7 +379,7 @@
 		if (newArticle.length > 0) {
 			newArticle.forEach((r) => initialArticleRelays.add(r));
 			const loader = createTimelineLoader(
-				pool, newArticle, { kinds: [30023] }, { eventStore, limit: BATCH_SIZE }
+				timedPool, newArticle, { kinds: [30023] }, { eventStore, limit: BATCH_SIZE }
 			);
 			supplementalSubs.push(loader().subscribe());
 		}
@@ -386,7 +389,7 @@
 		if (newCalendar.length > 0) {
 			newCalendar.forEach((r) => initialCalendarRelays.add(r));
 			const loader = createTimelineLoader(
-				pool, newCalendar, { kinds: [31922, 31923], limit: 40 }, { eventStore }
+				timedPool, newCalendar, { kinds: [31922, 31923], limit: 40 }, { eventStore }
 			);
 			supplementalSubs.push(loader().subscribe());
 		}
@@ -396,7 +399,7 @@
 		if (newCommunikey.length > 0) {
 			newCommunikey.forEach((r) => initialCommunikeyRelays.add(r));
 			const loader = createTimelineLoader(
-				pool, newCommunikey,
+				timedPool, newCommunikey,
 				{ kinds: [30222], '#k': ['30023', '30142', '31922', '31923'] },
 				{ eventStore, limit: 200 }
 			);
@@ -520,7 +523,7 @@
 
 				// Load addressable events
 				addressableRefs.forEach((ref) => {
-					/** @type {any} */ (eventStore.addressableLoader)({
+					addressLoader({
 						kind: ref.kind,
 						pubkey: ref.pubkey,
 						identifier: ref.dTag
@@ -615,7 +618,8 @@
 				calendarLoader().pipe(takeUntil(timer(BATCH_TIMEOUT))).subscribe({
 					next: () => { count++; },
 					complete: () => {
-						if (count < CALENDAR_BATCH_SIZE) hasMoreCalendarEvents = false;
+						// v5 filterDuplicateEvents may reduce count by 1 at batch boundaries
+					if (count === 0) hasMoreCalendarEvents = false;
 						onLoaderDone();
 					},
 					error: (/** @type {any} */ error) => {
@@ -633,7 +637,8 @@
 				articleLoader().pipe(takeUntil(timer(BATCH_TIMEOUT))).subscribe({
 					next: () => { count++; },
 					complete: () => {
-						if (count < BATCH_SIZE) hasMoreArticles = false;
+						// v5 filterDuplicateEvents may reduce count by 1 at batch boundaries
+						if (count === 0) hasMoreArticles = false;
 						onLoaderDone();
 					},
 					error: (/** @type {any} */ error) => {
@@ -653,13 +658,13 @@
 				ambLoader().pipe(takeUntil(timer(BATCH_TIMEOUT))).subscribe({
 					next: () => { count++; },
 					complete: () => {
-						if (count < BATCH_SIZE) {
+						if (count === 0) {
 							hasMoreAMB = false;
 							onLoaderDone();
 						} else {
-							// Kind 30142 is addressable/replaceable: store.add() returns non-null
-							// for older versions of existing events, inflating count. Wait for the
-							// model debounce (100ms) to settle, then check if content actually grew.
+							// v5 filterDuplicateEvents may reduce count at batch boundaries.
+							// Wait for the model debounce (100ms) to settle, then check if
+							// content actually grew.
 							setTimeout(() => {
 								if (ambResources.length <= ambCountBefore) hasMoreAMB = false;
 								onLoaderDone();

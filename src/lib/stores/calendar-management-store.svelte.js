@@ -8,8 +8,8 @@ import { of, BehaviorSubject } from 'rxjs';
 import { SvelteSet, SvelteMap } from 'svelte/reactivity';
 import { userCalendarLoader, userDeletionLoader } from '$lib/loaders';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
-import { EventFactory } from 'applesauce-factory';
+import { getCalendarEventTitle } from 'applesauce-common/helpers';
+import { EventFactory } from 'applesauce-core/event-factory';
 import { manager } from '$lib/stores/accounts.svelte';
 import { publishEvent } from '$lib/services/publish-service.js';
 

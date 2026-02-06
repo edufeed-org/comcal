@@ -4,7 +4,8 @@
 -->
 
 <script>
-	import { getArticleTitle, getArticleImage, getProfilePicture, getDisplayName } from 'applesauce-core/helpers';
+	import { getProfilePicture, getDisplayName } from 'applesauce-core/helpers';
+	import { getArticleTitle, getArticleImage } from 'applesauce-common/helpers';
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import { goto } from '$app/navigation';
 	import ImageWithFallback from '../shared/ImageWithFallback.svelte';

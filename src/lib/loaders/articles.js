@@ -2,8 +2,9 @@
  * Article loading utilities for kind 30023 long-form content.
  */
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
-import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { getArticleRelays } from '$lib/helpers/relay-helper.js';
+import { timedPool } from './base.js';
 
 /**
  * Factory: Create a stateful timeline loader for kind 30023 articles with automatic pagination
@@ -13,7 +14,7 @@ import { getArticleRelays } from '$lib/helpers/relay-helper.js';
  */
 export function articleTimelineLoader(limit = 20) {
 	return createTimelineLoader(
-		pool,
+		timedPool,
 		getArticleRelays(),
 		{ kinds: [30023] },
 		{ eventStore, limit }

@@ -3,7 +3,7 @@
 	import { useCalendarManagement } from '$lib/stores/calendar-management-store.svelte.js';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import CalendarCreationModal from '$lib/components/calendar/CalendarCreationModal.svelte';
-	import { EventFactory } from 'applesauce-factory';
+	import { EventFactory } from 'applesauce-core/event-factory';
 	import { publishEvent } from '$lib/services/publish-service.js';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';

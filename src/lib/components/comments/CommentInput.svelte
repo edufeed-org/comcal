@@ -1,5 +1,5 @@
 <script>
-	import { EventFactory } from 'applesauce-factory';
+	import { EventFactory } from 'applesauce-core/event-factory';
 	import { publishEventOptimistic } from '$lib/services/publish-service.js';
 	import { getPrimaryWriteRelay } from '$lib/services/relay-service.svelte.js';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';

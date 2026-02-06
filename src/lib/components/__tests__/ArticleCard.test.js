@@ -29,10 +29,12 @@ vi.mock('$app/navigation', () => ({
 	goto: vi.fn()
 }));
 vi.mock('applesauce-core/helpers', () => ({
-	getArticleTitle: (event) => event.tags?.find((t) => t[0] === 'title')?.[1] || 'Untitled',
-	getArticleImage: (event) => event.tags?.find((t) => t[0] === 'image')?.[1] || null,
 	getProfilePicture: (profile) => profile?.picture || null,
 	getDisplayName: (profile, fallback) => profile?.name || fallback
+}));
+vi.mock('applesauce-common/helpers', () => ({
+	getArticleTitle: (event) => event.tags?.find((t) => t[0] === 'title')?.[1] || 'Untitled',
+	getArticleImage: (event) => event.tags?.find((t) => t[0] === 'image')?.[1] || null
 }));
 vi.mock('$lib/helpers/calendar.js', () => ({
 	formatCalendarDate: () => 'Jan 15'

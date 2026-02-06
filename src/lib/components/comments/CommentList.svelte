@@ -1,7 +1,7 @@
 <script>
 	import { createCommentLoader } from '$lib/loaders/comments.js';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-	import { CommentsModel } from 'applesauce-core/models';
+	import { CommentsModel } from 'applesauce-common/models';
 	import { buildCommentTree, countComments } from '$lib/helpers/commentThreading.js';
 	import CommentThread from './CommentThread.svelte';
 	import CommentInput from './CommentInput.svelte';

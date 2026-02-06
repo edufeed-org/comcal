@@ -1,7 +1,7 @@
 <script>
 	import { getProfilePicture } from 'applesauce-core/helpers';
 	import { useCommunityMembership } from '$lib/stores/joined-communities-list.svelte.js';
-	import { EventFactory } from 'applesauce-factory';
+	import { EventFactory } from 'applesauce-core/event-factory';
 	import { manager } from '$lib/stores/accounts.svelte';
 	import { publishEvent } from '$lib/services/publish-service.js';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';

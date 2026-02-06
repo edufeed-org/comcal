@@ -3,7 +3,7 @@
  * Actions for creating and managing educational resources (AMB) with Nostr integration
  */
 
-import { EventFactory } from 'applesauce-factory';
+import { EventFactory } from 'applesauce-core/event-factory';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { manager } from '$lib/stores/accounts.svelte';
 import { runtimeConfig } from '$lib/stores/config.svelte.js';

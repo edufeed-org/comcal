@@ -8,7 +8,7 @@
 	import { onDestroy } from 'svelte';
 	import { reactionsLoader } from '$lib/loaders/reactions.js';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-	import { ReactionsModel } from 'applesauce-core/models';
+	import { ReactionsModel } from 'applesauce-common/models';
 	import { useActiveUser } from '$lib/stores/accounts.svelte.js';
 	import { normalizeReactionContent } from '$lib/helpers/reactions.js';
 	import ReactionButton from './ReactionButton.svelte';

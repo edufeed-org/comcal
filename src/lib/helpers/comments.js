@@ -2,7 +2,7 @@
  * Comment helper functions for NIP-22 comments
  * Handles creating and deleting comments
  */
-import { EventFactory } from 'applesauce-factory';
+import { EventFactory } from 'applesauce-core/event-factory';
 import { publishEvent } from '$lib/services/publish-service.js';
 import { manager } from '$lib/stores/accounts.svelte.js';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';

@@ -10,6 +10,7 @@ import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
 import { SvelteSet } from 'svelte/reactivity';
 import { onlyEvents } from 'applesauce-relay/operators';
 import { mapEventsToStore } from 'applesauce-core/observable';
+import { addressLoader, timedPool } from './base.js';
 
 /**
  * Get combined relays for AMB resource loading (educational app relays + fallback)
@@ -28,7 +29,7 @@ function getAMBRelays() {
  */
 export function ambTimelineLoader(limit = 20) {
 	return createTimelineLoader(
-		pool,
+		timedPool,
 		getAMBRelays(),
 		{ kinds: [30142] },
 		{ eventStore, limit }
@@ -42,7 +43,7 @@ export function ambTimelineLoader(limit = 20) {
  */
 export function ambTargetedPublicationTimelineLoader(communityPubkey) {
 	return createTimelineLoader(
-		pool,
+		timedPool,
 		getAMBRelays(),
 		{
 			kinds: [30222],
@@ -76,7 +77,7 @@ export function useAMBCommunityLoader(communityPubkey) {
 
 	// 1. Load direct community resources (kind 30142 with h-tag) from network
 	const directResourcesLoader = createTimelineLoader(
-		pool,
+		timedPool,
 		getAMBRelays(),
 		{ kinds: [30142], '#h': [communityPubkey] },
 		{ eventStore, limit: 50 }
@@ -134,7 +135,7 @@ export function useAMBCommunityLoader(communityPubkey) {
 		if (addressableRefs.length > 0) {
 			console.log('📚 AMBLoader: Loading', addressableRefs.length, 'referenced resources by address');
 			addressableRefs.forEach((ref) => {
-				/** @type {any} */ (eventStore.addressableLoader)({
+				addressLoader({
 					kind: ref.kind,
 					pubkey: ref.pubkey,
 					identifier: ref.dTag

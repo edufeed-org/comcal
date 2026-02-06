@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 
 /**
  * Wait for content cards to appear on the discover page.
+ * Includes time for timedPool (2s) to complete so pagination is ready.
  * @param {import('@playwright/test').Page} page
  * @param {number} timeout
  */
@@ -10,8 +11,8 @@ async function waitForContent(page, timeout = 30_000) {
 		.locator('[data-testid="content-card"]')
 		.first()
 		.waitFor({ state: 'attached', timeout });
-	// Allow debounced state updates (100ms) + DOM rendering to settle
-	await page.waitForTimeout(500);
+	// Allow timedPool (2s) to complete + debounced state updates + DOM rendering
+	await page.waitForTimeout(2500);
 }
 
 /**
@@ -30,8 +31,8 @@ async function getCardCount(page) {
 async function triggerInfiniteScroll(page) {
 	const sentinel = page.locator('#load-more-sentinel');
 	await sentinel.scrollIntoViewIfNeeded();
-	// Wait for: WebSocket roundtrip + 100ms debounce + DOM update
-	await page.waitForTimeout(2000);
+	// Wait for: timedPool (2s) + WebSocket roundtrip + debounce + DOM update
+	await page.waitForTimeout(4000);
 }
 
 test.describe('Discover page - infinite scroll', () => {
@@ -100,10 +101,11 @@ test.describe('Discover page - infinite scroll', () => {
 
 		await triggerInfiniteScroll(page);
 
+		// Verify pagination loaded more content
 		await expect(async () => {
 			const newCount = await getCardCount(page);
 			expect(newCount).toBeGreaterThan(initialCount);
-		}).toPass({ timeout: 15_000 });
+		}).toPass({ timeout: 10_000 });
 	});
 
 	test('Articles tab: loads articles and supports infinite scroll', async ({ page }) => {
@@ -199,20 +201,21 @@ test.describe('Discover page - infinite scroll', () => {
 		await expect(page.locator('.article-card-list').first()).toBeVisible({ timeout: 15_000 });
 
 		// Scroll repeatedly until all content is exhausted (50 articles / 20 batch = 3 scrolls)
-		for (let i = 0; i < 5; i++) {
+		// Each scroll needs timedPool (2s) + buffer to complete
+		for (let i = 0; i < 6; i++) {
 			const sentinel = page.locator('#load-more-sentinel');
 			await sentinel.scrollIntoViewIfNeeded();
-			await page.waitForTimeout(2000);
+			await page.waitForTimeout(4000);
 		}
 
-		// "No more content to load" should be visible
-		await expect(page.getByText('No more content to load')).toBeVisible({ timeout: 10_000 });
+		// "No more content to load" should be visible - wait longer for final pagination to complete
+		await expect(page.getByText('No more content to load')).toBeVisible({ timeout: 15_000 });
 	});
 
 	test('Learning tab: spinner stops after all content loaded', async ({ page }) => {
 		// This test exercises the hanging relay (sends events but never EOSE for kind 30142).
-		// Without the batch timeout fix, the spinner spins forever.
-		test.setTimeout(120_000);
+		// Without the timedPool fix, the spinner spins forever.
+		test.setTimeout(180_000);
 
 		await page.goto('/discover');
 		await waitForContent(page);
@@ -222,9 +225,10 @@ test.describe('Discover page - infinite scroll', () => {
 		await expect(page.locator('.amb-card-list').first()).toBeVisible({ timeout: 15_000 });
 
 		// Scroll repeatedly to trigger loading
+		// Each scroll needs timedPool (2s) + buffer to complete
 		for (let i = 0; i < 10; i++) {
 			await page.locator('#load-more-sentinel').scrollIntoViewIfNeeded();
-			await page.waitForTimeout(2000);
+			await page.waitForTimeout(4000);
 		}
 
 		// "No more content" must appear — proves the spinner stops

@@ -5,11 +5,31 @@
  * The loaders connect the EventStore to the relay pool, enabling automatic
  * data fetching without explicit configuration in each component.
  */
-import { createAddressLoader, createEventLoader, createTimelineLoader } from 'applesauce-loaders/loaders';
+import { createAddressLoader, createEventLoader, createUnifiedEventLoader, createTimelineLoader } from 'applesauce-loaders/loaders';
+import { timer } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { getAllLookupRelays, getCalendarRelays } from '$lib/helpers/relay-helper.js';
 
-// Bootstrap EventStore - gives it relay knowledge
+/**
+ * Pool wrapper with per-request timeout for use with createTimelineLoader.
+ * v5's pool.request() uses completeOnEose() which waits for ALL relays.
+ * If any relay hangs (never sends EOSE), the request never completes,
+ * blocking loadBackwardBlocks' loading flag and preventing pagination.
+ * This wrapper ensures requests complete within the timeout, allowing
+ * pagination to proceed with whatever events were already received.
+ *
+ * The timeout must be short enough that loadBackwardBlocks' loading flag
+ * clears before pagination is triggered (typically 2-3s after page load).
+ * Most relays respond within 1 second; the timeout only affects hanging relays.
+ * @param {string[]} relays
+ * @param {import('nostr-tools').Filter} filters
+ * @returns {import('rxjs').Observable<any>}
+ */
+export const timedPool = (relays, filters) =>
+	pool.request(relays, filters).pipe(takeUntil(timer(2_000)));
+
+// Standalone address loader for direct use in components/loaders
 // Uses a getter function for lookupRelays to ensure config updates are reflected
 export const addressLoader = createAddressLoader(pool, {
 	eventStore,
@@ -18,13 +38,17 @@ export const addressLoader = createAddressLoader(pool, {
 	}
 });
 
-// Connect loaders to EventStore for automatic fetching
-eventStore.addressableLoader = addressLoader;
-eventStore.replaceableLoader = addressLoader;
-
-// Event resolution loader for fetching specific events by ID
+// Standalone event-by-ID loader for direct use
 export const eventLoader = createEventLoader(pool, { eventStore });
-eventStore.eventLoader = eventLoader;
+
+// Unified loader for EventStore - handles both EventPointer and AddressPointer
+const unifiedLoader = createUnifiedEventLoader(pool, {
+	eventStore,
+	get lookupRelays() {
+		return getAllLookupRelays();
+	}
+});
+eventStore.eventLoader = unifiedLoader;
 
 /**
  * Factory: Create a timeline loader for user's deletion events (NIP-09)
@@ -45,7 +69,7 @@ eventStore.eventLoader = eventLoader;
  * });
  */
 export const userDeletionLoader = (userPubkey) => createTimelineLoader(
-	pool,
+	timedPool,
 	getAllLookupRelays(), // Use all lookup relays to find deletions published anywhere
 	{
 		kinds: [5],              // NIP-09 deletion events

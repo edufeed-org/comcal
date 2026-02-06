@@ -1,4 +1,4 @@
-import { EventFactory } from 'applesauce-factory';
+import { EventFactory } from 'applesauce-core/event-factory';
 import { publishEventOptimistic } from '$lib/services/publish-service.js';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { getCalendarRelays } from '$lib/helpers/relay-helper.js';

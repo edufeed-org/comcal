@@ -9,15 +9,16 @@
  */
 import { describe, it, expect } from 'vitest';
 import { EventStore } from 'applesauce-core';
-import { addSeenRelay, getSeenRelays, normalizeURL } from 'applesauce-core/helpers';
+import { addSeenRelay, getSeenRelays, normalizeURL, fakeVerifyEvent } from 'applesauce-core/helpers';
 import { firstValueFrom } from 'rxjs';
 import { filter, take } from 'rxjs/operators';
 
 // Helper: create a valid-looking Nostr event
+// v5 EventStore verifies events by default, so we use fakeVerifyEvent
 function createMockEvent(id, kind = 1) {
 	// IDs must be 64 hex chars for EventStore
 	const paddedId = (id || 'test').padEnd(64, '0');
-	return {
+	const event = {
 		id: paddedId,
 		pubkey: 'deadbeef'.repeat(8),
 		created_at: Math.floor(Date.now() / 1000),
@@ -26,6 +27,8 @@ function createMockEvent(id, kind = 1) {
 		content: 'test message',
 		sig: 'cafebabe'.repeat(16)
 	};
+	fakeVerifyEvent(event);
+	return event;
 }
 
 describe('Relay Symbol tracking', () => {
@@ -59,7 +62,8 @@ describe('Relay Symbol tracking', () => {
 	it('should merge seen relays when duplicate event is added from different relay', () => {
 		const store = new EventStore();
 		const event1 = createMockEvent('duplicate');
-		const event2 = { ...event1 }; // Same event data, different object
+		const event2 = { ...event1 };
+		fakeVerifyEvent(event2); // Also mark clone as verified
 
 		addSeenRelay(event1, 'wss://relay1.example.com/');
 		addSeenRelay(event2, 'wss://relay2.example.com/');
@@ -81,14 +85,17 @@ describe('Relay Symbol tracking', () => {
 		const relayUrl = 'wss://relay.example.com/';
 
 		addSeenRelay(event, relayUrl);
-		store.add(event);
 
-		const events = await firstValueFrom(
+		// Subscribe first, then add — v5 emits on new inserts
+		const eventsPromise = firstValueFrom(
 			store.timeline({ kinds: [1] }).pipe(
 				filter((arr) => arr.length > 0),
 				take(1)
 			)
 		);
+		store.add(event);
+
+		const events = await eventsPromise;
 
 		expect(events.length).toBeGreaterThan(0);
 		const timelineEvent = events[0];
@@ -110,17 +117,21 @@ describe('Relay Symbol tracking', () => {
 			content: 'test article',
 			sig: 'cafebabe'.repeat(16)
 		};
+		fakeVerifyEvent(event);
 		const relayUrl = 'wss://relay.example.com/';
 
 		addSeenRelay(event, relayUrl);
-		store.add(event);
 
-		const retrieved = await firstValueFrom(
+		// Subscribe first, then add — v5 emits on new inserts
+		const retrievedPromise = firstValueFrom(
 			store.replaceable(30023, pubkey, 'test-article').pipe(
 				filter((e) => e !== undefined),
 				take(1)
 			)
 		);
+		store.add(event);
+
+		const retrieved = await retrievedPromise;
 
 		const seen = getSeenRelays(retrieved);
 		expect(seen).toBeInstanceOf(Set);

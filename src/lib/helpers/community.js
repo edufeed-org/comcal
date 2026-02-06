@@ -1,4 +1,4 @@
-import { EventFactory } from 'applesauce-factory';
+import { EventFactory } from 'applesauce-core/event-factory';
 import { manager } from '$lib/stores/accounts.svelte';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { publishEvent } from '$lib/services/publish-service.js';

@@ -8,7 +8,7 @@
 	import { useJoinedCommunitiesList } from '../../stores/joined-communities-list.svelte.js';
 	import { useUserProfile } from '../../stores/user-profile.svelte.js';
 	import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
-	import { EventFactory } from 'applesauce-factory';
+	import { EventFactory } from 'applesauce-core/event-factory';
 	import { createTimelineLoader } from 'applesauce-loaders/loaders';
 	import { TimelineModel } from 'applesauce-core/models';
 	import { publishEvent } from '$lib/services/publish-service.js';

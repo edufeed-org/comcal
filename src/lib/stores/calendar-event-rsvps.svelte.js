@@ -4,7 +4,7 @@
  * Uses applesauce's built-in CalendarEventRSVPsModel for reactive updates
  */
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { CalendarEventRSVPsModel } from 'applesauce-core/models';
+import { CalendarEventRSVPsModel } from 'applesauce-common/models';
 import { calendarEventRsvpLoader } from '$lib/loaders/rsvp.js';
 
 /**

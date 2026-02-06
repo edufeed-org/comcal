@@ -8,8 +8,9 @@
  * - 'a' or 'e' tag: reference to the actual content
  */
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
-import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { getCommunikeyRelays } from '$lib/helpers/relay-helper.js';
+import { timedPool } from './base.js';
 
 /**
  * Get relays for targeted publications (communikey + fallback)
@@ -28,7 +29,7 @@ function getTargetedPublicationRelays() {
  */
 export function allTargetedPublicationsLoader(limit = 200) {
 	return createTimelineLoader(
-		pool,
+		timedPool,
 		getTargetedPublicationRelays(),
 		{ kinds: [30222] },
 		{ eventStore, limit }
@@ -42,7 +43,7 @@ export function allTargetedPublicationsLoader(limit = 200) {
  */
 export function articleTargetedPublicationsLoader(limit = 100) {
 	return createTimelineLoader(
-		pool,
+		timedPool,
 		getTargetedPublicationRelays(),
 		{
 			kinds: [30222],
@@ -59,7 +60,7 @@ export function articleTargetedPublicationsLoader(limit = 100) {
  */
 export function ambTargetedPublicationsLoader(limit = 100) {
 	return createTimelineLoader(
-		pool,
+		timedPool,
 		getTargetedPublicationRelays(),
 		{
 			kinds: [30222],
@@ -77,7 +78,7 @@ export function ambTargetedPublicationsLoader(limit = 100) {
  */
 export function feedTargetedPublicationsLoader(limit = 200) {
 	return createTimelineLoader(
-		pool,
+		timedPool,
 		getTargetedPublicationRelays(),
 		{
 			kinds: [30222],

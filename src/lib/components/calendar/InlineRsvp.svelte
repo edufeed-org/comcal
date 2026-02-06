@@ -8,7 +8,7 @@
 	import { useCalendarActions } from '$lib/stores/calendar-actions.svelte';
 	import { showToast } from '$lib/helpers/toast.js';
 	import CalendarIcon from '$lib/components/icons/calendar/CalendarIcon.svelte';
-	import { CalendarEventRSVPsModel } from 'applesauce-core/models';
+	import { CalendarEventRSVPsModel } from 'applesauce-common/models';
 	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 	import { calendarEventRsvpLoader } from '$lib/loaders/rsvp.js';
 	import { getTagValue } from 'applesauce-core/helpers';

@@ -1,4 +1,4 @@
-import { getCalendarTitle, getCalendarEventImage } from 'applesauce-core/helpers';
+import { getCalendarTitle, getCalendarEventImage } from 'applesauce-common/helpers';
 
 /**
  * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent

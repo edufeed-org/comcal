@@ -3,7 +3,7 @@
  * Actions for creating and managing calendar events with applesauce integration
  */
 
-import { EventFactory } from 'applesauce-factory';
+import { EventFactory } from 'applesauce-core/event-factory';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { manager } from '$lib/stores/accounts.svelte';
 import { validateEventForm, convertFormDataToEvent, createEventTargetingTags } from '../helpers/calendar.js';

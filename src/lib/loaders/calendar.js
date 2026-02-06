@@ -5,15 +5,15 @@
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { from } from 'rxjs';
 import { mergeMap } from 'rxjs/operators';
-import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { addressLoader } from './base.js';
+import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+import { addressLoader, timedPool } from './base.js';
 import { getCalendarRelays } from '$lib/helpers/relay-helper.js';
 import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
 
 // Global calendar events (kinds 31922, 31923)
 // Lazy factory to ensure relays are read from runtime config at call time, not module load time
 export const calendarTimelineLoader = () => createTimelineLoader(
-	pool,
+	timedPool,
 	getCalendarRelays(),
 	{
 		kinds: [31922, 31923], // NIP-52 calendar events
@@ -32,7 +32,7 @@ export const createRelayFilteredCalendarLoader = (customRelays = [], additionalF
 	const relaysToUse = customRelays.length > 0 ? customRelays : getCalendarRelays();
 
 	return createTimelineLoader(
-		pool,
+		timedPool,
 		relaysToUse,
 		{
 			kinds: [31922, 31923], // NIP-52 calendar events
@@ -47,7 +47,7 @@ export const createRelayFilteredCalendarLoader = (customRelays = [], additionalF
 // NOTE: This loads ALL calendars without filtering - use userCalendarLoader for user-specific calendars
 // Lazy factory to ensure relays are read from runtime config at call time, not module load time
 export const calendarLoader = () => createTimelineLoader(
-	pool,
+	timedPool,
 	getCalendarRelays(),
 	{
 		kinds: [31924], // Calendar definitions
@@ -63,7 +63,7 @@ export const calendarLoader = () => createTimelineLoader(
  * @returns {Function} Timeline loader function that returns an Observable
  */
 export const userCalendarLoader = (userPubkey) => createTimelineLoader(
-	pool,
+	timedPool,
 	getCalendarRelays(),
 	{
 		kinds: [31924], // Calendar definitions
@@ -79,7 +79,7 @@ export const userCalendarLoader = (userPubkey) => createTimelineLoader(
  * @returns {Function} Timeline loader function that returns an Observable
  */
 export const communityCalendarTimelineLoader = (communityPubkey) => createTimelineLoader(
-	pool,
+	timedPool,
 	getCalendarRelays(),
 	{
 		kinds: [31922, 31923],
@@ -97,7 +97,7 @@ export const communityCalendarTimelineLoader = (communityPubkey) => createTimeli
  * @returns {Function} Timeline loader function that returns an Observable
  */
 export const targetedPublicationTimelineLoader = (communityPubkey) => createTimelineLoader(
-	pool,
+	timedPool,
 	getCalendarRelays(),
 	{
 		kinds: [30222], // Targeted Publication Events

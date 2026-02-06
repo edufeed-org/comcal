@@ -4,12 +4,8 @@
 -->
 
 <script>
-	import {
-		getArticleTitle,
-		getArticleImage,
-		getProfilePicture,
-		getDisplayName
-	} from 'applesauce-core/helpers';
+	import { getProfilePicture, getDisplayName } from 'applesauce-core/helpers';
+	import { getArticleTitle, getArticleImage } from 'applesauce-common/helpers';
 	import { formatCalendarDate } from '$lib/helpers/calendar.js';
 	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
 	import { useActiveUser } from '$lib/stores/accounts.svelte';

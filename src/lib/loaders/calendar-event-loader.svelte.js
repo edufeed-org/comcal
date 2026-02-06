@@ -11,11 +11,12 @@ import { mapEventsToStore, mapEventsToTimeline } from 'applesauce-core/observabl
 import { map } from 'rxjs';
 import { getTagValue } from 'applesauce-core/helpers';
 import { getCalendarEventMetadata, parseAddressReference } from '$lib/helpers/eventUtils';
-import { getCalendarEventTitle } from 'applesauce-core/helpers/calendar-event';
+import { getCalendarEventTitle } from 'applesauce-common/helpers';
 import {
 	calendarTimelineLoader,
 	targetedPublicationTimelineLoader,
-	userDeletionLoader
+	userDeletionLoader,
+	addressLoader
 } from '$lib/loaders';
 import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
@@ -241,7 +242,7 @@ export function useCalendarEventLoader(options) {
 			// Collect author pubkey for deletion loader
 			authorPubkeys.add(parsed.pubkey);
 
-			/** @type {any} */ (eventStore.addressableLoader)({
+			addressLoader({
 				kind: parsed.kind,
 				pubkey: parsed.pubkey,
 				identifier: parsed.dTag
@@ -414,7 +415,7 @@ export function useCalendarEventLoader(options) {
 				
 				// Start loaders for addressable events
 				addressableRefs.forEach((ref) => {
-					/** @type {any} */ (eventStore.addressableLoader)({
+					addressLoader({
 						kind: ref.kind,
 						pubkey: ref.pubkey,
 						identifier: ref.dTag

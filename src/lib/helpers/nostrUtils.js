@@ -1,7 +1,8 @@
 import { nip19 } from "nostr-tools";
 import { eventLoader, addressLoader } from "$lib/loaders";
 import { firstValueFrom } from "rxjs";
-import { getCalendarEventStart, getSeenRelays } from "applesauce-core/helpers";
+import { getSeenRelays } from "applesauce-core/helpers";
+import { getCalendarEventStart } from "applesauce-common/helpers";
 import { eventStore } from "$lib/stores/nostr-infrastructure.svelte.js";
 
 

@@ -10,7 +10,7 @@
 	import { CalendarIcon, ClockIcon } from '$lib/components/icons';
 	import LocationLink from '../LocationLink.svelte';
 	import { CopyIcon } from '$lib/components/icons';
-	import { getCalendarEventStart, getCalendarEventEnd } from 'applesauce-core/helpers';
+	import { getCalendarEventStart, getCalendarEventEnd } from 'applesauce-common/helpers';
 	import MarkdownRenderer from '../MarkdownRenderer.svelte';
 
 	let { identifier, decoded, inline = false } = $props();
