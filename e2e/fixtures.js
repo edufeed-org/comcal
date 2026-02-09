@@ -150,6 +150,38 @@ export async function openEventCreationModal(page) {
 }
 
 /**
+ * Helper to open the AMB resource creation modal on a community's Learning tab.
+ * Navigates to the community, clicks the FAB, and opens the creation modal.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} communityNpub - The community's npub (bech32)
+ */
+export async function openAMBCreationModal(page, communityNpub) {
+  // Navigate to community page
+  await page.goto(`/c/${communityNpub}`);
+  await page.waitForTimeout(2000);
+
+  // Wait for community sidebar to load
+  await expect(page.locator('nav.menu').first()).toBeVisible({ timeout: 15000 });
+
+  // Click on Learning tab using nav.menu button selector (matches community.test.js)
+  await page.locator('nav.menu button', { hasText: 'Learning' }).click();
+  await page.waitForTimeout(2000);
+
+  // Wait for FAB to be visible (always present on Learning tab for authenticated users)
+  await expect(page.locator('.fab').first()).toBeVisible({ timeout: 15000 });
+
+  // Click the FAB to expand it (use first() for mobile/desktop FAB)
+  await page.locator('.fab [role="button"]').first().click();
+  await page.waitForTimeout(300);
+
+  // Click the "Create Learning Content" button
+  await page.locator('button[data-tip="Create Learning Content"]').first().click();
+
+  // Wait for modal to appear (it's a dialog element)
+  await expect(page.locator('[role="dialog"]')).toBeVisible({ timeout: 5000 });
+}
+
+/**
  * Helper to navigate to a calendar event detail page.
  * Uses client-side navigation since SSR is disabled for naddr routes.
  * @param {import('@playwright/test').Page} page

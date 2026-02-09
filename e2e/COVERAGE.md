@@ -3,7 +3,7 @@
 This document tracks what E2E tests exist, what features they cover, and identifies gaps for future testing.
 
 **Last updated:** 2026-02-09
-**Total tests:** 69
+**Total tests:** 79
 
 ## Quick Summary
 
@@ -12,6 +12,7 @@ This document tracks what E2E tests exist, what features they cover, and identif
 | `account-management.test.js` | 14    | Both | Login, logout, persistence, account switching |
 | `calendar.test.js`           | 4     | No   | Calendar page, events, modal                  |
 | `calendar-creation.test.js`  | 10    | Yes  | FAB, event creation, validation, deletion     |
+| `amb-creation.test.js`       | 10    | Yes  | FAB, wizard modal, step 1 form, validation    |
 | `profile.test.js`            | 4     | No   | Profile page, notes, not-found                |
 | `event-detail.test.js`       | 4     | No   | naddr routes (articles, calendar, AMB)        |
 | `community.test.js`          | 5     | No   | Community Learning/Chat tabs                  |
@@ -114,6 +115,41 @@ This document tracks what E2E tests exist, what features they cover, and identif
 | no critical JS errors during creation | Error capture throughout flow |
 
 **Components exercised:** FloatingActionButton, CalendarEventModal, EventManagementActions
+
+---
+
+### amb-creation.test.js (10 tests)
+
+**Route:** `/c/[pubkey]` (community Learning tab)
+**Auth required:** Yes (all tests use `authenticatedPage` fixture)
+**Note:** Full creation flow testing limited because SKOS dropdowns require external vocabulary data.
+
+#### FAB and Modal UI (4 tests)
+
+| Test                                                | What it verifies                   |
+| --------------------------------------------------- | ---------------------------------- |
+| FAB is visible on community Learning tab            | FAB appears for authenticated user |
+| clicking Create Learning Content opens wizard modal | Modal visible with form fields     |
+| modal closes on close button click                  | Modal dismissal via X button works |
+| modal closes on backdrop click                      | Modal dismissal via backdrop works |
+
+#### Step 1 Form (5 tests)
+
+| Test                                              | What it verifies                                               |
+| ------------------------------------------------- | -------------------------------------------------------------- |
+| step 1 shows all required form fields             | Identifier, title, description, language, image fields visible |
+| can fill step 1 form fields                       | All fields accept input, values are preserved                  |
+| cannot proceed without filling required fields    | Validation prevents advancing to step 2                        |
+| can proceed to step 2 with required fields filled | Navigation to step 2 works                                     |
+| can go back from step 2 to step 1                 | Back navigation preserves form state                           |
+
+#### Error Handling (1 test)
+
+| Test                                                   | What it verifies              |
+| ------------------------------------------------------ | ----------------------------- |
+| no critical JavaScript errors during modal interaction | Error capture throughout flow |
+
+**Components exercised:** EducationalFAB, AMBUploadModal, SKOSDropdown (partial)
 
 ---
 
@@ -264,14 +300,14 @@ This document tracks what E2E tests exist, what features they cover, and identif
 
 ## Test Infrastructure
 
-| File                 | Purpose                                                                                                                  |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `test-utils.js`      | Reusable wait/verify helpers (waitForContent, waitForEventDetail, setupErrorCapture, etc.)                               |
-| `fixtures.js`        | Playwright fixtures (authenticatedPage), auth helpers (loginWithNsec, logout), creation helpers (openEventCreationModal) |
-| `test-data.js`       | Deterministic mock data generator (150+ events, profiles, TEST_AUTHOR, TEST_AUTHOR_2)                                    |
-| `mock-relay.js`      | Mock Nostr relay with filter matching, hanging relay simulation                                                          |
-| `global-setup.js`    | Starts normal relay (9737) + hanging relay (9738)                                                                        |
-| `global-teardown.js` | Stops both relays                                                                                                        |
+| File                 | Purpose                                                                                                                                        |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `test-utils.js`      | Reusable wait/verify helpers (waitForContent, waitForEventDetail, setupErrorCapture, etc.)                                                     |
+| `fixtures.js`        | Playwright fixtures (authenticatedPage), auth helpers (loginWithNsec, logout), creation helpers (openEventCreationModal, openAMBCreationModal) |
+| `test-data.js`       | Deterministic mock data generator (150+ events, profiles, TEST_AUTHOR, TEST_AUTHOR_2)                                                          |
+| `mock-relay.js`      | Mock Nostr relay with filter matching, hanging relay simulation                                                                                |
+| `global-setup.js`    | Starts normal relay (9737) + hanging relay (9738)                                                                                              |
+| `global-teardown.js` | Stops both relays                                                                                                                              |
 
 ---
 
@@ -281,7 +317,6 @@ This document tracks what E2E tests exist, what features they cover, and identif
 
 | Feature                     | Priority | Notes                                                 |
 | --------------------------- | -------- | ----------------------------------------------------- |
-| **AMB Resource Creation**   | High     | Create educational resource (4-step wizard)           |
 | **Article Creation**        | High     | No creation UI exists yet                             |
 | **Settings Page**           | Medium   | Gated mode toggle, relay settings, theme switching    |
 | **Search Functionality**    | Medium   | NIP-50 search on discover page                        |
@@ -294,13 +329,14 @@ This document tracks what E2E tests exist, what features they cover, and identif
 
 ### Partially Covered
 
-| Feature            | What's Covered                             | What's Missing                          |
-| ------------------ | ------------------------------------------ | --------------------------------------- |
-| Account management | NSEC login, logout, persistence, switching | NIP-07 extension, NIP-49 encrypted keys |
-| Calendar events    | View, create, delete                       | Edit event flow                         |
-| Profile page       | View profile, notes                        | Edit profile, avatar upload             |
-| Comments           | Post, reply, delete                        | Edit comment                            |
-| Reactions          | Add, remove                                | Custom emoji support                    |
+| Feature            | What's Covered                             | What's Missing                                       |
+| ------------------ | ------------------------------------------ | ---------------------------------------------------- |
+| Account management | NSEC login, logout, persistence, switching | NIP-07 extension, NIP-49 encrypted keys              |
+| Calendar events    | View, create, delete                       | Edit event flow                                      |
+| AMB resources      | Modal UI, step 1 form, navigation          | Full creation (SKOS dropdowns, file upload, publish) |
+| Profile page       | View profile, notes                        | Edit profile, avatar upload                          |
+| Comments           | Post, reply, delete                        | Edit comment                                         |
+| Reactions          | Add, remove                                | Custom emoji support                                 |
 
 ---
 
