@@ -16,7 +16,7 @@ import { getAppRelaysForCategory } from '$lib/services/app-relay-service.svelte.
  * @returns {boolean}
  */
 export function isGatedModeActive() {
-	return appSettings.gatedMode;
+  return appSettings.gatedMode;
 }
 
 /**
@@ -24,10 +24,10 @@ export function isGatedModeActive() {
  * @returns {string[]}
  */
 export function getFallbackRelays() {
-	if (isGatedModeActive()) {
-		return [];
-	}
-	return runtimeConfig.fallbackRelays || [];
+  if (isGatedModeActive()) {
+    return [];
+  }
+  return runtimeConfig.fallbackRelays || [];
 }
 
 /**
@@ -35,8 +35,8 @@ export function getFallbackRelays() {
  * @returns {string[]}
  */
 export function getCalendarRelays() {
-	const appRelays = getAppRelaysForCategory('calendar');
-	return [...appRelays, ...getFallbackRelays()];
+  const appRelays = getAppRelaysForCategory('calendar');
+  return [...appRelays, ...getFallbackRelays()];
 }
 
 /**
@@ -44,8 +44,8 @@ export function getCalendarRelays() {
  * @returns {string[]}
  */
 export function getCommunikeyRelays() {
-	const appRelays = getAppRelaysForCategory('communikey');
-	return [...appRelays, ...getFallbackRelays()];
+  const appRelays = getAppRelaysForCategory('communikey');
+  return [...appRelays, ...getFallbackRelays()];
 }
 
 /**
@@ -53,9 +53,9 @@ export function getCommunikeyRelays() {
  * @returns {string[]}
  */
 export function getEducationalRelays() {
-	const appRelays = getAppRelaysForCategory('educational');
-	const combined = [...appRelays, ...getFallbackRelays()];
-	return [...new Set(combined)]; // Deduplicate
+  const appRelays = getAppRelaysForCategory('educational');
+  const combined = [...appRelays, ...getFallbackRelays()];
+  return [...new Set(combined)]; // Deduplicate
 }
 
 /**
@@ -63,12 +63,12 @@ export function getEducationalRelays() {
  * @returns {string[]}
  */
 export function getArticleRelays() {
-	const appRelays = getAppRelaysForCategory('longform');
-	// If no longform relays configured, use fallback relays only (but gated mode still applies)
-	if (appRelays.length === 0) {
-		return getFallbackRelays();
-	}
-	return [...appRelays, ...getFallbackRelays()];
+  const appRelays = getAppRelaysForCategory('longform');
+  // If no longform relays configured, use fallback relays only (but gated mode still applies)
+  if (appRelays.length === 0) {
+    return getFallbackRelays();
+  }
+  return [...appRelays, ...getFallbackRelays()];
 }
 
 /**
@@ -77,11 +77,11 @@ export function getArticleRelays() {
  * @returns {string[]}
  */
 export function getAllLookupRelays() {
-	return [
-		...getAppRelaysForCategory('calendar'),
-		...getAppRelaysForCategory('communikey'),
-		...getAppRelaysForCategory('educational'),
-		...getAppRelaysForCategory('longform'),
-		...getFallbackRelays()
-	];
+  return [
+    ...getAppRelaysForCategory('calendar'),
+    ...getAppRelaysForCategory('communikey'),
+    ...getAppRelaysForCategory('educational'),
+    ...getAppRelaysForCategory('longform'),
+    ...getFallbackRelays()
+  ];
 }

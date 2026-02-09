@@ -1,140 +1,139 @@
 <script>
-	import * as m from '$lib/paraglide/messages';
-	import { manager } from '$lib/stores/accounts.svelte';
-	import { modalStore } from '$lib/stores/modal.svelte.js';
-	import { dev } from '$app/environment';
-	import { CalendarIcon, PeopleIcon, SearchIcon } from './icons';
-	import ProfileAvatar from './shared/ProfileAvatar.svelte';
-	import LanguageSwitcher from './LanguageSwitcher.svelte';
-	import { runtimeConfig } from '$lib/stores/config.svelte.js';
+  import { resolve } from '$app/paths';
+  import * as m from '$lib/paraglide/messages';
+  import { manager } from '$lib/stores/accounts.svelte';
+  import { modalStore } from '$lib/stores/modal.svelte.js';
+  import { CalendarIcon, PeopleIcon, SearchIcon } from './icons';
+  import ProfileAvatar from './shared/ProfileAvatar.svelte';
+  import LanguageSwitcher from './LanguageSwitcher.svelte';
+  import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
-	// Use the modal store for opening modals
-	const modal = modalStore;
+  // Use the modal store for opening modals
+  const modal = modalStore;
 
-	// Use $state + $effect for reactive RxJS subscription bridge (Svelte 5 pattern)
-	let activeAccount = $state(/** @type {any} */ (null));
-	let accountCount = $state(0);
+  // Use $state + $effect for reactive RxJS subscription bridge (Svelte 5 pattern)
+  let activeAccount = $state(/** @type {any} */ (null));
+  let accountCount = $state(0);
 
-	$effect(() => {
-		const subscription = manager.active$.subscribe((account) => {
-			activeAccount = account;
-		});
-		return () => subscription.unsubscribe();
-	});
+  $effect(() => {
+    const subscription = manager.active$.subscribe((account) => {
+      activeAccount = account;
+    });
+    return () => subscription.unsubscribe();
+  });
 
-	$effect(() => {
-		const subscription = manager.accounts$.subscribe((accounts) => {
-			accountCount = accounts.length;
-		});
-		return () => subscription.unsubscribe();
-	});
+  $effect(() => {
+    const subscription = manager.accounts$.subscribe((accounts) => {
+      accountCount = accounts.length;
+    });
+    return () => subscription.unsubscribe();
+  });
 
-	/**
-	 * Open the login modal using the centralized modal store
-	 * Also closes the dropdown menu if it's open
-	 */
-	function openLoginModal() {
-		console.log('Navbar: Opening login modal');
-		modal.openModal('login');
+  /**
+   * Open the login modal using the centralized modal store
+   * Also closes the dropdown menu if it's open
+   */
+  function openLoginModal() {
+    console.log('Navbar: Opening login modal');
+    modal.openModal('login');
 
-		// Close the dropdown by removing focus from the dropdown trigger
-		const dropdownTrigger = /** @type {HTMLElement} */ (document.activeElement);
-		if (dropdownTrigger && dropdownTrigger.closest('.dropdown')) {
-			dropdownTrigger.blur();
-		}
-	}
+    // Close the dropdown by removing focus from the dropdown trigger
+    const dropdownTrigger = /** @type {HTMLElement} */ (document.activeElement);
+    if (dropdownTrigger && dropdownTrigger.closest('.dropdown')) {
+      dropdownTrigger.blur();
+    }
+  }
 
-	/**
-	 * Helper to close the dropdown menu
-	 */
-	function closeDropdown() {
-		const dropdownTrigger = /** @type {HTMLElement} */ (document.activeElement);
-		if (dropdownTrigger && dropdownTrigger.closest('.dropdown')) {
-			dropdownTrigger.blur();
-		}
-	}
+  /**
+   * Helper to close the dropdown menu
+   */
+  function closeDropdown() {
+    const dropdownTrigger = /** @type {HTMLElement} */ (document.activeElement);
+    if (dropdownTrigger && dropdownTrigger.closest('.dropdown')) {
+      dropdownTrigger.blur();
+    }
+  }
 
-	/**
-	 * Logout the current active account only
-	 */
-	function handleLogoutCurrent() {
-		console.log('Navbar: Logging out current account');
+  /**
+   * Logout the current active account only
+   */
+  function handleLogoutCurrent() {
+    console.log('Navbar: Logging out current account');
 
-		if (activeAccount) {
-			manager.removeAccount(activeAccount.id);
-		}
+    if (activeAccount) {
+      manager.removeAccount(activeAccount.id);
+    }
 
-		closeDropdown();
-	}
+    closeDropdown();
+  }
 
-	/**
-	 * Logout all accounts
-	 */
-	function handleLogoutAll() {
-		console.log('Navbar: Logging out all accounts');
+  /**
+   * Logout all accounts
+   */
+  function handleLogoutAll() {
+    console.log('Navbar: Logging out all accounts');
 
-		if (confirm(m.navbar_logout_all_confirm())) {
-			const accounts = [...manager.accounts];
-			accounts.forEach((account) => {
-				manager.removeAccount(account.id);
-			});
-		}
+    if (confirm(m.navbar_logout_all_confirm())) {
+      const accounts = [...manager.accounts];
+      accounts.forEach((account) => {
+        manager.removeAccount(account.id);
+      });
+    }
 
-		closeDropdown();
-	}
+    closeDropdown();
+  }
 </script>
 
 <div class="navbar bg-base-100 shadow-sm">
-	<div class="flex-1">
-		<div class="avatar">
-			<div class="mask w-10 mask-hexagon-2">
-			<img
-				src={`${runtimeConfig.appLogo}`}
-				alt="App Logo"
-			/>
-			</div>
-		</div>
-		<a href="/" class="btn text-xl btn-ghost">{m.navbar_brand({ appName: runtimeConfig.appName })}</a>
-	</div>
-	<div class="flex items-center gap-2">
-		<a href="/communities" class="btn btn-ghost">
-			<PeopleIcon class_="w-5 h-5" />
-			{m.navbar_communities()}
-		</a>
-		<a href="/discover" class="btn btn-ghost">
-			<SearchIcon class_="w-5 h-5" />
-			{m.navbar_discover()}
-		</a>
-		<a href="/calendar" class="btn btn-ghost">
-			<CalendarIcon class_="w-5 h-5" />
-			{m.navbar_calendar()}
-		</a>
-		{#if activeAccount}
-			<div class="dropdown dropdown-end">
-				<div tabindex="0" role="button" class="btn btn-circle btn-ghost">
-					<ProfileAvatar pubkey={activeAccount.pubkey} size="md" fallbackType="robohash" />
-				</div>
-				<ul class="dropdown-content menu z-1 mt-3 w-52 menu-sm rounded-box bg-base-100 p-2 shadow">
-					<li>
-						<a href="/p/{activeAccount.pubkey}" class="justify-between">
-							{m.common_profile()}
-						</a>
-					</li>
-					<li>
-						<button onclick={openLoginModal}>{m.navbar_switch_account()}</button>
-					</li>
-					<li>
-						<a href="/settings" onclick={closeDropdown}>{m.common_settings()}</a>
-					</li>
-					<li><button onclick={handleLogoutCurrent}>{m.navbar_logout_current()}</button></li>
-					{#if accountCount > 1}
-						<li><button onclick={handleLogoutAll}>{m.navbar_logout_all()}</button></li>
-					{/if}
-				</ul>
-			</div>
-		{:else}
-			<button onclick={openLoginModal} class="btn btn-ghost">{m.common_login()}</button>
-		{/if}
-		<LanguageSwitcher />
-	</div>
+  <div class="flex-1">
+    <div class="avatar">
+      <div class="mask w-10 mask-hexagon-2">
+        <img src={`${runtimeConfig.appLogo}`} alt="App Logo" />
+      </div>
+    </div>
+    <a href={resolve('/')} class="btn text-xl btn-ghost"
+      >{m.navbar_brand({ appName: runtimeConfig.appName })}</a
+    >
+  </div>
+  <div class="flex items-center gap-2">
+    <a href={resolve('/communities')} class="btn btn-ghost">
+      <PeopleIcon class_="w-5 h-5" />
+      {m.navbar_communities()}
+    </a>
+    <a href={resolve('/discover')} class="btn btn-ghost">
+      <SearchIcon class_="w-5 h-5" />
+      {m.navbar_discover()}
+    </a>
+    <a href={resolve('/calendar')} class="btn btn-ghost">
+      <CalendarIcon class_="w-5 h-5" />
+      {m.navbar_calendar()}
+    </a>
+    {#if activeAccount}
+      <div class="dropdown dropdown-end">
+        <div tabindex="0" role="button" class="btn btn-circle btn-ghost">
+          <ProfileAvatar pubkey={activeAccount.pubkey} size="md" fallbackType="robohash" />
+        </div>
+        <ul class="dropdown-content menu z-1 mt-3 w-52 menu-sm rounded-box bg-base-100 p-2 shadow">
+          <li>
+            <a href={resolve(`/p/${activeAccount.pubkey}`)} class="justify-between">
+              {m.common_profile()}
+            </a>
+          </li>
+          <li>
+            <button onclick={openLoginModal}>{m.navbar_switch_account()}</button>
+          </li>
+          <li>
+            <a href={resolve('/settings')} onclick={closeDropdown}>{m.common_settings()}</a>
+          </li>
+          <li><button onclick={handleLogoutCurrent}>{m.navbar_logout_current()}</button></li>
+          {#if accountCount > 1}
+            <li><button onclick={handleLogoutAll}>{m.navbar_logout_all()}</button></li>
+          {/if}
+        </ul>
+      </div>
+    {:else}
+      <button onclick={openLoginModal} class="btn btn-ghost">{m.common_login()}</button>
+    {/if}
+    <LanguageSwitcher />
+  </div>
 </div>

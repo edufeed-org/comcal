@@ -32,29 +32,29 @@ import { nostrToAmb } from 'amb-nostr-converter';
  * @returns {Object} JSON-LD object ready for serialization
  */
 export function buildAMBJsonLd(event, resource, pageUrl) {
-	// Use library to convert Nostr event to AMB JSON-LD
-	const result = nostrToAmb(event);
+  // Use library to convert Nostr event to AMB JSON-LD
+  const result = nostrToAmb(event);
 
-	if (!result.success || !result.data) {
-		// Fallback to minimal JSON-LD if conversion fails
-		console.warn('AMB JSON-LD conversion failed:', result.error);
-		return {
-			'@context': 'https://w3id.org/kim/amb/context.jsonld',
-			id: pageUrl,
-			type: ['LearningResource'],
-			name: resource.name
-		};
-	}
+  if (!result.success || !result.data) {
+    // Fallback to minimal JSON-LD if conversion fails
+    console.warn('AMB JSON-LD conversion failed:', result.error);
+    return {
+      '@context': 'https://w3id.org/kim/amb/context.jsonld',
+      id: pageUrl,
+      type: ['LearningResource'],
+      name: resource.name
+    };
+  }
 
-	/** @type {Record<string, any>} */
-	const jsonLd = result.data;
+  /** @type {Record<string, any>} */
+  const jsonLd = result.data;
 
-	// Override id based on resource type:
-	// - External resources (d-tag is URL): use that URL as canonical ID
-	// - Nostr-native: use page URL
-	const isExternalResource =
-		resource.identifier?.startsWith('http://') || resource.identifier?.startsWith('https://');
-	jsonLd.id = isExternalResource ? resource.identifier : pageUrl;
+  // Override id based on resource type:
+  // - External resources (d-tag is URL): use that URL as canonical ID
+  // - Nostr-native: use page URL
+  const isExternalResource =
+    resource.identifier?.startsWith('http://') || resource.identifier?.startsWith('https://');
+  jsonLd.id = isExternalResource ? resource.identifier : pageUrl;
 
-	return jsonLd;
+  return jsonLd;
 }

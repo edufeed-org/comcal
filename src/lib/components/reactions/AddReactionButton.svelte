@@ -1,42 +1,43 @@
 <script>
-	/**
-	 * AddReactionButton - Plus button that opens the emoji picker
-	 * @component
-	 */
-	import ReactionPicker from './ReactionPicker.svelte';
-	import { SmilePlusIcon } from '$lib/components/icons';
-	import { manager } from '$lib/stores/accounts.svelte.js';
-	import * as m from '$lib/paraglide/messages';
+  /**
+   * AddReactionButton - Plus button that opens the emoji picker
+   * @component
+   */
+  import ReactionPicker from './ReactionPicker.svelte';
+  import { SmilePlusIcon } from '$lib/components/icons';
+  import { manager } from '$lib/stores/accounts.svelte.js';
+  import * as m from '$lib/paraglide/messages';
 
-	/** @type {any} */
-	let { event } = $props();
+  /** @type {any} */
+  let { event } = $props();
 
-	let showPicker = $state(false);
+  let showPicker = $state(false);
 
-	// Track active user with direct subscription for proper reactivity
-	let activeUser = $state(manager.active);
+  // Track active user with direct subscription for proper reactivity
+  let activeUser = $state(manager.active);
 
-	$effect(() => {
-		const subscription = manager.active$.subscribe((user) => {
-			activeUser = user;
-		});
-		return () => subscription.unsubscribe();
-	});
+  $effect(() => {
+    const subscription = manager.active$.subscribe((user) => {
+      activeUser = user;
+    });
+    return () => subscription.unsubscribe();
+  });
 
-	// Check if user is logged in
-	let isLoggedIn = $derived(!!activeUser);
+  // Check if user is logged in
+  let isLoggedIn = $derived(!!activeUser);
 </script>
 
 <button
-	type="button"
-	onclick={() => isLoggedIn && (showPicker = true)}
-	disabled={!isLoggedIn}
-	class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-600 hover:text-white hover:bg-gray-700 hover:border-gray-500"
-	title={isLoggedIn ? m.reactions_add_reaction_title() : m.reactions_login_required()}
+  type="button"
+  onclick={() => isLoggedIn && (showPicker = true)}
+  disabled={!isLoggedIn}
+  class="inline-flex items-center gap-1 rounded-full border border-gray-600 px-2.5 py-1 text-sm transition-all hover:scale-105 hover:border-gray-500 hover:bg-gray-700 hover:text-white active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+  title={isLoggedIn ? m.reactions_add_reaction_title() : m.reactions_login_required()}
+  data-testid="add-reaction-btn"
 >
-	<SmilePlusIcon class="w-4 h-4" />
+  <SmilePlusIcon class="h-4 w-4" />
 </button>
 
 {#if showPicker}
-	<ReactionPicker {event} onClose={() => showPicker = false} />
+  <ReactionPicker {event} onClose={() => (showPicker = false)} />
 {/if}

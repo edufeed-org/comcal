@@ -10,18 +10,33 @@ const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
-	includeIgnoreFile(gitignorePath),
-	js.configs.recommended,
-	...svelte.configs.recommended,
-	prettier,
-	...svelte.configs.prettier,
-	{
-		languageOptions: {
-			globals: { ...globals.browser, ...globals.node }
-		}
-	},
-	{
-		files: ['**/*.svelte', '**/*.svelte.js'],
-		languageOptions: { parserOptions: { svelteConfig } }
-	}
+  includeIgnoreFile(gitignorePath),
+  {
+    // Ignore auto-generated paraglide files
+    ignores: ['src/lib/paraglide/**']
+  },
+  js.configs.recommended,
+  ...svelte.configs.recommended,
+  prettier,
+  ...svelte.configs.prettier,
+  {
+    languageOptions: {
+      globals: { ...globals.browser, ...globals.node }
+    },
+    rules: {
+      // Allow unused variables/args prefixed with underscore
+      'no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_'
+        }
+      ]
+    }
+  },
+  {
+    files: ['**/*.svelte', '**/*.svelte.js'],
+    languageOptions: { parserOptions: { svelteConfig } }
+  }
 ];

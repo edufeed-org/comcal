@@ -4,12 +4,14 @@
  */
 
 import { EventFactory } from 'applesauce-core/event-factory';
-import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { manager } from '$lib/stores/accounts.svelte';
-import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { flattenAMBToNostrTags } from '$lib/helpers/educational/ambTransform.js';
 import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
-import { publishEvent, publishEventOptimistic, buildATagWithHint, buildETagWithHint } from '$lib/services/publish-service.js';
+import {
+  publishEventOptimistic,
+  buildATagWithHint,
+  buildETagWithHint
+} from '$lib/services/publish-service.js';
 import { getAppRelaysForCategory } from '$lib/services/app-relay-service.svelte.js';
 import { getPrimaryWriteRelay } from '$lib/services/relay-service.svelte.js';
 
@@ -69,7 +71,7 @@ const TARGETED_PUBLICATION_KIND = 30222;
  * @returns {string} Random alphanumeric ID
  */
 function generateRandomId() {
-	return Math.random().toString(36).substring(2, 10);
+  return Math.random().toString(36).substring(2, 10);
 }
 
 /**
@@ -78,89 +80,90 @@ function generateRandomId() {
  * @returns {Object} AMB metadata object ready for flattening
  */
 function convertFormDataToAMB(formData) {
-	// Use provided slug/URL or generate random ID
-	const identifier = formData.slug?.trim() || generateRandomId();
+  // Use provided slug/URL or generate random ID
+  const identifier = formData.slug?.trim() || generateRandomId();
 
-	/** @type {Record<string, any>} */
-	const amb = {
-		id: identifier,
-		name: formData.name,
-		description: formData.description,
-		inLanguage: formData.inLanguage,
-		license: { id: formData.license }
-	};
+  /** @type {Record<string, any>} */
+  const amb = {
+    id: identifier,
+    name: formData.name,
+    description: formData.description,
+    inLanguage: formData.inLanguage,
+    license: { id: formData.license }
+  };
 
-	// Get the language code for prefLabel tags (per edufeed NIP spec)
-	const lang = formData.inLanguage || 'en';
+  // Get the language code for prefLabel tags (per edufeed NIP spec)
+  const lang = formData.inLanguage || 'en';
 
-	// Learning resource type with language-tagged prefLabel
-	// NIP spec: ["learningResourceType:prefLabel:lang", <label>]
-	if (formData.learningResourceType) {
-		/** @type {Record<string, any>} */
-		const lrtObj = { id: formData.learningResourceType };
-		lrtObj[`prefLabel:${lang}`] = formData.learningResourceTypeLabel || formData.learningResourceType;
-		amb.learningResourceType = lrtObj;
-	}
+  // Learning resource type with language-tagged prefLabel
+  // NIP spec: ["learningResourceType:prefLabel:lang", <label>]
+  if (formData.learningResourceType) {
+    /** @type {Record<string, any>} */
+    const lrtObj = { id: formData.learningResourceType };
+    lrtObj[`prefLabel:${lang}`] =
+      formData.learningResourceTypeLabel || formData.learningResourceType;
+    amb.learningResourceType = lrtObj;
+  }
 
-	// About/subjects with language-tagged prefLabel (can have multiple)
-	// NIP spec: ["about:prefLabel:lang", <label>]
-	if (formData.about && formData.about.length > 0) {
-		amb.about = formData.about.map((uri, index) => {
-			/** @type {Record<string, any>} */
-			const aboutObj = { id: uri };
-			aboutObj[`prefLabel:${lang}`] = formData.aboutLabels?.[index]?.label || uri;
-			return aboutObj;
-		});
-	}
+  // About/subjects with language-tagged prefLabel (can have multiple)
+  // NIP spec: ["about:prefLabel:lang", <label>]
+  if (formData.about && formData.about.length > 0) {
+    amb.about = formData.about.map((uri, index) => {
+      /** @type {Record<string, any>} */
+      const aboutObj = { id: uri };
+      aboutObj[`prefLabel:${lang}`] = formData.aboutLabels?.[index]?.label || uri;
+      return aboutObj;
+    });
+  }
 
-	// Educational level with language-tagged prefLabel
-	// NIP spec: ["educationalLevel:prefLabel:lang", <label>]
-	if (formData.educationalLevel) {
-		/** @type {Record<string, any>} */
-		const eduObj = { id: formData.educationalLevel };
-		eduObj[`prefLabel:${lang}`] = formData.educationalLevelLabel || formData.educationalLevel;
-		amb.educationalLevel = eduObj;
-	}
+  // Educational level with language-tagged prefLabel
+  // NIP spec: ["educationalLevel:prefLabel:lang", <label>]
+  if (formData.educationalLevel) {
+    /** @type {Record<string, any>} */
+    const eduObj = { id: formData.educationalLevel };
+    eduObj[`prefLabel:${lang}`] = formData.educationalLevelLabel || formData.educationalLevel;
+    amb.educationalLevel = eduObj;
+  }
 
-	// Keywords
-	if (formData.keywords && formData.keywords.length > 0) {
-		amb.keywords = formData.keywords;
-	}
+  // Keywords
+  if (formData.keywords && formData.keywords.length > 0) {
+    amb.keywords = formData.keywords;
+  }
 
-	// Creators
-	if (formData.creators && formData.creators.length > 0) {
-		amb.creator = formData.creators.map(creator => {
-			/** @type {Record<string, any>} */
-			const creatorObj = {
-				type: creator.type,
-				name: creator.name
-			};
-			if (creator.honorificPrefix) {
-				creatorObj.honorificPrefix = creator.honorificPrefix;
-			}
-			if (creator.affiliationName) {
-				creatorObj.affiliation = { name: creator.affiliationName };
-			}
-			return creatorObj;
-		});
-	}
+  // Creators
+  if (formData.creators && formData.creators.length > 0) {
+    amb.creator = formData.creators.map((creator) => {
+      /** @type {Record<string, any>} */
+      const creatorObj = {
+        type: creator.type,
+        name: creator.name
+      };
+      if (creator.honorificPrefix) {
+        creatorObj.honorificPrefix = creator.honorificPrefix;
+      }
+      if (creator.affiliationName) {
+        creatorObj.affiliation = { name: creator.affiliationName };
+      }
+      return creatorObj;
+    });
+  }
 
-	// Files/encoding
-	if (formData.files && formData.files.length > 0) {
-		amb.encoding = formData.files.map(file => ({
-			contentUrl: file.url,
-			encodingFormat: file.mimeType,
-			contentSize: file.size,
-			sha256: file.sha256
-		}));
-	}
+  // Files/encoding
+  if (formData.files && formData.files.length > 0) {
+    amb.encoding = formData.files.map((file) => ({
+      contentUrl: file.url,
+      encodingFormat: file.mimeType,
+      contentSize: file.size,
+      sha256: file.sha256
+    }));
+  }
 
-	// isAccessibleForFree (boolean)
-	if (formData.isAccessibleForFree !== undefined) {
-		amb.isAccessibleForFree = formData.isAccessibleForFree;
-	}
+  // isAccessibleForFree (boolean)
+  if (formData.isAccessibleForFree !== undefined) {
+    amb.isAccessibleForFree = formData.isAccessibleForFree;
+  }
 
-	return amb;
+  return amb;
 }
 
 /**
@@ -168,252 +171,249 @@ function convertFormDataToAMB(formData) {
  * @returns {EducationalActions} Educational actions object
  */
 export function createEducationalActions() {
-	return {
-		/**
-		 * Create a new educational resource (kind:30142)
-		 * @param {EducationalFormData} formData - Form data from upload modal
-		 * @param {string} communityPubkey - Target community public key
-		 * @param {Object} [communityEvent] - Optional community definition event (kind 10222) for relay routing
-		 * @returns {Promise<{event: import('nostr-tools').NostrEvent, naddr: string}>}
-		 */
-		async createResource(formData, communityPubkey, communityEvent = null) {
-			// Get current account from manager
-			const currentAccount = manager.active;
-			if (!currentAccount) {
-				throw new Error('No account selected. Please log in to create resources.');
-			}
+  return {
+    /**
+     * Create a new educational resource (kind:30142)
+     * @param {EducationalFormData} formData - Form data from upload modal
+     * @param {string} communityPubkey - Target community public key
+     * @param {Object} [communityEvent] - Optional community definition event (kind 10222) for relay routing
+     * @returns {Promise<{event: import('nostr-tools').NostrEvent, naddr: string}>}
+     */
+    async createResource(formData, communityPubkey, communityEvent = null) {
+      // Get current account from manager
+      const currentAccount = manager.active;
+      if (!currentAccount) {
+        throw new Error('No account selected. Please log in to create resources.');
+      }
 
-			// Validate required fields
-			if (!formData.name?.trim()) {
-				throw new Error('Resource name is required');
-			}
-			if (!formData.description?.trim()) {
-				throw new Error('Resource description is required');
-			}
-			// Note: slug is optional - will auto-generate random ID if empty
-			if (!formData.learningResourceType) {
-				throw new Error('Learning resource type is required');
-			}
-			if (!formData.about || formData.about.length === 0) {
-				throw new Error('At least one subject is required');
-			}
-			if (!formData.inLanguage) {
-				throw new Error('Language is required');
-			}
-			if (!formData.license) {
-				throw new Error('License is required');
-			}
+      // Validate required fields
+      if (!formData.name?.trim()) {
+        throw new Error('Resource name is required');
+      }
+      if (!formData.description?.trim()) {
+        throw new Error('Resource description is required');
+      }
+      // Note: slug is optional - will auto-generate random ID if empty
+      if (!formData.learningResourceType) {
+        throw new Error('Learning resource type is required');
+      }
+      if (!formData.about || formData.about.length === 0) {
+        throw new Error('At least one subject is required');
+      }
+      if (!formData.inLanguage) {
+        throw new Error('Language is required');
+      }
+      if (!formData.license) {
+        throw new Error('License is required');
+      }
 
-			try {
-				// Convert form data to AMB structure
-				const ambData = convertFormDataToAMB(formData);
+      try {
+        // Convert form data to AMB structure
+        const ambData = convertFormDataToAMB(formData);
 
-				// Flatten AMB to Nostr tags
-				const tags = flattenAMBToNostrTags(ambData);
+        // Flatten AMB to Nostr tags
+        const tags = flattenAMBToNostrTags(ambData);
 
-				// Add h-tag for community targeting (Communikey spec)
-				if (communityPubkey) {
-					tags.push(['h', communityPubkey]);
-				}
+        // Add h-tag for community targeting (Communikey spec)
+        if (communityPubkey) {
+          tags.push(['h', communityPubkey]);
+        }
 
-				// Add p-tags for creators with Nostr pubkeys and relay hints
-				if (formData.creators) {
-					for (const creator of formData.creators) {
-						if (creator.pubkey) {
-							const relayHint = await getPrimaryWriteRelay(creator.pubkey);
-							tags.push(['p', creator.pubkey, relayHint, 'creator']);
-						}
-					}
-				}
+        // Add p-tags for creators with Nostr pubkeys and relay hints
+        if (formData.creators) {
+          for (const creator of formData.creators) {
+            if (creator.pubkey) {
+              const relayHint = await getPrimaryWriteRelay(creator.pubkey);
+              tags.push(['p', creator.pubkey, relayHint, 'creator']);
+            }
+          }
+        }
 
-				// Add r-tags for external reference URLs (NIP-24)
-				if (formData.externalUrls?.length > 0) {
-					for (const url of formData.externalUrls) {
-						if (url.trim()) {
-							tags.push(['r', url.trim()]);
-						}
-					}
-				}
+        // Add r-tags for external reference URLs (NIP-24)
+        if (formData.externalUrls?.length > 0) {
+          for (const url of formData.externalUrls) {
+            if (url.trim()) {
+              tags.push(['r', url.trim()]);
+            }
+          }
+        }
 
-				// Create the event using EventFactory
-				const eventFactory = new EventFactory();
+        // Create the event using EventFactory
+        const eventFactory = new EventFactory();
 
-				const eventTemplate = await eventFactory.build({
-					kind: AMB_RESOURCE_KIND,
-					content: formData.description,
-					tags: tags
-				});
+        const eventTemplate = await eventFactory.build({
+          kind: AMB_RESOURCE_KIND,
+          content: formData.description,
+          tags: tags
+        });
 
-				// Sign and publish optimistically (adds to store immediately)
-				const resourceEvent = await currentAccount.signEvent(eventTemplate);
-				publishEventOptimistic(resourceEvent, [], { communityEvent });
+        // Sign and publish optimistically (adds to store immediately)
+        const resourceEvent = await currentAccount.signEvent(eventTemplate);
+        publishEventOptimistic(resourceEvent, [], { communityEvent });
 
-				// Generate naddr using educational relays for hint
-				const naddr = encodeEventToNaddr(resourceEvent, getAppRelaysForCategory('educational'));
+        // Generate naddr using educational relays for hint
+        const naddr = encodeEventToNaddr(resourceEvent, getAppRelaysForCategory('educational'));
 
-				console.log('📚 Educational resource created:', resourceEvent.id);
-				console.log('📚 Resource naddr:', naddr);
+        console.log('📚 Educational resource created:', resourceEvent.id);
+        console.log('📚 Resource naddr:', naddr);
 
-				// Create targeted publication if community is specified
-				if (communityPubkey) {
-					await this.createTargetedPublication(resourceEvent, communityPubkey, communityEvent);
-				}
+        // Create targeted publication if community is specified
+        if (communityPubkey) {
+          await this.createTargetedPublication(resourceEvent, communityPubkey, communityEvent);
+        }
 
-				return { event: resourceEvent, naddr };
+        return { event: resourceEvent, naddr };
+      } catch (error) {
+        console.error('Error creating educational resource:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        throw new Error(`Failed to create educational resource: ${errorMessage}`);
+      }
+    },
 
-			} catch (error) {
-				console.error('Error creating educational resource:', error);
-				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-				throw new Error(`Failed to create educational resource: ${errorMessage}`);
-			}
-		},
+    /**
+     * Update an existing educational resource
+     * @param {EducationalFormData} formData - Updated form data
+     * @param {import('nostr-tools').NostrEvent} existingEvent - Existing event to update
+     * @param {Object} [communityEvent] - Optional community definition event (kind 10222) for relay routing
+     * @returns {Promise<{event: import('nostr-tools').NostrEvent, naddr: string}>}
+     */
+    async updateResource(formData, existingEvent, communityEvent = null) {
+      // Get current account
+      const currentAccount = manager.active;
+      if (!currentAccount) {
+        throw new Error('No account selected. Please log in to update resources.');
+      }
 
-		/**
-		 * Update an existing educational resource
-		 * @param {EducationalFormData} formData - Updated form data
-		 * @param {import('nostr-tools').NostrEvent} existingEvent - Existing event to update
-		 * @param {Object} [communityEvent] - Optional community definition event (kind 10222) for relay routing
-		 * @returns {Promise<{event: import('nostr-tools').NostrEvent, naddr: string}>}
-		 */
-		async updateResource(formData, existingEvent, communityEvent = null) {
-			// Get current account
-			const currentAccount = manager.active;
-			if (!currentAccount) {
-				throw new Error('No account selected. Please log in to update resources.');
-			}
+      // Extract the original d-tag
+      const dTag = existingEvent.tags.find((/** @type {string[]} */ t) => t[0] === 'd')?.[1];
+      if (!dTag) {
+        throw new Error('Cannot update resource: missing d-tag. Resource may not be replaceable.');
+      }
 
-			// Extract the original d-tag
-			const dTag = existingEvent.tags.find((/** @type {string[]} */ t) => t[0] === 'd')?.[1];
-			if (!dTag) {
-				throw new Error('Cannot update resource: missing d-tag. Resource may not be replaceable.');
-			}
+      // Extract the original h-tag (community targeting) if present
+      const hTag = existingEvent.tags.find((/** @type {string[]} */ t) => t[0] === 'h')?.[1];
 
-			// Extract the original h-tag (community targeting) if present
-			const hTag = existingEvent.tags.find((/** @type {string[]} */ t) => t[0] === 'h')?.[1];
+      // Verify the user owns this event
+      if (existingEvent.pubkey !== currentAccount.pubkey) {
+        throw new Error('Cannot update resource: you do not own this resource.');
+      }
 
-			// Verify the user owns this event
-			if (existingEvent.pubkey !== currentAccount.pubkey) {
-				throw new Error('Cannot update resource: you do not own this resource.');
-			}
+      try {
+        // Use the original d-tag to ensure replacement
+        formData.slug = dTag;
 
-			try {
-				// Use the original d-tag to ensure replacement
-				formData.slug = dTag;
+        // Convert form data to AMB structure
+        const ambData = convertFormDataToAMB(formData);
 
-				// Convert form data to AMB structure
-				const ambData = convertFormDataToAMB(formData);
+        // Flatten AMB to Nostr tags
+        const tags = flattenAMBToNostrTags(ambData);
 
-				// Flatten AMB to Nostr tags
-				const tags = flattenAMBToNostrTags(ambData);
+        // Preserve h-tag if it was present
+        if (hTag) {
+          tags.push(['h', hTag]);
+        }
 
-				// Preserve h-tag if it was present
-				if (hTag) {
-					tags.push(['h', hTag]);
-				}
+        // Add p-tags for creators with Nostr pubkeys and relay hints
+        if (formData.creators) {
+          for (const creator of formData.creators) {
+            if (creator.pubkey) {
+              const relayHint = await getPrimaryWriteRelay(creator.pubkey);
+              tags.push(['p', creator.pubkey, relayHint, 'creator']);
+            }
+          }
+        }
 
-				// Add p-tags for creators with Nostr pubkeys and relay hints
-				if (formData.creators) {
-					for (const creator of formData.creators) {
-						if (creator.pubkey) {
-							const relayHint = await getPrimaryWriteRelay(creator.pubkey);
-							tags.push(['p', creator.pubkey, relayHint, 'creator']);
-						}
-					}
-				}
+        // Add r-tags for external reference URLs (NIP-24)
+        if (formData.externalUrls?.length > 0) {
+          for (const url of formData.externalUrls) {
+            if (url.trim()) {
+              tags.push(['r', url.trim()]);
+            }
+          }
+        }
 
-				// Add r-tags for external reference URLs (NIP-24)
-				if (formData.externalUrls?.length > 0) {
-					for (const url of formData.externalUrls) {
-						if (url.trim()) {
-							tags.push(['r', url.trim()]);
-						}
-					}
-				}
+        // Create the updated event
+        const eventFactory = new EventFactory();
 
-				// Create the updated event
-				const eventFactory = new EventFactory();
+        const eventTemplate = await eventFactory.build({
+          kind: AMB_RESOURCE_KIND,
+          content: formData.description,
+          tags: tags
+        });
 
-				const eventTemplate = await eventFactory.build({
-					kind: AMB_RESOURCE_KIND,
-					content: formData.description,
-					tags: tags
-				});
+        // Sign and publish optimistically (adds to store immediately)
+        const updatedEvent = await currentAccount.signEvent(eventTemplate);
+        publishEventOptimistic(updatedEvent, [], { communityEvent });
 
-				// Sign and publish optimistically (adds to store immediately)
-				const updatedEvent = await currentAccount.signEvent(eventTemplate);
-				publishEventOptimistic(updatedEvent, [], { communityEvent });
+        // Generate naddr using educational relays for hint
+        const naddr = encodeEventToNaddr(updatedEvent, getAppRelaysForCategory('educational'));
 
-				// Generate naddr using educational relays for hint
-				const naddr = encodeEventToNaddr(updatedEvent, getAppRelaysForCategory('educational'));
+        console.log('📚 Educational resource updated:', updatedEvent.id);
 
-				console.log('📚 Educational resource updated:', updatedEvent.id);
+        return { event: updatedEvent, naddr };
+      } catch (error) {
+        console.error('Error updating educational resource:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        throw new Error(`Failed to update educational resource: ${errorMessage}`);
+      }
+    },
 
-				return { event: updatedEvent, naddr };
+    /**
+     * Create a targeted publication event to associate resource with community
+     * @param {import('nostr-tools').NostrEvent} resourceEvent - The educational resource event
+     * @param {string} communityPubkey - Target community public key
+     * @param {Object} [communityEvent] - Optional community definition event (kind 10222) for relay routing
+     * @returns {Promise<void>}
+     */
+    async createTargetedPublication(resourceEvent, communityPubkey, communityEvent = null) {
+      // Get current account
+      const currentAccount = manager.active;
+      if (!currentAccount) {
+        throw new Error('No account selected. Please log in to create targeted publications.');
+      }
 
-			} catch (error) {
-				console.error('Error updating educational resource:', error);
-				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-				throw new Error(`Failed to update educational resource: ${errorMessage}`);
-			}
-		},
+      try {
+        // Extract d-tag from resource event
+        const dTag = resourceEvent.tags.find((/** @type {string[]} */ t) => t[0] === 'd')?.[1];
+        if (!dTag) {
+          throw new Error('Resource event missing d-tag');
+        }
 
-		/**
-		 * Create a targeted publication event to associate resource with community
-		 * @param {import('nostr-tools').NostrEvent} resourceEvent - The educational resource event
-		 * @param {string} communityPubkey - Target community public key
-		 * @param {Object} [communityEvent] - Optional community definition event (kind 10222) for relay routing
-		 * @returns {Promise<void>}
-		 */
-		async createTargetedPublication(resourceEvent, communityPubkey, communityEvent = null) {
-			// Get current account
-			const currentAccount = manager.active;
-			if (!currentAccount) {
-				throw new Error('No account selected. Please log in to create targeted publications.');
-			}
+        // Build the coordinate for the 'a' tag
+        const coordinate = `${resourceEvent.kind}:${resourceEvent.pubkey}:${dTag}`;
 
-			try {
-				// Extract d-tag from resource event
-				const dTag = resourceEvent.tags.find((/** @type {string[]} */ t) => t[0] === 'd')?.[1];
-				if (!dTag) {
-					throw new Error('Resource event missing d-tag');
-				}
+        // Build tags with relay hints for discoverability
+        const aTagWithHint = await buildATagWithHint(coordinate);
+        const eTagWithHint = await buildETagWithHint(resourceEvent.id, resourceEvent.pubkey);
 
-				// Build the coordinate for the 'a' tag
-				const coordinate = `${resourceEvent.kind}:${resourceEvent.pubkey}:${dTag}`;
+        // Create targeting event using Communikey spec (kind 30222)
+        const eventFactory = new EventFactory();
 
-				// Build tags with relay hints for discoverability
-				const aTagWithHint = await buildATagWithHint(coordinate);
-				const eTagWithHint = await buildETagWithHint(resourceEvent.id, resourceEvent.pubkey);
+        const tags = [
+          ['d', `${communityPubkey}:${dTag}`], // Unique d-tag for this publication
+          ['h', communityPubkey], // Target community
+          aTagWithHint, // Reference to the resource with relay hint
+          eTagWithHint // Reference to specific event with relay hint
+        ];
 
-				// Create targeting event using Communikey spec (kind 30222)
-				const eventFactory = new EventFactory();
+        const eventTemplate = await eventFactory.build({
+          kind: TARGETED_PUBLICATION_KIND,
+          content: '',
+          tags: tags
+        });
 
-				const tags = [
-					['d', `${communityPubkey}:${dTag}`], // Unique d-tag for this publication
-					['h', communityPubkey], // Target community
-					aTagWithHint, // Reference to the resource with relay hint
-					eTagWithHint // Reference to specific event with relay hint
-				];
+        // Sign and publish optimistically (kind 30222 uses communikey relays)
+        const targetingEvent = await currentAccount.signEvent(eventTemplate);
+        publishEventOptimistic(targetingEvent, [communityPubkey], { communityEvent });
 
-				const eventTemplate = await eventFactory.build({
-					kind: TARGETED_PUBLICATION_KIND,
-					content: '',
-					tags: tags
-				});
-
-				// Sign and publish optimistically (kind 30222 uses communikey relays)
-				const targetingEvent = await currentAccount.signEvent(eventTemplate);
-				publishEventOptimistic(targetingEvent, [communityPubkey], { communityEvent });
-
-				console.log('📚 Targeted publication created for community:', communityPubkey);
-
-			} catch (error) {
-				console.error('Error creating targeted publication:', error);
-				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-				throw new Error(`Failed to create targeted publication: ${errorMessage}`);
-			}
-		}
-	};
+        console.log('📚 Targeted publication created for community:', communityPubkey);
+      } catch (error) {
+        console.error('Error creating targeted publication:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        throw new Error(`Failed to create targeted publication: ${errorMessage}`);
+      }
+    }
+  };
 }
 
 /**
@@ -427,8 +427,8 @@ let educationalActionsInstance = null;
  * @returns {EducationalActions} Educational actions instance
  */
 export function useEducationalActions() {
-	if (!educationalActionsInstance) {
-		educationalActionsInstance = createEducationalActions();
-	}
-	return educationalActionsInstance;
+  if (!educationalActionsInstance) {
+    educationalActionsInstance = createEducationalActions();
+  }
+  return educationalActionsInstance;
 }

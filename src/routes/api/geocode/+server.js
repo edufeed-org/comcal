@@ -9,43 +9,43 @@ import { serverConfig } from '$lib/server/config.js';
 /**
  * GET /api/geocode?q=address&mode=geocode
  * GET /api/geocode?q=partial&mode=autocomplete
- * 
+ *
  * Modes:
  * - geocode: Full geocoding of an address
  * - autocomplete: Address suggestions for autocomplete
  */
 export async function GET({ url }) {
-	const query = url.searchParams.get('q');
-	const mode = url.searchParams.get('mode') || 'geocode';
+  const query = url.searchParams.get('q');
+  const mode = url.searchParams.get('mode') || 'geocode';
 
-	if (!query || query.trim().length < 3) {
-		throw error(400, 'Query parameter "q" must be at least 3 characters');
-	}
+  if (!query || query.trim().length < 3) {
+    throw error(400, 'Query parameter "q" must be at least 3 characters');
+  }
 
-	const apiKey = serverConfig.geocoding?.apiKey;
-	if (!apiKey) {
-		// Return graceful response instead of error - geocoding is optional
-		return json({ success: false, error: 'not_configured' });
-	}
+  const apiKey = serverConfig.geocoding?.apiKey;
+  if (!apiKey) {
+    // Return graceful response instead of error - geocoding is optional
+    return json({ success: false, error: 'not_configured' });
+  }
 
-	try {
-		if (mode === 'autocomplete') {
-			return json(await handleAutocomplete(query.trim(), apiKey));
-		} else if (mode === 'geocode') {
-			return json(await handleGeocode(query.trim(), apiKey));
-		} else {
-			throw error(400, 'Invalid mode. Use "geocode" or "autocomplete"');
-		}
-	} catch (err) {
-		console.error('Geocoding API error:', err);
-		
-		// @ts-ignore - err might have a status property from SvelteKit
-		if (err?.status) {
-			throw err; // Re-throw SvelteKit errors
-		}
-		
-		throw error(500, 'Geocoding request failed');
-	}
+  try {
+    if (mode === 'autocomplete') {
+      return json(await handleAutocomplete(query.trim(), apiKey));
+    } else if (mode === 'geocode') {
+      return json(await handleGeocode(query.trim(), apiKey));
+    } else {
+      throw error(400, 'Invalid mode. Use "geocode" or "autocomplete"');
+    }
+  } catch (err) {
+    console.error('Geocoding API error:', err);
+
+    // @ts-ignore - err might have a status property from SvelteKit
+    if (err?.status) {
+      throw err; // Re-throw SvelteKit errors
+    }
+
+    throw error(500, 'Geocoding request failed');
+  }
 }
 
 /**
@@ -54,36 +54,36 @@ export async function GET({ url }) {
  * @param {string} apiKey
  */
 async function handleAutocomplete(query, apiKey) {
-	const params = new URLSearchParams({
-		q: query,
-		key: apiKey,
-		limit: '5',
-		countrycode: 'de,at,ch,fr,nl,be,pl,cz,dk,it,es', // Germany and neighboring countries
-		language: 'en',
-		no_annotations: '1'
-	});
+  const params = new URLSearchParams({
+    q: query,
+    key: apiKey,
+    limit: '5',
+    countrycode: 'de,at,ch,fr,nl,be,pl,cz,dk,it,es', // Germany and neighboring countries
+    language: 'en',
+    no_annotations: '1'
+  });
 
-	const opencageUrl = `https://api.opencagedata.com/geocode/v1/json?${params}`;
-	const response = await fetch(opencageUrl);
+  const opencageUrl = `https://api.opencagedata.com/geocode/v1/json?${params}`;
+  const response = await fetch(opencageUrl);
 
-	if (!response.ok) {
-		throw error(response.status, `OpenCage API error: ${response.statusText}`);
-	}
+  if (!response.ok) {
+    throw error(response.status, `OpenCage API error: ${response.statusText}`);
+  }
 
-	const data = await response.json();
+  const data = await response.json();
 
-	if (data.results && data.results.length > 0) {
-		return {
-			success: true,
-			results: data.results.map((/** @type {any} */ result) => ({
-				formatted: result.formatted,
-				lat: result.geometry.lat,
-				lng: result.geometry.lng
-			}))
-		};
-	}
+  if (data.results && data.results.length > 0) {
+    return {
+      success: true,
+      results: data.results.map((/** @type {any} */ result) => ({
+        formatted: result.formatted,
+        lat: result.geometry.lat,
+        lng: result.geometry.lng
+      }))
+    };
+  }
 
-	return { success: true, results: [] };
+  return { success: true, results: [] };
 }
 
 /**
@@ -92,35 +92,35 @@ async function handleAutocomplete(query, apiKey) {
  * @param {string} apiKey
  */
 async function handleGeocode(address, apiKey) {
-	const params = new URLSearchParams({
-		q: address,
-		key: apiKey,
-		limit: '1'
-	});
+  const params = new URLSearchParams({
+    q: address,
+    key: apiKey,
+    limit: '1'
+  });
 
-	const opencageUrl = `https://api.opencagedata.com/geocode/v1/json?${params}`;
-	const response = await fetch(opencageUrl);
+  const opencageUrl = `https://api.opencagedata.com/geocode/v1/json?${params}`;
+  const response = await fetch(opencageUrl);
 
-	if (!response.ok) {
-		throw error(response.status, `OpenCage API error: ${response.statusText}`);
-	}
+  if (!response.ok) {
+    throw error(response.status, `OpenCage API error: ${response.statusText}`);
+  }
 
-	const data = await response.json();
+  const data = await response.json();
 
-	if (data.results && data.results.length > 0) {
-		const result = data.results[0];
-		
-		return {
-			success: true,
-			result: {
-				lat: result.geometry.lat,
-				lng: result.geometry.lng,
-				formatted: result.formatted,
-				confidence: result.confidence,
-				components: result.components
-			}
-		};
-	}
+  if (data.results && data.results.length > 0) {
+    const result = data.results[0];
 
-	return { success: false, result: null };
+    return {
+      success: true,
+      result: {
+        lat: result.geometry.lat,
+        lng: result.geometry.lng,
+        formatted: result.formatted,
+        confidence: result.confidence,
+        components: result.components
+      }
+    };
+  }
+
+  return { success: false, result: null };
 }

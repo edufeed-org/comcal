@@ -4,193 +4,186 @@
 -->
 
 <script>
-	import { modalStore } from '$lib/stores/modal.svelte.js';
-	import { CalendarIcon, AlertIcon, ChevronDownIcon } from '$lib/components/icons';
-	import { filterEventsByViewMode } from '$lib/helpers/calendar.js';
-	import * as m from '$lib/paraglide/messages';
-	
-	// Import existing UI components
-	import CalendarEventCard from '$lib/components/calendar/CalendarEventCard.svelte';
+  import { modalStore } from '$lib/stores/modal.svelte.js';
+  import { CalendarIcon, AlertIcon, ChevronDownIcon } from '$lib/components/icons';
+  import { filterEventsByViewMode } from '$lib/helpers/calendar.js';
+  import * as m from '$lib/paraglide/messages';
 
-	/**
-	 * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
-	 * @typedef {import('$lib/types/calendar.js').CalendarViewMode} CalendarViewMode
-	 */
+  // Import existing UI components
+  import CalendarEventCard from '$lib/components/calendar/CalendarEventCard.svelte';
 
-	// Props
-	let { 
-		events = /** @type {CalendarEvent[]} */ ([]),
-		viewMode = /** @type {CalendarViewMode} */ ('month'),
-		currentDate = new Date(),
-		loading = false,
-		error = /** @type {string | null} */ (null)
-	} = $props();
+  /**
+   * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
+   * @typedef {import('$lib/types/calendar.js').CalendarViewMode} CalendarViewMode
+   */
 
-	// Filter events based on current view mode and date using shared helper
-	let filteredEvents = $derived.by(() => filterEventsByViewMode(events, viewMode, currentDate));
+  // Props
+  let {
+    events = /** @type {CalendarEvent[]} */ ([]),
+    viewMode = /** @type {CalendarViewMode} */ ('month'),
+    currentDate = new Date(),
+    loading = false,
+    error = /** @type {string | null} */ (null)
+  } = $props();
 
-	// Current timestamp for comparison
-	let now = $derived(Date.now());
+  // Filter events based on current view mode and date using shared helper
+  let filteredEvents = $derived.by(() => filterEventsByViewMode(events, viewMode, currentDate));
 
-	// Upcoming events (start time is in the future)
-	let upcomingEvents = $derived.by(() => {
-		return filteredEvents.filter((/** @type {CalendarEvent} */ event) => event.start * 1000 >= now);
-		// Already sorted chronologically (earliest first) from filteredEvents
-	});
+  // Current timestamp for comparison
+  let now = $derived(Date.now());
 
-	// Past events (start time is in the past)
-	let pastEvents = $derived.by(() => {
-		const past = filteredEvents.filter((/** @type {CalendarEvent} */ event) => event.start * 1000 < now);
-		// Sort in reverse chronological order (most recent first)
-		return past.reverse();
-	});
+  // Upcoming events (start time is in the future)
+  let upcomingEvents = $derived.by(() => {
+    return filteredEvents.filter((/** @type {CalendarEvent} */ event) => event.start * 1000 >= now);
+    // Already sorted chronologically (earliest first) from filteredEvents
+  });
 
-	/**
-	 * Handle event click
-	 * @param {CalendarEvent} event
-	 */
-	function handleEventClick(event) {
-		modalStore.openModal('eventDetails', { event });
-		console.log('📅 SimpleCalendarEventsList: Event clicked, opening details modal:', event.title);
-	}
+  // Past events (start time is in the past)
+  let pastEvents = $derived.by(() => {
+    const past = filteredEvents.filter(
+      (/** @type {CalendarEvent} */ event) => event.start * 1000 < now
+    );
+    // Sort in reverse chronological order (most recent first)
+    return past.reverse();
+  });
 
-	/**
-	 * Scroll to past events section
-	 */
-	function scrollToPastEvents() {
-		const element = document.getElementById('past-events');
-		element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-	}
+  /**
+   * Handle event click
+   * @param {CalendarEvent} event
+   */
+  function handleEventClick(event) {
+    modalStore.openModal('eventDetails', { event });
+    console.log('📅 SimpleCalendarEventsList: Event clicked, opening details modal:', event.title);
+  }
 
-	/**
-	 * Scroll back to top
-	 */
-	function scrollToTop() {
-		window.scrollTo({ top: 0, behavior: 'smooth' });
-	}
+  /**
+   * Scroll to past events section
+   */
+  function scrollToPastEvents() {
+    const element = document.getElementById('past-events');
+    element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /**
+   * Scroll back to top
+   */
+  function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 </script>
 
 <div class="space-y-4">
-	<!-- Header -->
-	<div class="flex items-center justify-between">
-		<h2 class="text-lg font-semibold text-base-content">
-			{m.events_list_header({ count: filteredEvents.length })}
-		</h2>
-	</div>
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <h2 class="text-lg font-semibold text-base-content">
+      {m.events_list_header({ count: filteredEvents.length })}
+    </h2>
+  </div>
 
-	<!-- Error Display -->
-	{#if error}
-		<div class="alert alert-error">
-			<AlertIcon class_="h-5 w-5" />
-			<span>{error}</span>
-			<button
-				class="btn btn-ghost btn-xs"
-				onclick={() => (error = null)}
-			>
-				{m.events_list_dismiss()}
-			</button>
-		</div>
-	{/if}
+  <!-- Error Display -->
+  {#if error}
+    <div class="alert alert-error">
+      <AlertIcon class_="h-5 w-5" />
+      <span>{error}</span>
+      <button class="btn btn-ghost btn-xs" onclick={() => (error = null)}>
+        {m.events_list_dismiss()}
+      </button>
+    </div>
+  {/if}
 
-	<!-- Upcoming Events Section -->
-	<section class="space-y-4">
-		<div class="flex items-center justify-between">
-			<h3 class="text-lg font-semibold text-base-content">
-				{m.events_list_upcoming_header({ count: upcomingEvents.length })}
-			</h3>
-			{#if pastEvents.length > 0}
-				<button
-					type="button"
-					onclick={scrollToPastEvents}
-					class="link link-primary link-hover flex items-center gap-1 text-sm"
-					aria-label="Jump to past events section"
-				>
-					<span>{m.events_list_jump_to_past({ count: pastEvents.length })}</span>
-					<ChevronDownIcon class_="h-4 w-4" />
-				</button>
-			{/if}
-		</div>
-		
-		{#if upcomingEvents.length > 0}
-			<div class="flex flex-col gap-4 max-w-full overflow-hidden">
-				{#each upcomingEvents as event (event.id)}
-					<CalendarEventCard 
-						{event} 
-						compact={false} 
-						onEventClick={handleEventClick}
-					/>
-				{/each}
-			</div>
-		{:else if !loading}
-			<!-- Empty State for Upcoming Events -->
-			<div class="text-center py-8">
-				<div class="mb-3 text-base-content/30">
-					<CalendarIcon class_="h-12 w-12 mx-auto" />
-				</div>
-				<p class="text-base-content/60">{m.events_list_upcoming_empty()}</p>
-			</div>
-		{/if}
-	</section>
+  <!-- Upcoming Events Section -->
+  <section class="space-y-4">
+    <div class="flex items-center justify-between">
+      <h3 class="text-lg font-semibold text-base-content">
+        {m.events_list_upcoming_header({ count: upcomingEvents.length })}
+      </h3>
+      {#if pastEvents.length > 0}
+        <button
+          type="button"
+          onclick={scrollToPastEvents}
+          class="flex link items-center gap-1 text-sm link-primary link-hover"
+          aria-label="Jump to past events section"
+        >
+          <span>{m.events_list_jump_to_past({ count: pastEvents.length })}</span>
+          <ChevronDownIcon class_="h-4 w-4" />
+        </button>
+      {/if}
+    </div>
 
-	<!-- Divider -->
-	{#if filteredEvents.length > 0}
-		<div class="divider"></div>
-	{/if}
+    {#if upcomingEvents.length > 0}
+      <div class="flex max-w-full flex-col gap-4 overflow-hidden">
+        {#each upcomingEvents as event (event.id)}
+          <CalendarEventCard {event} compact={false} onEventClick={handleEventClick} />
+        {/each}
+      </div>
+    {:else if !loading}
+      <!-- Empty State for Upcoming Events -->
+      <div class="py-8 text-center">
+        <div class="mb-3 text-base-content/30">
+          <CalendarIcon class_="h-12 w-12 mx-auto" />
+        </div>
+        <p class="text-base-content/60">{m.events_list_upcoming_empty()}</p>
+      </div>
+    {/if}
+  </section>
 
-	<!-- Past Events Section -->
-	<section id="past-events" class="space-y-4">
-		<div class="flex items-center justify-between">
-			<h3 class="text-lg font-semibold text-base-content">
-				{m.events_list_past_header({ count: pastEvents.length })}
-			</h3>
-			<button
-				type="button"
-				onclick={scrollToTop}
-				class="link link-primary link-hover flex items-center gap-1 text-sm"
-				aria-label="Back to top"
-			>
-				<ChevronDownIcon class_="h-4 w-4 rotate-180" />
-				<span>{m.events_list_back_to_top()}</span>
-			</button>
-		</div>
-		
-		{#if pastEvents.length > 0}
-			<div class="flex flex-col gap-4 max-w-full overflow-hidden">
-				{#each pastEvents as event (event.id)}
-					<CalendarEventCard 
-						{event} 
-						compact={false} 
-						onEventClick={handleEventClick}
-					/>
-				{/each}
-			</div>
-		{:else if !loading}
-			<!-- Empty State for Past Events -->
-			<div class="text-center py-8">
-				<div class="mb-3 text-base-content/30">
-					<CalendarIcon class_="h-12 w-12 mx-auto" />
-				</div>
-				<p class="text-base-content/60">{m.events_list_past_empty()}</p>
-			</div>
-		{/if}
-	</section>
+  <!-- Divider -->
+  {#if filteredEvents.length > 0}
+    <div class="divider"></div>
+  {/if}
 
-	<!-- Global Empty State (when no events at all) -->
-	{#if filteredEvents.length === 0 && !loading}
-		<div class="text-center py-12">
-			<div class="mb-4 text-base-content/30">
-				<CalendarIcon class_="h-16 w-16 mx-auto" />
-			</div>
-			<h3 class="text-lg font-medium text-base-content mb-2">{m.events_list_global_empty_title()}</h3>
-			<p class="text-base-content/60">{m.events_list_global_empty_description()}</p>
-		</div>
-	{/if}
+  <!-- Past Events Section -->
+  <section id="past-events" class="space-y-4">
+    <div class="flex items-center justify-between">
+      <h3 class="text-lg font-semibold text-base-content">
+        {m.events_list_past_header({ count: pastEvents.length })}
+      </h3>
+      <button
+        type="button"
+        onclick={scrollToTop}
+        class="flex link items-center gap-1 text-sm link-primary link-hover"
+        aria-label="Back to top"
+      >
+        <ChevronDownIcon class_="h-4 w-4 rotate-180" />
+        <span>{m.events_list_back_to_top()}</span>
+      </button>
+    </div>
 
-	<!-- Loading indicator -->
-	{#if loading && filteredEvents.length === 0}
-		<div class="text-center py-12">
-			<span class="loading loading-lg loading-spinner text-primary"></span>
-			<p class="mt-4 text-base-content/60">{m.events_list_loading()}</p>
-		</div>
-	{/if}
+    {#if pastEvents.length > 0}
+      <div class="flex max-w-full flex-col gap-4 overflow-hidden">
+        {#each pastEvents as event (event.id)}
+          <CalendarEventCard {event} compact={false} onEventClick={handleEventClick} />
+        {/each}
+      </div>
+    {:else if !loading}
+      <!-- Empty State for Past Events -->
+      <div class="py-8 text-center">
+        <div class="mb-3 text-base-content/30">
+          <CalendarIcon class_="h-12 w-12 mx-auto" />
+        </div>
+        <p class="text-base-content/60">{m.events_list_past_empty()}</p>
+      </div>
+    {/if}
+  </section>
+
+  <!-- Global Empty State (when no events at all) -->
+  {#if filteredEvents.length === 0 && !loading}
+    <div class="py-12 text-center">
+      <div class="mb-4 text-base-content/30">
+        <CalendarIcon class_="h-16 w-16 mx-auto" />
+      </div>
+      <h3 class="mb-2 text-lg font-medium text-base-content">
+        {m.events_list_global_empty_title()}
+      </h3>
+      <p class="text-base-content/60">{m.events_list_global_empty_description()}</p>
+    </div>
+  {/if}
+
+  <!-- Loading indicator -->
+  {#if loading && filteredEvents.length === 0}
+    <div class="py-12 text-center">
+      <span class="loading loading-lg loading-spinner text-primary"></span>
+      <p class="mt-4 text-base-content/60">{m.events_list_loading()}</p>
+    </div>
+  {/if}
 </div>

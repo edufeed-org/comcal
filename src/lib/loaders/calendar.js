@@ -12,15 +12,16 @@ import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
 
 // Global calendar events (kinds 31922, 31923)
 // Lazy factory to ensure relays are read from runtime config at call time, not module load time
-export const calendarTimelineLoader = () => createTimelineLoader(
-	timedPool,
-	getCalendarRelays(),
-	{
-		kinds: [31922, 31923], // NIP-52 calendar events
-		limit: 40
-	},
-	{ eventStore }
-);
+export const calendarTimelineLoader = () =>
+  createTimelineLoader(
+    timedPool,
+    getCalendarRelays(),
+    {
+      kinds: [31922, 31923], // NIP-52 calendar events
+      limit: 40
+    },
+    { eventStore }
+  );
 
 /**
  * Create a timeline loader for calendar events with custom relay filtering
@@ -29,32 +30,33 @@ export const calendarTimelineLoader = () => createTimelineLoader(
  * @returns {Function} Timeline loader function that returns an Observable
  */
 export const createRelayFilteredCalendarLoader = (customRelays = [], additionalFilters = {}) => {
-	const relaysToUse = customRelays.length > 0 ? customRelays : getCalendarRelays();
+  const relaysToUse = customRelays.length > 0 ? customRelays : getCalendarRelays();
 
-	return createTimelineLoader(
-		timedPool,
-		relaysToUse,
-		{
-			kinds: [31922, 31923], // NIP-52 calendar events
-			limit: 200,
-			...additionalFilters
-		},
-		{ eventStore }
-	);
+  return createTimelineLoader(
+    timedPool,
+    relaysToUse,
+    {
+      kinds: [31922, 31923], // NIP-52 calendar events
+      limit: 200,
+      ...additionalFilters
+    },
+    { eventStore }
+  );
 };
 
 // Calendar definition loader for personal calendars (kind 31924)
 // NOTE: This loads ALL calendars without filtering - use userCalendarLoader for user-specific calendars
 // Lazy factory to ensure relays are read from runtime config at call time, not module load time
-export const calendarLoader = () => createTimelineLoader(
-	timedPool,
-	getCalendarRelays(),
-	{
-		kinds: [31924], // Calendar definitions
-		limit: 100
-	},
-	{ eventStore }
-);
+export const calendarLoader = () =>
+  createTimelineLoader(
+    timedPool,
+    getCalendarRelays(),
+    {
+      kinds: [31924], // Calendar definitions
+      limit: 100
+    },
+    { eventStore }
+  );
 
 /**
  * Factory: Create a timeline loader for user-specific calendar definitions
@@ -62,32 +64,34 @@ export const calendarLoader = () => createTimelineLoader(
  * @param {string} userPubkey - The pubkey of the user whose calendars to load
  * @returns {Function} Timeline loader function that returns an Observable
  */
-export const userCalendarLoader = (userPubkey) => createTimelineLoader(
-	timedPool,
-	getCalendarRelays(),
-	{
-		kinds: [31924], // Calendar definitions
-		authors: [userPubkey], // Filter by user at relay level
-		limit: 100
-	},
-	{ eventStore }
-);
+export const userCalendarLoader = (userPubkey) =>
+  createTimelineLoader(
+    timedPool,
+    getCalendarRelays(),
+    {
+      kinds: [31924], // Calendar definitions
+      authors: [userPubkey], // Filter by user at relay level
+      limit: 100
+    },
+    { eventStore }
+  );
 
 /**
  * Factory: Create a timeline loader for community-specific calendar events
  * @param {string} communityPubkey - The pubkey of the community
  * @returns {Function} Timeline loader function that returns an Observable
  */
-export const communityCalendarTimelineLoader = (communityPubkey) => createTimelineLoader(
-	timedPool,
-	getCalendarRelays(),
-	{
-		kinds: [31922, 31923],
-		'#h': [communityPubkey], // Community targeting
-		limit: 250
-	},
-	{ eventStore }
-);
+export const communityCalendarTimelineLoader = (communityPubkey) =>
+  createTimelineLoader(
+    timedPool,
+    getCalendarRelays(),
+    {
+      kinds: [31922, 31923],
+      '#h': [communityPubkey], // Community targeting
+      limit: 250
+    },
+    { eventStore }
+  );
 
 /**
  * Factory: Create a timeline loader for targeted publication events
@@ -96,17 +100,18 @@ export const communityCalendarTimelineLoader = (communityPubkey) => createTimeli
  * @param {string} communityPubkey - The pubkey of the community
  * @returns {Function} Timeline loader function that returns an Observable
  */
-export const targetedPublicationTimelineLoader = (communityPubkey) => createTimelineLoader(
-	timedPool,
-	getCalendarRelays(),
-	{
-		kinds: [30222], // Targeted Publication Events
-		'#p': [communityPubkey], // Community targeting
-		'#k': ['31922', '31923'], // Only calendar event kinds
-		limit: 100
-	},
-	{ eventStore }
-);
+export const targetedPublicationTimelineLoader = (communityPubkey) =>
+  createTimelineLoader(
+    timedPool,
+    getCalendarRelays(),
+    {
+      kinds: [30222], // Targeted Publication Events
+      '#p': [communityPubkey], // Community targeting
+      '#k': ['31922', '31923'], // Only calendar event kinds
+      limit: 100
+    },
+    { eventStore }
+  );
 
 /**
  * Factory: Create a loader for events referenced by a calendar
@@ -115,30 +120,41 @@ export const targetedPublicationTimelineLoader = (communityPubkey) => createTime
  * @returns {Function} Loader function that returns an Observable
  */
 export const calendarEventReferencesLoader = (calendar) => {
-	// Parse 'a' tag coordinates into LoadableAddressPointer objects
-	// Format: "kind:pubkey:d-tag" -> { kind, pubkey, identifier }
-	// Using local parseAddressPointerFromATag to correctly handle d-tags with colons (like URLs)
-	const pointers = calendar.tags
-		.filter((/** @type {any[]} */ tag) => tag[0] === 'a')
-		.map((/** @type {any[]} */ tag) => {
-			const pointer = parseAddressPointerFromATag(tag);
-			console.log('📅 calendarEventReferencesLoader: Parsed pointer from a-tag', tag, '->', pointer);
-			return pointer;
-		})
-		.filter((/** @type {any} */ pointer) => pointer !== null); // Filter out invalid pointers
+  // Parse 'a' tag coordinates into LoadableAddressPointer objects
+  // Format: "kind:pubkey:d-tag" -> { kind, pubkey, identifier }
+  // Using local parseAddressPointerFromATag to correctly handle d-tags with colons (like URLs)
+  const pointers = calendar.tags
+    .filter((/** @type {any[]} */ tag) => tag[0] === 'a')
+    .map((/** @type {any[]} */ tag) => {
+      const pointer = parseAddressPointerFromATag(tag);
+      console.log(
+        '📅 calendarEventReferencesLoader: Parsed pointer from a-tag',
+        tag,
+        '->',
+        pointer
+      );
+      return pointer;
+    })
+    .filter((/** @type {any} */ pointer) => pointer !== null); // Filter out invalid pointers
 
-	console.log('📅 calendarEventReferencesLoader: Found', pointers.length, 'event pointers:', pointers);
+  console.log(
+    '📅 calendarEventReferencesLoader: Found',
+    pointers.length,
+    'event pointers:',
+    pointers
+  );
 
-	if (pointers.length === 0) {
-		console.warn('📅 calendarEventReferencesLoader: No event coordinates found in calendar');
-	}
+  if (pointers.length === 0) {
+    console.warn('📅 calendarEventReferencesLoader: No event coordinates found in calendar');
+  }
 
-	// Iterate over pointers and call addressLoader for each one
-	// addressLoader has built-in batching, so these will be efficiently batched
-	return () => from(pointers).pipe(
-		mergeMap((/** @type {any} */ pointer) => {
-			console.log('📅 Loading event from pointer:', pointer);
-			return addressLoader(pointer);
-		})
-	);
+  // Iterate over pointers and call addressLoader for each one
+  // addressLoader has built-in batching, so these will be efficiently batched
+  return () =>
+    from(pointers).pipe(
+      mergeMap((/** @type {any} */ pointer) => {
+        console.log('📅 Loading event from pointer:', pointer);
+        return addressLoader(pointer);
+      })
+    );
 };

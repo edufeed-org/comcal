@@ -3,6 +3,7 @@
  * Pre-establishes relay connections and authenticates before publish time
  * to make publishing feel instant.
  */
+import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { pool } from '$lib/stores/nostr-infrastructure.svelte.js';
 import { getAppRelaysForCategory, CATEGORIES } from './app-relay-service.svelte.js';
 import { fetchRelayList } from './relay-service.svelte.js';
@@ -16,8 +17,8 @@ import { getAllCommunityRelays } from '$lib/helpers/communityRelays.js';
  * @property {number} [lastAttempt] - Timestamp of last warming attempt
  */
 
-/** @type {Map<string, WarmStatus>} */
-const warmStatus = new Map();
+/** @type {SvelteMap<string, WarmStatus>} */
+const warmStatus = new SvelteMap();
 
 const WARM_TIMEOUT = 5000; // 5s timeout for warming attempts
 const WARM_FRESHNESS = 60000; // Consider warm if connected within last 60s
@@ -33,28 +34,28 @@ let healthCheckTimer;
  * @returns {Promise<boolean>}
  */
 function waitForConnection(relay, timeout = WARM_TIMEOUT) {
-	return new Promise((resolve) => {
-		// Check if already connected
-		if (relay.connected) {
-			resolve(true);
-			return;
-		}
+  return new Promise((resolve) => {
+    // Check if already connected
+    if (relay.connected) {
+      resolve(true);
+      return;
+    }
 
-		const timeoutId = setTimeout(() => {
-			sub?.unsubscribe();
-			resolve(false);
-		}, timeout);
+    const timeoutId = setTimeout(() => {
+      sub?.unsubscribe();
+      resolve(false);
+    }, timeout);
 
-		/** @type {import('rxjs').Subscription | undefined} */
-		let sub;
-		sub = relay.connected$.subscribe((connected) => {
-			if (connected) {
-				clearTimeout(timeoutId);
-				sub?.unsubscribe();
-				resolve(true);
-			}
-		});
-	});
+    /** @type {import('rxjs').Subscription | undefined} */
+    let sub;
+    sub = relay.connected$.subscribe((connected) => {
+      if (connected) {
+        clearTimeout(timeoutId);
+        sub?.unsubscribe();
+        resolve(true);
+      }
+    });
+  });
 }
 
 /**
@@ -64,53 +65,53 @@ function waitForConnection(relay, timeout = WARM_TIMEOUT) {
  * @returns {Promise<boolean>} - Whether warming succeeded
  */
 async function warmRelay(url, signer = null) {
-	// Skip if already warm and fresh
-	if (isWarm(url)) {
-		return true;
-	}
+  // Skip if already warm and fresh
+  if (isWarm(url)) {
+    return true;
+  }
 
-	const status = warmStatus.get(url) || { connected: false, authenticated: false, lastSuccess: 0 };
-	status.lastAttempt = Date.now();
-	warmStatus.set(url, status);
+  const status = warmStatus.get(url) || { connected: false, authenticated: false, lastSuccess: 0 };
+  status.lastAttempt = Date.now();
+  warmStatus.set(url, status);
 
-	try {
-		const relay = pool.relay(url);
+  try {
+    const relay = pool.relay(url);
 
-		// Wait for connection
-		const connected = await waitForConnection(relay, WARM_TIMEOUT);
-		if (!connected) {
-			status.connected = false;
-			warmStatus.set(url, status);
-			return false;
-		}
+    // Wait for connection
+    const connected = await waitForConnection(relay, WARM_TIMEOUT);
+    if (!connected) {
+      status.connected = false;
+      warmStatus.set(url, status);
+      return false;
+    }
 
-		status.connected = true;
-		status.lastSuccess = Date.now();
+    status.connected = true;
+    status.lastSuccess = Date.now();
 
-		// Authenticate if signer provided
-		if (signer) {
-			try {
-				await Promise.race([
-					relay.authenticate(signer),
-					new Promise((_, reject) =>
-						setTimeout(() => reject(new Error('Auth timeout')), WARM_TIMEOUT)
-					)
-				]);
-				status.authenticated = true;
-			} catch {
-				// Auth failed but connection is still warm
-				status.authenticated = false;
-			}
-		}
+    // Authenticate if signer provided
+    if (signer) {
+      try {
+        await Promise.race([
+          relay.authenticate(signer),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Auth timeout')), WARM_TIMEOUT)
+          )
+        ]);
+        status.authenticated = true;
+      } catch {
+        // Auth failed but connection is still warm
+        status.authenticated = false;
+      }
+    }
 
-		warmStatus.set(url, status);
-		return true;
-	} catch (err) {
-		status.connected = false;
-		status.authenticated = false;
-		warmStatus.set(url, status);
-		return false;
-	}
+    warmStatus.set(url, status);
+    return true;
+  } catch (_err) {
+    status.connected = false;
+    status.authenticated = false;
+    warmStatus.set(url, status);
+    return false;
+  }
 }
 
 /**
@@ -120,8 +121,8 @@ async function warmRelay(url, signer = null) {
  * @returns {Promise<void>}
  */
 export async function warmRelays(urls, signer = null) {
-	const uniqueUrls = [...new Set(urls)].filter(Boolean);
-	await Promise.allSettled(uniqueUrls.map((url) => warmRelay(url, signer)));
+  const uniqueUrls = [...new SvelteSet(urls)].filter(Boolean);
+  await Promise.allSettled(uniqueUrls.map((url) => warmRelay(url, signer)));
 }
 
 /**
@@ -130,9 +131,9 @@ export async function warmRelays(urls, signer = null) {
  * @returns {boolean}
  */
 export function isWarm(url) {
-	const status = warmStatus.get(url);
-	if (!status) return false;
-	return status.connected && Date.now() - status.lastSuccess < WARM_FRESHNESS;
+  const status = warmStatus.get(url);
+  if (!status) return false;
+  return status.connected && Date.now() - status.lastSuccess < WARM_FRESHNESS;
 }
 
 /**
@@ -141,9 +142,11 @@ export function isWarm(url) {
  * @returns {boolean}
  */
 export function isWarmAndAuthenticated(url) {
-	const status = warmStatus.get(url);
-	if (!status) return false;
-	return status.connected && status.authenticated && Date.now() - status.lastSuccess < WARM_FRESHNESS;
+  const status = warmStatus.get(url);
+  if (!status) return false;
+  return (
+    status.connected && status.authenticated && Date.now() - status.lastSuccess < WARM_FRESHNESS
+  );
 }
 
 /**
@@ -151,13 +154,13 @@ export function isWarmAndAuthenticated(url) {
  * @returns {string[]}
  */
 export function getWarmRelays() {
-	const warm = [];
-	for (const [url, status] of warmStatus) {
-		if (status.connected && Date.now() - status.lastSuccess < WARM_FRESHNESS) {
-			warm.push(url);
-		}
-	}
-	return warm;
+  const warm = [];
+  for (const [url, status] of warmStatus) {
+    if (status.connected && Date.now() - status.lastSuccess < WARM_FRESHNESS) {
+      warm.push(url);
+    }
+  }
+  return warm;
 }
 
 /**
@@ -165,7 +168,7 @@ export function getWarmRelays() {
  * @returns {Map<string, WarmStatus>}
  */
 export function getWarmStatus() {
-	return new Map(warmStatus);
+  return new SvelteMap(warmStatus);
 }
 
 /**
@@ -173,12 +176,12 @@ export function getWarmStatus() {
  * @param {string} url - Relay URL
  */
 export function markCold(url) {
-	const status = warmStatus.get(url);
-	if (status) {
-		status.connected = false;
-		status.authenticated = false;
-		warmStatus.set(url, status);
-	}
+  const status = warmStatus.get(url);
+  if (status) {
+    status.connected = false;
+    status.authenticated = false;
+    warmStatus.set(url, status);
+  }
 }
 
 /**
@@ -187,14 +190,14 @@ export function markCold(url) {
  * @returns {Promise<void>}
  */
 export async function warmAppRelays(signer = null) {
-	const allAppRelays = new Set();
+  const allAppRelays = new SvelteSet();
 
-	for (const category of Object.keys(CATEGORIES)) {
-		const relays = getAppRelaysForCategory(category);
-		relays.forEach((r) => allAppRelays.add(r));
-	}
+  for (const category of Object.keys(CATEGORIES)) {
+    const relays = getAppRelaysForCategory(category);
+    relays.forEach((r) => allAppRelays.add(r));
+  }
 
-	await warmRelays(Array.from(allAppRelays), signer);
+  await warmRelays(Array.from(allAppRelays), signer);
 }
 
 /**
@@ -204,10 +207,10 @@ export async function warmAppRelays(signer = null) {
  * @returns {Promise<void>}
  */
 export async function warmUserRelays(pubkey, signer = null) {
-	const relayList = await fetchRelayList(pubkey);
-	if (relayList && relayList.writeRelays && relayList.writeRelays.length > 0) {
-		await warmRelays(relayList.writeRelays, signer);
-	}
+  const relayList = await fetchRelayList(pubkey);
+  if (relayList && relayList.writeRelays && relayList.writeRelays.length > 0) {
+    await warmRelays(relayList.writeRelays, signer);
+  }
 }
 
 /**
@@ -217,9 +220,9 @@ export async function warmUserRelays(pubkey, signer = null) {
  * @returns {Promise<void>}
  */
 export async function warmCommunityRelays(communityEvent, signer = null) {
-	if (!communityEvent) return;
-	const relays = getAllCommunityRelays(communityEvent);
-	await warmRelays(relays, signer);
+  if (!communityEvent) return;
+  const relays = getAllCommunityRelays(communityEvent);
+  await warmRelays(relays, signer);
 }
 
 /**
@@ -227,10 +230,10 @@ export async function warmCommunityRelays(communityEvent, signer = null) {
  * @param {string} pubkey - User's public key
  */
 export function prefetchRelayList(pubkey) {
-	// Fire and forget - just populate the cache
-	fetchRelayList(pubkey).catch(() => {
-		// Ignore errors for prefetch
-	});
+  // Fire and forget - just populate the cache
+  fetchRelayList(pubkey).catch(() => {
+    // Ignore errors for prefetch
+  });
 }
 
 /**
@@ -238,53 +241,53 @@ export function prefetchRelayList(pubkey) {
  * @param {string[]} pubkeys - Array of pubkeys
  */
 export function prefetchRelayLists(pubkeys) {
-	pubkeys.forEach((pk) => prefetchRelayList(pk));
+  pubkeys.forEach((pk) => prefetchRelayList(pk));
 }
 
 /**
  * Health check - verify warm relays are still connected
  */
 function healthCheck() {
-	for (const [url, status] of warmStatus) {
-		if (status.connected) {
-			try {
-				const relay = pool.relay(url);
-				if (!relay.connected) {
-					status.connected = false;
-					status.authenticated = false;
-					warmStatus.set(url, status);
-				}
-			} catch {
-				status.connected = false;
-				status.authenticated = false;
-				warmStatus.set(url, status);
-			}
-		}
-	}
+  for (const [url, status] of warmStatus) {
+    if (status.connected) {
+      try {
+        const relay = pool.relay(url);
+        if (!relay.connected) {
+          status.connected = false;
+          status.authenticated = false;
+          warmStatus.set(url, status);
+        }
+      } catch {
+        status.connected = false;
+        status.authenticated = false;
+        warmStatus.set(url, status);
+      }
+    }
+  }
 }
 
 /**
  * Start background health checking
  */
 export function startHealthCheck() {
-	if (healthCheckTimer) return;
-	healthCheckTimer = setInterval(healthCheck, HEALTH_CHECK_INTERVAL);
+  if (healthCheckTimer) return;
+  healthCheckTimer = setInterval(healthCheck, HEALTH_CHECK_INTERVAL);
 }
 
 /**
  * Stop background health checking
  */
 export function stopHealthCheck() {
-	if (healthCheckTimer) {
-		clearInterval(healthCheckTimer);
-		healthCheckTimer = undefined;
-	}
+  if (healthCheckTimer) {
+    clearInterval(healthCheckTimer);
+    healthCheckTimer = undefined;
+  }
 }
 
 /**
  * Clear all warm status (e.g., on logout)
  */
 export function clearWarmStatus() {
-	warmStatus.clear();
-	stopHealthCheck();
+  warmStatus.clear();
+  stopHealthCheck();
 }

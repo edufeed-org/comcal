@@ -1,6 +1,6 @@
 <script>
   import Icon from '../Icon.svelte';
-  
+
   export let class_ = 'w-5 h-5';
   export let title = 'Clock';
 </script>

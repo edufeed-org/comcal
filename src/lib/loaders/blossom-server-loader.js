@@ -13,11 +13,11 @@ import { createTimelineLoader } from 'applesauce-loaders/loaders';
  * @returns {Function} Loader factory that returns an Observable
  */
 export function createBlossomServerLoader(pool, lookupRelays, eventStore, userPubkey) {
-	return () =>
-		createTimelineLoader(
-			pool,
-			lookupRelays,
-			{ kinds: [10063], authors: [userPubkey], limit: 1 },
-			{ eventStore }
-		);
+  return () =>
+    createTimelineLoader(
+      pool,
+      lookupRelays,
+      { kinds: [10063], authors: [userPubkey], limit: 1 },
+      { eventStore }
+    );
 }

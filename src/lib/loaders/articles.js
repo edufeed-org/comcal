@@ -13,10 +13,10 @@ import { timedPool } from './base.js';
  * @returns {Function} Stateful timeline loader function (call with no args, returns Observable)
  */
 export function articleTimelineLoader(limit = 20) {
-	return createTimelineLoader(
-		timedPool,
-		getArticleRelays(),
-		{ kinds: [30023] },
-		{ eventStore, limit }
-	);
+  return createTimelineLoader(
+    timedPool,
+    getArticleRelays(),
+    { kinds: [30023] },
+    { eventStore, limit }
+  );
 }

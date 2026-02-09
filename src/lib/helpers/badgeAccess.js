@@ -17,36 +17,36 @@ import { firstValueFrom, filter, take, timeout } from 'rxjs';
  * @returns {Promise<boolean>} Whether the user holds the badge
  */
 export async function userHoldsBadge(badgeAddress, userPubkey, timeoutMs = 5000) {
-	if (!badgeAddress || !userPubkey) {
-		return false;
-	}
+  if (!badgeAddress || !userPubkey) {
+    return false;
+  }
 
-	// Extract issuer pubkey from badge address (format: "30009:issuerPubkey:badgeId")
-	const issuerPubkey = badgeAddress.split(':')[1];
+  // Extract issuer pubkey from badge address (format: "30009:issuerPubkey:badgeId")
+  const issuerPubkey = badgeAddress.split(':')[1];
 
-	// Use NIP-65 outbox model to discover issuer's write relays (where awards are published)
-	const relays = await getWriteRelays(issuerPubkey || userPubkey);
+  // Use NIP-65 outbox model to discover issuer's write relays (where awards are published)
+  const relays = await getWriteRelays(issuerPubkey || userPubkey);
 
-	// Start loader to fetch awards from relays
-	const loader = createUserAwardsLoader(pool, relays, eventStore, userPubkey);
-	const loaderSub = loader()().subscribe();
+  // Start loader to fetch awards from relays
+  const loader = createUserAwardsLoader(pool, relays, eventStore, userPubkey);
+  const loaderSub = loader()().subscribe();
 
-	try {
-		// Wait for model to emit (with timeout)
-		const awards = await firstValueFrom(
-			eventStore.model(UserAwardsModel, userPubkey).pipe(
-				filter((a) => a.length >= 0),
-				take(1),
-				timeout(timeoutMs)
-			)
-		);
+  try {
+    // Wait for model to emit (with timeout)
+    const awards = await firstValueFrom(
+      eventStore.model(UserAwardsModel, userPubkey).pipe(
+        filter((a) => a.length >= 0),
+        take(1),
+        timeout(timeoutMs)
+      )
+    );
 
-		loaderSub.unsubscribe();
-		return awards.some((award) => award.badgeAddress === badgeAddress);
-	} catch {
-		loaderSub.unsubscribe();
-		return false;
-	}
+    loaderSub.unsubscribe();
+    return awards.some((award) => award.badgeAddress === badgeAddress);
+  } catch {
+    loaderSub.unsubscribe();
+    return false;
+  }
 }
 
 /**
@@ -75,22 +75,22 @@ export async function userHoldsBadge(badgeAddress, userPubkey, timeoutMs = 5000)
  * @returns {Promise<AccessCheckResult>}
  */
 export async function checkContentAccess(contentType, userPubkey, accessType, timeoutMs = 5000) {
-	const requiredBadge = contentType.badges?.[accessType];
+  const requiredBadge = contentType.badges?.[accessType];
 
-	if (!requiredBadge) {
-		return { allowed: true, badge: null };
-	}
+  if (!requiredBadge) {
+    return { allowed: true, badge: null };
+  }
 
-	if (!userPubkey) {
-		return { allowed: false, badge: requiredBadge };
-	}
+  if (!userPubkey) {
+    return { allowed: false, badge: requiredBadge };
+  }
 
-	const hasBadge = await userHoldsBadge(requiredBadge, userPubkey, timeoutMs);
+  const hasBadge = await userHoldsBadge(requiredBadge, userPubkey, timeoutMs);
 
-	return {
-		allowed: hasBadge,
-		badge: requiredBadge
-	};
+  return {
+    allowed: hasBadge,
+    badge: requiredBadge
+  };
 }
 
 /**
@@ -100,32 +100,32 @@ export async function checkContentAccess(contentType, userPubkey, accessType, ti
  * @returns {Promise<Set<string>>} Set of badge addresses the user holds
  */
 export async function getUserBadges(userPubkey, timeoutMs = 5000) {
-	if (!userPubkey) {
-		return new Set();
-	}
+  if (!userPubkey) {
+    return new Set();
+  }
 
-	// Use NIP-65 outbox model to discover user's read relays (where they receive awards)
-	const relays = await getWriteRelays(userPubkey);
+  // Use NIP-65 outbox model to discover user's read relays (where they receive awards)
+  const relays = await getWriteRelays(userPubkey);
 
-	// Start loader to fetch awards from relays
-	const loader = createUserAwardsLoader(pool, relays, eventStore, userPubkey);
-	const loaderSub = loader()().subscribe();
+  // Start loader to fetch awards from relays
+  const loader = createUserAwardsLoader(pool, relays, eventStore, userPubkey);
+  const loaderSub = loader()().subscribe();
 
-	try {
-		const awards = await firstValueFrom(
-			eventStore.model(UserAwardsModel, userPubkey).pipe(
-				filter((a) => a.length >= 0),
-				take(1),
-				timeout(timeoutMs)
-			)
-		);
+  try {
+    const awards = await firstValueFrom(
+      eventStore.model(UserAwardsModel, userPubkey).pipe(
+        filter((a) => a.length >= 0),
+        take(1),
+        timeout(timeoutMs)
+      )
+    );
 
-		loaderSub.unsubscribe();
-		return new Set(awards.map((award) => award.badgeAddress).filter(Boolean));
-	} catch {
-		loaderSub.unsubscribe();
-		return new Set();
-	}
+    loaderSub.unsubscribe();
+    return new Set(awards.map((award) => award.badgeAddress).filter(Boolean));
+  } catch {
+    loaderSub.unsubscribe();
+    return new Set();
+  }
 }
 
 /**
@@ -135,18 +135,18 @@ export async function getUserBadges(userPubkey, timeoutMs = 5000) {
  * @returns {Promise<Map<string, {read: boolean, write: boolean}>>} Map of content type name to access rights
  */
 export async function checkMultipleContentAccess(contentTypes, userPubkey) {
-	// Get all user badges once
-	const userBadges = await getUserBadges(userPubkey);
+  // Get all user badges once
+  const userBadges = await getUserBadges(userPubkey);
 
-	const accessMap = new Map();
+  const accessMap = new Map();
 
-	for (const ct of contentTypes) {
-		const canRead = !ct.badges?.read || userBadges.has(ct.badges.read);
-		const canWrite = !ct.badges?.write || userBadges.has(ct.badges.write);
-		accessMap.set(ct.name, { read: canRead, write: canWrite });
-	}
+  for (const ct of contentTypes) {
+    const canRead = !ct.badges?.read || userBadges.has(ct.badges.read);
+    const canWrite = !ct.badges?.write || userBadges.has(ct.badges.write);
+    accessMap.set(ct.name, { read: canRead, write: canWrite });
+  }
 
-	return accessMap;
+  return accessMap;
 }
 
 /**
@@ -158,36 +158,36 @@ export async function checkMultipleContentAccess(contentTypes, userPubkey) {
  * @returns {Promise<Object[]>} Filtered array of legitimate events
  */
 export async function filterLegitimateEvents(events, communityEvent) {
-	// Lazy import to avoid circular dependency
-	const { getKindBadgeRequirements } = await import('$lib/helpers/communityRelays.js');
+  // Lazy import to avoid circular dependency
+  const { getKindBadgeRequirements } = await import('$lib/helpers/communityRelays.js');
 
-	if (!events?.length || !communityEvent) return events || [];
+  if (!events?.length || !communityEvent) return events || [];
 
-	// Get unique authors from events
-	const authorPubkeys = [...new Set(events.map((e) => e.pubkey))];
+  // Get unique authors from events
+  const authorPubkeys = [...new Set(events.map((e) => e.pubkey))];
 
-	// Batch fetch badges for all authors
-	/** @type {Map<string, Set<string>>} */
-	const authorBadges = new Map();
+  // Batch fetch badges for all authors
+  /** @type {Map<string, Set<string>>} */
+  const authorBadges = new Map();
 
-	await Promise.all(
-		authorPubkeys.map(async (pubkey) => {
-			const badges = await getUserBadges(pubkey);
-			authorBadges.set(pubkey, badges);
-		})
-	);
+  await Promise.all(
+    authorPubkeys.map(async (pubkey) => {
+      const badges = await getUserBadges(pubkey);
+      authorBadges.set(pubkey, badges);
+    })
+  );
 
-	// Filter events - only keep those where author has required badge
-	return events.filter((event) => {
-		const badgeReq = getKindBadgeRequirements(communityEvent, event.kind);
+  // Filter events - only keep those where author has required badge
+  return events.filter((event) => {
+    const badgeReq = getKindBadgeRequirements(communityEvent, event.kind);
 
-		// No write badge required for this kind → event is legitimate
-		if (!badgeReq.writeBadge) return true;
+    // No write badge required for this kind → event is legitimate
+    if (!badgeReq.writeBadge) return true;
 
-		// Check if author has the required badge
-		const userBadges = authorBadges.get(event.pubkey) || new Set();
-		return userBadges.has(badgeReq.writeBadge);
-	});
+    // Check if author has the required badge
+    const userBadges = authorBadges.get(event.pubkey) || new Set();
+    return userBadges.has(badgeReq.writeBadge);
+  });
 }
 
 /**
@@ -200,23 +200,23 @@ export async function filterLegitimateEvents(events, communityEvent) {
  * @returns {Promise<{allowed: boolean, requiredBadge: string|null}>}
  */
 export async function checkCommunityPublishAccess(communityEvent, eventKind, authorPubkey) {
-	// Lazy import to avoid circular dependency
-	const { getKindBadgeRequirements } = await import('$lib/helpers/communityRelays.js');
+  // Lazy import to avoid circular dependency
+  const { getKindBadgeRequirements } = await import('$lib/helpers/communityRelays.js');
 
-	if (!communityEvent || !authorPubkey) {
-		return { allowed: false, requiredBadge: null };
-	}
+  if (!communityEvent || !authorPubkey) {
+    return { allowed: false, requiredBadge: null };
+  }
 
-	const badgeReq = getKindBadgeRequirements(communityEvent, eventKind);
+  const badgeReq = getKindBadgeRequirements(communityEvent, eventKind);
 
-	if (!badgeReq.writeBadge) {
-		return { allowed: true, requiredBadge: null };
-	}
+  if (!badgeReq.writeBadge) {
+    return { allowed: true, requiredBadge: null };
+  }
 
-	const hasBadge = await userHoldsBadge(badgeReq.writeBadge, authorPubkey);
+  const hasBadge = await userHoldsBadge(badgeReq.writeBadge, authorPubkey);
 
-	return {
-		allowed: hasBadge,
-		requiredBadge: badgeReq.writeBadge
-	};
+  return {
+    allowed: hasBadge,
+    requiredBadge: badgeReq.writeBadge
+  };
 }

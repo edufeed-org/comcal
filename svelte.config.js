@@ -2,16 +2,16 @@ import adapter from '@sveltejs/adapter-node';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
-	kit: {
-		adapter: adapter({
-			out: 'build',
-			precompress: false,
-			envPrefix: ''
-		}),
-		alias: {
-			$paraglide: './src/lib/paraglide'
-		}
-	}
+  kit: {
+    adapter: adapter({
+      out: 'build',
+      precompress: false,
+      envPrefix: ''
+    }),
+    alias: {
+      $paraglide: './src/lib/paraglide'
+    }
+  }
 };
 
 export default config;

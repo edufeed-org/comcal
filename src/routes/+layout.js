@@ -9,18 +9,18 @@
  * @param {Function} params.fetch - SvelteKit fetch function
  */
 export async function load({ fetch }) {
-	try {
-		const response = await fetch('/api/config');
-		
-		if (!response.ok) {
-			console.error('Failed to load config:', response.status);
-			return { config: null };
-		}
+  try {
+    const response = await fetch('/api/config');
 
-		const config = await response.json();
-		return { config };
-	} catch (error) {
-		console.error('Error loading config:', error);
-		return { config: null };
-	}
+    if (!response.ok) {
+      console.error('Failed to load config:', response.status);
+      return { config: null };
+    }
+
+    const config = await response.json();
+    return { config };
+  } catch (error) {
+    console.error('Error loading config:', error);
+    return { config: null };
+  }
 }

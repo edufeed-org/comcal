@@ -17,10 +17,11 @@ export function showToast(message, type = 'info', duration = 3000) {
 
   // Create toast container if it doesn't exist, or get existing one
   let toastContainer = targetElement.querySelector('.toast-container');
-  
+
   if (!toastContainer) {
     toastContainer = document.createElement('div');
-    toastContainer.className = 'toast-container toast toast-top toast-end fixed top-4 right-4 z-[9999]';
+    toastContainer.className =
+      'toast-container toast toast-top toast-end fixed top-4 right-4 z-[9999]';
     targetElement.appendChild(toastContainer);
   }
 
@@ -47,7 +48,7 @@ export function showToast(message, type = 'info', duration = 3000) {
       if (toast.parentNode) {
         toast.parentNode.removeChild(toast);
       }
-      
+
       // Clean up empty toast container
       if (toastContainer && toastContainer.children.length === 0) {
         toastContainer.remove();

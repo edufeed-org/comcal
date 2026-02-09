@@ -4,28 +4,29 @@
  * Users can override app relays via kind 30002 events with app-specific d-tags.
  * D-tags are based on APP_NAME from config (e.g., "ComCal/calendar")
  */
+import { SvelteMap } from 'svelte/reactivity';
 import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
 /**
  * App relay categories with their associated event kinds
  */
 export const CATEGORIES = {
-	calendar: {
-		kinds: [31922, 31923, 31924, 31925],
-		label: 'Calendar Events'
-	},
-	communikey: {
-		kinds: [10222, 30222, 30382],
-		label: 'Community Events'
-	},
-	educational: {
-		kinds: [30142],
-		label: 'Educational Resources'
-	},
-	longform: {
-		kinds: [30023],
-		label: 'Articles & Long-form Content'
-	}
+  calendar: {
+    kinds: [31922, 31923, 31924, 31925],
+    label: 'Calendar Events'
+  },
+  communikey: {
+    kinds: [10222, 30222, 30382],
+    label: 'Community Events'
+  },
+  educational: {
+    kinds: [30142],
+    label: 'Educational Resources'
+  },
+  longform: {
+    kinds: [30023],
+    label: 'Articles & Long-form Content'
+  }
 };
 
 /**
@@ -35,16 +36,16 @@ export const CATEGORIES = {
  * @returns {string}
  */
 export function getRelaySetDTag(category) {
-	const appName = runtimeConfig.appName || 'ComCal';
-	return `${appName}/${category}`;
+  const appName = runtimeConfig.appName || 'ComCal';
+  return `${appName}/${category}`;
 }
 
 /**
  * Reactive cache for user's relay set overrides (populated by subscriptions).
- * Uses $state so Svelte $derived expressions re-evaluate when cache changes.
- * @type {Map<string, string[]>}
+ * SvelteMap is already reactive, no $state wrapper needed.
+ * @type {SvelteMap<string, string[]>}
  */
-let userOverrideCache = $state(new Map());
+let userOverrideCache = new SvelteMap();
 
 /**
  * Update the cache for a category (called from subscription in settings page)
@@ -52,16 +53,16 @@ let userOverrideCache = $state(new Map());
  * @param {string[]} relays - Relay URLs
  */
 export function updateUserOverrideCache(category, relays) {
-	const next = new Map(userOverrideCache);
-	next.set(category, relays);
-	userOverrideCache = next;
+  const next = new SvelteMap(userOverrideCache);
+  next.set(category, relays);
+  userOverrideCache = next;
 }
 
 /**
  * Clear the cache (on logout)
  */
 export function clearUserOverrideCache() {
-	userOverrideCache = new Map();
+  userOverrideCache = new SvelteMap();
 }
 
 /**
@@ -70,7 +71,7 @@ export function clearUserOverrideCache() {
  * @returns {string[]} Relay URLs from user's relay set, or empty array
  */
 export function getUserRelaySetOverride(category) {
-	return userOverrideCache.get(category) || [];
+  return userOverrideCache.get(category) || [];
 }
 
 /**
@@ -79,18 +80,18 @@ export function getUserRelaySetOverride(category) {
  * @returns {string[]}
  */
 export function getDefaultRelaysForCategory(category) {
-	switch (category) {
-		case 'calendar':
-			return runtimeConfig.appRelays?.calendar || [];
-		case 'communikey':
-			return runtimeConfig.appRelays?.communikey || [];
-		case 'educational':
-			return runtimeConfig.appRelays?.educational || [];
-		case 'longform':
-			return runtimeConfig.appRelays?.longform || [];
-		default:
-			return [];
-	}
+  switch (category) {
+    case 'calendar':
+      return runtimeConfig.appRelays?.calendar || [];
+    case 'communikey':
+      return runtimeConfig.appRelays?.communikey || [];
+    case 'educational':
+      return runtimeConfig.appRelays?.educational || [];
+    case 'longform':
+      return runtimeConfig.appRelays?.longform || [];
+    default:
+      return [];
+  }
 }
 
 /**
@@ -99,14 +100,14 @@ export function getDefaultRelaysForCategory(category) {
  * @returns {string[]}
  */
 export function getAppRelaysForCategory(category) {
-	// Check for user's kind 30002 relay set override
-	const userOverride = getUserRelaySetOverride(category);
-	if (userOverride.length > 0) {
-		return userOverride;
-	}
+  // Check for user's kind 30002 relay set override
+  const userOverride = getUserRelaySetOverride(category);
+  if (userOverride.length > 0) {
+    return userOverride;
+  }
 
-	// Fall back to server defaults
-	return getDefaultRelaysForCategory(category);
+  // Fall back to server defaults
+  return getDefaultRelaysForCategory(category);
 }
 
 /**
@@ -115,7 +116,7 @@ export function getAppRelaysForCategory(category) {
  * @returns {boolean}
  */
 export function hasOverrideForCategory(category) {
-	return getUserRelaySetOverride(category).length > 0;
+  return getUserRelaySetOverride(category).length > 0;
 }
 
 /**
@@ -124,11 +125,11 @@ export function hasOverrideForCategory(category) {
  * @returns {string|null} Category name or null if not an app relay kind
  */
 export function kindToAppRelayCategory(kind) {
-	if ([31922, 31923, 31924, 31925].includes(kind)) return 'calendar';
-	if ([10222, 30222, 30382].includes(kind)) return 'communikey';
-	if ([30142].includes(kind)) return 'educational';
-	if ([30023].includes(kind)) return 'longform';
-	return null;
+  if ([31922, 31923, 31924, 31925].includes(kind)) return 'calendar';
+  if ([10222, 30222, 30382].includes(kind)) return 'communikey';
+  if ([30142].includes(kind)) return 'educational';
+  if ([30023].includes(kind)) return 'longform';
+  return null;
 }
 
 /**
@@ -137,10 +138,10 @@ export function kindToAppRelayCategory(kind) {
  * @returns {string[]} Array of relay URLs
  */
 export function parseRelaySetEvent(event) {
-	if (!event?.tags) return [];
+  if (!event?.tags) return [];
 
-	return event.tags
-		.filter((t) => t[0] === 'relay')
-		.map((t) => t[1])
-		.filter(Boolean);
+  return event.tags
+    .filter((t) => t[0] === 'relay')
+    .map((t) => t[1])
+    .filter(Boolean);
 }

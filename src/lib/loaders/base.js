@@ -33,7 +33,7 @@ import { getAllLookupRelays } from '$lib/helpers/relay-helper.js';
  * @param {import('nostr-tools').Filter} filters
  * @returns {import('rxjs').Observable<any>}
  */
-export const timedPool = (relays, filters) => pool.request(relays, filters, { timeout: 2000 });
+export const timedPool = (relays, filters) => pool.request(relays, filters, { timeout: 3000 });
 
 // Standalone address loader for direct use in components/loaders
 // Uses a getter function for lookupRelays to ensure config updates are reflected

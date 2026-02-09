@@ -13,9 +13,9 @@ import { env } from '$env/dynamic/private';
  * @returns {number}
  */
 function parseInt(value, defaultValue) {
-	if (!value) return defaultValue;
-	const parsed = Number.parseInt(value);
-	return isNaN(parsed) ? defaultValue : parsed;
+  if (!value) return defaultValue;
+  const parsed = Number.parseInt(value);
+  return isNaN(parsed) ? defaultValue : parsed;
 }
 
 /**
@@ -25,8 +25,8 @@ function parseInt(value, defaultValue) {
  * @returns {boolean}
  */
 function parseBool(value, defaultValue) {
-	if (value === undefined || value === null || value === '') return defaultValue;
-	return value === 'true' || value === '1';
+  if (value === undefined || value === null || value === '') return defaultValue;
+  return value === 'true' || value === '1';
 }
 
 /**
@@ -36,12 +36,17 @@ function parseBool(value, defaultValue) {
  * @returns {'light' | 'dark' | 'stil' | 'stil-dark'}
  */
 function parseTheme(value, defaultValue) {
-	if (!value) return defaultValue;
-	const normalized = value.toLowerCase();
-	if (normalized === 'light' || normalized === 'dark' || normalized === 'stil' || normalized === 'stil-dark') {
-		return normalized;
-	}
-	return defaultValue;
+  if (!value) return defaultValue;
+  const normalized = value.toLowerCase();
+  if (
+    normalized === 'light' ||
+    normalized === 'dark' ||
+    normalized === 'stil' ||
+    normalized === 'stil-dark'
+  ) {
+    return normalized;
+  }
+  return defaultValue;
 }
 
 /**
@@ -49,18 +54,18 @@ function parseTheme(value, defaultValue) {
  * These values should NEVER be sent to the client
  */
 export const serverConfig = {
-	geocoding: {
-		apiKey: env.GEOCODING_API_KEY || '',
-		cacheDurationDays: parseInt(env.GEOCODING_CACHE_DURATION_DAYS, 30),
-		validation: {
-			minAddressLength: parseInt(env.GEOCODING_MIN_ADDRESS_LENGTH, 10),
-			minConfidenceScore: parseInt(env.GEOCODING_MIN_CONFIDENCE_SCORE, 5),
-			requireAddressComponents: parseBool(env.GEOCODING_REQUIRE_ADDRESS_COMPONENTS, false),
-		}
-	},
-	
-	// Add other server-only config here as needed
-	// e.g., database credentials, internal API keys, etc.
+  geocoding: {
+    apiKey: env.GEOCODING_API_KEY || '',
+    cacheDurationDays: parseInt(env.GEOCODING_CACHE_DURATION_DAYS, 30),
+    validation: {
+      minAddressLength: parseInt(env.GEOCODING_MIN_ADDRESS_LENGTH, 10),
+      minConfidenceScore: parseInt(env.GEOCODING_MIN_CONFIDENCE_SCORE, 5),
+      requireAddressComponents: parseBool(env.GEOCODING_REQUIRE_ADDRESS_COMPONENTS, false)
+    }
+  }
+
+  // Add other server-only config here as needed
+  // e.g., database credentials, internal API keys, etc.
 };
 
 /**
@@ -68,8 +73,8 @@ export const serverConfig = {
  * These values will be exposed via the /api/config endpoint
  */
 export const publicConfig = {
-	ui: {
-		defaultLightTheme: parseTheme(env.THEME_DEFAULT_LIGHT, 'light'),
-		defaultDarkTheme: parseTheme(env.THEME_DEFAULT_DARK, 'dark')
-	}
+  ui: {
+    defaultLightTheme: parseTheme(env.THEME_DEFAULT_LIGHT, 'light'),
+    defaultDarkTheme: parseTheme(env.THEME_DEFAULT_DARK, 'dark')
+  }
 };

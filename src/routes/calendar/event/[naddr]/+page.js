@@ -5,7 +5,7 @@ import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
 export async function load({ params }) {
   const rawEvent = await fetchEventById(params.naddr);
   const event = rawEvent ? getCalendarEventMetadata(rawEvent) : null;
-  
+
   return {
     event,
     rawEvent, // Include raw event for AddToCalendarDropdown and editing

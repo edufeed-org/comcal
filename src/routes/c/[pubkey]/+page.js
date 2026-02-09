@@ -6,17 +6,20 @@ import { error } from '@sveltejs/kit';
  * @type {import('./$types').PageLoad}
  */
 export async function load({ params }) {
-	const { pubkey } = params;
+  const { pubkey } = params;
 
-	// Validate and convert npub to hex
-	const hexPubkey = npubToHex(pubkey);
-	
-	if (!hexPubkey) {
-		throw error(400, 'Invalid community identifier. Community URLs should be in the format /c/npub1...');
-	}
+  // Validate and convert npub to hex
+  const hexPubkey = npubToHex(pubkey);
 
-	return {
-		pubkey: hexPubkey,
-		npub: pubkey
-	};
+  if (!hexPubkey) {
+    throw error(
+      400,
+      'Invalid community identifier. Community URLs should be in the format /c/npub1...'
+    );
+  }
+
+  return {
+    pubkey: hexPubkey,
+    npub: pubkey
+  };
 }

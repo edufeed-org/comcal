@@ -1,7 +1,7 @@
 /**
  * Community Content Helper
  * Utilities for filtering content by community associations
- * 
+ *
  * Content can be associated with communities through:
  * 1. Direct #h tag on the content event
  * 2. Targeted publications (kind 30222) referencing the content
@@ -16,10 +16,10 @@ import { getTagValue } from 'applesauce-core/helpers';
  * @returns {string | undefined} Address in format "kind:pubkey:d-tag" or undefined
  */
 function getAddressableReference(event) {
-	// Addressable/parameterized replaceable events have kind 30000-39999
-	if (!event || event.kind < 30000 || event.kind >= 40000) return undefined;
-	const dTag = event.tags?.find((/** @type {string[]} */ t) => t[0] === 'd')?.[1] || '';
-	return `${event.kind}:${event.pubkey}:${dTag}`;
+  // Addressable/parameterized replaceable events have kind 30000-39999
+  if (!event || event.kind < 30000 || event.kind >= 40000) return undefined;
+  const dTag = event.tags?.find((/** @type {string[]} */ t) => t[0] === 'd')?.[1] || '';
+  return `${event.kind}:${event.pubkey}:${dTag}`;
 }
 
 /**
@@ -28,33 +28,33 @@ function getAddressableReference(event) {
  * @returns {Map<string, string[]>} Map of content ID/address → array of community pubkeys
  */
 export function buildContentToCommunityMap(targetedPubs) {
-	const contentToCommunities = new Map();
+  const contentToCommunities = new Map();
 
-	for (const pub of targetedPubs || []) {
-		const communityPubkey = getTagValue(pub, 'p');
-		const eTag = getTagValue(pub, 'e');
-		const aTag = getTagValue(pub, 'a');
+  for (const pub of targetedPubs || []) {
+    const communityPubkey = getTagValue(pub, 'p');
+    const eTag = getTagValue(pub, 'e');
+    const aTag = getTagValue(pub, 'a');
 
-		if (!communityPubkey) continue;
+    if (!communityPubkey) continue;
 
-		// Index by event ID - using immutable array operations (Svelte 5 compatible)
-		if (eTag) {
-			const existing = contentToCommunities.get(eTag) || [];
-			if (!existing.includes(communityPubkey)) {
-				contentToCommunities.set(eTag, [...existing, communityPubkey]);
-			}
-		}
+    // Index by event ID - using immutable array operations (Svelte 5 compatible)
+    if (eTag) {
+      const existing = contentToCommunities.get(eTag) || [];
+      if (!existing.includes(communityPubkey)) {
+        contentToCommunities.set(eTag, [...existing, communityPubkey]);
+      }
+    }
 
-		// Index by addressable reference - using immutable array operations
-		if (aTag) {
-			const existing = contentToCommunities.get(aTag) || [];
-			if (!existing.includes(communityPubkey)) {
-				contentToCommunities.set(aTag, [...existing, communityPubkey]);
-			}
-		}
-	}
+    // Index by addressable reference - using immutable array operations
+    if (aTag) {
+      const existing = contentToCommunities.get(aTag) || [];
+      if (!existing.includes(communityPubkey)) {
+        contentToCommunities.set(aTag, [...existing, communityPubkey]);
+      }
+    }
+  }
 
-	return contentToCommunities;
+  return contentToCommunities;
 }
 
 /**
@@ -65,28 +65,26 @@ export function buildContentToCommunityMap(targetedPubs) {
  * @returns {string[]} Array of community pubkeys
  */
 export function getContentCommunities(event, contentToCommunityMap) {
-	// Handle transformed events (like CalendarEvent) that store raw event in originalEvent
-	const rawEvent = event.originalEvent || event;
-	
-	// Get direct #h tag
-	const hTag = getTagValue(rawEvent, 'h');
+  // Handle transformed events (like CalendarEvent) that store raw event in originalEvent
+  const rawEvent = event.originalEvent || event;
 
-	// Get from targeted publications by event ID
-	const byId = contentToCommunityMap.get(rawEvent.id);
+  // Get direct #h tag
+  const hTag = getTagValue(rawEvent, 'h');
 
-	// Get from targeted publications by addressable reference (using pure function to avoid Svelte 5 mutation errors)
-	const address = getAddressableReference(rawEvent);
-	const byAddress = address ? contentToCommunityMap.get(address) : undefined;
+  // Get from targeted publications by event ID
+  const byId = contentToCommunityMap.get(rawEvent.id);
 
-	// Build array without mutations (Svelte 5 compatible), then dedupe
-	const communities = /** @type {string[]} */ ([
-		hTag,
-		...(byId || []),
-		...(byAddress || [])
-	].filter(Boolean));
+  // Get from targeted publications by addressable reference (using pure function to avoid Svelte 5 mutation errors)
+  const address = getAddressableReference(rawEvent);
+  const byAddress = address ? contentToCommunityMap.get(address) : undefined;
 
-	// Return unique values
-	return [...new Set(communities)];
+  // Build array without mutations (Svelte 5 compatible), then dedupe
+  const communities = /** @type {string[]} */ (
+    [hTag, ...(byId || []), ...(byAddress || [])].filter(Boolean)
+  );
+
+  // Return unique values
+  return [...new Set(communities)];
 }
 
 /**
@@ -97,26 +95,31 @@ export function getContentCommunities(event, contentToCommunityMap) {
  * @param {Map<string, string[]>} contentToCommunityMap - Map from buildContentToCommunityMap
  * @returns {Array<{type: string, data: any}>} Filtered content items
  */
-export function filterContentByCommunity(items, communityFilter, joinedCommunityPubkeys, contentToCommunityMap) {
-	// No filter - show all
-	if (!communityFilter) {
-		return items;
-	}
+export function filterContentByCommunity(
+  items,
+  communityFilter,
+  joinedCommunityPubkeys,
+  contentToCommunityMap
+) {
+  // No filter - show all
+  if (!communityFilter) {
+    return items;
+  }
 
-	// "joined" filter - show content from any joined community
-	if (communityFilter === 'joined') {
-		const joinedSet = new Set(joinedCommunityPubkeys);
-		return items.filter((item) => {
-			const communities = getContentCommunities(item.data, contentToCommunityMap);
-			return communities.some((pubkey) => joinedSet.has(pubkey));
-		});
-	}
+  // "joined" filter - show content from any joined community
+  if (communityFilter === 'joined') {
+    const joinedSet = new Set(joinedCommunityPubkeys);
+    return items.filter((item) => {
+      const communities = getContentCommunities(item.data, contentToCommunityMap);
+      return communities.some((pubkey) => joinedSet.has(pubkey));
+    });
+  }
 
-	// Specific community filter
-	return items.filter((item) => {
-		const communities = getContentCommunities(item.data, contentToCommunityMap);
-		return communities.includes(communityFilter);
-	});
+  // Specific community filter
+  return items.filter((item) => {
+    const communities = getContentCommunities(item.data, contentToCommunityMap);
+    return communities.includes(communityFilter);
+  });
 }
 
 /**
@@ -127,31 +130,30 @@ export function filterContentByCommunity(items, communityFilter, joinedCommunity
  * @returns {{ joined: Array<{pubkey: string, name: string}>, discover: Array<{pubkey: string, name: string}> }}
  */
 export function getCommunityFilterOptions(allCommunities, joinedCommunities, communityProfiles) {
-	// Get set of joined community pubkeys
-	const joinedPubkeys = new Set(
-		joinedCommunities.map((rel) => getTagValue(rel, 'd'))
-	);
+  // Get set of joined community pubkeys
+  const joinedPubkeys = new Set(joinedCommunities.map((rel) => getTagValue(rel, 'd')));
 
-	const joined = [];
-	const discover = [];
+  const joined = [];
+  const discover = [];
 
-	for (const community of allCommunities) {
-		const pubkey = community.pubkey;
-		const profile = communityProfiles.get(pubkey);
-		const name = profile?.name || profile?.display_name || `${pubkey.slice(0, 8)}...${pubkey.slice(-4)}`;
+  for (const community of allCommunities) {
+    const pubkey = community.pubkey;
+    const profile = communityProfiles.get(pubkey);
+    const name =
+      profile?.name || profile?.display_name || `${pubkey.slice(0, 8)}...${pubkey.slice(-4)}`;
 
-		const option = { pubkey, name };
+    const option = { pubkey, name };
 
-		if (joinedPubkeys.has(pubkey)) {
-			joined.push(option);
-		} else {
-			discover.push(option);
-		}
-	}
+    if (joinedPubkeys.has(pubkey)) {
+      joined.push(option);
+    } else {
+      discover.push(option);
+    }
+  }
 
-	// Sort alphabetically by name
-	joined.sort((a, b) => a.name.localeCompare(b.name));
-	discover.sort((a, b) => a.name.localeCompare(b.name));
+  // Sort alphabetically by name
+  joined.sort((a, b) => a.name.localeCompare(b.name));
+  discover.sort((a, b) => a.name.localeCompare(b.name));
 
-	return { joined, discover };
+  return { joined, discover };
 }

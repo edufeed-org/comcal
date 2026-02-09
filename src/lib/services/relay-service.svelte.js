@@ -2,6 +2,7 @@
  * Relay Selection Service - NIP-65 implementation
  * Manages relay list fetching, caching, and selection for outbox model
  */
+import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte.js';
 import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { RelayListModel } from '$lib/models/relay-list-model.js';
@@ -12,7 +13,7 @@ import { createRelayListLoader } from '$lib/loaders/relay-list-loader.js';
  * @returns {string[]}
  */
 function getLookupRelays() {
-	return runtimeConfig.relayListLookupRelays || [];
+  return runtimeConfig.relayListLookupRelays || [];
 }
 
 /**
@@ -21,12 +22,12 @@ function getLookupRelays() {
  * @returns {string[]}
  */
 function getDefaultRelays() {
-	return runtimeConfig.fallbackRelays || [];
+  return runtimeConfig.fallbackRelays || [];
 }
 
 // Cache for relay lists (pubkey -> { writeRelays, readRelays, fetchedAt })
-/** @type {Map<string, {writeRelays: string[], readRelays: string[], fetchedAt: number}>} */
-const relayListCache = new Map();
+/** @type {SvelteMap<string, {writeRelays: string[], readRelays: string[], fetchedAt: number}>} */
+const relayListCache = new SvelteMap();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
@@ -35,54 +36,54 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
  * @returns {Promise<{writeRelays: string[], readRelays: string[]} | null>}
  */
 export async function fetchRelayList(pubkey) {
-	// Check cache
-	const cached = relayListCache.get(pubkey);
-	if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) {
-		return cached;
-	}
+  // Check cache
+  const cached = relayListCache.get(pubkey);
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) {
+    return cached;
+  }
 
-	// Fetch from relays
-	return new Promise((resolve) => {
-		const loader = createRelayListLoader(pool, getLookupRelays(), eventStore, pubkey);
+  // Fetch from relays
+  return new Promise((resolve) => {
+    const loader = createRelayListLoader(pool, getLookupRelays(), eventStore, pubkey);
 
-		let resolved = false;
-		/** @type {import('rxjs').Subscription | undefined} */
-		let subscription;
-		/** @type {import('rxjs').Subscription | undefined} */
-		let loaderSub;
+    let resolved = false;
+    /** @type {import('rxjs').Subscription | undefined} */
+    let subscription;
+    /** @type {import('rxjs').Subscription | undefined} */
+    let loaderSub;
 
-		const cleanup = () => {
-			subscription?.unsubscribe();
-			loaderSub?.unsubscribe();
-		};
+    const cleanup = () => {
+      subscription?.unsubscribe();
+      loaderSub?.unsubscribe();
+    };
 
-		const timeout = setTimeout(() => {
-			if (!resolved) {
-				resolved = true;
-				cleanup();
-				resolve(null);
-			}
-		}, 3000); // 3 second timeout
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+        resolve(null);
+      }
+    }, 3000); // 3 second timeout
 
-		// Subscribe to model for parsed relay list
-		subscription = eventStore.model(RelayListModel, pubkey).subscribe((relayList) => {
-			if (relayList && !resolved) {
-				resolved = true;
-				clearTimeout(timeout);
-				cleanup();
+    // Subscribe to model for parsed relay list
+    subscription = eventStore.model(RelayListModel, pubkey).subscribe((relayList) => {
+      if (relayList && !resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        cleanup();
 
-				const cacheEntry = {
-					...relayList,
-					fetchedAt: Date.now()
-				};
-				relayListCache.set(pubkey, cacheEntry);
-				resolve(cacheEntry);
-			}
-		});
+        const cacheEntry = {
+          ...relayList,
+          fetchedAt: Date.now()
+        };
+        relayListCache.set(pubkey, cacheEntry);
+        resolve(cacheEntry);
+      }
+    });
 
-		// Start loading kind 10002 events
-		loaderSub = loader()().subscribe();
-	});
+    // Start loading kind 10002 events
+    loaderSub = loader()().subscribe();
+  });
 }
 
 /**
@@ -92,11 +93,11 @@ export async function fetchRelayList(pubkey) {
  * @returns {Promise<string[]>}
  */
 export async function getWriteRelays(pubkey) {
-	const relayList = await fetchRelayList(pubkey);
-	if (relayList && relayList.writeRelays.length > 0) {
-		return relayList.writeRelays;
-	}
-	return getDefaultRelays();
+  const relayList = await fetchRelayList(pubkey);
+  if (relayList && relayList.writeRelays.length > 0) {
+    return relayList.writeRelays;
+  }
+  return getDefaultRelays();
 }
 
 /**
@@ -106,11 +107,11 @@ export async function getWriteRelays(pubkey) {
  * @returns {Promise<string[]>}
  */
 export async function getReadRelays(pubkey) {
-	const relayList = await fetchRelayList(pubkey);
-	if (relayList && relayList.readRelays.length > 0) {
-		return relayList.readRelays;
-	}
-	return getDefaultRelays();
+  const relayList = await fetchRelayList(pubkey);
+  if (relayList && relayList.readRelays.length > 0) {
+    return relayList.readRelays;
+  }
+  return getDefaultRelays();
 }
 
 /**
@@ -119,11 +120,11 @@ export async function getReadRelays(pubkey) {
  * @returns {Promise<string>}
  */
 export async function getPrimaryWriteRelay(pubkey) {
-	const relayList = await fetchRelayList(pubkey);
-	if (relayList && relayList.writeRelays.length > 0) {
-		return relayList.writeRelays[0];
-	}
-	return getDefaultRelays()[0];
+  const relayList = await fetchRelayList(pubkey);
+  if (relayList && relayList.writeRelays.length > 0) {
+    return relayList.writeRelays[0];
+  }
+  return getDefaultRelays()[0];
 }
 
 /**
@@ -134,30 +135,30 @@ export async function getPrimaryWriteRelay(pubkey) {
  * @returns {Promise<string[]>}
  */
 export async function getPublishRelays(authorPubkey, taggedPubkeys = []) {
-	const relaySet = new Set();
+  const relaySet = new SvelteSet();
 
-	// Add author's write relays
-	const authorRelays = await getWriteRelays(authorPubkey);
-	authorRelays.forEach((r) => relaySet.add(r));
+  // Add author's write relays
+  const authorRelays = await getWriteRelays(authorPubkey);
+  authorRelays.forEach((r) => relaySet.add(r));
 
-	// Add each tagged user's read relays (limit to 2 per user to avoid too many)
-	if (taggedPubkeys.length > 0) {
-		await Promise.all(
-			taggedPubkeys.map(async (pubkey) => {
-				const readRelays = await getReadRelays(pubkey);
-				readRelays.slice(0, 2).forEach((r) => relaySet.add(r));
-			})
-		);
-	}
+  // Add each tagged user's read relays (limit to 2 per user to avoid too many)
+  if (taggedPubkeys.length > 0) {
+    await Promise.all(
+      taggedPubkeys.map(async (pubkey) => {
+        const readRelays = await getReadRelays(pubkey);
+        readRelays.slice(0, 2).forEach((r) => relaySet.add(r));
+      })
+    );
+  }
 
-	return Array.from(relaySet);
+  return Array.from(relaySet);
 }
 
 /**
  * Clear cache (for testing or forced refresh)
  */
 export function clearRelayListCache() {
-	relayListCache.clear();
+  relayListCache.clear();
 }
 
 /**
@@ -165,7 +166,7 @@ export function clearRelayListCache() {
  * @param {string} pubkey - User's public key
  */
 export function invalidateRelayListCache(pubkey) {
-	relayListCache.delete(pubkey);
+  relayListCache.delete(pubkey);
 }
 
 /**
@@ -173,5 +174,5 @@ export function invalidateRelayListCache(pubkey) {
  * @returns {string[]}
  */
 export function getRelayListLookupRelays() {
-	return getLookupRelays();
+  return getLookupRelays();
 }

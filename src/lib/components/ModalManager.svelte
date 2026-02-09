@@ -1,172 +1,172 @@
 <script>
-	import { modalStore } from '$lib/stores/modal.svelte.js';
-	import LoginModal from './LoginModal.svelte';
-	import LoginWithPrivateKey from './LoginWithPrivateKey.svelte';
-	import SignupModal from './SignupModal.svelte';
-	import CalendarEventDetailsModal from './calendar/CalendarEventDetailsModal.svelte';
-	import CreateCommunityModal from './CreateCommunityModal.svelte';
-	import EditCommunityModal from './EditCommunityModal.svelte';
-	import WebcalQRCodeModal from './calendar/WebcalQRCodeModal.svelte';
-	import EditProfileModal from './EditProfileModal.svelte';
+  import { modalStore } from '$lib/stores/modal.svelte.js';
+  import LoginModal from './LoginModal.svelte';
+  import LoginWithPrivateKey from './LoginWithPrivateKey.svelte';
+  import SignupModal from './SignupModal.svelte';
+  import CalendarEventDetailsModal from './calendar/CalendarEventDetailsModal.svelte';
+  import CreateCommunityModal from './CreateCommunityModal.svelte';
+  import EditCommunityModal from './EditCommunityModal.svelte';
+  import WebcalQRCodeModal from './calendar/WebcalQRCodeModal.svelte';
+  import EditProfileModal from './EditProfileModal.svelte';
 
-	/**
-	 * ModalManager - Centralized modal rendering component
-	 *
-	 * This component acts as the single source of truth for modal rendering in the application.
-	 * It uses the centralized modal store to determine which modal to display and handles
-	 * all modal transitions and interactions.
-	 *
-	 * Key Features:
-	 * - Centralized modal state management
-	 * - Clean separation of modal logic from UI components
-	 * - Type-safe modal transitions
-	 * - Extensible for adding new modal types
-	 */
+  /**
+   * ModalManager - Centralized modal rendering component
+   *
+   * This component acts as the single source of truth for modal rendering in the application.
+   * It uses the centralized modal store to determine which modal to display and handles
+   * all modal transitions and interactions.
+   *
+   * Key Features:
+   * - Centralized modal state management
+   * - Clean separation of modal logic from UI components
+   * - Type-safe modal transitions
+   * - Extensible for adding new modal types
+   */
 
-	// Use the modal store
-	const modal = modalStore;
+  // Use the modal store
+  const modal = modalStore;
 
-	// Generate unique modal IDs for each modal instance
-	const loginModalId = 'global-login-modal';
-	const privateKeyModalId = 'global-private-key-modal';
-	const signupModalId = 'global-signup-modal';
-	const createCommunityModalId = 'create-community-modal';
-	const editCommunityModalId = 'edit-community-modal';
-	const editProfileModalId = 'edit-profile-modal';
+  // Generate unique modal IDs for each modal instance
+  const loginModalId = 'global-login-modal';
+  const privateKeyModalId = 'global-private-key-modal';
+  const signupModalId = 'global-signup-modal';
+  const createCommunityModalId = 'create-community-modal';
+  const editCommunityModalId = 'edit-community-modal';
+  const editProfileModalId = 'edit-profile-modal';
 
-	/**
-	 * Reactive effect to handle modal opening/closing based on store state
-	 * Automatically opens/closes the HTML dialog elements when modal state changes
-	 */
-	$effect(() => {
-		const currentModal = modal.activeModal;
+  /**
+   * Reactive effect to handle modal opening/closing based on store state
+   * Automatically opens/closes the HTML dialog elements when modal state changes
+   */
+  $effect(() => {
+    const currentModal = modal.activeModal;
 
-		// Close any currently open modals first
-		if (currentModal === 'none') {
-			const loginModal = /** @type {HTMLDialogElement} */ (document.getElementById(loginModalId));
-			const privateKeyModal = /** @type {HTMLDialogElement} */ (document.getElementById(privateKeyModalId));
-			const signupModal = /** @type {HTMLDialogElement} */ (document.getElementById(signupModalId));
-			const createCommunityModal = /** @type {HTMLDialogElement} */ (document.getElementById(createCommunityModalId));
-			const editCommunityModal = /** @type {HTMLDialogElement} */ (document.getElementById(editCommunityModalId));
-			const editProfileModal = /** @type {HTMLDialogElement} */ (document.getElementById(editProfileModalId));
+    // Close any currently open modals first
+    if (currentModal === 'none') {
+      const loginModal = /** @type {HTMLDialogElement} */ (document.getElementById(loginModalId));
+      const privateKeyModal = /** @type {HTMLDialogElement} */ (
+        document.getElementById(privateKeyModalId)
+      );
+      const signupModal = /** @type {HTMLDialogElement} */ (document.getElementById(signupModalId));
+      const createCommunityModal = /** @type {HTMLDialogElement} */ (
+        document.getElementById(createCommunityModalId)
+      );
+      const editCommunityModal = /** @type {HTMLDialogElement} */ (
+        document.getElementById(editCommunityModalId)
+      );
+      const editProfileModal = /** @type {HTMLDialogElement} */ (
+        document.getElementById(editProfileModalId)
+      );
 
-			if (loginModal && loginModal.open) {
-				console.log('ModalManager: Closing login modal');
-				loginModal.close();
-			}
-			if (privateKeyModal && privateKeyModal.open) {
-				console.log('ModalManager: Closing private key modal');
-				privateKeyModal.close();
-			}
-			if (signupModal && signupModal.open) {
-				console.log('ModalManager: Closing signup modal');
-				signupModal.close();
-			}
-			if (createCommunityModal && createCommunityModal.open) {
-				console.log('ModalManager: Closing create community modal');
-				createCommunityModal.close();
-			}
-			if (editCommunityModal && editCommunityModal.open) {
-				console.log('ModalManager: Closing edit community modal');
-				editCommunityModal.close();
-			}
-			if (editProfileModal && editProfileModal.open) {
-				console.log('ModalManager: Closing edit profile modal');
-				editProfileModal.close();
-			}
-		} else if (currentModal === 'login') {
-			// Open login modal
-			const loginModal = /** @type {HTMLDialogElement} */ (document.getElementById(loginModalId));
-			if (loginModal && !loginModal.open) {
-				console.log('ModalManager: Opening login modal');
-				loginModal.showModal();
-			}
-		} else if (currentModal === 'privateKey') {
-			// Open private key modal
-			const privateKeyModal = /** @type {HTMLDialogElement} */ (document.getElementById(privateKeyModalId));
-			if (privateKeyModal && !privateKeyModal.open) {
-				console.log('ModalManager: Opening private key modal');
-				privateKeyModal.showModal();
-			}
-		} else if (currentModal === 'signup') {
-			// Open signup modal
-			const signupModal = /** @type {HTMLDialogElement} */ (document.getElementById(signupModalId));
-			if (signupModal && !signupModal.open) {
-				console.log('ModalManager: Opening signup modal');
-				signupModal.showModal();
-			}
-		} else if (currentModal === 'createCommunity') {
-			// Open create community modal
-			const createCommunityModal = /** @type {HTMLDialogElement} */ (document.getElementById(createCommunityModalId));
-			if (createCommunityModal && !createCommunityModal.open) {
-				console.log('ModalManager: Opening create community modal');
-				createCommunityModal.showModal();
-			}
-		} else if (currentModal === 'profile') {
-			// Open edit profile modal
-			const editProfileModal = /** @type {HTMLDialogElement} */ (document.getElementById(editProfileModalId));
-			if (editProfileModal && !editProfileModal.open) {
-				console.log('ModalManager: Opening edit profile modal');
-				editProfileModal.showModal();
-			}
-		} else if (currentModal === 'editCommunity') {
-			// Open edit community modal
-			const editCommunityModal = /** @type {HTMLDialogElement} */ (document.getElementById(editCommunityModalId));
-			if (editCommunityModal && !editCommunityModal.open) {
-				console.log('ModalManager: Opening edit community modal');
-				editCommunityModal.showModal();
-			}
-		}
-	});
+      if (loginModal && loginModal.open) {
+        console.log('ModalManager: Closing login modal');
+        loginModal.close();
+      }
+      if (privateKeyModal && privateKeyModal.open) {
+        console.log('ModalManager: Closing private key modal');
+        privateKeyModal.close();
+      }
+      if (signupModal && signupModal.open) {
+        console.log('ModalManager: Closing signup modal');
+        signupModal.close();
+      }
+      if (createCommunityModal && createCommunityModal.open) {
+        console.log('ModalManager: Closing create community modal');
+        createCommunityModal.close();
+      }
+      if (editCommunityModal && editCommunityModal.open) {
+        console.log('ModalManager: Closing edit community modal');
+        editCommunityModal.close();
+      }
+      if (editProfileModal && editProfileModal.open) {
+        console.log('ModalManager: Closing edit profile modal');
+        editProfileModal.close();
+      }
+    } else if (currentModal === 'login') {
+      // Open login modal
+      const loginModal = /** @type {HTMLDialogElement} */ (document.getElementById(loginModalId));
+      if (loginModal && !loginModal.open) {
+        console.log('ModalManager: Opening login modal');
+        loginModal.showModal();
+      }
+    } else if (currentModal === 'privateKey') {
+      // Open private key modal
+      const privateKeyModal = /** @type {HTMLDialogElement} */ (
+        document.getElementById(privateKeyModalId)
+      );
+      if (privateKeyModal && !privateKeyModal.open) {
+        console.log('ModalManager: Opening private key modal');
+        privateKeyModal.showModal();
+      }
+    } else if (currentModal === 'signup') {
+      // Open signup modal
+      const signupModal = /** @type {HTMLDialogElement} */ (document.getElementById(signupModalId));
+      if (signupModal && !signupModal.open) {
+        console.log('ModalManager: Opening signup modal');
+        signupModal.showModal();
+      }
+    } else if (currentModal === 'createCommunity') {
+      // Open create community modal
+      const createCommunityModal = /** @type {HTMLDialogElement} */ (
+        document.getElementById(createCommunityModalId)
+      );
+      if (createCommunityModal && !createCommunityModal.open) {
+        console.log('ModalManager: Opening create community modal');
+        createCommunityModal.showModal();
+      }
+    } else if (currentModal === 'profile') {
+      // Open edit profile modal
+      const editProfileModal = /** @type {HTMLDialogElement} */ (
+        document.getElementById(editProfileModalId)
+      );
+      if (editProfileModal && !editProfileModal.open) {
+        console.log('ModalManager: Opening edit profile modal');
+        editProfileModal.showModal();
+      }
+    } else if (currentModal === 'editCommunity') {
+      // Open edit community modal
+      const editCommunityModal = /** @type {HTMLDialogElement} */ (
+        document.getElementById(editCommunityModalId)
+      );
+      if (editCommunityModal && !editCommunityModal.open) {
+        console.log('ModalManager: Opening edit community modal');
+        editCommunityModal.showModal();
+      }
+    }
+  });
 
-	/**
-	 * Handle modal close events from any modal
-	 * Delegates to the modal store to update state
-	 */
-	function handleModalClose() {
-		modal.closeModal();
-	}
+  /**
+   * Handle NSEC transition from LoginModal to LoginWithPrivateKey
+   * This creates a seamless user experience when switching between login methods
+   */
+  function handleNSECTransition() {
+    modal.transitionModal('login', 'privateKey');
+  }
 
-	/**
-	 * Handle NSEC transition from LoginModal to LoginWithPrivateKey
-	 * This creates a seamless user experience when switching between login methods
-	 */
-	function handleNSECTransition() {
-		modal.transitionModal('login', 'privateKey');
-	}
-
-	/**
-	 * Handle successful account creation from LoginWithPrivateKey
-	 * Transitions back to login modal to show account options or close flow
-	 */
-	function handleAccountCreated() {
-		modal.transitionModal('privateKey', 'login');
-	}
+  /**
+   * Handle successful account creation from LoginWithPrivateKey
+   * Transitions back to login modal to show account options or close flow
+   */
+  function handleAccountCreated() {
+    modal.transitionModal('privateKey', 'login');
+  }
 </script>
 
 <!-- Render modals based on active modal state -->
 {#if modal.activeModal === 'login'}
-	<LoginModal
-		modalId={loginModalId}
-		onNSECTransition={handleNSECTransition}
-	/>
+  <LoginModal modalId={loginModalId} onNSECTransition={handleNSECTransition} />
 {:else if modal.activeModal === 'privateKey'}
-	<LoginWithPrivateKey
-		modalId={privateKeyModalId}
-		onAccountCreated={handleAccountCreated}
-	/>
+  <LoginWithPrivateKey modalId={privateKeyModalId} onAccountCreated={handleAccountCreated} />
 {:else if modal.activeModal === 'signup'}
-	<SignupModal
-		modalId={signupModalId}
-	/>
+  <SignupModal modalId={signupModalId} />
 {:else if modal.activeModal === 'eventDetails'}
-	<CalendarEventDetailsModal />
+  <CalendarEventDetailsModal />
 {:else if modal.activeModal === 'createCommunity'}
-	<CreateCommunityModal modalId={createCommunityModalId} />
+  <CreateCommunityModal modalId={createCommunityModalId} />
 {:else if modal.activeModal === 'editCommunity'}
-	<EditCommunityModal modalId={editCommunityModalId} />
+  <EditCommunityModal modalId={editCommunityModalId} />
 {:else if modal.activeModal === 'webcalQRCode'}
-	<WebcalQRCodeModal />
+  <WebcalQRCodeModal />
 {:else if modal.activeModal === 'profile'}
-	<EditProfileModal modalId={editProfileModalId} />
+  <EditProfileModal modalId={editProfileModalId} />
 {/if}

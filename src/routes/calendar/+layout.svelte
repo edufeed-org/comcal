@@ -1,28 +1,28 @@
 <script>
-	import FloatingActionButton from '$lib/components/calendar/FloatingActionButton.svelte';
-	import { manager } from '$lib/stores/accounts.svelte';
+  import FloatingActionButton from '$lib/components/calendar/FloatingActionButton.svelte';
+  import { manager } from '$lib/stores/accounts.svelte';
 
-	// Track active user for conditional FAB display
-	let activeUser = $state(manager.active);
+  /** @type {{ children?: import('svelte').Snippet }} */
+  let { children } = $props();
 
-	// Subscribe to account changes
-	$effect(() => {
-		const subscription = manager.active$.subscribe((user) => {
-			activeUser = user;
-		});
+  // Track active user for conditional FAB display
+  let activeUser = $state(manager.active);
 
-		return () => {
-			subscription.unsubscribe();
-		};
-	});
+  // Subscribe to account changes
+  $effect(() => {
+    const subscription = manager.active$.subscribe((user) => {
+      activeUser = user;
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  });
 </script>
 
 <!-- Child page content (calendar pages) -->
-<slot />
-
-
+{@render children?.()}
 
 {#if activeUser}
-
-	<FloatingActionButton />
+  <FloatingActionButton />
 {/if}

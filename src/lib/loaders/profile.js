@@ -12,13 +12,13 @@ import { take, map } from 'rxjs';
  * @returns {string[]}
  */
 function getProfileRelays() {
-	return [...(runtimeConfig.relayListLookupRelays || []), ...(runtimeConfig.fallbackRelays || [])];
+  return [...(runtimeConfig.relayListLookupRelays || []), ...(runtimeConfig.fallbackRelays || [])];
 }
 
 // Profile loader with purplepag.es relay for enhanced profile discovery
 export const profileLoader = createAddressLoader(pool, {
-	eventStore,
-	lookupRelays: ['wss://purplepag.es/']
+  eventStore,
+  lookupRelays: ['wss://purplepag.es/']
 });
 
 /**
@@ -28,11 +28,11 @@ export const profileLoader = createAddressLoader(pool, {
  * @returns {import('rxjs').Observable<any>} Observable that emits the profile content
  */
 export function loadUserProfile(kind, pubkey) {
-	return profileLoader({ kind, pubkey, relays: getProfileRelays() }).pipe(
-		// Take only the first (most recent) profile
-		take(1),
-		map((event) => getProfileContent(event))
-	);
+  return profileLoader({ kind, pubkey, relays: getProfileRelays() }).pipe(
+    // Take only the first (most recent) profile
+    take(1),
+    map((event) => getProfileContent(event))
+  );
 }
 
 /**
@@ -42,14 +42,14 @@ export function loadUserProfile(kind, pubkey) {
  * @returns {Function} Timeline loader function that returns an Observable
  */
 export function kind1Loader(pubkey, limit) {
-	return createTimelineLoader(
-		pool,
-		getProfileRelays(),
-		{
-			kinds: [1],
-			authors: [pubkey],
-			limit
-		},
-		{ eventStore }
-	);
+  return createTimelineLoader(
+    pool,
+    getProfileRelays(),
+    {
+      kinds: [1],
+      authors: [pubkey],
+      limit
+    },
+    { eventStore }
+  );
 }

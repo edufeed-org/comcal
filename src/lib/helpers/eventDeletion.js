@@ -1,8 +1,10 @@
 import { EventFactory } from 'applesauce-core/event-factory';
 import { publishEventOptimistic } from '$lib/services/publish-service.js';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { getCalendarRelays } from '$lib/helpers/relay-helper.js';
-import { kindToAppRelayCategory, getAppRelaysForCategory } from '$lib/services/app-relay-service.svelte.js';
+import {
+  kindToAppRelayCategory,
+  getAppRelaysForCategory
+} from '$lib/services/app-relay-service.svelte.js';
 
 /**
  * Delete a calendar event using NIP-09 deletion
@@ -12,13 +14,13 @@ import { kindToAppRelayCategory, getAppRelaysForCategory } from '$lib/services/a
  * @returns {Promise<{success: boolean, error?: string}>}
  */
 export async function deleteCalendarEvent(event, activeUser) {
-	// Calendar events are addressable and require a d-tag
-	const dTag = event?.dTag || event?.tags?.find((/** @type {any[]} */ t) => t[0] === 'd')?.[1];
-	if (!dTag) {
-		return { success: false, error: 'Invalid calendar event: missing d-tag' };
-	}
+  // Calendar events are addressable and require a d-tag
+  const dTag = event?.dTag || event?.tags?.find((/** @type {any[]} */ t) => t[0] === 'd')?.[1];
+  if (!dTag) {
+    return { success: false, error: 'Invalid calendar event: missing d-tag' };
+  }
 
-	return deleteEvent(event, activeUser);
+  return deleteEvent(event, activeUser);
 }
 
 /**
@@ -29,62 +31,62 @@ export async function deleteCalendarEvent(event, activeUser) {
  * @returns {Promise<{success: boolean, error?: string}>}
  */
 export async function deleteEvent(event, activeUser) {
-	if (!activeUser || !event) {
-		return { success: false, error: 'Missing required parameters' };
-	}
+  if (!activeUser || !event) {
+    return { success: false, error: 'Missing required parameters' };
+  }
 
-	const kind = event.kind;
-	const pubkey = event.pubkey;
+  const kind = event.kind;
+  const pubkey = event.pubkey;
 
-	if (!kind || !pubkey) {
-		return { success: false, error: 'Invalid event data' };
-	}
+  if (!kind || !pubkey) {
+    return { success: false, error: 'Invalid event data' };
+  }
 
-	// Verify ownership
-	if (pubkey !== activeUser.pubkey) {
-		return { success: false, error: 'You can only delete your own events' };
-	}
+  // Verify ownership
+  if (pubkey !== activeUser.pubkey) {
+    return { success: false, error: 'You can only delete your own events' };
+  }
 
-	try {
-		// Create EventFactory
-		const factory = new EventFactory({
-			signer: activeUser.signer
-		});
+  try {
+    // Create EventFactory
+    const factory = new EventFactory({
+      signer: activeUser.signer
+    });
 
-		// Use factory.delete() - properly constructs NIP-09 deletion events
-		const eventToDelete = event.originalEvent || event;
-		console.log('🗑️ Creating deletion event for:', {
-			id: eventToDelete.id,
-			kind: eventToDelete.kind,
-			pubkey: eventToDelete.pubkey
-		});
+    // Use factory.delete() - properly constructs NIP-09 deletion events
+    const eventToDelete = event.originalEvent || event;
+    console.log('🗑️ Creating deletion event for:', {
+      id: eventToDelete.id,
+      kind: eventToDelete.kind,
+      pubkey: eventToDelete.pubkey
+    });
 
-		const deleteTemplate = await factory.delete([eventToDelete]);
-		const signedDelete = await factory.sign(deleteTemplate);
+    const deleteTemplate = await factory.delete([eventToDelete]);
+    const signedDelete = await factory.sign(deleteTemplate);
 
-		console.log('🗑️ Deletion event created:', {
-			id: signedDelete.id,
-			kind: signedDelete.kind,
-			tags: signedDelete.tags
-		});
+    console.log('🗑️ Deletion event created:', {
+      id: signedDelete.id,
+      kind: signedDelete.kind,
+      tags: signedDelete.tags
+    });
 
-		// OPTIMISTIC UI: Add to EventStore IMMEDIATELY
-		eventStore.add(signedDelete);
-		console.log('✅ Deletion event added to EventStore (optimistic)');
+    // OPTIMISTIC UI: Add to EventStore IMMEDIATELY
+    eventStore.add(signedDelete);
+    console.log('✅ Deletion event added to EventStore (optimistic)');
 
-		// Determine additional relays based on event kind
-		const category = kindToAppRelayCategory(kind);
-		const additionalRelays = category ? getAppRelaysForCategory(category) : [];
+    // Determine additional relays based on event kind
+    const category = kindToAppRelayCategory(kind);
+    const additionalRelays = category ? getAppRelaysForCategory(category) : [];
 
-		// Publish in background
-		publishEventOptimistic(signedDelete, [], {
-			additionalRelays
-		});
+    // Publish in background
+    publishEventOptimistic(signedDelete, [], {
+      additionalRelays
+    });
 
-		return { success: true };
-	} catch (error) {
-		console.error('Failed to delete event:', error);
-		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-		return { success: false, error: errorMessage };
-	}
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to delete event:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return { success: false, error: errorMessage };
+  }
 }

@@ -33,7 +33,6 @@ Communities maintain full autonomy—no central server, no data lock-in, no plat
 - **Interest-Based Communities**: Share calendars and coordinate meetings
 - **Any Group**: Needing sovereign event coordination without centralized infrastructure
 
-
 ## Key Features
 
 - ✅ **Community Management**: Create, join, and manage communities with full autonomy
@@ -45,29 +44,27 @@ Communities maintain full autonomy—no central server, no data lock-in, no plat
 - ✅ **Map Integration**: Location-based event discovery
 - ✅ **Markdown Support**: Rich text content in events and profiles
 
-
 ## Technology Stack
 
-| Category | Technology | Version |
-|----------|-----------|---------|
-| **Runtime** | Node.js | v22.16.0 |
-| **Frontend Framework** | SvelteKit | 2.1.2 |
-| **Svelte Version** | Svelte | 5.0.0 |
-| **Styling** | TailwindCSS | 3.4.10 |
-| **Components** | DaisyUI | 4.12.10 |
-| **State Management** | Svelte 5 Runes | Native |
-| **Protocol** | Nostr | NIP-52, Communikey NIP |
-| **Nostr Libraries** | Applesauce Suite | Latest |
-| **Deployment** | Docker + Traefik | Production-ready |
-| **Adapter** | @sveltejs/adapter-node | 6.0.0 |
-
+| Category               | Technology             | Version                |
+| ---------------------- | ---------------------- | ---------------------- |
+| **Runtime**            | Node.js                | v22.16.0               |
+| **Frontend Framework** | SvelteKit              | 2.1.2                  |
+| **Svelte Version**     | Svelte                 | 5.0.0                  |
+| **Styling**            | TailwindCSS            | 3.4.10                 |
+| **Components**         | DaisyUI                | 4.12.10                |
+| **State Management**   | Svelte 5 Runes         | Native                 |
+| **Protocol**           | Nostr                  | NIP-52, Communikey NIP |
+| **Nostr Libraries**    | Applesauce Suite       | Latest                 |
+| **Deployment**         | Docker + Traefik       | Production-ready       |
+| **Adapter**            | @sveltejs/adapter-node | 6.0.0                  |
 
 ## Quick Start (Development)
 
 ### Prerequisites
 
 - **Node.js**: v22.16.0
-- **pnpm** or **npm**: Package manager
+- **pnpm**: Package manager
 - **Git**: For cloning the repository
 
 ### Option A: NixOS / Nix (Recommended)
@@ -101,27 +98,27 @@ cd comcal
 nvm use
 
 # Install dependencies
-npm install
+pnpm install
 ```
 
 ### Running the Development Server
 
 ```bash
 # Start the dev server (runs on http://localhost:5173)
-npm run dev
+pnpm run dev
 
 # Or open automatically in browser
-npm run dev -- --open
+pnpm run dev -- --open
 ```
 
 ### Building for Production
 
 ```bash
 # Build the application
-npm run build
+pnpm run build
 
 # Preview production build locally
-npm run preview
+pnpm run preview
 ```
 
 ---
@@ -132,15 +129,15 @@ npm run preview
 
 ```bash
 # Development
-npm run dev              # Start dev server with hot reload
+pnpm run dev             # Start dev server with hot reload
 
 # Production
-npm run build            # Build for production (Node adapter)
-npm run preview          # Preview production build
+pnpm run build           # Build for production (Node adapter)
+pnpm run preview         # Preview production build
 
 # Code Quality
-npm run lint             # Run ESLint
-npm run format           # Format code with Prettier
+pnpm run lint            # Run ESLint
+pnpm run format          # Format code with Prettier
 
 # Docker
 docker compose build     # Build Docker image
@@ -150,11 +147,11 @@ docker compose logs -f   # View logs
 
 ### Development Workflow
 
-1. **Start the dev server**: `npm run dev`
+1. **Start the dev server**: `pnpm run dev`
 2. **Make changes**: Edit components, stores, or helpers
 3. **See hot reload**: Changes apply instantly in the browser
-4. **Run linting**: `npm run lint` to check code quality
-5. **Format code**: `npm run format` to maintain style consistency
+4. **Run linting**: `pnpm run lint` to check code quality
+5. **Format code**: `pnpm run format` to maintain style consistency
 
 ### Key Technologies in Use
 
@@ -169,16 +166,17 @@ docker compose logs -f   # View logs
 
 Comcal supports **customizable themes** for institutional branding:
 
-| Theme | Description |
-|-------|-------------|
-| `light` | Default light theme |
-| `dark` | Default dark theme |
-| `stil` | STIL institutional branding (orange accent) |
-| `stil-dark` | STIL dark variant |
+| Theme       | Description                                 |
+| ----------- | ------------------------------------------- |
+| `light`     | Default light theme                         |
+| `dark`      | Default dark theme                          |
+| `stil`      | STIL institutional branding (orange accent) |
+| `stil-dark` | STIL dark variant                           |
 
 Users can choose between theme families and light/dark/system color modes via Settings.
 
 **Configuration** (`.env`):
+
 ```env
 THEME_DEFAULT_LIGHT=stil       # Default theme for light mode
 THEME_DEFAULT_DARK=stil-dark   # Default theme for dark mode
@@ -187,7 +185,6 @@ THEME_DEFAULT_DARK=stil-dark   # Default theme for dark mode
 **Icons** are organized in `src/lib/components/icons/` by category (ui, actions, social, calendar) with a consistent wrapper pattern using `currentColor` for theme compatibility.
 
 See `CLAUDE.md` for detailed developer documentation on theming and icons.
-
 
 ## Deployment
 
@@ -262,11 +259,13 @@ NODE_ENV=production
 The `.env.example` file contains all available configuration options. Key categories:
 
 **App Branding**
+
 - `APP_NAME`: Application name (default: "ComCal")
 - `APP_LOGO`: URL to application logo
 - `APP_GIT_REPO`: Git repository URL
 
 **Nostr Relays**
+
 - `FALLBACK_RELAYS`: Fallback relays for event discovery (used when gated mode is off)
 - `CALENDAR_RELAYS`: App-specific relays for calendar events (kinds 31922-31925)
 - `COMMUNIKEY_RELAYS`: App-specific relays for community events (kinds 10222, 30222, 30382)
@@ -274,22 +273,27 @@ The `.env.example` file contains all available configuration options. Key catego
 - `LONGFORM_CONTENT_RELAY`: App-specific relay for articles (kind 30023)
 
 **Gated Mode**
+
 - `GATED_MODE_DEFAULT`: Default state for gated mode (true/false). When enabled, app fetches only from app-specific relays
 - `GATED_MODE_FORCE`: When true, users cannot disable gated mode - useful for institutional deployments
 
 **Calendar Settings**
+
 - `CALENDAR_WEEK_START_DAY`: Week start day (0=Sunday, 1=Monday)
 - `CALENDAR_LOCALE`: Date/time locale (e.g., de-DE, en-US)
 - `CALENDAR_TIME_FORMAT`: Time format (12h or 24h)
 
 **Signup**
+
 - `SIGNUP_SUGGESTED_USERS`: Suggested users to follow (comma-separated npubs)
 
 **Media Uploads (Blossom)**
+
 - `BLOSSOM_UPLOAD_ENDPOINT`: Blossom server upload endpoint
 - `BLOSSOM_MAX_FILE_SIZE`: Maximum file size in bytes
 
 **Geocoding (OpenCage API)**
+
 - `GEOCODING_API_KEY`: **SECRET** - OpenCage API key (never expose to client)
 - `GEOCODING_CACHE_DURATION_DAYS`: Cache duration for geocoded results
 - `GEOCODING_MIN_ADDRESS_LENGTH`: Minimum address length for geocoding
@@ -298,6 +302,7 @@ The `.env.example` file contains all available configuration options. Key catego
 - `GEOCODING_ACCEPTED_COMPONENT_TYPES`: Accepted component types (comma-separated)
 
 **Imprint/Legal Information**
+
 - `IMPRINT_ENABLED`: Enable/disable imprint page
 - `IMPRINT_ORGANIZATION`: Organization name
 - `IMPRINT_ADDRESS_*`: Address fields
@@ -305,6 +310,7 @@ The `.env.example` file contains all available configuration options. Key catego
 - `IMPRINT_*`: Other legal information
 
 **Educational Content**
+
 - `EDUCATIONAL_SEARCH_DEBOUNCE_MS`: Search debounce delay
 - `EDUCATIONAL_VOCAB_*`: SKOS vocabulary keys
 
@@ -330,9 +336,9 @@ Example Traefik configuration:
 
 ```yaml
 labels:
-  - "traefik.http.routers.comcal.rule=Host(`your-domain.com`)"
-  - "traefik.http.routers.comcal.entrypoints=websecure"
-  - "traefik.http.routers.comcal.tls.certresolver=letsencrypt"
+  - 'traefik.http.routers.comcal.rule=Host(`your-domain.com`)'
+  - 'traefik.http.routers.comcal.entrypoints=websecure'
+  - 'traefik.http.routers.comcal.tls.certresolver=letsencrypt'
 ```
 
 ### Step 5: Build and Deploy
@@ -391,10 +397,8 @@ Further development happens under funding of Stiftung Innovation in der Hochschu
 
 ![Logo STIL](https://blossom.edufeed.org/c9a88acfbf57042191cfb97bafd288436ae959dd0239d5d47b91aa66465205a3.webp)
 
-
 ## Contributing
 
 Contributions are welcome!
-
 
 **Built with ❤️ on the Nostr protocol.**

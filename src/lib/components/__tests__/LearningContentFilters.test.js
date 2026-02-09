@@ -12,88 +12,88 @@ import LearningContentFilters from '../educational/LearningContentFilters.svelte
 
 // Mock paraglide messages - return the key as the string
 vi.mock('$lib/paraglide/messages', () => ({
-	learning_filter_resource_type: () => 'Resource Type',
-	learning_filter_resource_type_placeholder: () => 'Select type...',
-	learning_filter_subject: () => 'Subject',
-	learning_filter_subject_placeholder: () => 'Select subject...',
-	learning_filter_audience: () => 'Target Audience',
-	learning_filter_audience_placeholder: () => 'Select audience...',
-	learning_filter_active: () => 'Active filters',
-	learning_filter_search_label: () => 'Search',
-	learning_filter_clear_all: () => 'Clear all'
+  learning_filter_resource_type: () => 'Resource Type',
+  learning_filter_resource_type_placeholder: () => 'Select type...',
+  learning_filter_subject: () => 'Subject',
+  learning_filter_subject_placeholder: () => 'Select subject...',
+  learning_filter_audience: () => 'Target Audience',
+  learning_filter_audience_placeholder: () => 'Select audience...',
+  learning_filter_active: () => 'Active filters',
+  learning_filter_search_label: () => 'Search',
+  learning_filter_clear_all: () => 'Clear all'
 }));
 
 // Mock paraglide runtime
 vi.mock('$lib/paraglide/runtime.js', () => ({
-	getLocale: () => 'en'
+  getLocale: () => 'en'
 }));
 
 // Mock SKOS loader to avoid network calls
 vi.mock('$lib/helpers/educational/skosLoader.js', () => ({
-	fetchVocabulary: vi.fn().mockResolvedValue([
-		{ id: 'https://example.com/text', prefLabel: { en: 'Text' }, level: 0 },
-		{ id: 'https://example.com/video', prefLabel: { en: 'Video' }, level: 0 }
-	]),
-	getConceptLabel: (concept, locale) => concept.prefLabel?.[locale] || concept.id,
-	sortConceptsByLabel: (concepts) => concepts,
-	filterConcepts: (concepts) => concepts
+  fetchVocabulary: vi.fn().mockResolvedValue([
+    { id: 'https://example.com/text', prefLabel: { en: 'Text' }, level: 0 },
+    { id: 'https://example.com/video', prefLabel: { en: 'Video' }, level: 0 }
+  ]),
+  getConceptLabel: (concept, locale) => concept.prefLabel?.[locale] || concept.id,
+  sortConceptsByLabel: (concepts) => concepts,
+  filterConcepts: (concepts) => concepts
 }));
 
 describe('LearningContentFilters', () => {
-	it('renders with a 2-column grid for the active dropdowns', () => {
-		const { container } = render(LearningContentFilters, {
-			props: {
-				onfilterchange: vi.fn()
-			}
-		});
+  it('renders with a 2-column grid for the active dropdowns', () => {
+    const { container } = render(LearningContentFilters, {
+      props: {
+        onfilterchange: vi.fn()
+      }
+    });
 
-		// Should have a grid container
-		const grid = container.querySelector('.grid');
-		expect(grid).toBeTruthy();
-		// Should be 2 columns (not 3, since audience is disabled)
-		expect(grid.classList.contains('md:grid-cols-2')).toBe(true);
-	});
+    // Should have a grid container
+    const grid = container.querySelector('.grid');
+    expect(grid).toBeTruthy();
+    // Should be 2 columns (not 3, since audience is disabled)
+    expect(grid.classList.contains('md:grid-cols-2')).toBe(true);
+  });
 
-	it('renders Resource Type and Subject dropdowns', () => {
-		const { container } = render(LearningContentFilters, {
-			props: {
-				onfilterchange: vi.fn()
-			}
-		});
+  it('renders Resource Type and Subject dropdowns', () => {
+    const { container } = render(LearningContentFilters, {
+      props: {
+        onfilterchange: vi.fn()
+      }
+    });
 
-		// Should have exactly 2 form-control wrappers (one per active dropdown)
-		const formControls = container.querySelectorAll('.form-control');
-		expect(formControls.length).toBe(2);
-	});
+    // Should have exactly 2 form-control wrappers (one per active dropdown)
+    const formControls = container.querySelectorAll('.form-control');
+    expect(formControls.length).toBe(2);
+  });
 
-	it('shows active filters summary when searchText is provided', async () => {
-		const { container } = render(LearningContentFilters, {
-			props: {
-				onfilterchange: vi.fn(),
-				searchText: 'mathematics'
-			}
-		});
+  it('shows active filters summary when searchText is provided', async () => {
+    const { container } = render(LearningContentFilters, {
+      props: {
+        onfilterchange: vi.fn(),
+        searchText: 'mathematics'
+      }
+    });
 
-		// Should show the active filters summary bar
-		const summary = container.querySelector('.bg-base-200');
-		expect(summary).toBeTruthy();
+    // Should show the active filters summary bar
+    const summary = container.querySelector('.bg-base-200');
+    expect(summary).toBeTruthy();
 
-		// Should display the search text
-		const searchBadge = container.querySelector('.badge-outline');
-		expect(searchBadge).toBeTruthy();
-		expect(searchBadge.textContent).toContain('mathematics');
-	});
+    // Should display the search text
+    const searchBadge = container.querySelector('.badge-outline');
+    expect(searchBadge).toBeTruthy();
+    expect(searchBadge.textContent).toContain('mathematics');
+  });
 
-	it('does not show active filters summary when no filters active', () => {
-		const { container } = render(LearningContentFilters, {
-			props: {
-				onfilterchange: vi.fn(),
-				searchText: ''
-			}
-		});
+  it('does not show active filters summary when no filters active', () => {
+    const { container } = render(LearningContentFilters, {
+      props: {
+        onfilterchange: vi.fn(),
+        searchText: ''
+      }
+    });
 
-		// Should NOT show the active filters summary
-		const summary = container.querySelector('.bg-base-200');
-		expect(summary).toBeFalsy();
-	});
+    // Should NOT show the active filters summary
+    const summary = container.querySelector('.bg-base-200');
+    expect(summary).toBeFalsy();
+  });
 });

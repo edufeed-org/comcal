@@ -5,19 +5,19 @@ import { svelteTesting } from '@testing-library/svelte/vite';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-	plugins: [
-		paraglideVitePlugin({
-			project: './project.inlang',
-			outdir: './src/lib/paraglide',
-			strategy: ['cookie', 'baseLocale']
-		}),
-		tailwindcss(),
-		sveltekit(),
-		svelteTesting()
-	],
-	test: {
-		include: ['src/**/*.test.js'],
-		environment: 'jsdom',
-		globals: true
-	}
+  plugins: [
+    paraglideVitePlugin({
+      project: './project.inlang',
+      outdir: './src/lib/paraglide',
+      strategy: ['cookie', 'baseLocale']
+    }),
+    tailwindcss(),
+    sveltekit(),
+    svelteTesting()
+  ],
+  test: {
+    include: ['src/**/*.test.js'],
+    environment: 'jsdom',
+    globals: true
+  }
 });

@@ -32,54 +32,54 @@ import { runtimeConfig } from '$lib/stores/config.svelte.js';
  * @returns {Promise<FollowList | null>} The parsed follow list or null if not found
  */
 export function loadFollowList(userPubkey) {
-	return new Promise((resolve, reject) => {
-		console.log('👥 FollowListLoader: Loading follow list for user:', userPubkey);
+  return new Promise((resolve, reject) => {
+    console.log('👥 FollowListLoader: Loading follow list for user:', userPubkey);
 
-		const relays = runtimeConfig.fallbackRelays || [];
-		let hasResolved = false;
+    const relays = runtimeConfig.fallbackRelays || [];
+    let hasResolved = false;
 
-		// Subscribe to kind 3 events for this user
-		const subscription = pool
-			.subscription(relays, {
-				kinds: [3],
-				authors: [userPubkey],
-				limit: 1 // We only need the most recent
-			})
-			.pipe(onlyEvents())
-			.subscribe({
-				next: (event) => {
-					if (hasResolved) return; // Ignore subsequent events
+    // Subscribe to kind 3 events for this user
+    const subscription = pool
+      .subscription(relays, {
+        kinds: [3],
+        authors: [userPubkey],
+        limit: 1 // We only need the most recent
+      })
+      .pipe(onlyEvents())
+      .subscribe({
+        next: (event) => {
+          if (hasResolved) return; // Ignore subsequent events
 
-					console.log('👥 FollowListLoader: Received follow list event:', event);
+          console.log('👥 FollowListLoader: Received follow list event:', event);
 
-					const followList = parseFollowListEvent(event);
-					hasResolved = true;
-					subscription.unsubscribe();
-					resolve(followList);
-				},
-				error: (err) => {
-					console.error('👥 FollowListLoader: Error loading follow list:', err);
-					reject(err);
-				},
-				complete: () => {
-					if (!hasResolved) {
-						console.log('👥 FollowListLoader: No follow list found for user');
-						hasResolved = true;
-						resolve(null);
-					}
-				}
-			});
+          const followList = parseFollowListEvent(event);
+          hasResolved = true;
+          subscription.unsubscribe();
+          resolve(followList);
+        },
+        error: (err) => {
+          console.error('👥 FollowListLoader: Error loading follow list:', err);
+          reject(err);
+        },
+        complete: () => {
+          if (!hasResolved) {
+            console.log('👥 FollowListLoader: No follow list found for user');
+            hasResolved = true;
+            resolve(null);
+          }
+        }
+      });
 
-		// Set a timeout to resolve with null if no response after 5 seconds
-		setTimeout(() => {
-			if (!hasResolved) {
-				console.log('👥 FollowListLoader: Timeout - no follow list received');
-				hasResolved = true;
-				subscription.unsubscribe();
-				resolve(null);
-			}
-		}, 5000);
-	});
+    // Set a timeout to resolve with null if no response after 5 seconds
+    setTimeout(() => {
+      if (!hasResolved) {
+        console.log('👥 FollowListLoader: Timeout - no follow list received');
+        hasResolved = true;
+        subscription.unsubscribe();
+        resolve(null);
+      }
+    }, 5000);
+  });
 }
 
 /**
@@ -88,36 +88,36 @@ export function loadFollowList(userPubkey) {
  * @returns {FollowList} The parsed follow list
  */
 export function parseFollowListEvent(event) {
-	// Extract 'p' tags (followed pubkeys)
-	const profiles = event.tags
-		.filter((/** @type {any[]} */ tag) => tag[0] === 'p')
-		.map((/** @type {any[]} */ tag) => ({
-			pubkey: tag[1],
-			relay: tag[2] || '',
-			petname: tag[3] || ''
-		}));
+  // Extract 'p' tags (followed pubkeys)
+  const profiles = event.tags
+    .filter((/** @type {any[]} */ tag) => tag[0] === 'p')
+    .map((/** @type {any[]} */ tag) => ({
+      pubkey: tag[1],
+      relay: tag[2] || '',
+      petname: tag[3] || ''
+    }));
 
-	// Extract unique pubkeys for convenience
-	const pubkeys = profiles.map((/** @type {FollowedProfile} */ p) => p.pubkey);
+  // Extract unique pubkeys for convenience
+  const pubkeys = profiles.map((/** @type {FollowedProfile} */ p) => p.pubkey);
 
-	/** @type {FollowList} */
-	const followList = {
-		id: `nip02-${event.pubkey}-${event.created_at}`, // Unique ID
-		name: 'My Follows', // Default name (could be customized in future)
-		type: 'nip02',
-		profiles,
-		pubkeys,
-		count: profiles.length,
-		createdAt: event.created_at
-	};
+  /** @type {FollowList} */
+  const followList = {
+    id: `nip02-${event.pubkey}-${event.created_at}`, // Unique ID
+    name: 'My Follows', // Default name (could be customized in future)
+    type: 'nip02',
+    profiles,
+    pubkeys,
+    count: profiles.length,
+    createdAt: event.created_at
+  };
 
-	console.log('👥 FollowListLoader: Parsed follow list:', {
-		name: followList.name,
-		count: followList.count,
-		pubkeys: followList.pubkeys.slice(0, 5) // Log first 5 for debugging
-	});
+  console.log('👥 FollowListLoader: Parsed follow list:', {
+    name: followList.name,
+    count: followList.count,
+    pubkeys: followList.pubkeys.slice(0, 5) // Log first 5 for debugging
+  });
 
-	return followList;
+  return followList;
 }
 
 /**
@@ -126,52 +126,52 @@ export function parseFollowListEvent(event) {
  * @returns {Promise<FollowList[]>} Array of parsed follow sets
  */
 export function loadFollowSets(userPubkey) {
-	return new Promise((resolve, reject) => {
-		console.log('👥 FollowListLoader: Loading follow sets (NIP-51) for user:', userPubkey);
+  return new Promise((resolve, reject) => {
+    console.log('👥 FollowListLoader: Loading follow sets (NIP-51) for user:', userPubkey);
 
-		const relays = runtimeConfig.fallbackRelays || [];
-		/** @type {FollowList[]} */
-		const followSets = [];
-		let hasCompleted = false;
+    const relays = runtimeConfig.fallbackRelays || [];
+    /** @type {FollowList[]} */
+    const followSets = [];
+    let hasCompleted = false;
 
-		// Subscribe to kind 30000 events for this user
-		const subscription = pool
-			.subscription(relays, {
-				kinds: [30000],
-				authors: [userPubkey]
-			})
-			.pipe(onlyEvents())
-			.subscribe({
-				next: (event) => {
-					console.log('👥 FollowListLoader: Received follow set event:', event);
-					const followSet = parseFollowSetEvent(event);
-					followSets.push(followSet);
-				},
-				error: (err) => {
-					console.error('👥 FollowListLoader: Error loading follow sets:', err);
-					reject(err);
-				},
-				complete: () => {
-					if (!hasCompleted) {
-						console.log(`👥 FollowListLoader: Loaded ${followSets.length} follow sets`);
-						hasCompleted = true;
-						resolve(followSets);
-					}
-				}
-			});
+    // Subscribe to kind 30000 events for this user
+    const subscription = pool
+      .subscription(relays, {
+        kinds: [30000],
+        authors: [userPubkey]
+      })
+      .pipe(onlyEvents())
+      .subscribe({
+        next: (event) => {
+          console.log('👥 FollowListLoader: Received follow set event:', event);
+          const followSet = parseFollowSetEvent(event);
+          followSets.push(followSet);
+        },
+        error: (err) => {
+          console.error('👥 FollowListLoader: Error loading follow sets:', err);
+          reject(err);
+        },
+        complete: () => {
+          if (!hasCompleted) {
+            console.log(`👥 FollowListLoader: Loaded ${followSets.length} follow sets`);
+            hasCompleted = true;
+            resolve(followSets);
+          }
+        }
+      });
 
-		// Set a timeout to resolve with current sets after 5 seconds
-		setTimeout(() => {
-			if (!hasCompleted) {
-				console.log(
-					`👥 FollowListLoader: Timeout - returning ${followSets.length} follow sets received so far`
-				);
-				hasCompleted = true;
-				subscription.unsubscribe();
-				resolve(followSets);
-			}
-		}, 5000);
-	});
+    // Set a timeout to resolve with current sets after 5 seconds
+    setTimeout(() => {
+      if (!hasCompleted) {
+        console.log(
+          `👥 FollowListLoader: Timeout - returning ${followSets.length} follow sets received so far`
+        );
+        hasCompleted = true;
+        subscription.unsubscribe();
+        resolve(followSets);
+      }
+    }, 5000);
+  });
 }
 
 /**
@@ -180,45 +180,45 @@ export function loadFollowSets(userPubkey) {
  * @returns {FollowList} The parsed follow set
  */
 export function parseFollowSetEvent(event) {
-	// Extract 'p' tags (followed pubkeys)
-	const profiles = event.tags
-		.filter((/** @type {any[]} */ tag) => tag[0] === 'p')
-		.map((/** @type {any[]} */ tag) => ({
-			pubkey: tag[1],
-			relay: tag[2] || '',
-			petname: tag[3] || ''
-		}));
+  // Extract 'p' tags (followed pubkeys)
+  const profiles = event.tags
+    .filter((/** @type {any[]} */ tag) => tag[0] === 'p')
+    .map((/** @type {any[]} */ tag) => ({
+      pubkey: tag[1],
+      relay: tag[2] || '',
+      petname: tag[3] || ''
+    }));
 
-	// Extract unique pubkeys for convenience
-	const pubkeys = profiles.map((/** @type {FollowedProfile} */ p) => p.pubkey);
+  // Extract unique pubkeys for convenience
+  const pubkeys = profiles.map((/** @type {FollowedProfile} */ p) => p.pubkey);
 
-	// Extract metadata from tags
-	const dTag = event.tags.find((/** @type {any[]} */ tag) => tag[0] === 'd')?.[1] || 'unnamed';
-	const titleTag = event.tags.find((/** @type {any[]} */ tag) => tag[0] === 'title')?.[1];
-	const descriptionTag = event.tags.find(
-		(/** @type {any[]} */ tag) => tag[0] === 'description'
-	)?.[1];
+  // Extract metadata from tags
+  const dTag = event.tags.find((/** @type {any[]} */ tag) => tag[0] === 'd')?.[1] || 'unnamed';
+  const titleTag = event.tags.find((/** @type {any[]} */ tag) => tag[0] === 'title')?.[1];
+  const descriptionTag = event.tags.find(
+    (/** @type {any[]} */ tag) => tag[0] === 'description'
+  )?.[1];
 
-	/** @type {FollowList} */
-	const followSet = {
-		id: `nip51-${event.pubkey}-${dTag}`, // Unique ID using d tag
-		name: titleTag || dTag, // Use title if available, otherwise d tag
-		type: 'nip51',
-		description: descriptionTag,
-		profiles,
-		pubkeys,
-		count: profiles.length,
-		createdAt: event.created_at
-	};
+  /** @type {FollowList} */
+  const followSet = {
+    id: `nip51-${event.pubkey}-${dTag}`, // Unique ID using d tag
+    name: titleTag || dTag, // Use title if available, otherwise d tag
+    type: 'nip51',
+    description: descriptionTag,
+    profiles,
+    pubkeys,
+    count: profiles.length,
+    createdAt: event.created_at
+  };
 
-	console.log('👥 FollowListLoader: Parsed follow set:', {
-		name: followSet.name,
-		description: followSet.description,
-		count: followSet.count,
-		pubkeys: followSet.pubkeys.slice(0, 5) // Log first 5 for debugging
-	});
+  console.log('👥 FollowListLoader: Parsed follow set:', {
+    name: followSet.name,
+    description: followSet.description,
+    count: followSet.count,
+    pubkeys: followSet.pubkeys.slice(0, 5) // Log first 5 for debugging
+  });
 
-	return followSet;
+  return followSet;
 }
 
 /**
@@ -228,22 +228,22 @@ export function parseFollowSetEvent(event) {
  * @returns {string[]} Unique array of pubkeys
  */
 export function getAuthorsFromFollowLists(followLists, selectedListIds) {
-	if (selectedListIds.length === 0) {
-		return [];
-	}
+  if (selectedListIds.length === 0) {
+    return [];
+  }
 
-	const selectedLists = followLists.filter((list) => selectedListIds.includes(list.id));
+  const selectedLists = followLists.filter((list) => selectedListIds.includes(list.id));
 
-	// Collect all pubkeys and deduplicate
-	const pubkeysSet = new Set();
-	selectedLists.forEach((list) => {
-		list.pubkeys.forEach((pubkey) => pubkeysSet.add(pubkey));
-	});
+  // Collect all pubkeys and deduplicate
+  const pubkeysSet = new Set();
+  selectedLists.forEach((list) => {
+    list.pubkeys.forEach((pubkey) => pubkeysSet.add(pubkey));
+  });
 
-	const uniquePubkeys = Array.from(pubkeysSet);
-	console.log(
-		`👥 FollowListLoader: Extracted ${uniquePubkeys.length} unique authors from ${selectedLists.length} follow lists`
-	);
+  const uniquePubkeys = Array.from(pubkeysSet);
+  console.log(
+    `👥 FollowListLoader: Extracted ${uniquePubkeys.length} unique authors from ${selectedLists.length} follow lists`
+  );
 
-	return uniquePubkeys;
+  return uniquePubkeys;
 }

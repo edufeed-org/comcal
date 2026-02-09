@@ -70,12 +70,14 @@ The `Icon.svelte` component provides consistent styling and accessibility featur
 ### Available Icons
 
 #### Calendar Icons
+
 - `CalendarIcon` - Calendar/date representation
 - `ClockIcon` - Time/clock representation
 
 #### UI Icons
+
 - `ChevronLeftIcon` - Left arrow/previous navigation
-- `ChevronRightIcon` - Right arrow/next navigation  
+- `ChevronRightIcon` - Right arrow/next navigation
 - `ChevronDownIcon` - Down arrow/expand
 - `CloseIcon` - Close/dismiss (X)
 - `PlusIcon` - Add/create (+)
@@ -85,11 +87,13 @@ The `Icon.svelte` component provides consistent styling and accessibility featur
 - `FilterIcon` - Filter/sort
 
 #### Action Icons
+
 - `CopyIcon` - Copy to clipboard
 - `RefreshIcon` - Refresh/reload
 - `ExternalLinkIcon` - External link
 
 #### Social Icons
+
 - `ChatIcon` - Chat/message
 - `LightningIcon` - Lightning/zap (filled icon)
 - `BookmarkIcon` - Bookmark/save
@@ -102,10 +106,11 @@ The `Icon.svelte` component provides consistent styling and accessibility featur
 4. Export the new icon in `index.js`
 
 Example:
+
 ```svelte
 <script>
   import Icon from '../Icon.svelte';
-  
+
   export let class_ = 'w-5 h-5';
   export let title = 'Your Icon Name';
 </script>
@@ -126,13 +131,15 @@ When replacing inline SVGs with icon components:
 5. Adjust the `class_` prop as needed
 
 ### Before:
+
 ```svelte
-<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 </svg>
 ```
 
 ### After:
+
 ```svelte
 <script>
   import { CloseIcon } from '$lib/components/icons';

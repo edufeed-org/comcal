@@ -1,6 +1,7 @@
 import { test, expect, navigateToCalendarEvent } from './fixtures.js';
 import { test as baseTest, expect as baseExpect } from '@playwright/test';
 import { TEST_NADDRS, TEST_COUNTS } from './test-data.js';
+import { waitForContent, waitForComments, setupErrorCapture } from './test-utils.js';
 
 /**
  * Helper to navigate to calendar event for unauthenticated tests
@@ -9,7 +10,7 @@ import { TEST_NADDRS, TEST_COUNTS } from './test-data.js';
  */
 async function navigateToEvent(page, naddr) {
   await page.goto('/discover');
-  await page.waitForTimeout(2000);
+  await waitForContent(page);
 
   await page.evaluate((url) => {
     const link = document.createElement('a');
@@ -20,7 +21,8 @@ async function navigateToEvent(page, naddr) {
     link.remove();
   }, `/calendar/event/${naddr}`);
 
-  await page.waitForTimeout(4000);
+  // Wait for comment section to load (indicates event page is ready)
+  await waitForComments(page);
 }
 
 // ============================================================================
@@ -279,11 +281,7 @@ test.describe('Reactions - Authenticated', () => {
     }).toPass({ timeout: 10_000 });
   });
 
-  // TODO: The unreact functionality has a reactivity issue where the data-user-reacted
-  // attribute doesn't update after clicking to remove a reaction. The toggle logic
-  // in ReactionButton.svelte calls reactionsStore.unreact() but the UI state doesn't
-  // refresh. This needs investigation in the reactions store implementation.
-  test.skip('authenticated user can remove own reaction', async ({ authenticatedPage: page }) => {
+  test('authenticated user can remove own reaction', async ({ authenticatedPage: page }) => {
     await navigateToCalendarEvent(page, TEST_NADDRS.calendarDate);
 
     // Target the first reaction bar (event-level)
@@ -352,7 +350,7 @@ baseTest.describe('Reactions on AMB Resources (Spot Check)', () => {
   baseTest('AMB resource page shows reaction bar', async ({ page }) => {
     // Navigate to AMB resource
     await page.goto('/discover');
-    await page.waitForTimeout(2000);
+    await waitForContent(page);
 
     await page.evaluate((naddr) => {
       const link = document.createElement('a');
@@ -362,8 +360,6 @@ baseTest.describe('Reactions on AMB Resources (Spot Check)', () => {
       link.click();
       link.remove();
     }, TEST_NADDRS.amb);
-
-    await page.waitForTimeout(4000);
 
     // Verify reaction bar is present
     await baseExpect(page.locator('[data-testid="reaction-bar"]')).toBeVisible({ timeout: 15_000 });
@@ -376,8 +372,7 @@ baseTest.describe('Reactions on AMB Resources (Spot Check)', () => {
 
 test.describe('No JavaScript Errors', () => {
   test('no critical errors during comment interactions', async ({ authenticatedPage: page }) => {
-    const errors = [];
-    page.on('pageerror', (error) => errors.push(error.message));
+    const errorCapture = setupErrorCapture(page);
 
     await navigateToCalendarEvent(page, TEST_NADDRS.calendarDate);
 
@@ -387,18 +382,14 @@ test.describe('No JavaScript Errors', () => {
     await input.fill('Error check comment');
     await page.locator('[data-testid="comment-submit-btn"]').click();
 
-    await page.waitForTimeout(3000);
+    // Wait for comment to appear
+    await expect(page.getByText('Error check comment')).toBeVisible({ timeout: 10_000 });
 
-    // Filter out network-related errors that are expected in test environment
-    const critical = errors.filter(
-      (e) => !e.includes('WebSocket') && !e.includes('net::') && !e.includes('fetch')
-    );
-    expect(critical).toHaveLength(0);
+    errorCapture.assertNoCriticalErrors();
   });
 
   test('no critical errors during reaction interactions', async ({ authenticatedPage: page }) => {
-    const errors = [];
-    page.on('pageerror', (error) => errors.push(error.message));
+    const errorCapture = setupErrorCapture(page);
 
     await navigateToCalendarEvent(page, TEST_NADDRS.calendarDate);
 
@@ -412,11 +403,11 @@ test.describe('No JavaScript Errors', () => {
     await eventReactionBar.locator('[data-testid="add-reaction-btn"]').click();
     await page.locator('[data-testid="reaction-option"][data-emoji="⭐"]').first().click();
 
-    await page.waitForTimeout(3000);
+    // Wait for reaction to appear
+    await expect(
+      eventReactionBar.locator('[data-testid="reaction-button"][data-emoji="⭐"]')
+    ).toBeVisible({ timeout: 10_000 });
 
-    const critical = errors.filter(
-      (e) => !e.includes('WebSocket') && !e.includes('net::') && !e.includes('fetch')
-    );
-    expect(critical).toHaveLength(0);
+    errorCapture.assertNoCriticalErrors();
   });
 });

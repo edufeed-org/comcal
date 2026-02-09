@@ -12,55 +12,55 @@ import { getPrimaryWriteRelay } from '$lib/services/relay-service.svelte.js';
  * @returns {Promise<{success: boolean, event?: any, error?: string}>}
  */
 export async function joinCommunity(communityPubkey, options = {}) {
-	const account = manager.active;
+  const account = manager.active;
 
-	if (!account?.signer) {
-		return { success: false, error: 'No account or signer available. Please login first.' };
-	}
+  if (!account?.signer) {
+    return { success: false, error: 'No account or signer available. Please login first.' };
+  }
 
-	if (!communityPubkey) {
-		return { success: false, error: 'Community pubkey is required' };
-	}
+  if (!communityPubkey) {
+    return { success: false, error: 'Community pubkey is required' };
+  }
 
-	try {
-		const factory = new EventFactory({ signer: account.signer });
+  try {
+    const factory = new EventFactory({ signer: account.signer });
 
-		// Get relay hint for the community for discoverability
-		const relayHint = await getPrimaryWriteRelay(communityPubkey);
+    // Get relay hint for the community for discoverability
+    const relayHint = await getPrimaryWriteRelay(communityPubkey);
 
-		// Create relationship event (kind 30382)
-		// Tags: d (identifier), n (relationship type), p (community pubkey with relay hint)
-		const relationshipEventTemplate = {
-			kind: 30382,
-			content: '',
-			tags: [
-				['d', communityPubkey], // Use community pubkey as identifier
-				['n', 'follow'], // Relationship type: follow
-				['p', communityPubkey, relayHint] // Reference to community with relay hint
-			],
-			created_at: Math.floor(Date.now() / 1000)
-		};
+    // Create relationship event (kind 30382)
+    // Tags: d (identifier), n (relationship type), p (community pubkey with relay hint)
+    const relationshipEventTemplate = {
+      kind: 30382,
+      content: '',
+      tags: [
+        ['d', communityPubkey], // Use community pubkey as identifier
+        ['n', 'follow'], // Relationship type: follow
+        ['p', communityPubkey, relayHint] // Reference to community with relay hint
+      ],
+      created_at: Math.floor(Date.now() / 1000)
+    };
 
-		const signedEvent = await factory.sign(relationshipEventTemplate);
+    const signedEvent = await factory.sign(relationshipEventTemplate);
 
-		// Publish using outbox model + communikey relays (for kind 30382)
-		const result = await publishEvent(signedEvent, [communityPubkey], {
-			additionalRelays: options.relays || []
-		});
+    // Publish using outbox model + communikey relays (for kind 30382)
+    const result = await publishEvent(signedEvent, [communityPubkey], {
+      additionalRelays: options.relays || []
+    });
 
-		if (result.success) {
-			// Add to EventStore to trigger automatic updates
-			eventStore.add(signedEvent);
-		}
+    if (result.success) {
+      // Add to EventStore to trigger automatic updates
+      eventStore.add(signedEvent);
+    }
 
-		return { ...result, event: signedEvent };
-	} catch (error) {
-		console.error('Failed to join community:', error);
-		return {
-			success: false,
-			error: error instanceof Error ? error.message : 'Unknown error occurred'
-		};
-	}
+    return { ...result, event: signedEvent };
+  } catch (error) {
+    console.error('Failed to join community:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
 }
 
 /**
@@ -71,64 +71,62 @@ export async function joinCommunity(communityPubkey, options = {}) {
  * @returns {Promise<{success: boolean, event?: any, error?: string}>}
  */
 export async function leaveCommunity(communityPubkey, options = {}) {
-	const account = manager.active;
+  const account = manager.active;
 
-	if (!account?.signer) {
-		return { success: false, error: 'No account or signer available. Please login first.' };
-	}
+  if (!account?.signer) {
+    return { success: false, error: 'No account or signer available. Please login first.' };
+  }
 
-	if (!communityPubkey) {
-		return { success: false, error: 'Community pubkey is required' };
-	}
+  if (!communityPubkey) {
+    return { success: false, error: 'Community pubkey is required' };
+  }
 
-	try {
-		// Use model to find the relationship event to delete
-		const { CommunityRelationshipModel } = await import('$lib/models/community-relationship');
-		
-		const relationshipEvents = await new Promise((resolve) => {
-			eventStore
-				.model(CommunityRelationshipModel, account.pubkey)
-				.subscribe({
-					next: (events) => {
-						resolve(events);
-					},
-					error: () => {
-						resolve([]);
-					}
-				});
-		});
+  try {
+    // Use model to find the relationship event to delete
+    const { CommunityRelationshipModel } = await import('$lib/models/community-relationship');
 
-		// Find the specific relationship event for this community
-		const relationshipEvent = relationshipEvents.find((/** @type {any} */ event) => {
-			const dTag = event.tags.find((/** @type {any} */ tag) => tag[0] === 'd')?.[1];
-			return dTag === communityPubkey;
-		});
+    const relationshipEvents = await new Promise((resolve) => {
+      eventStore.model(CommunityRelationshipModel, account.pubkey).subscribe({
+        next: (events) => {
+          resolve(events);
+        },
+        error: () => {
+          resolve([]);
+        }
+      });
+    });
 
-		if (!relationshipEvent) {
-			return { success: false, error: 'No relationship found to delete' };
-		}
+    // Find the specific relationship event for this community
+    const relationshipEvent = relationshipEvents.find((/** @type {any} */ event) => {
+      const dTag = event.tags.find((/** @type {any} */ tag) => tag[0] === 'd')?.[1];
+      return dTag === communityPubkey;
+    });
 
-		const factory = new EventFactory({ signer: account.signer });
+    if (!relationshipEvent) {
+      return { success: false, error: 'No relationship found to delete' };
+    }
 
-		// Create deletion event (kind 5)
-		const deleteEventTemplate = await factory.delete([relationshipEvent]);
-		const deleteEvent = await factory.sign(deleteEventTemplate);
+    const factory = new EventFactory({ signer: account.signer });
 
-		// Publish deletion using outbox model
-		const result = await publishEvent(deleteEvent, [], {
-			additionalRelays: options.relays || []
-		});
+    // Create deletion event (kind 5)
+    const deleteEventTemplate = await factory.delete([relationshipEvent]);
+    const deleteEvent = await factory.sign(deleteEventTemplate);
 
-		if (result.success) {
-			eventStore.add(deleteEvent);
-		}
+    // Publish deletion using outbox model
+    const result = await publishEvent(deleteEvent, [], {
+      additionalRelays: options.relays || []
+    });
 
-		return { ...result, event: deleteEvent };
-	} catch (error) {
-		console.error('Failed to leave community:', error);
-		return {
-			success: false,
-			error: error instanceof Error ? error.message : 'Unknown error occurred'
-		};
-	}
+    if (result.success) {
+      eventStore.add(deleteEvent);
+    }
+
+    return { ...result, event: deleteEvent };
+  } catch (error) {
+    console.error('Failed to leave community:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
 }

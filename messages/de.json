@@ -386,6 +386,7 @@
   "calendar_management_edit_description_placeholder": "Kalenderbeschreibung (optional)",
   "calendar_management_edit_save_button": "Speichern",
   "calendar_management_edit_cancel_button": "Abbrechen",
+  "calendar_management_menu_actions": "Kalenderaktionen",
   "calendar_management_menu_view_calendar": "Kalender anzeigen",
   "calendar_management_menu_copy_link": "Kalenderlink kopieren",
   "calendar_management_menu_edit_calendar": "Kalender bearbeiten",
@@ -869,8 +870,8 @@
   "amb_resource_view_license": "Lizenzdetails anzeigen →",
   "amb_resource_topics_keywords": "Themen & Schlagwörter",
   "amb_resource_all_contributors": "Alle Mitwirkenden",
-	"amb_resource_related_resources": "Verwandte Ressourcen",
-	"amb_resource_uploaded_files": "Hochgeladene Dateien",
-	"amb_resource_discussion": "Diskussion",
+  "amb_resource_related_resources": "Verwandte Ressourcen",
+  "amb_resource_uploaded_files": "Hochgeladene Dateien",
+  "amb_resource_discussion": "Diskussion",
   "amb_resource_published": "Veröffentlicht {date}"
 }

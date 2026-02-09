@@ -62,6 +62,94 @@ export const test = base.extend({
 export { expect };
 
 /**
+ * Helper to logout the current user.
+ * Clicks the profile dropdown and logs out.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function logout(page) {
+  // Navigate to a page without overlapping hero elements
+  await page.goto('/discover');
+  await page.waitForTimeout(2000);
+
+  // Click the profile avatar button to open dropdown
+  await page.locator('.dropdown .btn-circle').click();
+
+  // Wait for dropdown to open
+  await page.waitForTimeout(300);
+
+  // Click the logout button (contains "Logout" or similar text)
+  await page
+    .locator('.dropdown-content button')
+    .filter({ hasText: /logout|abmelden/i })
+    .first()
+    .click();
+
+  // Wait for logout to complete - login button should reappear
+  await expect(page.locator('button:has-text("Login")')).toBeVisible({ timeout: 5000 });
+}
+
+/**
+ * Helper to login with an nsec.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} nsec - The nsec to login with
+ */
+export async function loginWithNsec(page, nsec) {
+  // Click the login button in navbar
+  await page.locator('button:has-text("Login")').first().click();
+
+  // Wait for login modal to appear
+  await expect(page.locator('#global-login-modal')).toBeVisible({ timeout: 5000 });
+
+  // Click NSEC login option
+  await page.locator('#global-login-modal button:has-text("NSEC")').click();
+
+  // Wait for NSEC input modal to appear
+  await expect(page.locator('#global-private-key-modal')).toBeVisible({ timeout: 5000 });
+
+  // Find and fill the nsec input
+  const nsecInput = page.locator('#global-private-key-modal input').first();
+  await nsecInput.fill(nsec);
+
+  // Click the login button
+  await page.locator('#global-private-key-modal button.btn-primary').click();
+
+  // Wait for login to complete
+  await page.waitForTimeout(1500);
+
+  // Close any open modal
+  for (let i = 0; i < 3; i++) {
+    const hasOpenModal = await page.locator('dialog[open]').isVisible();
+    if (hasOpenModal) {
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(300);
+    } else {
+      break;
+    }
+  }
+}
+
+/**
+ * Helper to open the event creation modal on the calendar page.
+ * Clicks the FAB and then the "Create Event" button.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function openEventCreationModal(page) {
+  // Navigate to calendar page
+  await page.goto('/calendar');
+  await page.waitForTimeout(2000);
+
+  // Click the FAB to expand it (the main button with role="button")
+  await page.locator('.fab [role="button"]').click();
+  await page.waitForTimeout(300);
+
+  // Click the "Create Event" button
+  await page.locator('button[data-tip="Create Event"]').click();
+
+  // Wait for modal to appear
+  await expect(page.locator('.modal-open .modal-box')).toBeVisible({ timeout: 5000 });
+}
+
+/**
  * Helper to navigate to a calendar event detail page.
  * Uses client-side navigation since SSR is disabled for naddr routes.
  * @param {import('@playwright/test').Page} page

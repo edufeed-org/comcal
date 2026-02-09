@@ -13,12 +13,10 @@ import { getTagValue } from 'applesauce-core/helpers';
  * @returns {import('applesauce-core').Model<import('nostr-tools').Event[]>} Model that emits array of relationship events
  */
 export function CommunityRelationshipModel(pubkey) {
-	return (eventStore) =>
-		eventStore.timeline({ kinds: [30382], authors: [pubkey] }).pipe(
-			map((events) =>
-				events.filter((event) => getTagValue(event, 'n') === 'follow')
-			)
-		);
+  return (eventStore) =>
+    eventStore
+      .timeline({ kinds: [30382], authors: [pubkey] })
+      .pipe(map((events) => events.filter((event) => getTagValue(event, 'n') === 'follow')));
 }
 
 /**
@@ -28,8 +26,8 @@ export function CommunityRelationshipModel(pubkey) {
  * @returns {import('applesauce-core').Model<Set<string>>} Model that emits Set of member pubkeys
  */
 export function CommunityMembersModel(communityPubkey) {
-	return (eventStore) =>
-		eventStore.timeline({ kinds: [30382], '#d': [communityPubkey] }).pipe(
-			map((events) => new Set(events.map((event) => event.pubkey)))
-		);
+  return (eventStore) =>
+    eventStore
+      .timeline({ kinds: [30382], '#d': [communityPubkey] })
+      .pipe(map((events) => new Set(events.map((event) => event.pubkey))));
 }

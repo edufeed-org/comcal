@@ -14,11 +14,11 @@ import { createTimelineLoader } from 'applesauce-loaders/loaders';
  * @returns {Function} Loader factory that returns an Observable
  */
 export function createContactListLoader(pool, defaultRelays, eventStore, userPubkey) {
-	return () =>
-		createTimelineLoader(
-			pool,
-			defaultRelays,
-			{ kinds: [3], authors: [userPubkey], limit: 1 },
-			{ eventStore }
-		);
+  return () =>
+    createTimelineLoader(
+      pool,
+      defaultRelays,
+      { kinds: [3], authors: [userPubkey], limit: 1 },
+      { eventStore }
+    );
 }

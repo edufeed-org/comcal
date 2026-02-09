@@ -12,22 +12,22 @@ import { getRelaySetDTag, parseRelaySetEvent } from '$lib/services/app-relay-ser
  * @returns {Function} Model function that takes eventStore
  */
 export function AppRelaySetModel(pubkey, category) {
-	const dTag = getRelaySetDTag(category);
+  const dTag = getRelaySetDTag(category);
 
-	return (eventStore) =>
-		eventStore.replaceable(30002, pubkey, dTag).pipe(
-			map((event) => {
-				const relays = parseRelaySetEvent(event);
+  return (eventStore) =>
+    eventStore.replaceable(30002, pubkey, dTag).pipe(
+      map((event) => {
+        const relays = parseRelaySetEvent(event);
 
-				return {
-					category,
-					relays,
-					hasOverride: relays.length > 0,
-					rawEvent: event || null
-				};
-			}),
-			distinctUntilChanged((a, b) => JSON.stringify(a.relays) === JSON.stringify(b.relays))
-		);
+        return {
+          category,
+          relays,
+          hasOverride: relays.length > 0,
+          rawEvent: event || null
+        };
+      }),
+      distinctUntilChanged((a, b) => JSON.stringify(a.relays) === JSON.stringify(b.relays))
+    );
 }
 
 /**

@@ -13,11 +13,10 @@ import { getTagValue } from 'applesauce-core/helpers';
 import { getCalendarEventMetadata, parseAddressReference } from '$lib/helpers/eventUtils';
 import { getCalendarEventTitle } from 'applesauce-common/helpers';
 import {
-	calendarTimelineLoader,
-	targetedPublicationTimelineLoader,
-	userDeletionLoader,
-	addressLoader
-} from '$lib/loaders';
+  calendarTimelineLoader,
+  targetedPublicationTimelineLoader
+} from '$lib/loaders/calendar.js';
+import { userDeletionLoader, addressLoader } from '$lib/loaders/base.js';
 import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
 import { parseCalendarFilters } from '$lib/helpers/urlParams.js';
@@ -48,479 +47,512 @@ import { CommunityCalendarEventModel } from '$lib/models';
  * @returns {EventLoaderAPI}
  */
 export function useCalendarEventLoader(options) {
-	// Subscription management
-	let subscription = $state();
-	let relaySubscription = $state();
-	let backgroundLoaderSubscription = $state();
-	let targetedPublicationSubscription = $state();
-	let deletionSubscriptions = $state.raw(/** @type {SvelteMap<string, any>} */ (new SvelteMap()));
+  // Subscription management
+  let subscription = $state();
+  let relaySubscription = $state();
+  let backgroundLoaderSubscription = $state();
+  let targetedPublicationSubscription = $state();
+  let deletionSubscriptions = $state.raw(/** @type {SvelteMap<string, any>} */ (new SvelteMap()));
 
-	// Internal state
-	const eventMap = new SvelteMap();
-	const resolutionErrors = $state.raw(/** @type {string[]} */ ([]));
+  // Internal state
+  const eventMap = new SvelteMap();
+  const resolutionErrors = $state.raw(/** @type {string[]} */ ([]));
 
-	/**
-	 * Clean up a specific subscription
-	 * @param {any} sub
-	 */
-	function cleanupSubscription(sub) {
-		if (sub) {
-			sub.unsubscribe();
-		}
-		return null;
-	}
+  /**
+   * Clean up a specific subscription
+   * @param {any} sub
+   */
+  function cleanupSubscription(sub) {
+    if (sub) {
+      sub.unsubscribe();
+    }
+    return null;
+  }
 
-	/**
-	 * Clean up all subscriptions
-	 */
-	function cleanupAll() {
-		subscription = cleanupSubscription(subscription);
-		relaySubscription = cleanupSubscription(relaySubscription);
-		backgroundLoaderSubscription = cleanupSubscription(backgroundLoaderSubscription);
-		targetedPublicationSubscription = cleanupSubscription(targetedPublicationSubscription);
-		
-		// Clean up deletion subscriptions
-		deletionSubscriptions.forEach(sub => cleanupSubscription(sub));
-		deletionSubscriptions.clear();
-		
-		eventMap.clear();
-		resolutionErrors.length = 0;
-	}
+  /**
+   * Clean up all subscriptions
+   */
+  function cleanupAll() {
+    subscription = cleanupSubscription(subscription);
+    relaySubscription = cleanupSubscription(relaySubscription);
+    backgroundLoaderSubscription = cleanupSubscription(backgroundLoaderSubscription);
+    targetedPublicationSubscription = cleanupSubscription(targetedPublicationSubscription);
 
-	/**
-	 * Start loading deletion events for author pubkeys in parallel
-	 * This MUST be called before or simultaneously with event loading
-	 * so EventStore can filter deleted events automatically
-	 * @param {string[]} pubkeys - Array of author pubkeys
-	 */
-	function startDeletionLoaders(pubkeys) {		
-		pubkeys.forEach((pubkey) => {
-			// Skip if already loading deletions for this author
-			if (deletionSubscriptions.has(pubkey)) {
-				return;
-			}
-			
-			const deletionLoader = userDeletionLoader(pubkey);
-			const loaderResult = deletionLoader();
-			
-			// Handle both Observable and Promise returns
-			if (loaderResult && typeof loaderResult.subscribe === 'function') {
-				const sub = loaderResult.subscribe({
-					error: (/** @type {any} */ err) => {
-						console.error('❌ DELETION LOADER ERROR for', pubkey.substring(0, 8), '...:', err);
-					},
-				});
-				deletionSubscriptions.set(pubkey, sub);
-			} else {
-				console.error('❌ DELETION LOADER: Loader result is not subscribable!', loaderResult);
-			}
-		});	
-	}
+    // Clean up deletion subscriptions
+    deletionSubscriptions.forEach((sub) => cleanupSubscription(sub));
+    deletionSubscriptions.clear();
 
-	/**
-	 * Start background loader
-	 */
-	function startBackgroundLoader() {
-		if (!backgroundLoaderSubscription) {
-			console.log('📅 EventLoader: Starting background loader');
-			backgroundLoaderSubscription = calendarTimelineLoader()().subscribe();
-		}
-	}
+    eventMap.clear();
+    resolutionErrors.length = 0;
+  }
 
-	/**
-	 * Stop background loader
-	 */
-	function stopBackgroundLoader() {
-		if (backgroundLoaderSubscription) {
-			console.log('📅 EventLoader: Stopping background loader');
-			backgroundLoaderSubscription = cleanupSubscription(backgroundLoaderSubscription);
-		}
-	}
+  /**
+   * Start loading deletion events for author pubkeys in parallel
+   * This MUST be called before or simultaneously with event loading
+   * so EventStore can filter deleted events automatically
+   * @param {string[]} pubkeys - Array of author pubkeys
+   */
+  function startDeletionLoaders(pubkeys) {
+    pubkeys.forEach((pubkey) => {
+      // Skip if already loading deletions for this author
+      if (deletionSubscriptions.has(pubkey)) {
+        return;
+      }
 
-	/**
-	 * Load global events using EventStore
-	 * @param {string[]} [relays] - Optional relay URLs to use
-	 * @param {string[]} [authors] - Optional author pubkeys to filter by
-	 */
-	function loadGlobal(relays, authors) {
-		const selectedRelays = relays || [];
-		const selectedAuthors = authors || [];
+      const deletionLoader = userDeletionLoader(pubkey);
+      const loaderResult = deletionLoader();
 
-		console.log('📅 EventLoader: Loading global events', {
-			relays: selectedRelays.length,
-			authors: selectedAuthors.length
-		});
+      // Handle both Observable and Promise returns
+      if (loaderResult && typeof loaderResult.subscribe === 'function') {
+        const sub = loaderResult.subscribe({
+          error: (/** @type {any} */ err) => {
+            console.error('❌ DELETION LOADER ERROR for', pubkey.substring(0, 8), '...:', err);
+          }
+        });
+        deletionSubscriptions.set(pubkey, sub);
+      } else {
+        console.error('❌ DELETION LOADER: Loader result is not subscribable!', loaderResult);
+      }
+    });
+  }
 
-		options.onLoadingChange(true);
-		eventMap.clear();
+  /**
+   * Start background loader
+   */
+  function startBackgroundLoader() {
+    if (!backgroundLoaderSubscription) {
+      console.log('📅 EventLoader: Starting background loader');
+      backgroundLoaderSubscription = calendarTimelineLoader()().subscribe();
+    }
+  }
 
-		// If relay filtering OR author filtering is active, use pool.subscription
-		if (selectedRelays.length > 0 || selectedAuthors.length > 0) {
-			console.log('📅 EventLoader: Using filtered relay subscription');
-			// Stop other subscriptions
-			relaySubscription = cleanupSubscription(relaySubscription);
-			stopBackgroundLoader();
+  /**
+   * Stop background loader
+   */
+  function stopBackgroundLoader() {
+    if (backgroundLoaderSubscription) {
+      console.log('📅 EventLoader: Stopping background loader');
+      backgroundLoaderSubscription = cleanupSubscription(backgroundLoaderSubscription);
+    }
+  }
 
-		// Use default relays from config if no specific relays selected
-		const relaysToUse =
-			selectedRelays.length > 0 ? selectedRelays : [...(runtimeConfig.appRelays?.calendar || []), ...(runtimeConfig.fallbackRelays || [])];
-			loadByRelays(relaysToUse, selectedAuthors);
-		} else {
-			// Default behavior: use EventStore model
-			console.log('📅 EventLoader: Using default EventStore');
-			relaySubscription = cleanupSubscription(relaySubscription);
-			startBackgroundLoader();
+  /**
+   * Load global events using EventStore
+   * @param {string[]} [relays] - Optional relay URLs to use
+   * @param {string[]} [authors] - Optional author pubkeys to filter by
+   */
+  function loadGlobal(relays, authors) {
+    const selectedRelays = relays || [];
+    const selectedAuthors = authors || [];
 
-			const filter = { kinds: [31922, 31923], limit: 50 };
+    console.log('📅 EventLoader: Loading global events', {
+      relays: selectedRelays.length,
+      authors: selectedAuthors.length
+    });
 
-			subscription = eventStore.model(TimelineModel, filter).subscribe((timeline) => {
-				const timestamp = Date.now();
-				console.log('📊 MODEL EMISSION (global) at', timestamp, '- Timeline has', timeline.length, 'events');
-				console.log('📊 Event IDs in timeline:', timeline.map(e => e.id).join(', '));
-				
-				// Log event details for debugging
-				timeline.forEach(e => {
-					console.log(`📊   Event ${e.id}: kind=${e.kind}, pubkey=${e.pubkey.substring(0, 8)}..., dTag=${e.tags?.find((/** @type {any[]} */ t) => t[0] === 'd')?.[1]}`);
-				});
-				
-				// Start deletion loaders for all visible event authors (parallel pattern)
-				const authorPubkeys = [...new SvelteSet(timeline.map(e => e.pubkey))];
-				console.log('📊 Starting deletion loaders for', authorPubkeys.length, 'unique authors');
-				startDeletionLoaders(authorPubkeys);
-				
-				const mapped = timeline.map(getCalendarEventMetadata);
-				options.onEventsUpdate(mapped);
-				options.onLoadingChange(false);
-			});
-		}
-	}
+    options.onLoadingChange(true);
+    eventMap.clear();
 
-	/**
-	 * Load events from specific calendar
-	 * @param {any} calendar - Calendar object with eventReferences
-	 */
-	function loadByCalendar(calendar) {
-		if (!calendar) {
-			console.warn('📅 EventLoader: No calendar provided');
-			return;
-		}
+    // If relay filtering OR author filtering is active, use pool.subscription
+    if (selectedRelays.length > 0 || selectedAuthors.length > 0) {
+      console.log('📅 EventLoader: Using filtered relay subscription');
+      // Stop other subscriptions
+      relaySubscription = cleanupSubscription(relaySubscription);
+      stopBackgroundLoader();
 
-		if (!calendar.eventReferences || calendar.eventReferences.length === 0) {
-			console.log('📅 EventLoader: No event references found for calendar:', calendar.title);
-			options.onEventsUpdate([]);
-			return;
-		}
+      // Use default relays from config if no specific relays selected
+      const relaysToUse =
+        selectedRelays.length > 0
+          ? selectedRelays
+          : [...(runtimeConfig.appRelays?.calendar || []), ...(runtimeConfig.fallbackRelays || [])];
+      loadByRelays(relaysToUse, selectedAuthors);
+    } else {
+      // Default behavior: use EventStore model
+      console.log('📅 EventLoader: Using default EventStore');
+      relaySubscription = cleanupSubscription(relaySubscription);
+      startBackgroundLoader();
 
-		console.log(
-			'📅 EventLoader: Loading calendar-specific events:',
-			calendar.eventReferences.length
-		);
+      const filter = { kinds: [31922, 31923], limit: 50 };
 
-		options.onLoadingChange(true);
-		eventMap.clear();
+      subscription = eventStore.model(TimelineModel, filter).subscribe((timeline) => {
+        const timestamp = Date.now();
+        console.log(
+          '📊 MODEL EMISSION (global) at',
+          timestamp,
+          '- Timeline has',
+          timeline.length,
+          'events'
+        );
+        console.log('📊 Event IDs in timeline:', timeline.map((e) => e.id).join(', '));
 
-		// Stop other subscriptions
-		relaySubscription = cleanupSubscription(relaySubscription);
-		stopBackgroundLoader();
+        // Log event details for debugging
+        timeline.forEach((e) => {
+          console.log(
+            `📊   Event ${e.id}: kind=${e.kind}, pubkey=${e.pubkey.substring(0, 8)}..., dTag=${e.tags?.find((/** @type {any[]} */ t) => t[0] === 'd')?.[1]}`
+          );
+        });
 
-		// Collect all author pubkeys from calendar references for parallel deletion loading
-		const authorPubkeys = new SvelteSet();
-		
-		calendar.eventReferences.forEach((/** @type {string} */ addressRef, /** @type {number} */ index) => {
-			const parsed = parseAddressReference(addressRef);
+        // Start deletion loaders for all visible event authors (parallel pattern)
+        const authorPubkeys = [...new SvelteSet(timeline.map((e) => e.pubkey))];
+        console.log('📊 Starting deletion loaders for', authorPubkeys.length, 'unique authors');
+        startDeletionLoaders(authorPubkeys);
 
-			if (!parsed) {
-				console.warn('📅 EventLoader: Invalid address reference:', addressRef);
-				return;
-			}
+        const mapped = timeline.map(getCalendarEventMetadata);
+        options.onEventsUpdate(mapped);
+        options.onLoadingChange(false);
+      });
+    }
+  }
 
-			console.log(
-				`📅 EventLoader: Loading event ${index + 1}/${calendar.eventReferences.length}:`,
-				parsed
-			);
-			
-			// Collect author pubkey for deletion loader
-			authorPubkeys.add(parsed.pubkey);
+  /**
+   * Load events from specific calendar
+   * @param {any} calendar - Calendar object with eventReferences
+   */
+  function loadByCalendar(calendar) {
+    if (!calendar) {
+      console.warn('📅 EventLoader: No calendar provided');
+      return;
+    }
 
-			addressLoader({
-				kind: parsed.kind,
-				pubkey: parsed.pubkey,
-				identifier: parsed.dTag
-			}).subscribe((/** @type {any} */ event) => {
-				console.log(
-					`📅 EventLoader: Successfully loaded event:`,
-					event.id,
-					getCalendarEventTitle(event)
-				);
-				const calendarEvent = getCalendarEventMetadata(event);
+    if (!calendar.eventReferences || calendar.eventReferences.length === 0) {
+      console.log('📅 EventLoader: No event references found for calendar:', calendar.title);
+      options.onEventsUpdate([]);
+      return;
+    }
 
-				if (!eventMap.has(calendarEvent.id)) {
-					eventMap.set(calendarEvent.id, calendarEvent);
-					options.onEventsUpdate(Array.from(eventMap.values()));
-					console.log(`📅 EventLoader: Added unique event, total: ${eventMap.size}`);
-				} else {
-					console.log(`📅 EventLoader: Skipped duplicate event:`, calendarEvent.id);
-				}
-			});
-		});
-		
-		// Start deletion loaders for all authors at once (parallel pattern)
-		if (authorPubkeys.size > 0) {
-			startDeletionLoaders([...authorPubkeys]);
-		}
-	}
+    console.log(
+      '📅 EventLoader: Loading calendar-specific events:',
+      calendar.eventReferences.length
+    );
 
-	/**
-	 * Load events by author
-	 * @param {string} pubkey - The author's public key
-	 * @param {string[]} [relays] - Optional relay URLs to use
-	 */
-	function loadByAuthor(pubkey, relays) {
-		const selectedRelays = relays || [];
+    options.onLoadingChange(true);
+    eventMap.clear();
 
-		console.log('📅 EventLoader: Loading events by author:', pubkey, {
-			relays: selectedRelays.length
-		});
+    // Stop other subscriptions
+    relaySubscription = cleanupSubscription(relaySubscription);
+    stopBackgroundLoader();
 
-		options.onLoadingChange(true);
-		eventMap.clear();
+    // Collect all author pubkeys from calendar references for parallel deletion loading
+    const authorPubkeys = new SvelteSet();
 
-		// Start deletion loader FIRST (parallel pattern, before any subscriptions)
-		startDeletionLoaders([pubkey]);
+    calendar.eventReferences.forEach(
+      (/** @type {string} */ addressRef, /** @type {number} */ index) => {
+        const parsed = parseAddressReference(addressRef);
 
-		if (selectedRelays.length > 0) {
-			// Use specific relays
-			console.log('📅 EventLoader: Loading author events from selected relays:', selectedRelays);
-			relaySubscription = cleanupSubscription(relaySubscription);
+        if (!parsed) {
+          console.warn('📅 EventLoader: Invalid address reference:', addressRef);
+          return;
+        }
 
-			relaySubscription = pool
-				.subscription(selectedRelays, {
-					kinds: [31922, 31923],
-					authors: [pubkey],
-					limit: 50
-				})
-				.pipe(
-					onlyEvents(),
-					mapEventsToStore(eventStore),
-					mapEventsToTimeline(),
-					map((timeline) => [...timeline])
-				)
-				.subscribe({
-					next: (timeline) => {
-						console.log(
-							'📅 EventLoader: Received timeline with',
-							timeline.length,
-							'events by author'
-						);
-						const mapped = timeline.map(getCalendarEventMetadata);
-						options.onEventsUpdate(mapped);
-						options.onLoadingChange(false);
-					},
-					error: (err) => {
-						console.error('📅 EventLoader: Relay subscription error:', err);
-						options.onError('Failed to load events from relays');
-						options.onLoadingChange(false);
-					}
-				});
-		} else {
-			// Use EventStore
-			console.log('📅 EventLoader: Loading author events from EventStore');
-			relaySubscription = cleanupSubscription(relaySubscription);
+        console.log(
+          `📅 EventLoader: Loading event ${index + 1}/${calendar.eventReferences.length}:`,
+          parsed
+        );
 
-			const filter = { kinds: [31922, 31923], authors: [pubkey], limit: 50 };
+        // Collect author pubkey for deletion loader
+        authorPubkeys.add(parsed.pubkey);
 
-			subscription = eventStore.model(TimelineModel, filter).subscribe((timeline) => {
-				const timestamp = Date.now();
-				console.log('📊 MODEL EMISSION (by author) at', timestamp, '- Timeline has', timeline.length, 'events');
-				console.log('📊 Event IDs in timeline:', timeline.map(e => e.id).join(', '));
-				
-				// Log event details for debugging
-				timeline.forEach(e => {
-					console.log(`📊   Event ${e.id}: kind=${e.kind}, pubkey=${e.pubkey.substring(0, 8)}..., dTag=${e.tags?.find((/** @type {any[]} */ t) => t[0] === 'd')?.[1]}`);
-				});
-				
-				const mapped = timeline.map(getCalendarEventMetadata);
-				options.onEventsUpdate(mapped);
-				options.onLoadingChange(false);
-			});
-		}
-	}
+        addressLoader({
+          kind: parsed.kind,
+          pubkey: parsed.pubkey,
+          identifier: parsed.dTag
+        }).subscribe((/** @type {any} */ event) => {
+          console.log(
+            `📅 EventLoader: Successfully loaded event:`,
+            event.id,
+            getCalendarEventTitle(event)
+          );
+          const calendarEvent = getCalendarEventMetadata(event);
 
-	/**
-	 * Load community events using the CommunityCalendarEventModel
-	 * @param {string} communityPubkey - The community's public key
-	 */
-	function loadByCommunity(communityPubkey) {
-		if (!communityPubkey) {
-			console.warn('📅 EventLoader: No communityPubkey provided for community mode');
-			return;
-		}
-	
-		options.onLoadingChange(true);
-		options.onError(null);
-		eventMap.clear();
+          if (!eventMap.has(calendarEvent.id)) {
+            eventMap.set(calendarEvent.id, calendarEvent);
+            options.onEventsUpdate(Array.from(eventMap.values()));
+            console.log(`📅 EventLoader: Added unique event, total: ${eventMap.size}`);
+          } else {
+            console.log(`📅 EventLoader: Skipped duplicate event:`, calendarEvent.id);
+          }
+        });
+      }
+    );
 
-		// Clean up all subscriptions
-		cleanupAll();
+    // Start deletion loaders for all authors at once (parallel pattern)
+    if (authorPubkeys.size > 0) {
+      startDeletionLoaders([...authorPubkeys]);
+    }
+  }
 
-		try {
-			// Start loaders to populate EventStore with required data
-			// 1. Direct community events (kinds 31922, 31923 with h-tag)
-			backgroundLoaderSubscription = eventStore.timeline({
-				kinds: [31922, 31923],
-				'#h': [communityPubkey],
-				limit: 50
-			}).subscribe();
-			
-			// 2. Targeted publications (kind 30222 referencing community)
-			targetedPublicationSubscription = targetedPublicationTimelineLoader(communityPubkey)().subscribe();
-			
-			// 3. Watch targeted publications and load referenced calendar events on-demand
-			const referencedEventsLoaderSubscription = eventStore.model(TimelineModel, {
-				kinds: [30222],
-				'#p': [communityPubkey],
-				'#k': ['31922', '31923'],
-				limit: 100
-			}).subscribe((shareEvents) => {
-				// Extract unique event IDs and addressable references
-				const eventIds = new SvelteSet();
-				/** @type {Array<{kind: number, pubkey: string, dTag: string}>} */
-				const addressableRefs = [];
-				
-				shareEvents.forEach((shareEvent) => {
-					const eTag = getTagValue(shareEvent, 'e');
-					const aTag = getTagValue(shareEvent, 'a');
-					
-					if (eTag) {
-						eventIds.add(eTag);
-					}
-					if (aTag) {
-						const parsed = parseAddressReference(aTag);
-						if (parsed) {
-							addressableRefs.push(parsed);
-						}
-					}
-				});
-				
-				// Start loader for events by ID
-				if (eventIds.size > 0) {
-					const timelineLoader = eventStore.timeline({
-						ids: Array.from(eventIds)
-					});
-					// Handle both Observable and Promise returns
-					if (timelineLoader && typeof timelineLoader.subscribe === 'function') {
-						timelineLoader.subscribe();
-					}
-				}
-				
-				// Start loaders for addressable events
-				addressableRefs.forEach((ref) => {
-					addressLoader({
-						kind: ref.kind,
-						pubkey: ref.pubkey,
-						identifier: ref.dTag
-					}).subscribe();
-				});
-			});
-			
-			// Store this subscription so it can be cleaned up
-			deletionSubscriptions.set('referencedEventsLoader', referencedEventsLoaderSubscription);
+  /**
+   * Load events by author
+   * @param {string} pubkey - The author's public key
+   * @param {string[]} [relays] - Optional relay URLs to use
+   */
+  function loadByAuthor(pubkey, relays) {
+    const selectedRelays = relays || [];
 
-			// 4. Use the CommunityCalendarEventModel to reactively combine all data
-			subscription = eventStore.model(CommunityCalendarEventModel, communityPubkey).subscribe({
-				next: (events) => {
-					// Start deletion loaders for all unique authors (parallel pattern)
-					const authorPubkeys = [...new SvelteSet(events.map(e => e.originalEvent.pubkey))];
-					startDeletionLoaders(authorPubkeys);
-					
-					options.onEventsUpdate(events);
-					options.onLoadingChange(false);
-				},
-				error: (err) => {
-					console.error('📅 EventLoader: Error in community calendar model:', err);
-					options.onError('Failed to load community calendar events');
-					options.onLoadingChange(false);
-				}
-			});
-		} catch (err) {
-			console.error('📅 EventLoader: Error creating community subscriptions:', err);
-			options.onError('Failed to connect to event stream');
-			options.onLoadingChange(false);
-		}
-	}
+    console.log('📅 EventLoader: Loading events by author:', pubkey, {
+      relays: selectedRelays.length
+    });
 
-	/**
-	 * Load events from specific relays
-	 * @param {string[]} relays - Relay URLs to use
-	 * @param {string[]} [authors] - Optional author pubkeys to filter by
-	 */
-	function loadByRelays(relays, authors) {
-		console.log('📅 EventLoader: Loading from specific relays', {
-			relays: relays.length,
-			authors: authors?.length || 0
-		});
+    options.onLoadingChange(true);
+    eventMap.clear();
 
-		options.onLoadingChange(true);
-		eventMap.clear();
+    // Start deletion loader FIRST (parallel pattern, before any subscriptions)
+    startDeletionLoaders([pubkey]);
 
-		stopBackgroundLoader();
-		relaySubscription = cleanupSubscription(relaySubscription);
+    if (selectedRelays.length > 0) {
+      // Use specific relays
+      console.log('📅 EventLoader: Loading author events from selected relays:', selectedRelays);
+      relaySubscription = cleanupSubscription(relaySubscription);
 
-		/** @type {{kinds: number[], limit: number, authors?: string[]}} */
-		const filter = {
-			kinds: [31922, 31923],
-			limit: 50
-		};
+      relaySubscription = pool
+        .subscription(selectedRelays, {
+          kinds: [31922, 31923],
+          authors: [pubkey],
+          limit: 50
+        })
+        .pipe(
+          onlyEvents(),
+          mapEventsToStore(eventStore),
+          mapEventsToTimeline(),
+          map((timeline) => [...timeline])
+        )
+        .subscribe({
+          next: (timeline) => {
+            console.log(
+              '📅 EventLoader: Received timeline with',
+              timeline.length,
+              'events by author'
+            );
+            const mapped = timeline.map(getCalendarEventMetadata);
+            options.onEventsUpdate(mapped);
+            options.onLoadingChange(false);
+          },
+          error: (err) => {
+            console.error('📅 EventLoader: Relay subscription error:', err);
+            options.onError('Failed to load events from relays');
+            options.onLoadingChange(false);
+          }
+        });
+    } else {
+      // Use EventStore
+      console.log('📅 EventLoader: Loading author events from EventStore');
+      relaySubscription = cleanupSubscription(relaySubscription);
 
-		if (authors && authors.length > 0) {
-			filter.authors = authors;
-			console.log(`📅 EventLoader: Filtering by ${authors.length} authors from follow lists`);
-		}
+      const filter = { kinds: [31922, 31923], authors: [pubkey], limit: 50 };
 
-		relaySubscription = pool
-			.subscription(relays, filter)
-			.pipe(
-				onlyEvents(),
-				mapEventsToStore(eventStore),
-				mapEventsToTimeline(),
-				map((timeline) => [...timeline])
-			)
-			.subscribe({
-				next: (timeline) => {
-					const timestamp = Date.now();
-					console.log('📊 RELAY SUBSCRIPTION EMISSION (by relays) at', timestamp, '- Timeline has', timeline.length, 'events');
-					console.log('📊 Event IDs in timeline:', timeline.map(e => e.id).join(', '));
-					
-					// Log event details for debugging
-					timeline.forEach(e => {
-						console.log(`📊   Event ${e.id}: kind=${e.kind}, pubkey=${e.pubkey.substring(0, 8)}..., dTag=${e.tags?.find((/** @type {any[]} */ t) => t[0] === 'd')?.[1]}`);
-					});
-					
-					// Start deletion loaders for all visible event authors (parallel pattern)
-					const authorPubkeys = [...new SvelteSet(timeline.map(e => e.pubkey))];
-					console.log('📊 Starting deletion loaders for', authorPubkeys.length, 'unique authors');
-					startDeletionLoaders(authorPubkeys);
-					
-					const mapped = timeline.map(getCalendarEventMetadata);
-					options.onEventsUpdate(mapped);
-					options.onLoadingChange(false);
-				},
-				error: (err) => {
-					console.error('📅 EventLoader: Relay subscription error:', err);
-					options.onError('Failed to load events from relays');
-					options.onLoadingChange(false);
-				}
-			});
-	}
+      subscription = eventStore.model(TimelineModel, filter).subscribe((timeline) => {
+        const timestamp = Date.now();
+        console.log(
+          '📊 MODEL EMISSION (by author) at',
+          timestamp,
+          '- Timeline has',
+          timeline.length,
+          'events'
+        );
+        console.log('📊 Event IDs in timeline:', timeline.map((e) => e.id).join(', '));
 
-	return {
-		loadGlobal,
-		loadByCalendar,
-		loadByAuthor,
-		loadByCommunity,
-		loadByRelays,
-		cleanup: cleanupAll
-	};
+        // Log event details for debugging
+        timeline.forEach((e) => {
+          console.log(
+            `📊   Event ${e.id}: kind=${e.kind}, pubkey=${e.pubkey.substring(0, 8)}..., dTag=${e.tags?.find((/** @type {any[]} */ t) => t[0] === 'd')?.[1]}`
+          );
+        });
+
+        const mapped = timeline.map(getCalendarEventMetadata);
+        options.onEventsUpdate(mapped);
+        options.onLoadingChange(false);
+      });
+    }
+  }
+
+  /**
+   * Load community events using the CommunityCalendarEventModel
+   * @param {string} communityPubkey - The community's public key
+   */
+  function loadByCommunity(communityPubkey) {
+    if (!communityPubkey) {
+      console.warn('📅 EventLoader: No communityPubkey provided for community mode');
+      return;
+    }
+
+    options.onLoadingChange(true);
+    options.onError(null);
+    eventMap.clear();
+
+    // Clean up all subscriptions
+    cleanupAll();
+
+    try {
+      // Start loaders to populate EventStore with required data
+      // 1. Direct community events (kinds 31922, 31923 with h-tag)
+      backgroundLoaderSubscription = eventStore
+        .timeline({
+          kinds: [31922, 31923],
+          '#h': [communityPubkey],
+          limit: 50
+        })
+        .subscribe();
+
+      // 2. Targeted publications (kind 30222 referencing community)
+      targetedPublicationSubscription =
+        targetedPublicationTimelineLoader(communityPubkey)().subscribe();
+
+      // 3. Watch targeted publications and load referenced calendar events on-demand
+      const referencedEventsLoaderSubscription = eventStore
+        .model(TimelineModel, {
+          kinds: [30222],
+          '#p': [communityPubkey],
+          '#k': ['31922', '31923'],
+          limit: 100
+        })
+        .subscribe((shareEvents) => {
+          // Extract unique event IDs and addressable references
+          const eventIds = new SvelteSet();
+          /** @type {Array<{kind: number, pubkey: string, dTag: string}>} */
+          const addressableRefs = [];
+
+          shareEvents.forEach((shareEvent) => {
+            const eTag = getTagValue(shareEvent, 'e');
+            const aTag = getTagValue(shareEvent, 'a');
+
+            if (eTag) {
+              eventIds.add(eTag);
+            }
+            if (aTag) {
+              const parsed = parseAddressReference(aTag);
+              if (parsed) {
+                addressableRefs.push(parsed);
+              }
+            }
+          });
+
+          // Start loader for events by ID
+          if (eventIds.size > 0) {
+            const timelineLoader = eventStore.timeline({
+              ids: Array.from(eventIds)
+            });
+            // Handle both Observable and Promise returns
+            if (timelineLoader && typeof timelineLoader.subscribe === 'function') {
+              timelineLoader.subscribe();
+            }
+          }
+
+          // Start loaders for addressable events
+          addressableRefs.forEach((ref) => {
+            addressLoader({
+              kind: ref.kind,
+              pubkey: ref.pubkey,
+              identifier: ref.dTag
+            }).subscribe();
+          });
+        });
+
+      // Store this subscription so it can be cleaned up
+      deletionSubscriptions.set('referencedEventsLoader', referencedEventsLoaderSubscription);
+
+      // 4. Use the CommunityCalendarEventModel to reactively combine all data
+      subscription = eventStore.model(CommunityCalendarEventModel, communityPubkey).subscribe({
+        next: (events) => {
+          // Start deletion loaders for all unique authors (parallel pattern)
+          const authorPubkeys = [...new SvelteSet(events.map((e) => e.originalEvent.pubkey))];
+          startDeletionLoaders(authorPubkeys);
+
+          options.onEventsUpdate(events);
+          options.onLoadingChange(false);
+        },
+        error: (err) => {
+          console.error('📅 EventLoader: Error in community calendar model:', err);
+          options.onError('Failed to load community calendar events');
+          options.onLoadingChange(false);
+        }
+      });
+    } catch (err) {
+      console.error('📅 EventLoader: Error creating community subscriptions:', err);
+      options.onError('Failed to connect to event stream');
+      options.onLoadingChange(false);
+    }
+  }
+
+  /**
+   * Load events from specific relays
+   * @param {string[]} relays - Relay URLs to use
+   * @param {string[]} [authors] - Optional author pubkeys to filter by
+   */
+  function loadByRelays(relays, authors) {
+    console.log('📅 EventLoader: Loading from specific relays', {
+      relays: relays.length,
+      authors: authors?.length || 0
+    });
+
+    options.onLoadingChange(true);
+    eventMap.clear();
+
+    stopBackgroundLoader();
+    relaySubscription = cleanupSubscription(relaySubscription);
+
+    /** @type {{kinds: number[], limit: number, authors?: string[]}} */
+    const filter = {
+      kinds: [31922, 31923],
+      limit: 50
+    };
+
+    if (authors && authors.length > 0) {
+      filter.authors = authors;
+      console.log(`📅 EventLoader: Filtering by ${authors.length} authors from follow lists`);
+    }
+
+    relaySubscription = pool
+      .subscription(relays, filter)
+      .pipe(
+        onlyEvents(),
+        mapEventsToStore(eventStore),
+        mapEventsToTimeline(),
+        map((timeline) => [...timeline])
+      )
+      .subscribe({
+        next: (timeline) => {
+          const timestamp = Date.now();
+          console.log(
+            '📊 RELAY SUBSCRIPTION EMISSION (by relays) at',
+            timestamp,
+            '- Timeline has',
+            timeline.length,
+            'events'
+          );
+          console.log('📊 Event IDs in timeline:', timeline.map((e) => e.id).join(', '));
+
+          // Log event details for debugging
+          timeline.forEach((e) => {
+            console.log(
+              `📊   Event ${e.id}: kind=${e.kind}, pubkey=${e.pubkey.substring(0, 8)}..., dTag=${e.tags?.find((/** @type {any[]} */ t) => t[0] === 'd')?.[1]}`
+            );
+          });
+
+          // Start deletion loaders for all visible event authors (parallel pattern)
+          const authorPubkeys = [...new SvelteSet(timeline.map((e) => e.pubkey))];
+          console.log('📊 Starting deletion loaders for', authorPubkeys.length, 'unique authors');
+          startDeletionLoaders(authorPubkeys);
+
+          const mapped = timeline.map(getCalendarEventMetadata);
+          options.onEventsUpdate(mapped);
+          options.onLoadingChange(false);
+        },
+        error: (err) => {
+          console.error('📅 EventLoader: Relay subscription error:', err);
+          options.onError('Failed to load events from relays');
+          options.onLoadingChange(false);
+        }
+      });
+  }
+
+  return {
+    loadGlobal,
+    loadByCalendar,
+    loadByAuthor,
+    loadByCommunity,
+    loadByRelays,
+    cleanup: cleanupAll
+  };
 }
 
 /**
@@ -528,52 +560,48 @@ export function useCalendarEventLoader(options) {
  * @param {any} urlFilters - Parsed URL filters
  */
 function syncFiltersToStore(urlFilters) {
-	// Sync tags - normalize to lowercase for consistent filtering
-	if (urlFilters?.tags && Array.isArray(urlFilters.tags)) {
-		if (urlFilters.tags.length > 0) {
-			const normalizedTags = urlFilters.tags.map((/** @type {string} */ tag) =>
-				tag.toLowerCase().trim()
-			);
-			calendarFilters.setSelectedTags(normalizedTags);
-		} else {
-			calendarFilters.clearSelectedTags();
-		}
-	} else {
-		calendarFilters.clearSelectedTags();
-	}
+  // Sync tags - normalize to lowercase for consistent filtering
+  if (urlFilters?.tags && Array.isArray(urlFilters.tags)) {
+    if (urlFilters.tags.length > 0) {
+      const normalizedTags = urlFilters.tags.map((/** @type {string} */ tag) =>
+        tag.toLowerCase().trim()
+      );
+      calendarFilters.setSelectedTags(normalizedTags);
+    } else {
+      calendarFilters.clearSelectedTags();
+    }
+  } else {
+    calendarFilters.clearSelectedTags();
+  }
 
-	// Sync relays
-	if (urlFilters?.relays && Array.isArray(urlFilters.relays)) {
-		if (urlFilters.relays.length > 0) {
-			calendarFilters.setSelectedRelays(urlFilters.relays);
-		} else {
-			calendarFilters.setSelectedRelays([]);
-		}
-	} else {
-		calendarFilters.setSelectedRelays([]);
-	}
+  // Sync relays
+  if (urlFilters?.relays && Array.isArray(urlFilters.relays)) {
+    if (urlFilters.relays.length > 0) {
+      calendarFilters.setSelectedRelays(urlFilters.relays);
+    } else {
+      calendarFilters.setSelectedRelays([]);
+    }
+  } else {
+    calendarFilters.setSelectedRelays([]);
+  }
 
-	// Sync authors (follow lists)
-	if (urlFilters?.authors && Array.isArray(urlFilters.authors)) {
-		if (urlFilters.authors.length > 0) {
-			calendarFilters.setSelectedFollowListIds(urlFilters.authors);
-		} else {
-			calendarFilters.setSelectedFollowListIds([]);
-		}
-	} else {
-		calendarFilters.setSelectedFollowListIds([]);
-	}
+  // Sync authors (follow lists)
+  if (urlFilters?.authors && Array.isArray(urlFilters.authors)) {
+    if (urlFilters.authors.length > 0) {
+      calendarFilters.setSelectedFollowListIds(urlFilters.authors);
+    } else {
+      calendarFilters.setSelectedFollowListIds([]);
+    }
+  } else {
+    calendarFilters.setSelectedFollowListIds([]);
+  }
 
-	// Sync search query
-	if (
-		urlFilters?.search &&
-		typeof urlFilters.search === 'string' &&
-		urlFilters.search.trim()
-	) {
-		calendarFilters.setSearchQuery(urlFilters.search);
-	} else {
-		calendarFilters.setSearchQuery('');
-	}
+  // Sync search query
+  if (urlFilters?.search && typeof urlFilters.search === 'string' && urlFilters.search.trim()) {
+    calendarFilters.setSearchQuery(urlFilters.search);
+  } else {
+    calendarFilters.setSearchQuery('');
+  }
 }
 
 /**
@@ -584,44 +612,44 @@ function syncFiltersToStore(urlFilters) {
  * @returns {(navigation: any) => void} Handler function for afterNavigate
  */
 export function createUrlSyncHandler(onPresentationViewModeChange, onViewModeChange) {
-	return (navigation) => {
-		// Guard against null navigation.to
-		if (!navigation.to) {
-			console.warn('📅 URLSync: Navigation.to is null, skipping sync');
-			return;
-		}
-		
-		console.log('📅 URLSync: Navigation completed to:', navigation.to.url.href);
-		
-		// Parse filters from the new URL
-		const urlFilters = /** @type {any} */ (parseCalendarFilters(navigation.to.url.searchParams));
-		console.log('📅 URLSync: Parsed filters:', urlFilters);
+  return (navigation) => {
+    // Guard against null navigation.to
+    if (!navigation.to) {
+      console.warn('📅 URLSync: Navigation.to is null, skipping sync');
+      return;
+    }
 
-		// Sync filters to store
-		syncFiltersToStore(urlFilters);
+    console.log('📅 URLSync: Navigation completed to:', navigation.to.url.href);
 
-		// Determine presentation view mode and period from URL
-		const presentationView = urlFilters?.view && typeof urlFilters.view === 'string' 
-			? /** @type {'calendar' | 'list' | 'map'} */ (urlFilters.view)
-			: 'calendar';
-		
-		let period = urlFilters?.period && typeof urlFilters.period === 'string'
-			? urlFilters.period
-			: 'month';
-		
-		// Validate period value - calendar view doesn't support 'all'
-		if (presentationView === 'calendar' && period === 'all') {
-			console.log('📅 URLSync: Calendar view does not support "all" period, switching to "month"');
-			period = 'month';
-		} else if (!['month', 'week', 'day', 'all'].includes(period)) {
-			console.log('📅 URLSync: Invalid period value, defaulting to "month"');
-			period = 'month';
-		}
-		
-		// Apply the coordinated values to the component state
-		onPresentationViewModeChange(presentationView);
-		onViewModeChange(/** @type {'month' | 'week' | 'day' | 'all'} */ (period));
-	};
+    // Parse filters from the new URL
+    const urlFilters = /** @type {any} */ (parseCalendarFilters(navigation.to.url.searchParams));
+    console.log('📅 URLSync: Parsed filters:', urlFilters);
+
+    // Sync filters to store
+    syncFiltersToStore(urlFilters);
+
+    // Determine presentation view mode and period from URL
+    const presentationView =
+      urlFilters?.view && typeof urlFilters.view === 'string'
+        ? /** @type {'calendar' | 'list' | 'map'} */ (urlFilters.view)
+        : 'calendar';
+
+    let period =
+      urlFilters?.period && typeof urlFilters.period === 'string' ? urlFilters.period : 'month';
+
+    // Validate period value - calendar view doesn't support 'all'
+    if (presentationView === 'calendar' && period === 'all') {
+      console.log('📅 URLSync: Calendar view does not support "all" period, switching to "month"');
+      period = 'month';
+    } else if (!['month', 'week', 'day', 'all'].includes(period)) {
+      console.log('📅 URLSync: Invalid period value, defaulting to "month"');
+      period = 'month';
+    }
+
+    // Apply the coordinated values to the component state
+    onPresentationViewModeChange(presentationView);
+    onViewModeChange(/** @type {'month' | 'week' | 'day' | 'all'} */ (period));
+  };
 }
 
 /**
@@ -631,31 +659,33 @@ export function createUrlSyncHandler(onPresentationViewModeChange, onViewModeCha
  * @param {(mode: 'month' | 'week' | 'day' | 'all') => void} onViewModeChange - Callback for view mode (period) changes
  */
 export function syncInitialUrlState(searchParams, onPresentationViewModeChange, onViewModeChange) {
-	const urlFilters = /** @type {any} */ (parseCalendarFilters(searchParams));
-	console.log('📅 URLSync: Initial mount, parsed filters:', urlFilters);
+  const urlFilters = /** @type {any} */ (parseCalendarFilters(searchParams));
+  console.log('📅 URLSync: Initial mount, parsed filters:', urlFilters);
 
-	// Sync filters to store
-	syncFiltersToStore(urlFilters);
+  // Sync filters to store
+  syncFiltersToStore(urlFilters);
 
-	// Determine presentation view mode and period from URL
-	const presentationView = urlFilters?.view && typeof urlFilters.view === 'string' 
-		? /** @type {'calendar' | 'list' | 'map'} */ (urlFilters.view)
-		: 'calendar';
-	
-	let period = urlFilters?.period && typeof urlFilters.period === 'string'
-		? urlFilters.period
-		: 'month';
-	
-	// Validate period value
-	if (presentationView === 'calendar' && period === 'all') {
-		console.log('📅 URLSync: Initial - Calendar view does not support "all" period, switching to "month"');
-		period = 'month';
-	} else if (!['month', 'week', 'day', 'all'].includes(period)) {
-		console.log('📅 URLSync: Initial - Invalid period value, defaulting to "month"');
-		period = 'month';
-	}
-	
-	// Apply the coordinated values to the component state
-	onPresentationViewModeChange(presentationView);
-	onViewModeChange(/** @type {'month' | 'week' | 'day' | 'all'} */ (period));
+  // Determine presentation view mode and period from URL
+  const presentationView =
+    urlFilters?.view && typeof urlFilters.view === 'string'
+      ? /** @type {'calendar' | 'list' | 'map'} */ (urlFilters.view)
+      : 'calendar';
+
+  let period =
+    urlFilters?.period && typeof urlFilters.period === 'string' ? urlFilters.period : 'month';
+
+  // Validate period value
+  if (presentationView === 'calendar' && period === 'all') {
+    console.log(
+      '📅 URLSync: Initial - Calendar view does not support "all" period, switching to "month"'
+    );
+    period = 'month';
+  } else if (!['month', 'week', 'day', 'all'].includes(period)) {
+    console.log('📅 URLSync: Initial - Invalid period value, defaulting to "month"');
+    period = 'month';
+  }
+
+  // Apply the coordinated values to the component state
+  onPresentationViewModeChange(presentationView);
+  onViewModeChange(/** @type {'month' | 'week' | 'day' | 'all'} */ (period));
 }

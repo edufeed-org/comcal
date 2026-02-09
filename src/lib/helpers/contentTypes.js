@@ -15,86 +15,86 @@
 
 /** @type {Record<number, ContentTypeConfig>} */
 export const CONTENT_TYPE_CONFIG = {
-	9: {
-		kind: 9,
-		name: 'Chat',
-		icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
-		supported: true,
-		component: 'Chat',
-		description: 'Real-time community chat'
-	},
-	30142: {
-		kind: 30142,
-		name: 'Learning',
-		icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
-		supported: true,
-		component: 'LearningView',
-		description: 'Educational resources (AMB/OER)'
-	},
-	31922: {
-		kind: 31922,
-		name: 'Date-based Calendar Events',
-		icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
-		supported: true,
-		component: 'CalendarView',
-		description: 'All-day and multi-day calendar events (NIP-52)'
-	},
-	31923: {
-		kind: 31923,
-		name: 'Calendar',
-		icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
-		supported: true,
-		component: 'CalendarView',
-		description: 'Community events and calendar'
-	},
-	31924: {
-		kind: 31924,
-		name: 'Calendar Collection',
-		icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
-		supported: true,
-		component: 'CalendarView',
-		description: 'Calendar collections (NIP-52)'
-	},
-	31925: {
-		kind: 31925,
-		name: 'Calendar RSVP',
-		icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
-		supported: true,
-		component: 'CalendarView',
-		description: 'Calendar event RSVPs (NIP-52)'
-	},
-	1: {
-		kind: 1,
-		name: 'Posts',
-		icon: 'M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z',
-		supported: false,
-		component: null,
-		description: 'Short text posts'
-	},
-	30023: {
-		kind: 30023,
-		name: 'Articles',
-		icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-		supported: false,
-		component: null,
-		description: 'Long-form articles'
-	},
-	30040: {
-		kind: 30040,
-		name: 'Publications',
-		icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
-		supported: false,
-		component: null,
-		description: 'Curated publications (books, journals, courses)'
-	},
-	11: {
-		kind: 11,
-		name: 'Forum',
-		icon: 'M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z',
-		supported: false,
-		component: null,
-		description: 'Forum discussions'
-	}
+  9: {
+    kind: 9,
+    name: 'Chat',
+    icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
+    supported: true,
+    component: 'Chat',
+    description: 'Real-time community chat'
+  },
+  30142: {
+    kind: 30142,
+    name: 'Learning',
+    icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
+    supported: true,
+    component: 'LearningView',
+    description: 'Educational resources (AMB/OER)'
+  },
+  31922: {
+    kind: 31922,
+    name: 'Date-based Calendar Events',
+    icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+    supported: true,
+    component: 'CalendarView',
+    description: 'All-day and multi-day calendar events (NIP-52)'
+  },
+  31923: {
+    kind: 31923,
+    name: 'Calendar',
+    icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+    supported: true,
+    component: 'CalendarView',
+    description: 'Community events and calendar'
+  },
+  31924: {
+    kind: 31924,
+    name: 'Calendar Collection',
+    icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+    supported: true,
+    component: 'CalendarView',
+    description: 'Calendar collections (NIP-52)'
+  },
+  31925: {
+    kind: 31925,
+    name: 'Calendar RSVP',
+    icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+    supported: true,
+    component: 'CalendarView',
+    description: 'Calendar event RSVPs (NIP-52)'
+  },
+  1: {
+    kind: 1,
+    name: 'Posts',
+    icon: 'M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z',
+    supported: false,
+    component: null,
+    description: 'Short text posts'
+  },
+  30023: {
+    kind: 30023,
+    name: 'Articles',
+    icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+    supported: false,
+    component: null,
+    description: 'Long-form articles'
+  },
+  30040: {
+    kind: 30040,
+    name: 'Publications',
+    icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
+    supported: false,
+    component: null,
+    description: 'Curated publications (books, journals, courses)'
+  },
+  11: {
+    kind: 11,
+    name: 'Forum',
+    icon: 'M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z',
+    supported: false,
+    component: null,
+    description: 'Forum discussions'
+  }
 };
 
 /**
@@ -103,107 +103,107 @@ export const CONTENT_TYPE_CONFIG = {
  * @returns {Array<{kind: number, name: string, icon: string, supported: boolean, enabled: boolean, description: string, exclusive?: boolean, fee?: Object, roles?: string[]}>}
  */
 export function getCommunityAvailableContentTypes(communikeyEvent) {
-	// NIP-52 calendar kinds that should enable calendar functionality
-	const CALENDAR_KINDS = [31922, 31923, 31924, 31925];
-	
-	// Always include Chat as a core feature
-	const alwaysAvailable = [9];
-	const result = [];
-	const processedKinds = new Set();
+  // NIP-52 calendar kinds that should enable calendar functionality
+  const CALENDAR_KINDS = [31922, 31923, 31924, 31925];
 
-	// Parse community's defined content types
-	const definedContentTypes = getCommunityContentTypes(communikeyEvent);
+  // Always include Chat as a core feature
+  const alwaysAvailable = [9];
+  const result = [];
+  const processedKinds = new Set();
 
-	// Check if community has any calendar-related kinds
-	let hasCalendarKinds = false;
-	for (const contentType of definedContentTypes) {
-		if (contentType.kinds.some(kind => CALENDAR_KINDS.includes(kind))) {
-			hasCalendarKinds = true;
-			break;
-		}
-	}
+  // Parse community's defined content types
+  const definedContentTypes = getCommunityContentTypes(communikeyEvent);
 
-	// Process defined content types from the community
-	for (const contentType of definedContentTypes) {
-		for (const kind of contentType.kinds) {
-			// Skip if already processed (prevent duplicates)
-			if (processedKinds.has(kind)) continue;
-			
-			// Skip calendar kinds - they'll be represented by a single Calendar tab
-			if (CALENDAR_KINDS.includes(kind)) {
-				processedKinds.add(kind);
-				continue;
-			}
+  // Check if community has any calendar-related kinds
+  let hasCalendarKinds = false;
+  for (const contentType of definedContentTypes) {
+    if (contentType.kinds.some((kind) => CALENDAR_KINDS.includes(kind))) {
+      hasCalendarKinds = true;
+      break;
+    }
+  }
 
-			// Mark as processed before adding to result
-			processedKinds.add(kind);
+  // Process defined content types from the community
+  for (const contentType of definedContentTypes) {
+    for (const kind of contentType.kinds) {
+      // Skip if already processed (prevent duplicates)
+      if (processedKinds.has(kind)) continue;
 
-			const config = CONTENT_TYPE_CONFIG[kind];
-			if (config) {
-				result.push({
-					kind,
-					name: config.name,
-					icon: config.icon,
-					supported: config.supported,
-					enabled: config.supported,
-					description: config.description,
-					exclusive: contentType.exclusive,
-					fee: contentType.fee,
-					roles: contentType.roles,
-					communityName: contentType.name
-				});
-			} else {
-				// Unknown content type - use generic name to avoid duplicates
-				result.push({
-					kind,
-					name: `Kind ${kind}`,
-					icon: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z', // Info icon
-					supported: false,
-					enabled: false,
-					description: `Content type (kind ${kind}) is not yet supported`,
-					exclusive: contentType.exclusive,
-					fee: contentType.fee,
-					roles: contentType.roles,
-					communityName: contentType.name
-				});
-			}
-		}
-	}
+      // Skip calendar kinds - they'll be represented by a single Calendar tab
+      if (CALENDAR_KINDS.includes(kind)) {
+        processedKinds.add(kind);
+        continue;
+      }
 
-	// Add always-available types if not already present
-	for (const kind of alwaysAvailable) {
-		if (!processedKinds.has(kind)) {
-			processedKinds.add(kind);
-			const config = CONTENT_TYPE_CONFIG[kind];
-			result.push({
-				kind,
-				name: config.name,
-				icon: config.icon,
-				supported: config.supported,
-				enabled: config.supported,
-				description: config.description
-			});
-		}
-	}
+      // Mark as processed before adding to result
+      processedKinds.add(kind);
 
-	// Add consolidated calendar tab if any calendar kinds are present
-	if (hasCalendarKinds) {
-		const config = CONTENT_TYPE_CONFIG[31923];
-		result.push({
-			kind: 31923,
-			name: config.name,
-			icon: config.icon,
-			supported: config.supported,
-			enabled: config.supported,
-			description: config.description
-		});
-	}
+      const config = CONTENT_TYPE_CONFIG[kind];
+      if (config) {
+        result.push({
+          kind,
+          name: config.name,
+          icon: config.icon,
+          supported: config.supported,
+          enabled: config.supported,
+          description: config.description,
+          exclusive: contentType.exclusive,
+          fee: contentType.fee,
+          roles: contentType.roles,
+          communityName: contentType.name
+        });
+      } else {
+        // Unknown content type - use generic name to avoid duplicates
+        result.push({
+          kind,
+          name: `Kind ${kind}`,
+          icon: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z', // Info icon
+          supported: false,
+          enabled: false,
+          description: `Content type (kind ${kind}) is not yet supported`,
+          exclusive: contentType.exclusive,
+          fee: contentType.fee,
+          roles: contentType.roles,
+          communityName: contentType.name
+        });
+      }
+    }
+  }
 
-	// Sort: enabled first, then by kind number
-	return result.sort((a, b) => {
-		if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
-		return a.kind - b.kind;
-	});
+  // Add always-available types if not already present
+  for (const kind of alwaysAvailable) {
+    if (!processedKinds.has(kind)) {
+      processedKinds.add(kind);
+      const config = CONTENT_TYPE_CONFIG[kind];
+      result.push({
+        kind,
+        name: config.name,
+        icon: config.icon,
+        supported: config.supported,
+        enabled: config.supported,
+        description: config.description
+      });
+    }
+  }
+
+  // Add consolidated calendar tab if any calendar kinds are present
+  if (hasCalendarKinds) {
+    const config = CONTENT_TYPE_CONFIG[31923];
+    result.push({
+      kind: 31923,
+      name: config.name,
+      icon: config.icon,
+      supported: config.supported,
+      enabled: config.supported,
+      description: config.description
+    });
+  }
+
+  // Sort: enabled first, then by kind number
+  return result.sort((a, b) => {
+    if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
+    return a.kind - b.kind;
+  });
 }
 
 /**
@@ -212,16 +212,16 @@ export function getCommunityAvailableContentTypes(communikeyEvent) {
  * @returns {string|null} - The content type string for navigation, or null if not mapped
  */
 export function kindToContentType(kind) {
-	/** @type {Record<number, string>} */
-	const mapping = {
-		9: 'chat',
-		30142: 'learning',
-		31923: 'calendar',
-		31922: 'calendar',
-		31924: 'calendar',
-		31925: 'calendar'
-	};
-	return mapping[kind] || null;
+  /** @type {Record<number, string>} */
+  const mapping = {
+    9: 'chat',
+    30142: 'learning',
+    31923: 'calendar',
+    31922: 'calendar',
+    31924: 'calendar',
+    31925: 'calendar'
+  };
+  return mapping[kind] || null;
 }
 
 /**
@@ -259,52 +259,52 @@ export function kindToContentType(kind) {
  * @returns {CommunityContentType[]}
  */
 function getCommunityContentTypes(event) {
-	/** @type {CommunityContentType[]} */
-	const contentTypes = [];
-	/** @type {CommunityContentType|null} */
-	let currentContentType = null;
+  /** @type {CommunityContentType[]} */
+  const contentTypes = [];
+  /** @type {CommunityContentType|null} */
+  let currentContentType = null;
 
-	if (!event || !Array.isArray(event.tags)) return contentTypes;
+  if (!event || !Array.isArray(event.tags)) return contentTypes;
 
-	for (const tag of event.tags) {
-		if (!Array.isArray(tag) || tag.length === 0) continue;
-		const key = tag[0];
+  for (const tag of event.tags) {
+    if (!Array.isArray(tag) || tag.length === 0) continue;
+    const key = tag[0];
 
-		if (key === 'content') {
-			if (currentContentType) contentTypes.push(currentContentType);
-			currentContentType = {
-				name: tag[1],
-				kinds: [],
-				exclusive: false,
-				roles: [],
-				badges: { read: null, write: null },
-				relays: []
-			};
-		} else if (key === 'k' && currentContentType) {
-			const kind = parseInt(tag[1], 10);
-			if (!Number.isNaN(kind)) currentContentType.kinds.push(kind);
-		} else if (key === 'fee' && currentContentType) {
-			currentContentType.fee = { amount: tag[1], unit: tag[2] || 'sat' };
-		} else if (key === 'exclusive' && currentContentType) {
-			currentContentType.exclusive = tag[1] === 'true';
-		} else if (key === 'role' && currentContentType) {
-			currentContentType.roles = tag.slice(1);
-		}
-		// Parse badge requirements (NIP-58 badge addresses)
-		else if (key === 'a' && currentContentType && tag[1]?.startsWith('30009:')) {
-			const qualifier = tag[2] || 'write'; // Default to write if no qualifier
-			if (qualifier === 'read') {
-				currentContentType.badges.read = tag[1];
-			} else {
-				currentContentType.badges.write = tag[1];
-			}
-		}
-		// Parse per-content-type relays (distinguished by 'content' marker)
-		else if (key === 'r' && currentContentType && tag[2] === 'content') {
-			currentContentType.relays.push(tag[1]);
-		}
-	}
+    if (key === 'content') {
+      if (currentContentType) contentTypes.push(currentContentType);
+      currentContentType = {
+        name: tag[1],
+        kinds: [],
+        exclusive: false,
+        roles: [],
+        badges: { read: null, write: null },
+        relays: []
+      };
+    } else if (key === 'k' && currentContentType) {
+      const kind = parseInt(tag[1], 10);
+      if (!Number.isNaN(kind)) currentContentType.kinds.push(kind);
+    } else if (key === 'fee' && currentContentType) {
+      currentContentType.fee = { amount: tag[1], unit: tag[2] || 'sat' };
+    } else if (key === 'exclusive' && currentContentType) {
+      currentContentType.exclusive = tag[1] === 'true';
+    } else if (key === 'role' && currentContentType) {
+      currentContentType.roles = tag.slice(1);
+    }
+    // Parse badge requirements (NIP-58 badge addresses)
+    else if (key === 'a' && currentContentType && tag[1]?.startsWith('30009:')) {
+      const qualifier = tag[2] || 'write'; // Default to write if no qualifier
+      if (qualifier === 'read') {
+        currentContentType.badges.read = tag[1];
+      } else {
+        currentContentType.badges.write = tag[1];
+      }
+    }
+    // Parse per-content-type relays (distinguished by 'content' marker)
+    else if (key === 'r' && currentContentType && tag[2] === 'content') {
+      currentContentType.relays.push(tag[1]);
+    }
+  }
 
-	if (currentContentType) contentTypes.push(currentContentType);
-	return contentTypes;
+  if (currentContentType) contentTypes.push(currentContentType);
+  return contentTypes;
 }

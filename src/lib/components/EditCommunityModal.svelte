@@ -1,656 +1,732 @@
 <script>
-	import * as m from '$lib/paraglide/messages';
-	import { manager } from '$lib/stores/accounts.svelte';
-	import { modalStore } from '$lib/stores/modal.svelte.js';
-	import { publishEvent } from '$lib/services/publish-service.js';
-	import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-	import EditableList from './shared/EditableList.svelte';
-	import LocationInput from './shared/LocationInput.svelte';
-	import ContentTypeBadgeConfig from './shared/ContentTypeBadgeConfig.svelte';
+  import * as m from '$lib/paraglide/messages';
+  import { manager } from '$lib/stores/accounts.svelte';
+  import { modalStore } from '$lib/stores/modal.svelte.js';
+  import { publishEvent } from '$lib/services/publish-service.js';
+  import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+  import EditableList from './shared/EditableList.svelte';
+  import LocationInput from './shared/LocationInput.svelte';
+  import ContentTypeBadgeConfig from './shared/ContentTypeBadgeConfig.svelte';
 
-	let { modalId } = $props();
+  let { modalId } = $props();
 
-	// Get community event from modal props
-	let communityEvent = $derived(modalStore.modalProps?.communityEvent);
+  // Get community event from modal props
+  let communityEvent = $derived(modalStore.modalProps?.communityEvent);
 
-	/**
-	 * @typedef {Object} ContentTypeConfig
-	 * @property {boolean} enabled
-	 * @property {{read: string|null, write: string|null}} badges
-	 * @property {string[]} relays
-	 * @property {string} name
-	 */
+  /**
+   * @typedef {Object} ContentTypeConfig
+   * @property {boolean} enabled
+   * @property {{read: string|null, write: string|null}} badges
+   * @property {string[]} relays
+   * @property {string} name
+   */
 
-	// Community data state - initialized from communityEvent
-	let communityData = $state({
-		relays: /** @type {string[]} */ ([]),
-		blossomServers: /** @type {string[]} */ ([]),
-		location: '',
-		description: '',
-		/** @type {Record<string, ContentTypeConfig>} */
-		contentTypes: {
-			calendar: { name: 'Calendar', enabled: false, badges: { read: null, write: null }, relays: [] },
-			chat: { name: 'Chat', enabled: false, badges: { read: null, write: null }, relays: [] },
-			articles: { name: 'Articles', enabled: false, badges: { read: null, write: null }, relays: [] },
-			posts: { name: 'Posts', enabled: false, badges: { read: null, write: null }, relays: [] },
-			wikis: { name: 'Wikis', enabled: false, badges: { read: null, write: null }, relays: [] }
-		}
-	});
+  // Community data state - initialized from communityEvent
+  let communityData = $state({
+    relays: /** @type {string[]} */ ([]),
+    blossomServers: /** @type {string[]} */ ([]),
+    location: '',
+    description: '',
+    /** @type {Record<string, ContentTypeConfig>} */
+    contentTypes: {
+      calendar: {
+        name: 'Calendar',
+        enabled: false,
+        badges: { read: null, write: null },
+        relays: []
+      },
+      chat: { name: 'Chat', enabled: false, badges: { read: null, write: null }, relays: [] },
+      articles: {
+        name: 'Articles',
+        enabled: false,
+        badges: { read: null, write: null },
+        relays: []
+      },
+      posts: { name: 'Posts', enabled: false, badges: { read: null, write: null }, relays: [] },
+      wikis: { name: 'Wikis', enabled: false, badges: { read: null, write: null }, relays: [] }
+    }
+  });
 
-	// Toggle for advanced badge configuration
-	let showBadgeConfig = $state(false);
-	let showAdvancedRelays = $state(false);
+  // Toggle for advanced badge configuration
+  let showBadgeConfig = $state(false);
+  let showAdvancedRelays = $state(false);
 
-	// UI state
-	let isPublishing = $state(false);
-	let errors = $state(/** @type {Record<string, string>} */ ({}));
-	let isInitialized = $state(false);
+  // UI state
+  let isPublishing = $state(false);
+  let errors = $state(/** @type {Record<string, string>} */ ({}));
+  let isInitialized = $state(false);
 
-	// Kind to content type key mapping
-	const kindToKey = {
-		31922: 'calendar',
-		31923: 'calendar',
-		9: 'chat',
-		30023: 'articles',
-		1: 'posts',
-		11: 'posts',
-		30818: 'wikis'
-	};
+  // Kind to content type key mapping
+  const kindToKey = {
+    31922: 'calendar',
+    31923: 'calendar',
+    9: 'chat',
+    30023: 'articles',
+    1: 'posts',
+    11: 'posts',
+    30818: 'wikis'
+  };
 
-	// Initialize from community event when it changes
-	$effect(() => {
-		if (!communityEvent || isInitialized) return;
+  // Initialize from community event when it changes
+  $effect(() => {
+    if (!communityEvent || isInitialized) return;
 
-		const tags = communityEvent.tags || [];
+    const tags = communityEvent.tags || [];
 
-		// Parse global relays (r tags without 'content' marker)
-		const relays = tags
-			.filter((/** @type {string[]} */ t) => t[0] === 'r' && t[2] !== 'content')
-			.map((/** @type {string[]} */ t) => t[1]);
+    // Parse global relays (r tags without 'content' marker)
+    const relays = tags
+      .filter((/** @type {string[]} */ t) => t[0] === 'r' && t[2] !== 'content')
+      .map((/** @type {string[]} */ t) => t[1]);
 
-		// Parse blossom servers
-		const blossomServers = tags
-			.filter((/** @type {string[]} */ t) => t[0] === 'blossom')
-			.map((/** @type {string[]} */ t) => t[1]);
+    // Parse blossom servers
+    const blossomServers = tags
+      .filter((/** @type {string[]} */ t) => t[0] === 'blossom')
+      .map((/** @type {string[]} */ t) => t[1]);
 
-		// Parse location
-		const locationTag = tags.find((/** @type {string[]} */ t) => t[0] === 'location');
-		const location = locationTag ? locationTag[1] : '';
+    // Parse location
+    const locationTag = tags.find((/** @type {string[]} */ t) => t[0] === 'location');
+    const location = locationTag ? locationTag[1] : '';
 
-		// Parse description
-		const descriptionTag = tags.find((/** @type {string[]} */ t) => t[0] === 'description');
-		const description = descriptionTag ? descriptionTag[1] : '';
+    // Parse description
+    const descriptionTag = tags.find((/** @type {string[]} */ t) => t[0] === 'description');
+    const description = descriptionTag ? descriptionTag[1] : '';
 
-		// Parse content types with badges and relays
-		/** @type {Record<string, ContentTypeConfig>} */
-		const contentTypes = {
-			calendar: { name: 'Calendar', enabled: false, badges: { read: null, write: null }, relays: [] },
-			chat: { name: 'Chat', enabled: false, badges: { read: null, write: null }, relays: [] },
-			articles: { name: 'Articles', enabled: false, badges: { read: null, write: null }, relays: [] },
-			posts: { name: 'Posts', enabled: false, badges: { read: null, write: null }, relays: [] },
-			wikis: { name: 'Wikis', enabled: false, badges: { read: null, write: null }, relays: [] }
-		};
+    // Parse content types with badges and relays
+    /** @type {Record<string, ContentTypeConfig>} */
+    const contentTypes = {
+      calendar: {
+        name: 'Calendar',
+        enabled: false,
+        badges: { read: null, write: null },
+        relays: []
+      },
+      chat: { name: 'Chat', enabled: false, badges: { read: null, write: null }, relays: [] },
+      articles: {
+        name: 'Articles',
+        enabled: false,
+        badges: { read: null, write: null },
+        relays: []
+      },
+      posts: { name: 'Posts', enabled: false, badges: { read: null, write: null }, relays: [] },
+      wikis: { name: 'Wikis', enabled: false, badges: { read: null, write: null }, relays: [] }
+    };
 
-		// Parse content sections from tags
-		/** @type {string|null} */
-		let currentSection = null;
+    // Parse content sections from tags
+    /** @type {string|null} */
+    let currentSection = null;
 
-		for (const tag of tags) {
-			if (!Array.isArray(tag) || tag.length === 0) continue;
+    for (const tag of tags) {
+      if (!Array.isArray(tag) || tag.length === 0) continue;
 
-			if (tag[0] === 'content') {
-				// Start new section
-				currentSection = tag[1]?.toLowerCase() || null;
-			} else if (tag[0] === 'k' && currentSection) {
-				// Kind tag - enable corresponding content type
-				const kind = parseInt(tag[1], 10);
-				const key = kindToKey[kind];
-				if (key && contentTypes[key]) {
-					contentTypes[key].enabled = true;
-				}
-			} else if (tag[0] === 'a' && currentSection && tag[1]?.startsWith('30009:')) {
-				// Badge tag
-				const key = currentSection === 'calendar' ? 'calendar' :
-					currentSection === 'chat' ? 'chat' :
-					currentSection === 'articles' ? 'articles' :
-					currentSection === 'posts' ? 'posts' :
-					currentSection === 'wikis' ? 'wikis' : null;
+      if (tag[0] === 'content') {
+        // Start new section
+        currentSection = tag[1]?.toLowerCase() || null;
+      } else if (tag[0] === 'k' && currentSection) {
+        // Kind tag - enable corresponding content type
+        const kind = parseInt(tag[1], 10);
+        const key = kindToKey[kind];
+        if (key && contentTypes[key]) {
+          contentTypes[key].enabled = true;
+        }
+      } else if (tag[0] === 'a' && currentSection && tag[1]?.startsWith('30009:')) {
+        // Badge tag
+        const key =
+          currentSection === 'calendar'
+            ? 'calendar'
+            : currentSection === 'chat'
+              ? 'chat'
+              : currentSection === 'articles'
+                ? 'articles'
+                : currentSection === 'posts'
+                  ? 'posts'
+                  : currentSection === 'wikis'
+                    ? 'wikis'
+                    : null;
 
-				if (key && contentTypes[key]) {
-					const qualifier = tag[2] || 'write';
-					if (qualifier === 'read') {
-						contentTypes[key].badges.read = tag[1];
-					} else {
-						contentTypes[key].badges.write = tag[1];
-					}
-				}
-			} else if (tag[0] === 'r' && currentSection && tag[2] === 'content') {
-				// Per-content-type relay
-				const key = currentSection === 'calendar' ? 'calendar' :
-					currentSection === 'chat' ? 'chat' :
-					currentSection === 'articles' ? 'articles' :
-					currentSection === 'posts' ? 'posts' :
-					currentSection === 'wikis' ? 'wikis' : null;
+        if (key && contentTypes[key]) {
+          const qualifier = tag[2] || 'write';
+          if (qualifier === 'read') {
+            contentTypes[key].badges.read = tag[1];
+          } else {
+            contentTypes[key].badges.write = tag[1];
+          }
+        }
+      } else if (tag[0] === 'r' && currentSection && tag[2] === 'content') {
+        // Per-content-type relay
+        const key =
+          currentSection === 'calendar'
+            ? 'calendar'
+            : currentSection === 'chat'
+              ? 'chat'
+              : currentSection === 'articles'
+                ? 'articles'
+                : currentSection === 'posts'
+                  ? 'posts'
+                  : currentSection === 'wikis'
+                    ? 'wikis'
+                    : null;
 
-				if (key && contentTypes[key]) {
-					contentTypes[key].relays.push(tag[1]);
-				}
-			}
-		}
+        if (key && contentTypes[key]) {
+          contentTypes[key].relays.push(tag[1]);
+        }
+      }
+    }
 
-		// Check if any badges are configured to auto-show badge config
-		const hasBadges = Object.values(contentTypes).some(
-			ct => ct.badges.read || ct.badges.write
-		);
+    // Check if any badges are configured to auto-show badge config
+    const hasBadges = Object.values(contentTypes).some((ct) => ct.badges.read || ct.badges.write);
 
-		communityData = {
-			relays: relays.length > 0 ? relays : ['wss://relay.edufeed.org'],
-			blossomServers,
-			location,
-			description,
-			contentTypes
-		};
+    communityData = {
+      relays: relays.length > 0 ? relays : ['wss://relay.edufeed.org'],
+      blossomServers,
+      location,
+      description,
+      contentTypes
+    };
 
-		showBadgeConfig = hasBadges;
-		isInitialized = true;
-	});
+    showBadgeConfig = hasBadges;
+    isInitialized = true;
+  });
 
-	// Reset when modal closes
-	$effect(() => {
-		const dialog = /** @type {HTMLDialogElement} */ (document.getElementById(modalId));
-		if (!dialog) return;
+  // Reset when modal closes
+  $effect(() => {
+    const dialog = /** @type {HTMLDialogElement} */ (document.getElementById(modalId));
+    if (!dialog) return;
 
-		const handleDialogClose = () => {
-			if (modalStore.activeModal === 'editCommunity') {
-				modalStore.closeModal();
-				resetState();
-			}
-		};
+    const handleDialogClose = () => {
+      if (modalStore.activeModal === 'editCommunity') {
+        modalStore.closeModal();
+        resetState();
+      }
+    };
 
-		dialog.addEventListener('close', handleDialogClose);
-		return () => {
-			dialog.removeEventListener('close', handleDialogClose);
-		};
-	});
+    dialog.addEventListener('close', handleDialogClose);
+    return () => {
+      dialog.removeEventListener('close', handleDialogClose);
+    };
+  });
 
-	function resetState() {
-		communityData = {
-			relays: [],
-			blossomServers: [],
-			location: '',
-			description: '',
-			contentTypes: {
-				calendar: { name: 'Calendar', enabled: false, badges: { read: null, write: null }, relays: [] },
-				chat: { name: 'Chat', enabled: false, badges: { read: null, write: null }, relays: [] },
-				articles: { name: 'Articles', enabled: false, badges: { read: null, write: null }, relays: [] },
-				posts: { name: 'Posts', enabled: false, badges: { read: null, write: null }, relays: [] },
-				wikis: { name: 'Wikis', enabled: false, badges: { read: null, write: null }, relays: [] }
-			}
-		};
-		showBadgeConfig = false;
-		showAdvancedRelays = false;
-		isPublishing = false;
-		errors = {};
-		isInitialized = false;
-	}
+  function resetState() {
+    communityData = {
+      relays: [],
+      blossomServers: [],
+      location: '',
+      description: '',
+      contentTypes: {
+        calendar: {
+          name: 'Calendar',
+          enabled: false,
+          badges: { read: null, write: null },
+          relays: []
+        },
+        chat: { name: 'Chat', enabled: false, badges: { read: null, write: null }, relays: [] },
+        articles: {
+          name: 'Articles',
+          enabled: false,
+          badges: { read: null, write: null },
+          relays: []
+        },
+        posts: { name: 'Posts', enabled: false, badges: { read: null, write: null }, relays: [] },
+        wikis: { name: 'Wikis', enabled: false, badges: { read: null, write: null }, relays: [] }
+      }
+    };
+    showBadgeConfig = false;
+    showAdvancedRelays = false;
+    isPublishing = false;
+    errors = {};
+    isInitialized = false;
+  }
 
-	/**
-	 * Validate relay URL format
-	 * @param {string} url
-	 */
-	function validateRelayUrl(url) {
-		if (!url.startsWith('wss://') && !url.startsWith('ws://')) {
-			return m.create_community_modal_relays_validation();
-		}
-		try {
-			new URL(url);
-			return null;
-		} catch {
-			return m.create_community_modal_error_invalid_url();
-		}
-	}
+  /**
+   * Validate relay URL format
+   * @param {string} url
+   */
+  function validateRelayUrl(url) {
+    if (!url.startsWith('wss://') && !url.startsWith('ws://')) {
+      return m.create_community_modal_relays_validation();
+    }
+    try {
+      new URL(url);
+      return null;
+    } catch {
+      return m.create_community_modal_error_invalid_url();
+    }
+  }
 
-	function validate() {
-		errors = {};
+  function validate() {
+    errors = {};
 
-		if (communityData.relays.length === 0) {
-			errors.relays = m.create_community_modal_error_relays_required();
-			return false;
-		}
+    if (communityData.relays.length === 0) {
+      errors.relays = m.create_community_modal_error_relays_required();
+      return false;
+    }
 
-		const hasContentType = Object.values(communityData.contentTypes).some((ct) => ct.enabled);
-		if (!hasContentType) {
-			errors.contentTypes = m.create_community_modal_error_content_types_required();
-			return false;
-		}
+    const hasContentType = Object.values(communityData.contentTypes).some((ct) => ct.enabled);
+    if (!hasContentType) {
+      errors.contentTypes = m.create_community_modal_error_content_types_required();
+      return false;
+    }
 
-		return true;
-	}
+    return true;
+  }
 
-	async function saveCommunity() {
-		if (!validate()) return;
+  async function saveCommunity() {
+    if (!validate()) return;
 
-		try {
-			isPublishing = true;
+    try {
+      isPublishing = true;
 
-			const account = manager.active;
-			const signer = account?.signer;
+      const account = manager.active;
+      const signer = account?.signer;
 
-			if (!account || !signer) {
-				throw new Error(m.create_community_modal_error_no_account());
-			}
+      if (!account || !signer) {
+        throw new Error(m.create_community_modal_error_no_account());
+      }
 
-			// Verify ownership
-			if (communityEvent?.pubkey !== account.pubkey) {
-				throw new Error(m.edit_community_modal_error_not_owner?.() || 'Only the community owner can edit settings');
-			}
+      // Verify ownership
+      if (communityEvent?.pubkey !== account.pubkey) {
+        throw new Error(
+          m.edit_community_modal_error_not_owner?.() || 'Only the community owner can edit settings'
+        );
+      }
 
-			// Build community tags
-			const communityTags = [];
+      // Build community tags
+      const communityTags = [];
 
-			// Add global relays
-			communityData.relays.forEach(relay => {
-				communityTags.push(['r', relay]);
-			});
+      // Add global relays
+      communityData.relays.forEach((relay) => {
+        communityTags.push(['r', relay]);
+      });
 
-			// Add blossom servers
-			communityData.blossomServers.forEach(server => {
-				communityTags.push(['blossom', server]);
-			});
+      // Add blossom servers
+      communityData.blossomServers.forEach((server) => {
+        communityTags.push(['blossom', server]);
+      });
 
-			// Add optional location
-			if (communityData.location?.trim()) {
-				communityTags.push(['location', communityData.location.trim()]);
-			}
+      // Add optional location
+      if (communityData.location?.trim()) {
+        communityTags.push(['location', communityData.location.trim()]);
+      }
 
-			// Add optional description
-			if (communityData.description?.trim()) {
-				communityTags.push(['description', communityData.description.trim()]);
-			}
+      // Add optional description
+      if (communityData.description?.trim()) {
+        communityTags.push(['description', communityData.description.trim()]);
+      }
 
-			// Add content types with badge requirements and per-content-type relays
-			if (communityData.contentTypes.calendar.enabled) {
-				communityTags.push(['content', 'Calendar']);
-				communityTags.push(['k', '31922']);
-				communityTags.push(['k', '31923']);
-				if (communityData.contentTypes.calendar.badges.write) {
-					communityTags.push(['a', communityData.contentTypes.calendar.badges.write, 'write']);
-				}
-				if (communityData.contentTypes.calendar.badges.read) {
-					communityTags.push(['a', communityData.contentTypes.calendar.badges.read, 'read']);
-				}
-				communityData.contentTypes.calendar.relays.forEach((r) => {
-					communityTags.push(['r', r, 'content']);
-				});
-			}
+      // Add content types with badge requirements and per-content-type relays
+      if (communityData.contentTypes.calendar.enabled) {
+        communityTags.push(['content', 'Calendar']);
+        communityTags.push(['k', '31922']);
+        communityTags.push(['k', '31923']);
+        if (communityData.contentTypes.calendar.badges.write) {
+          communityTags.push(['a', communityData.contentTypes.calendar.badges.write, 'write']);
+        }
+        if (communityData.contentTypes.calendar.badges.read) {
+          communityTags.push(['a', communityData.contentTypes.calendar.badges.read, 'read']);
+        }
+        communityData.contentTypes.calendar.relays.forEach((r) => {
+          communityTags.push(['r', r, 'content']);
+        });
+      }
 
-			if (communityData.contentTypes.chat.enabled) {
-				communityTags.push(['content', 'Chat']);
-				communityTags.push(['k', '9']);
-				if (communityData.contentTypes.chat.badges.write) {
-					communityTags.push(['a', communityData.contentTypes.chat.badges.write, 'write']);
-				}
-				if (communityData.contentTypes.chat.badges.read) {
-					communityTags.push(['a', communityData.contentTypes.chat.badges.read, 'read']);
-				}
-				communityData.contentTypes.chat.relays.forEach((r) => {
-					communityTags.push(['r', r, 'content']);
-				});
-			}
+      if (communityData.contentTypes.chat.enabled) {
+        communityTags.push(['content', 'Chat']);
+        communityTags.push(['k', '9']);
+        if (communityData.contentTypes.chat.badges.write) {
+          communityTags.push(['a', communityData.contentTypes.chat.badges.write, 'write']);
+        }
+        if (communityData.contentTypes.chat.badges.read) {
+          communityTags.push(['a', communityData.contentTypes.chat.badges.read, 'read']);
+        }
+        communityData.contentTypes.chat.relays.forEach((r) => {
+          communityTags.push(['r', r, 'content']);
+        });
+      }
 
-			if (communityData.contentTypes.articles.enabled) {
-				communityTags.push(['content', 'Articles']);
-				communityTags.push(['k', '30023']);
-				if (communityData.contentTypes.articles.badges.write) {
-					communityTags.push(['a', communityData.contentTypes.articles.badges.write, 'write']);
-				}
-				if (communityData.contentTypes.articles.badges.read) {
-					communityTags.push(['a', communityData.contentTypes.articles.badges.read, 'read']);
-				}
-				communityData.contentTypes.articles.relays.forEach((r) => {
-					communityTags.push(['r', r, 'content']);
-				});
-			}
+      if (communityData.contentTypes.articles.enabled) {
+        communityTags.push(['content', 'Articles']);
+        communityTags.push(['k', '30023']);
+        if (communityData.contentTypes.articles.badges.write) {
+          communityTags.push(['a', communityData.contentTypes.articles.badges.write, 'write']);
+        }
+        if (communityData.contentTypes.articles.badges.read) {
+          communityTags.push(['a', communityData.contentTypes.articles.badges.read, 'read']);
+        }
+        communityData.contentTypes.articles.relays.forEach((r) => {
+          communityTags.push(['r', r, 'content']);
+        });
+      }
 
-			if (communityData.contentTypes.posts.enabled) {
-				communityTags.push(['content', 'Posts']);
-				communityTags.push(['k', '1']);
-				communityTags.push(['k', '11']);
-				if (communityData.contentTypes.posts.badges.write) {
-					communityTags.push(['a', communityData.contentTypes.posts.badges.write, 'write']);
-				}
-				if (communityData.contentTypes.posts.badges.read) {
-					communityTags.push(['a', communityData.contentTypes.posts.badges.read, 'read']);
-				}
-				communityData.contentTypes.posts.relays.forEach((r) => {
-					communityTags.push(['r', r, 'content']);
-				});
-			}
+      if (communityData.contentTypes.posts.enabled) {
+        communityTags.push(['content', 'Posts']);
+        communityTags.push(['k', '1']);
+        communityTags.push(['k', '11']);
+        if (communityData.contentTypes.posts.badges.write) {
+          communityTags.push(['a', communityData.contentTypes.posts.badges.write, 'write']);
+        }
+        if (communityData.contentTypes.posts.badges.read) {
+          communityTags.push(['a', communityData.contentTypes.posts.badges.read, 'read']);
+        }
+        communityData.contentTypes.posts.relays.forEach((r) => {
+          communityTags.push(['r', r, 'content']);
+        });
+      }
 
-			if (communityData.contentTypes.wikis.enabled) {
-				communityTags.push(['content', 'Wikis']);
-				communityTags.push(['k', '30818']);
-				if (communityData.contentTypes.wikis.badges.write) {
-					communityTags.push(['a', communityData.contentTypes.wikis.badges.write, 'write']);
-				}
-				if (communityData.contentTypes.wikis.badges.read) {
-					communityTags.push(['a', communityData.contentTypes.wikis.badges.read, 'read']);
-				}
-				communityData.contentTypes.wikis.relays.forEach((r) => {
-					communityTags.push(['r', r, 'content']);
-				});
-			}
+      if (communityData.contentTypes.wikis.enabled) {
+        communityTags.push(['content', 'Wikis']);
+        communityTags.push(['k', '30818']);
+        if (communityData.contentTypes.wikis.badges.write) {
+          communityTags.push(['a', communityData.contentTypes.wikis.badges.write, 'write']);
+        }
+        if (communityData.contentTypes.wikis.badges.read) {
+          communityTags.push(['a', communityData.contentTypes.wikis.badges.read, 'read']);
+        }
+        communityData.contentTypes.wikis.relays.forEach((r) => {
+          communityTags.push(['r', r, 'content']);
+        });
+      }
 
-			const communityUpdateEvent = {
-				kind: 10222,
-				created_at: Math.floor(Date.now() / 1000),
-				tags: communityTags,
-				content: '',
-				pubkey: account.pubkey
-			};
+      const communityUpdateEvent = {
+        kind: 10222,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: communityTags,
+        content: '',
+        pubkey: account.pubkey
+      };
 
-			const signedEvent = await signer.signEvent(communityUpdateEvent);
+      const signedEvent = await signer.signEvent(communityUpdateEvent);
 
-			// Publish using outbox model + communikey relays (for kind 10222)
-			const publishResult = await publishEvent(signedEvent);
+      // Publish using outbox model + communikey relays (for kind 10222)
+      const publishResult = await publishEvent(signedEvent);
 
-			if (publishResult.success) {
-				eventStore.add(signedEvent);
-				console.log('EditCommunityModal: Successfully updated community');
-				closeModal();
-			} else {
-				throw new Error(m.create_community_modal_error_publish_failed());
-			}
+      if (publishResult.success) {
+        eventStore.add(signedEvent);
+        console.log('EditCommunityModal: Successfully updated community');
+        closeModal();
+      } else {
+        throw new Error(m.create_community_modal_error_publish_failed());
+      }
+    } catch (error) {
+      console.error('Error updating community:', error);
+      errors.publishing =
+        error instanceof Error ? error.message : m.create_community_modal_error_failed();
+    } finally {
+      isPublishing = false;
+    }
+  }
 
-		} catch (error) {
-			console.error('Error updating community:', error);
-			errors.publishing = error instanceof Error ? error.message : m.create_community_modal_error_failed();
-		} finally {
-			isPublishing = false;
-		}
-	}
+  function closeModal() {
+    modalStore.closeModal();
+    resetState();
+  }
 
-	function closeModal() {
-		modalStore.closeModal();
-		resetState();
-	}
-
-	// Check if current user is the owner
-	let isOwner = $derived(
-		communityEvent?.pubkey && manager.active?.pubkey &&
-		communityEvent.pubkey === manager.active.pubkey
-	);
+  // Check if current user is the owner
+  let isOwner = $derived(
+    communityEvent?.pubkey &&
+      manager.active?.pubkey &&
+      communityEvent.pubkey === manager.active.pubkey
+  );
 </script>
 
 <dialog id={modalId} class="modal">
-	<div class="modal-box max-w-2xl">
-		<h1 class="text-2xl font-bold mb-6">{m.edit_community_modal_title?.() || 'Edit Community Settings'}</h1>
+  <div class="modal-box max-w-2xl">
+    <h1 class="mb-6 text-2xl font-bold">
+      {m.edit_community_modal_title?.() || 'Edit Community Settings'}
+    </h1>
 
-		{#if !communityEvent}
-			<div class="alert alert-error">
-				<span>{m.edit_community_modal_error_no_community?.() || 'No community data available'}</span>
-			</div>
-		{:else if !isOwner}
-			<div class="alert alert-warning">
-				<span>{m.edit_community_modal_error_not_owner?.() || 'Only the community owner can edit settings'}</span>
-			</div>
-		{:else}
-			<div class="space-y-6">
-				<!-- Relays -->
-				<EditableList
-					bind:items={communityData.relays}
-					label={m.create_community_modal_relays_label()}
-					placeholder={m.create_community_modal_relays_placeholder()}
-					buttonText={m.create_community_modal_relays_button()}
-					itemType="relay"
-					validator={validateRelayUrl}
-					minItems={1}
-					helpText={m.create_community_modal_relays_help()}
-				/>
+    {#if !communityEvent}
+      <div class="alert alert-error">
+        <span>{m.edit_community_modal_error_no_community?.() || 'No community data available'}</span
+        >
+      </div>
+    {:else if !isOwner}
+      <div class="alert alert-warning">
+        <span
+          >{m.edit_community_modal_error_not_owner?.() ||
+            'Only the community owner can edit settings'}</span
+        >
+      </div>
+    {:else}
+      <div class="space-y-6">
+        <!-- Relays -->
+        <EditableList
+          bind:items={communityData.relays}
+          label={m.create_community_modal_relays_label()}
+          placeholder={m.create_community_modal_relays_placeholder()}
+          buttonText={m.create_community_modal_relays_button()}
+          itemType="relay"
+          validator={validateRelayUrl}
+          minItems={1}
+          helpText={m.create_community_modal_relays_help()}
+        />
 
-				<!-- Blossom Servers -->
-				<EditableList
-					bind:items={communityData.blossomServers}
-					label={m.create_community_modal_blossom_label()}
-					placeholder={m.create_community_modal_blossom_placeholder()}
-					buttonText={m.create_community_modal_blossom_button()}
-					itemType="server"
-				/>
+        <!-- Blossom Servers -->
+        <EditableList
+          bind:items={communityData.blossomServers}
+          label={m.create_community_modal_blossom_label()}
+          placeholder={m.create_community_modal_blossom_placeholder()}
+          buttonText={m.create_community_modal_blossom_button()}
+          itemType="server"
+        />
 
-				<!-- Location -->
-				<LocationInput
-					bind:value={communityData.location}
-					label={m.create_community_modal_location_label()}
-					placeholder={m.create_community_modal_location_placeholder()}
-				/>
+        <!-- Location -->
+        <LocationInput
+          bind:value={communityData.location}
+          label={m.create_community_modal_location_label()}
+          placeholder={m.create_community_modal_location_placeholder()}
+        />
 
-				<!-- Community Description -->
-				<div class="form-control">
-					<label class="label">
-						<span class="label-text">{m.create_community_modal_description_label()}</span>
-						<span class="label-text-alt">{m.create_community_modal_description_alt()}</span>
-					</label>
-					<textarea
-						bind:value={communityData.description}
-						placeholder={m.create_community_modal_description_placeholder()}
-						class="textarea textarea-bordered h-24"
-					></textarea>
-				</div>
+        <!-- Community Description -->
+        <div class="form-control">
+          <label class="label" for="ecm-description-textarea">
+            <span class="label-text">{m.create_community_modal_description_label()}</span>
+            <span class="label-text-alt">{m.create_community_modal_description_alt()}</span>
+          </label>
+          <textarea
+            id="ecm-description-textarea"
+            bind:value={communityData.description}
+            placeholder={m.create_community_modal_description_placeholder()}
+            class="textarea-bordered textarea h-24"
+          ></textarea>
+        </div>
 
-				<!-- Content Types -->
-				<div class="form-control">
-					<label class="label">
-						<span class="label-text font-semibold">{m.create_community_modal_content_types_label()}</span>
-						<span class="label-text-alt text-sm">{m.create_community_modal_content_types_alt()}</span>
-					</label>
-					<div class="grid grid-cols-2 gap-3">
-						<!-- Calendar Card -->
-						<button
-							type="button"
-							class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.calendar.enabled ? 'ring-2 ring-primary' : ''}"
-							onclick={() => communityData.contentTypes.calendar.enabled = !communityData.contentTypes.calendar.enabled}
-						>
-							<div class="card-body p-4">
-								<div class="flex items-center justify-between">
-									<span class="font-medium">{m.create_community_modal_content_calendar()}</span>
-									<input
-										type="checkbox"
-										checked={communityData.contentTypes.calendar.enabled}
-										class="checkbox checkbox-primary pointer-events-none"
-										tabindex="-1"
-									/>
-								</div>
-							</div>
-						</button>
+        <!-- Content Types -->
+        <div class="form-control">
+          <div class="label">
+            <span class="label-text font-semibold"
+              >{m.create_community_modal_content_types_label()}</span
+            >
+            <span class="label-text-alt text-sm"
+              >{m.create_community_modal_content_types_alt()}</span
+            >
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <!-- Calendar Card -->
+            <button
+              type="button"
+              class="card cursor-pointer bg-base-200 transition-all hover:bg-base-300 {communityData
+                .contentTypes.calendar.enabled
+                ? 'ring-2 ring-primary'
+                : ''}"
+              onclick={() =>
+                (communityData.contentTypes.calendar.enabled =
+                  !communityData.contentTypes.calendar.enabled)}
+            >
+              <div class="card-body p-4">
+                <div class="flex items-center justify-between">
+                  <span class="font-medium">{m.create_community_modal_content_calendar()}</span>
+                  <input
+                    type="checkbox"
+                    checked={communityData.contentTypes.calendar.enabled}
+                    class="pointer-events-none checkbox checkbox-primary"
+                    tabindex="-1"
+                  />
+                </div>
+              </div>
+            </button>
 
-						<!-- Chat Card -->
-						<button
-							type="button"
-							class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.chat.enabled ? 'ring-2 ring-primary' : ''}"
-							onclick={() => communityData.contentTypes.chat.enabled = !communityData.contentTypes.chat.enabled}
-						>
-							<div class="card-body p-4">
-								<div class="flex items-center justify-between">
-									<span class="font-medium">{m.create_community_modal_content_chat()}</span>
-									<input
-										type="checkbox"
-										checked={communityData.contentTypes.chat.enabled}
-										class="checkbox checkbox-primary pointer-events-none"
-										tabindex="-1"
-									/>
-								</div>
-							</div>
-						</button>
+            <!-- Chat Card -->
+            <button
+              type="button"
+              class="card cursor-pointer bg-base-200 transition-all hover:bg-base-300 {communityData
+                .contentTypes.chat.enabled
+                ? 'ring-2 ring-primary'
+                : ''}"
+              onclick={() =>
+                (communityData.contentTypes.chat.enabled =
+                  !communityData.contentTypes.chat.enabled)}
+            >
+              <div class="card-body p-4">
+                <div class="flex items-center justify-between">
+                  <span class="font-medium">{m.create_community_modal_content_chat()}</span>
+                  <input
+                    type="checkbox"
+                    checked={communityData.contentTypes.chat.enabled}
+                    class="pointer-events-none checkbox checkbox-primary"
+                    tabindex="-1"
+                  />
+                </div>
+              </div>
+            </button>
 
-						<!-- Articles Card -->
-						<button
-							type="button"
-							class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.articles.enabled ? 'ring-2 ring-primary' : ''}"
-							onclick={() => communityData.contentTypes.articles.enabled = !communityData.contentTypes.articles.enabled}
-						>
-							<div class="card-body p-4">
-								<div class="flex items-center justify-between">
-									<span class="font-medium">{m.create_community_modal_content_articles()}</span>
-									<input
-										type="checkbox"
-										checked={communityData.contentTypes.articles.enabled}
-										class="checkbox checkbox-primary pointer-events-none"
-										tabindex="-1"
-									/>
-								</div>
-							</div>
-						</button>
+            <!-- Articles Card -->
+            <button
+              type="button"
+              class="card cursor-pointer bg-base-200 transition-all hover:bg-base-300 {communityData
+                .contentTypes.articles.enabled
+                ? 'ring-2 ring-primary'
+                : ''}"
+              onclick={() =>
+                (communityData.contentTypes.articles.enabled =
+                  !communityData.contentTypes.articles.enabled)}
+            >
+              <div class="card-body p-4">
+                <div class="flex items-center justify-between">
+                  <span class="font-medium">{m.create_community_modal_content_articles()}</span>
+                  <input
+                    type="checkbox"
+                    checked={communityData.contentTypes.articles.enabled}
+                    class="pointer-events-none checkbox checkbox-primary"
+                    tabindex="-1"
+                  />
+                </div>
+              </div>
+            </button>
 
-						<!-- Posts Card -->
-						<button
-							type="button"
-							class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.posts.enabled ? 'ring-2 ring-primary' : ''}"
-							onclick={() => communityData.contentTypes.posts.enabled = !communityData.contentTypes.posts.enabled}
-						>
-							<div class="card-body p-4">
-								<div class="flex items-center justify-between">
-									<span class="font-medium">{m.create_community_modal_content_posts()}</span>
-									<input
-										type="checkbox"
-										checked={communityData.contentTypes.posts.enabled}
-										class="checkbox checkbox-primary pointer-events-none"
-										tabindex="-1"
-									/>
-								</div>
-							</div>
-						</button>
+            <!-- Posts Card -->
+            <button
+              type="button"
+              class="card cursor-pointer bg-base-200 transition-all hover:bg-base-300 {communityData
+                .contentTypes.posts.enabled
+                ? 'ring-2 ring-primary'
+                : ''}"
+              onclick={() =>
+                (communityData.contentTypes.posts.enabled =
+                  !communityData.contentTypes.posts.enabled)}
+            >
+              <div class="card-body p-4">
+                <div class="flex items-center justify-between">
+                  <span class="font-medium">{m.create_community_modal_content_posts()}</span>
+                  <input
+                    type="checkbox"
+                    checked={communityData.contentTypes.posts.enabled}
+                    class="pointer-events-none checkbox checkbox-primary"
+                    tabindex="-1"
+                  />
+                </div>
+              </div>
+            </button>
 
-						<!-- Wikis Card -->
-						<button
-							type="button"
-							class="card bg-base-200 hover:bg-base-300 transition-all cursor-pointer {communityData.contentTypes.wikis.enabled ? 'ring-2 ring-primary' : ''}"
-							onclick={() => communityData.contentTypes.wikis.enabled = !communityData.contentTypes.wikis.enabled}
-						>
-							<div class="card-body p-4">
-								<div class="flex items-center justify-between">
-									<span class="font-medium">{m.create_community_modal_content_wikis()}</span>
-									<input
-										type="checkbox"
-										checked={communityData.contentTypes.wikis.enabled}
-										class="checkbox checkbox-primary pointer-events-none"
-										tabindex="-1"
-									/>
-								</div>
-							</div>
-						</button>
-					</div>
-					{#if errors.contentTypes}
-						<label class="label">
-							<span class="label-text-alt text-error">{errors.contentTypes}</span>
-						</label>
-					{/if}
-				</div>
+            <!-- Wikis Card -->
+            <button
+              type="button"
+              class="card cursor-pointer bg-base-200 transition-all hover:bg-base-300 {communityData
+                .contentTypes.wikis.enabled
+                ? 'ring-2 ring-primary'
+                : ''}"
+              onclick={() =>
+                (communityData.contentTypes.wikis.enabled =
+                  !communityData.contentTypes.wikis.enabled)}
+            >
+              <div class="card-body p-4">
+                <div class="flex items-center justify-between">
+                  <span class="font-medium">{m.create_community_modal_content_wikis()}</span>
+                  <input
+                    type="checkbox"
+                    checked={communityData.contentTypes.wikis.enabled}
+                    class="pointer-events-none checkbox checkbox-primary"
+                    tabindex="-1"
+                  />
+                </div>
+              </div>
+            </button>
+          </div>
+          {#if errors.contentTypes}
+            <div class="label">
+              <span class="label-text-alt text-error">{errors.contentTypes}</span>
+            </div>
+          {/if}
+        </div>
 
-				<!-- Badge Configuration Toggle -->
-				<div class="form-control mt-4">
-					<label class="label cursor-pointer justify-start gap-3">
-						<input
-							type="checkbox"
-							class="toggle toggle-primary"
-							bind:checked={showBadgeConfig}
-						/>
-						<span class="label-text">{m.badge_config_toggle?.() || 'Configure badge-based access control'}</span>
-					</label>
-					<p class="text-xs opacity-70 ml-12">
-						{m.badge_config_toggle_help?.() || 'Require badges (NIP-58) for reading or publishing specific content types'}
-					</p>
-				</div>
+        <!-- Badge Configuration Toggle -->
+        <div class="form-control mt-4">
+          <label class="label cursor-pointer justify-start gap-3">
+            <input type="checkbox" class="toggle toggle-primary" bind:checked={showBadgeConfig} />
+            <span class="label-text"
+              >{m.badge_config_toggle?.() || 'Configure badge-based access control'}</span
+            >
+          </label>
+          <p class="ml-12 text-xs opacity-70">
+            {m.badge_config_toggle_help?.() ||
+              'Require badges (NIP-58) for reading or publishing specific content types'}
+          </p>
+        </div>
 
-				<!-- Badge Configuration Section -->
-				{#if showBadgeConfig}
-					<div class="space-y-4 mt-4">
-						<div class="flex items-center justify-between">
-							<h3 class="text-lg font-semibold">{m.badge_config_title?.() || 'Badge Access Control'}</h3>
-							<label class="label cursor-pointer gap-2">
-								<span class="label-text text-sm">{m.badge_config_show_relays?.() || 'Show relay config'}</span>
-								<input
-									type="checkbox"
-									class="toggle toggle-sm"
-									bind:checked={showAdvancedRelays}
-								/>
-							</label>
-						</div>
+        <!-- Badge Configuration Section -->
+        {#if showBadgeConfig}
+          <div class="mt-4 space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-semibold">
+                {m.badge_config_title?.() || 'Badge Access Control'}
+              </h3>
+              <label class="label cursor-pointer gap-2">
+                <span class="label-text text-sm"
+                  >{m.badge_config_show_relays?.() || 'Show relay config'}</span
+                >
+                <input type="checkbox" class="toggle toggle-sm" bind:checked={showAdvancedRelays} />
+              </label>
+            </div>
 
-						{#if communityData.contentTypes.calendar.enabled}
-							<ContentTypeBadgeConfig
-								bind:contentType={communityData.contentTypes.calendar}
-								authorPubkey={manager.active?.pubkey || ''}
-								showAdvanced={showAdvancedRelays}
-							/>
-						{/if}
+            {#if communityData.contentTypes.calendar.enabled}
+              <ContentTypeBadgeConfig
+                bind:contentType={communityData.contentTypes.calendar}
+                authorPubkey={manager.active?.pubkey || ''}
+                showAdvanced={showAdvancedRelays}
+              />
+            {/if}
 
-						{#if communityData.contentTypes.chat.enabled}
-							<ContentTypeBadgeConfig
-								bind:contentType={communityData.contentTypes.chat}
-								authorPubkey={manager.active?.pubkey || ''}
-								showAdvanced={showAdvancedRelays}
-							/>
-						{/if}
+            {#if communityData.contentTypes.chat.enabled}
+              <ContentTypeBadgeConfig
+                bind:contentType={communityData.contentTypes.chat}
+                authorPubkey={manager.active?.pubkey || ''}
+                showAdvanced={showAdvancedRelays}
+              />
+            {/if}
 
-						{#if communityData.contentTypes.articles.enabled}
-							<ContentTypeBadgeConfig
-								bind:contentType={communityData.contentTypes.articles}
-								authorPubkey={manager.active?.pubkey || ''}
-								showAdvanced={showAdvancedRelays}
-							/>
-						{/if}
+            {#if communityData.contentTypes.articles.enabled}
+              <ContentTypeBadgeConfig
+                bind:contentType={communityData.contentTypes.articles}
+                authorPubkey={manager.active?.pubkey || ''}
+                showAdvanced={showAdvancedRelays}
+              />
+            {/if}
 
-						{#if communityData.contentTypes.posts.enabled}
-							<ContentTypeBadgeConfig
-								bind:contentType={communityData.contentTypes.posts}
-								authorPubkey={manager.active?.pubkey || ''}
-								showAdvanced={showAdvancedRelays}
-							/>
-						{/if}
+            {#if communityData.contentTypes.posts.enabled}
+              <ContentTypeBadgeConfig
+                bind:contentType={communityData.contentTypes.posts}
+                authorPubkey={manager.active?.pubkey || ''}
+                showAdvanced={showAdvancedRelays}
+              />
+            {/if}
 
-						{#if communityData.contentTypes.wikis.enabled}
-							<ContentTypeBadgeConfig
-								bind:contentType={communityData.contentTypes.wikis}
-								authorPubkey={manager.active?.pubkey || ''}
-								showAdvanced={showAdvancedRelays}
-							/>
-						{/if}
-					</div>
-				{/if}
-			</div>
-		{/if}
+            {#if communityData.contentTypes.wikis.enabled}
+              <ContentTypeBadgeConfig
+                bind:contentType={communityData.contentTypes.wikis}
+                authorPubkey={manager.active?.pubkey || ''}
+                showAdvanced={showAdvancedRelays}
+              />
+            {/if}
+          </div>
+        {/if}
+      </div>
+    {/if}
 
-		<!-- Actions -->
-		<div class="modal-action">
-			<div class="flex justify-between w-full">
-				<div></div>
-				<div class="flex gap-2">
-					<form method="dialog">
-						<button class="btn">{m.create_community_modal_button_cancel()}</button>
-					</form>
+    <!-- Actions -->
+    <div class="modal-action">
+      <div class="flex w-full justify-between">
+        <div></div>
+        <div class="flex gap-2">
+          <form method="dialog">
+            <button class="btn">{m.create_community_modal_button_cancel()}</button>
+          </form>
 
-					{#if isOwner}
-						<button
-							class="btn btn-primary"
-							onclick={saveCommunity}
-							disabled={isPublishing}
-						>
-							{#if isPublishing}
-								<span class="loading loading-spinner loading-sm"></span>
-								{m.edit_community_modal_button_saving?.() || 'Saving...'}
-							{:else}
-								{m.edit_community_modal_button_save?.() || 'Save Changes'}
-							{/if}
-						</button>
-					{/if}
+          {#if isOwner}
+            <button class="btn btn-primary" onclick={saveCommunity} disabled={isPublishing}>
+              {#if isPublishing}
+                <span class="loading loading-sm loading-spinner"></span>
+                {m.edit_community_modal_button_saving?.() || 'Saving...'}
+              {:else}
+                {m.edit_community_modal_button_save?.() || 'Save Changes'}
+              {/if}
+            </button>
+          {/if}
 
-					{#if errors.publishing}
-						<div class="alert alert-error mt-4">
-							<span>{errors.publishing}</span>
-						</div>
-					{/if}
-				</div>
-			</div>
-		</div>
-	</div>
+          {#if errors.publishing}
+            <div class="mt-4 alert alert-error">
+              <span>{errors.publishing}</span>
+            </div>
+          {/if}
+        </div>
+      </div>
+    </div>
+  </div>
 </dialog>

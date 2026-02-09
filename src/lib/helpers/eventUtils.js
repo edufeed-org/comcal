@@ -10,7 +10,6 @@ import { getCalendarTitle, getCalendarEventImage } from 'applesauce-common/helpe
  * @returns {CalendarEvent}
  */
 export function getCalendarEventMetadata(event) {
-
   const tagMap = new Map();
   event.tags.forEach((/** @type {any[]} */ tag) => {
     const [key, ...values] = tag;
@@ -22,7 +21,6 @@ export function getCalendarEventMetadata(event) {
 
   const getTagValue = (/** @type {string} */ tagName) => tagMap.get(tagName)?.[0];
   const getTagValues = (/** @type {string} */ tagName) => tagMap.get(tagName) || [];
-
 
   // Convert timestamp strings to numbers with validation
   const startValue = getTagValue('start');
@@ -55,10 +53,10 @@ export function getCalendarEventMetadata(event) {
     pubkey: event.pubkey,
     kind: /** @type {import('$lib/types/calendar.js').CalendarEventKind} */ (event.kind),
     title: getCalendarTitle(event) || 'Untitled Event',
-    summary: event.content || getTagValue("summary") || getTagValue("description"),
+    summary: event.content || getTagValue('summary') || getTagValue('description'),
     image: getCalendarEventImage(event) || '',
-    startTimezone: getTagValue("start_tzid"),
-    endTimezone: getTagValue("end_tzid"),
+    startTimezone: getTagValue('start_tzid'),
+    endTimezone: getTagValue('end_tzid'),
     start,
     end,
     location: getTagValue('location'),
@@ -75,10 +73,10 @@ export function getCalendarEventMetadata(event) {
 }
 
 /**
-   * Parse address reference string into components
-   * @param {string} addressRef - Address reference like "31922:pubkey:d-tag"
-   * @returns {{kind: number, pubkey: string, dTag: string} | null}
-   */
+ * Parse address reference string into components
+ * @param {string} addressRef - Address reference like "31922:pubkey:d-tag"
+ * @returns {{kind: number, pubkey: string, dTag: string} | null}
+ */
 export function parseAddressReference(addressRef) {
   try {
     const parts = addressRef.split(':');

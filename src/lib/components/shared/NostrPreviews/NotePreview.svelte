@@ -4,12 +4,12 @@
 -->
 
 <script>
-	let { identifier } = $props();
+  let { identifier } = $props();
 
-	/** @type {string} */
-	let displayId = $derived(identifier.slice(0, 12) + '...');
+  /** @type {string} */
+  let displayId = $derived(identifier.slice(0, 12) + '...');
 </script>
 
-<span class="inline-flex items-center gap-1 badge badge-outline badge-info">
-	📝 {displayId}
+<span class="badge inline-flex items-center gap-1 badge-outline badge-info">
+  📝 {displayId}
 </span>

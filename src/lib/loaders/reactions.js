@@ -7,10 +7,10 @@ import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 
 /**
  * Application-level reactions loader
- * 
+ *
  * This loader fetches all NIP-25 reactions (kind 7) for any given event.
  * It automatically handles both regular events and addressable events.
- * 
+ *
  * @example
  * // Load reactions for an event
  * reactionsLoader(event, relays).subscribe(reaction => {
@@ -18,7 +18,7 @@ import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
  * });
  */
 export const reactionsLoader = createReactionsLoader(pool, {
-	useSeenRelays: true,
-	eventStore,
-	bufferTime: 1000
+  useSeenRelays: true,
+  eventStore,
+  bufferTime: 1000
 });

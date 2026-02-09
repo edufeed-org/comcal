@@ -1,37 +1,35 @@
-import { nip19 } from "nostr-tools";
-import { eventLoader, addressLoader } from "$lib/loaders";
-import { firstValueFrom } from "rxjs";
-import { getSeenRelays } from "applesauce-core/helpers";
-import { getCalendarEventStart } from "applesauce-common/helpers";
-import { eventStore } from "$lib/stores/nostr-infrastructure.svelte.js";
-
+import { nip19 } from 'nostr-tools';
+import { eventLoader, addressLoader } from '$lib/loaders';
+import { firstValueFrom } from 'rxjs';
+import { getSeenRelays } from 'applesauce-core/helpers';
+import { getCalendarEventStart } from 'applesauce-common/helpers';
+import { eventStore } from '$lib/stores/nostr-infrastructure.svelte.js';
 
 /**
  * Parse a Nostr 'a' tag value into an AddressPointer
  * Correctly handles d-tags that contain colons (like URLs)
- * 
+ *
  * This is a workaround for the broken getAddressPointerFromATag() from applesauce-core
  * which naively splits by ':' and breaks when identifiers contain colons.
- * 
+ *
  * @param {string[]|string} aTag - The 'a' tag array [tag, value, ...] or just the value string
  * @returns {{kind: number, pubkey: string, identifier: string}|null}
  */
 export function parseAddressPointerFromATag(aTag) {
-    const value = Array.isArray(aTag) ? aTag[1] : aTag;
-    if (!value) return null;
-    
-    const firstColon = value.indexOf(':');
-    const secondColon = value.indexOf(':', firstColon + 1);
-    
-    if (firstColon === -1 || secondColon === -1) return null;
-    
-    return {
-        kind: parseInt(value.substring(0, firstColon), 10),
-        pubkey: value.substring(firstColon + 1, secondColon),
-        identifier: value.substring(secondColon + 1)  // Everything after second colon
-    };
-}
+  const value = Array.isArray(aTag) ? aTag[1] : aTag;
+  if (!value) return null;
 
+  const firstColon = value.indexOf(':');
+  const secondColon = value.indexOf(':', firstColon + 1);
+
+  if (firstColon === -1 || secondColon === -1) return null;
+
+  return {
+    kind: parseInt(value.substring(0, firstColon), 10),
+    pubkey: value.substring(firstColon + 1, secondColon),
+    identifier: value.substring(secondColon + 1) // Everything after second colon
+  };
+}
 
 /**
  * Convert hex pubkey to npub format
@@ -42,7 +40,7 @@ export function hexToNpub(hex) {
   if (!hex || typeof hex !== 'string') return null;
   // Validate hex format (64 chars, hex only)
   if (!/^[0-9a-f]{64}$/i.test(hex)) return null;
-  
+
   try {
     return nip19.npubEncode(hex);
   } catch (error) {
@@ -59,7 +57,7 @@ export function hexToNpub(hex) {
 export function npubToHex(npub) {
   if (!npub || typeof npub !== 'string') return null;
   if (!npub.startsWith('npub1')) return null;
-  
+
   try {
     const decoded = nip19.decode(npub);
     if (decoded.type === 'npub') {
@@ -80,16 +78,15 @@ export function npubToHex(npub) {
  */
 export function normalizeToHex(identifier) {
   if (!identifier || typeof identifier !== 'string') return null;
-  
+
   // Already hex format
   if (/^[0-9a-f]{64}$/i.test(identifier)) {
     return identifier.toLowerCase();
   }
-  
+
   // Try decoding as npub
   return npubToHex(identifier);
 }
-
 
 /**
  * Extract NIP-19 identifiers from text
@@ -101,19 +98,19 @@ export function normalizeToHex(identifier) {
  */
 export function extractNostrIdentifiers(text) {
   if (!text || typeof text !== 'string') return [];
-  
+
   // Match both plain identifiers and nostr: URI scheme (NIP-21)
   // Captures optional "nostr:" prefix and the identifier
   const regex = /\b(?:nostr:)?(npub|nprofile|note|nevent|naddr)1[a-z0-9]+\b/gi;
   const matches = [];
   let match;
-  
+
   while ((match = regex.exec(text)) !== null) {
     const fullMatch = match[0]; // May include "nostr:" prefix
-    const identifier = fullMatch.startsWith('nostr:') 
+    const identifier = fullMatch.startsWith('nostr:')
       ? fullMatch.substring(6) // Remove "nostr:" prefix
       : fullMatch;
-    
+
     matches.push({
       identifier: identifier,
       type: match[1].toLowerCase(),
@@ -121,10 +118,9 @@ export function extractNostrIdentifiers(text) {
       end: match.index + match[0].length
     });
   }
-  
+
   return matches;
 }
-
 
 /**
  * Decode NIP-19 identifier and extract entity info
@@ -149,18 +145,18 @@ export function decodeNostrIdentifier(identifier) {
   }
 }
 
-
 /**
  * Check if identifier points to a calendar event
  * @param {ReturnType<typeof decodeNostrIdentifier>} decoded - Decoded identifier
  * @returns {boolean}
  */
 export function isCalendarEventIdentifier(decoded) {
-  return decoded.success && 
-         decoded.type === 'naddr' && 
-         (decoded.data.kind === 31922 || decoded.data.kind === 31923);
+  return (
+    decoded.success &&
+    decoded.type === 'naddr' &&
+    (decoded.data.kind === 31922 || decoded.data.kind === 31923)
+  );
 }
-
 
 /**
  * Check if identifier points to a calendar
@@ -168,11 +164,8 @@ export function isCalendarEventIdentifier(decoded) {
  * @returns {boolean}
  */
 export function isCalendarIdentifier(decoded) {
-  return decoded.success && 
-         decoded.type === 'naddr' && 
-         decoded.data.kind === 31924;
+  return decoded.success && decoded.type === 'naddr' && decoded.data.kind === 31924;
 }
-
 
 /**
  * Fetches a Nostr event using various identifier types
@@ -180,17 +173,14 @@ export function isCalendarIdentifier(decoded) {
  * @param identifier {string} - Can be an event ID, naddr, or other identifier
  * @returns Promise that resolves to the event or null if not found
  */
-export const fetchEventById = async (
-  identifier
-) => {
-
+export const fetchEventById = async (identifier) => {
   try {
     // Handle different identifier types using applesauce loaders
-    if (identifier.startsWith("naddr")) {
+    if (identifier.startsWith('naddr')) {
       // If it's an naddr, decode it to get the components
       try {
         const decoded = nip19.decode(identifier);
-        if (decoded.type === "naddr") {
+        if (decoded.type === 'naddr') {
           const data = decoded.data;
 
           // CHECK EVENTSTORE FIRST for optimistically added events
@@ -217,26 +207,26 @@ export const fetchEventById = async (
           const event = await firstValueFrom(event$, { defaultValue: null });
           return event || null;
         } else {
-          throw new Error("Invalid naddr format");
+          throw new Error('Invalid naddr format');
         }
       } catch (error) {
-        console.error("Error decoding naddr:", error);
+        console.error('Error decoding naddr:', error);
         return null;
       }
-    } else if (identifier.startsWith("note")) {
+    } else if (identifier.startsWith('note')) {
       // If it's a note ID
       try {
         const decoded = nip19.decode(identifier);
-        if (decoded.type === "note") {
+        if (decoded.type === 'note') {
           // Use eventLoader for event IDs
           const event$ = eventLoader({ id: decoded.data });
           const event = await firstValueFrom(event$, { defaultValue: null });
           return event || null;
         } else {
-          throw new Error("Invalid note format");
+          throw new Error('Invalid note format');
         }
       } catch (error) {
-        console.error("Error decoding note:", error);
+        console.error('Error decoding note:', error);
         return null;
       }
     } else {
@@ -246,16 +236,15 @@ export const fetchEventById = async (
         const event = await firstValueFrom(event$, { defaultValue: null });
         return event || null;
       } catch (error) {
-        console.error("Error fetching event by ID:", error);
+        console.error('Error fetching event by ID:', error);
         return null;
       }
     }
   } catch (error) {
-    console.error("Error fetching event:", error);
+    console.error('Error fetching event:', error);
     return null;
   }
 };
-
 
 /**
  * Fetches and categorizes calendar events from a main calendar event
@@ -263,9 +252,7 @@ export const fetchEventById = async (
  * @param {import('nostr-tools').NostrEvent} calendarEvent - The main calendar event (kind 31924)
  * @returns {Promise<{upcoming: import('nostr-tools').NostrEvent[], past: import('nostr-tools').NostrEvent[]}>} Object containing sorted upcoming and past events
  */
-export const fetchCalendarEvents = async (
-  calendarEvent
-) => {
+export const fetchCalendarEvents = async (calendarEvent) => {
   const now = Math.floor(Date.now() / 1000);
   /** @type {import('nostr-tools').NostrEvent[]} */
   const upcoming = [];
@@ -278,10 +265,10 @@ export const fetchCalendarEvents = async (
     return { upcoming, past };
   }
 
-  const eventRefs = calendarEvent.tags.filter((/** @type {string[]} */ tag) => tag[0] === "a");
+  const eventRefs = calendarEvent.tags.filter((/** @type {string[]} */ tag) => tag[0] === 'a');
   // could we also use merge from rxjs here?
   const fetchPromises = eventRefs.map(async (/** @type {string[]} */ tag) => {
-    const parts = tag[1].split(":");
+    const parts = tag[1].split(':');
     if (parts.length < 3) return null;
 
     const [kindStr, pubkey, dTag] = parts;
@@ -309,12 +296,12 @@ export const fetchCalendarEvents = async (
       }
 
       const startTime = parseInt(
-        event.tags.find((/** @type {string[]} */ t) => t[0] === "start")?.[1] || "0"
+        event.tags.find((/** @type {string[]} */ t) => t[0] === 'start')?.[1] || '0'
       );
 
       return { event, startTime };
     } catch (error) {
-      console.error("Error fetching calendar event:", error);
+      console.error('Error fetching calendar event:', error);
       return null;
     }
   });
@@ -341,19 +328,17 @@ export const fetchCalendarEvents = async (
    * @param {import('nostr-tools').NostrEvent} a
    * @param {import('nostr-tools').NostrEvent} b
    */
-  const sortAsc = (a, b) =>
-    (getCalendarEventStart(a) || 0) - (getCalendarEventStart(b) || 0);
+  const sortAsc = (a, b) => (getCalendarEventStart(a) || 0) - (getCalendarEventStart(b) || 0);
 
   /**
    * @param {import('nostr-tools').NostrEvent} a
    * @param {import('nostr-tools').NostrEvent} b
    */
-  const sortDesc = (a, b) =>
-    (getCalendarEventStart(b) || 0) - (getCalendarEventStart(a) || 0);
+  const sortDesc = (a, b) => (getCalendarEventStart(b) || 0) - (getCalendarEventStart(a) || 0);
 
   return {
     upcoming: upcoming.sort(sortAsc),
-    past: past.sort(sortDesc),
+    past: past.sort(sortDesc)
   };
 };
 
@@ -363,14 +348,9 @@ export const fetchCalendarEvents = async (
  * @param {import('nostr-tools').NostrEvent} calendarEvent - The calendar event to update
  * @param {string[]} deletedEventRefs - Array of deleted event coordinate strings to remove
  */
-async function removeDeletedEventsFromCalendar(
-  calendarEvent,
-  deletedEventRefs
-) {
+async function removeDeletedEventsFromCalendar(calendarEvent, deletedEventRefs) {
   try {
-    console.log(
-      `Removing ${deletedEventRefs.length} deleted events from calendar`
-    );
+    console.log(`Removing ${deletedEventRefs.length} deleted events from calendar`);
 
     // TODO: Implement calendar update functionality using existing publisher utilities
     // This would require integrating with the publisher.js utilities in the project
@@ -385,7 +365,7 @@ async function removeDeletedEventsFromCalendar(
     // 2. Use the existing publisher utilities to sign and publish
     // 3. Update the calendar in the EventStore
   } catch (error) {
-    console.error("Error updating calendar to remove deleted events:", error);
+    console.error('Error updating calendar to remove deleted events:', error);
   }
 }
 
@@ -404,7 +384,7 @@ async function checkForDeletionEvents(event) {
     console.log(`Checking deletion for event ${event.id} - skipping for now`);
     return false;
   } catch (error) {
-    console.error("Error checking for deletion events:", error);
+    console.error('Error checking for deletion events:', error);
     return false; // On error, assume not deleted
   }
 }
@@ -417,7 +397,7 @@ async function checkForDeletionEvents(event) {
 export const encodeEventToNaddr = (event, relays = []) => {
   try {
     // Extract d tag for the identifier
-    const dTag = event.tags.find((t) => t[0] === "d")?.[1] || "";
+    const dTag = event.tags.find((t) => t[0] === 'd')?.[1] || '';
 
     // Get relay hints from seen relays if not explicitly provided
     let relayHints = relays;
@@ -434,7 +414,7 @@ export const encodeEventToNaddr = (event, relays = []) => {
     const naddrData = {
       identifier: dTag,
       pubkey: event.pubkey,
-      kind: event.kind,
+      kind: event.kind
     };
 
     // Add relays if we have any
@@ -444,11 +424,10 @@ export const encodeEventToNaddr = (event, relays = []) => {
 
     return nip19.naddrEncode(naddrData);
   } catch (error) {
-    console.error("Error encoding event to naddr:", error);
-    return "";
+    console.error('Error encoding event to naddr:', error);
+    return '';
   }
 };
-
 
 /**
  * Generate a color based on the author's pubkey
@@ -457,7 +436,7 @@ export const encodeEventToNaddr = (event, relays = []) => {
  * 2. Calculate Hue: Int % 360
  * 3. Set Saturation: 90 for Hues 216-273, otherwise 80
  * 4. Set Brightness: 65 for Hues 32-212, otherwise 85
- * 
+ *
  * @param {string} pubkey - Hex public key
  * @returns {{ hue: number, saturation: number, lightness: number }} HSL color values
  */
@@ -465,15 +444,15 @@ export function generateAuthorColor(pubkey) {
   // Use first 8 hex characters to avoid BigInt complexity
   const hexSubset = pubkey.slice(0, 8);
   const int = parseInt(hexSubset, 16);
-  
+
   // Calculate hue (0-360)
   const hue = int % 360;
-  
+
   // Set saturation based on hue range
-  const saturation = (hue >= 216 && hue <= 273) ? 90 : 80;
-  
+  const saturation = hue >= 216 && hue <= 273 ? 90 : 80;
+
   // Set lightness (brightness) based on hue range
-  const lightness = (hue >= 32 && hue <= 212) ? 65 : 85;
-  
+  const lightness = hue >= 32 && hue <= 212 ? 65 : 85;
+
   return { hue, saturation, lightness };
 }

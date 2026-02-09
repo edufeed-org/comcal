@@ -1,109 +1,123 @@
 <script>
-	let { pubkey, showJoinButton = false } = $props();
+  let { pubkey, showJoinButton = false } = $props();
 
-	import * as m from '$lib/paraglide/messages';
-	import { getProfilePicture, getProfileContent } from 'applesauce-core/helpers';
-	import { useCommunityMembership } from '$lib/stores/joined-communities-list.svelte.js';
-	import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
-	import { useActiveUser } from '$lib/stores/accounts.svelte';
-	import BookmarkIcon from '$lib/components/icons/social/BookmarkIcon.svelte';
-	import { hexToNpub } from '$lib/helpers/nostrUtils';
-	import { joinCommunity, leaveCommunity } from '$lib/helpers/community';
-	import { showToast } from '$lib/helpers/toast';
-	import ImageWithFallback from './shared/ImageWithFallback.svelte';
+  import { resolve } from '$app/paths';
+  import * as m from '$lib/paraglide/messages';
+  import { getProfilePicture } from 'applesauce-core/helpers';
+  import { useCommunityMembership } from '$lib/stores/joined-communities-list.svelte.js';
+  import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
+  import { useActiveUser } from '$lib/stores/accounts.svelte';
+  import BookmarkIcon from '$lib/components/icons/social/BookmarkIcon.svelte';
+  import { hexToNpub } from '$lib/helpers/nostrUtils';
+  import { joinCommunity, leaveCommunity } from '$lib/helpers/community';
+  import { showToast } from '$lib/helpers/toast';
+  import ImageWithFallback from './shared/ImageWithFallback.svelte';
 
-	// Use the reusable user profile hook
-	const getProfile = useUserProfile(pubkey);
+  // Use the reusable user profile hook
+  const getProfile = useUserProfile(() => pubkey);
 
-	// Use the reusable community membership hook
-	const getJoined = useCommunityMembership(pubkey);
-	
-	// Get active user for authentication
-	const getActiveUser = useActiveUser();
-	const activeUser = $derived(getActiveUser());
+  // Use the reusable community membership hook
+  const getJoined = useCommunityMembership(() => pubkey);
 
-	let isJoining = $state(false);
+  // Get active user for authentication
+  const getActiveUser = useActiveUser();
+  const activeUser = $derived(getActiveUser());
 
-	async function handleJoinClick(/** @type {MouseEvent} */ e) {
-		e.preventDefault();
-		e.stopPropagation();
+  let isJoining = $state(false);
 
-		if (!activeUser) {
-			showToast(m.communikey_card_toast_login_required(), 'error');
-			return;
-		}
+  async function handleJoinClick(/** @type {MouseEvent} */ e) {
+    e.preventDefault();
+    e.stopPropagation();
 
-		if (isJoining) return;
+    if (!activeUser) {
+      showToast(m.communikey_card_toast_login_required(), 'error');
+      return;
+    }
 
-		isJoining = true;
-		try {
-			if (getJoined()) {
-				const result = await leaveCommunity(pubkey);
-				if (result.success) {
-					showToast(m.communikey_card_toast_left(), 'success');
-				} else {
-					showToast(result.error || m.communikey_card_toast_left_failed(), 'error');
-				}
-			} else {
-				const result = await joinCommunity(pubkey);
-				if (result.success) {
-					showToast(m.communikey_card_toast_joined(), 'success');
-				} else {
-					showToast(result.error || m.communikey_card_toast_joined_failed(), 'error');
-				}
-			}
-		} catch (error) {
-			console.error('Error toggling community membership:', error);
-			showToast(m.communikey_card_toast_error(), 'error');
-		} finally {
-			isJoining = false;
-		}
-	}
+    if (isJoining) return;
+
+    isJoining = true;
+    try {
+      if (getJoined()) {
+        const result = await leaveCommunity(pubkey);
+        if (result.success) {
+          showToast(m.communikey_card_toast_left(), 'success');
+        } else {
+          showToast(result.error || m.communikey_card_toast_left_failed(), 'error');
+        }
+      } else {
+        const result = await joinCommunity(pubkey);
+        if (result.success) {
+          showToast(m.communikey_card_toast_joined(), 'success');
+        } else {
+          showToast(result.error || m.communikey_card_toast_joined_failed(), 'error');
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling community membership:', error);
+      showToast(m.communikey_card_toast_error(), 'error');
+    } finally {
+      isJoining = false;
+    }
+  }
 </script>
 
-<a href={pubkey ? `/c/${hexToNpub(pubkey) || pubkey}` : '#'} class="card bg-base-100 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105 flex flex-col items-center gap-3 justify-center p-6 rounded-xl border {getJoined() ? 'border-emerald-500/30 bg-emerald-50/5 dark:bg-emerald-950/10' : 'border-base-200'} hover:border-primary/20 min-w-[240px]">
-	<div class="absolute top-3 right-3 z-10">
-		{#if getJoined()}
-			<div class="bg-emerald-500 shadow-sm border border-emerald-600/20 rounded-full w-6 h-6 flex items-center justify-center">
-				<BookmarkIcon class_="w-3 h-3 text-white" title={m.communikey_card_joined_badge()} />
-			</div>
-		{:else}
-			<!-- <div class="bg-base-200 text-base-content/70 text-xs font-medium px-2 py-1 rounded-md shadow-sm border border-base-300/50 hover:bg-base-300/50 transition-colors duration-200">
+<a
+  href={resolve(pubkey ? `/c/${hexToNpub(pubkey) || pubkey}` : '#')}
+  class="card flex transform cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border bg-base-100 p-6 shadow-md transition-all duration-300 hover:scale-105 hover:shadow-lg {getJoined()
+    ? 'border-emerald-500/30 bg-emerald-50/5 dark:bg-emerald-950/10'
+    : 'border-base-200'} min-w-[240px] hover:border-primary/20"
+>
+  <div class="absolute top-3 right-3 z-10">
+    {#if getJoined()}
+      <div
+        class="flex h-6 w-6 items-center justify-center rounded-full border border-emerald-600/20 bg-emerald-500 shadow-sm"
+      >
+        <BookmarkIcon class_="w-3 h-3 text-white" title={m.communikey_card_joined_badge()} />
+      </div>
+    {:else}
+      <!-- <div class="bg-base-200 text-base-content/70 text-xs font-medium px-2 py-1 rounded-md shadow-sm border border-base-300/50 hover:bg-base-300/50 transition-colors duration-200">
 				Join
 			</div> -->
-		{/if}
-	</div>
+    {/if}
+  </div>
 
-	<figure class="mb-3">
-		<ImageWithFallback
-			src={getProfilePicture(getProfile()) || `https://robohash.org/${pubkey}`}
-			alt={m.communikey_card_profile_alt()}
-			fallbackType="community"
-			class="rounded-full object-cover w-24 h-24 ring-2 ring-base-300 hover:ring-primary/50 transition-colors duration-300"
-		/>
-	</figure>
-	<div class="card-body items-center text-center p-0 w-full">
-		<h2 class="card-title text-xl font-semibold text-base-content hover:text-primary transition-colors duration-300 mb-2">
-			{getProfile()?.name || m.communikey_card_unknown_user()}
-		</h2>
-		<p class="text-sm text-base-content/70 w-full leading-relaxed relative" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%);" title={getProfile()?.about || m.communikey_card_no_bio()}>
-			{getProfile()?.about || m.communikey_card_no_bio()}
-		</p>
-		
-		{#if showJoinButton && activeUser}
-			<button
-				onclick={handleJoinClick}
-				disabled={isJoining}
-				class="btn btn-sm mt-3 w-full {getJoined() ? 'btn-outline' : 'btn-primary'}"
-			>
-				{#if isJoining}
-					<span class="loading loading-spinner loading-xs"></span>
-				{:else if getJoined()}
-					{m.communikey_card_button_leave()}
-				{:else}
-					{m.communikey_card_button_join()}
-				{/if}
-			</button>
-		{/if}
-	</div>
+  <figure class="mb-3">
+    <ImageWithFallback
+      src={getProfilePicture(getProfile()) || `https://robohash.org/${pubkey}`}
+      alt={m.communikey_card_profile_alt()}
+      fallbackType="community"
+      class="h-24 w-24 rounded-full object-cover ring-2 ring-base-300 transition-colors duration-300 hover:ring-primary/50"
+    />
+  </figure>
+  <div class="card-body w-full items-center p-0 text-center">
+    <h2
+      class="mb-2 card-title text-xl font-semibold text-base-content transition-colors duration-300 hover:text-primary"
+    >
+      {getProfile()?.name || m.communikey_card_unknown_user()}
+    </h2>
+    <p
+      class="relative w-full text-sm leading-relaxed text-base-content/70"
+      style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%);"
+      title={getProfile()?.about || m.communikey_card_no_bio()}
+    >
+      {getProfile()?.about || m.communikey_card_no_bio()}
+    </p>
+
+    {#if showJoinButton && activeUser}
+      <button
+        onclick={handleJoinClick}
+        disabled={isJoining}
+        class="btn mt-3 w-full btn-sm {getJoined() ? 'btn-outline' : 'btn-primary'}"
+      >
+        {#if isJoining}
+          <span class="loading loading-xs loading-spinner"></span>
+        {:else if getJoined()}
+          {m.communikey_card_button_leave()}
+        {:else}
+          {m.communikey_card_button_join()}
+        {/if}
+      </button>
+    {/if}
+  </div>
 </a>

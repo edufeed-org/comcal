@@ -14,8 +14,11 @@ import { env } from '$env/dynamic/private';
  * @returns {string[]}
  */
 function parseArray(value, defaultValue = []) {
-	if (!value) return defaultValue;
-	return value.split(',').map(s => s.trim()).filter(Boolean);
+  if (!value) return defaultValue;
+  return value
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 /**
@@ -25,9 +28,9 @@ function parseArray(value, defaultValue = []) {
  * @returns {number}
  */
 function parseInt(value, defaultValue) {
-	if (!value) return defaultValue;
-	const parsed = Number.parseInt(value);
-	return isNaN(parsed) ? defaultValue : parsed;
+  if (!value) return defaultValue;
+  const parsed = Number.parseInt(value);
+  return isNaN(parsed) ? defaultValue : parsed;
 }
 
 /**
@@ -37,8 +40,8 @@ function parseInt(value, defaultValue) {
  * @returns {boolean}
  */
 function parseBool(value, defaultValue) {
-	if (value === undefined || value === null || value === '') return defaultValue;
-	return value === 'true' || value === '1';
+  if (value === undefined || value === null || value === '') return defaultValue;
+  return value === 'true' || value === '1';
 }
 
 /**
@@ -48,12 +51,17 @@ function parseBool(value, defaultValue) {
  * @returns {'light' | 'dark' | 'stil' | 'stil-dark'}
  */
 function parseTheme(value, defaultValue) {
-	if (!value) return defaultValue;
-	const normalized = value.toLowerCase();
-	if (normalized === 'light' || normalized === 'dark' || normalized === 'stil' || normalized === 'stil-dark') {
-		return normalized;
-	}
-	return defaultValue;
+  if (!value) return defaultValue;
+  const normalized = value.toLowerCase();
+  if (
+    normalized === 'light' ||
+    normalized === 'dark' ||
+    normalized === 'stil' ||
+    normalized === 'stil-dark'
+  ) {
+    return normalized;
+  }
+  return defaultValue;
 }
 
 /**
@@ -61,132 +69,151 @@ function parseTheme(value, defaultValue) {
  * Returns public configuration that can be safely exposed to the browser
  */
 export function GET() {
-	const config = {
-		// App branding
-		appName: env.APP_NAME || 'ComCal',
-		appLogo: env.APP_LOGO || 'https://blossom.edufeed.org/f22e1410f09a9130757704b6dcd4c34774d2926b9cfd6cf2e4c4675c64d4333b.webp',
-		gitRepo: env.APP_GIT_REPO || 'https://github.com/edufeed-org/comcal',
+  const config = {
+    // App branding
+    appName: env.APP_NAME || 'ComCal',
+    appLogo:
+      env.APP_LOGO ||
+      'https://blossom.edufeed.org/f22e1410f09a9130757704b6dcd4c34774d2926b9cfd6cf2e4c4675c64d4333b.webp',
+    gitRepo: env.APP_GIT_REPO || 'https://github.com/edufeed-org/comcal',
 
-		// Relays - Fallback for users without kind 10002
-		fallbackRelays: parseArray(env.FALLBACK_RELAYS),
+    // Relays - Fallback for users without kind 10002
+    fallbackRelays: parseArray(env.FALLBACK_RELAYS),
 
-		// App-specific relays (content goes here IN ADDITION to user's outbox)
-		calendarRelays: parseArray(env.CALENDAR_RELAYS),
-		communikeyRelays: parseArray(env.COMMUNIKEY_RELAYS),
-		ambRelays: parseArray(env.AMB_RELAYS),
-		longformContentRelays: parseArray(env.LONGFORM_CONTENT_RELAY),
+    // App-specific relays (content goes here IN ADDITION to user's outbox)
+    calendarRelays: parseArray(env.CALENDAR_RELAYS),
+    communikeyRelays: parseArray(env.COMMUNIKEY_RELAYS),
+    ambRelays: parseArray(env.AMB_RELAYS),
+    longformContentRelays: parseArray(env.LONGFORM_CONTENT_RELAY),
 
-		// Gated mode configuration
-		gatedMode: {
-			default: parseBool(env.GATED_MODE_DEFAULT, false),
-			force: parseBool(env.GATED_MODE_FORCE, false)
-		},
+    // Gated mode configuration
+    gatedMode: {
+      default: parseBool(env.GATED_MODE_DEFAULT, false),
+      force: parseBool(env.GATED_MODE_FORCE, false)
+    },
 
-		// NIP-65 relay list discovery
-		relayListLookupRelays: parseArray(env.RELAY_LIST_LOOKUP_RELAYS),
+    // NIP-65 relay list discovery
+    relayListLookupRelays: parseArray(env.RELAY_LIST_LOOKUP_RELAYS),
 
-		// Profile indexer relays for bulk profile lookups
-		indexerRelays: parseArray(env.INDEXER_RELAYS),
+    // Profile indexer relays for bulk profile lookups
+    indexerRelays: parseArray(env.INDEXER_RELAYS),
 
-		// Default Blossom servers
-		defaultBlossomServers: parseArray(env.DEFAULT_BLOSSOM_SERVERS, [
-			'https://blossom.primal.net',
-			'https://cdn.satellite.earth'
-		]),
+    // Default Blossom servers
+    defaultBlossomServers: parseArray(env.DEFAULT_BLOSSOM_SERVERS, [
+      'https://blossom.primal.net',
+      'https://cdn.satellite.earth'
+    ]),
 
-		// Calendar
-		calendar: {
-			weekStartDay: parseInt(env.CALENDAR_WEEK_START_DAY, 1),
-			locale: env.CALENDAR_LOCALE || 'de-DE',
-			timeFormat: env.CALENDAR_TIME_FORMAT || '24h',
-		},
+    // Calendar
+    calendar: {
+      weekStartDay: parseInt(env.CALENDAR_WEEK_START_DAY, 1),
+      locale: env.CALENDAR_LOCALE || 'de-DE',
+      timeFormat: env.CALENDAR_TIME_FORMAT || '24h'
+    },
 
-		// Signup
-		signup: {
-			suggestedUsers: parseArray(env.SIGNUP_SUGGESTED_USERS, [
-				'npub1f7jar3qnu269uyx5p0e4v24hqxjnxysxudvujza2ur5ehltvdeqsly2fx9',
-				'npub1r30l8j4vmppvq8w23umcyvd3vct4zmfpfkn4c7h2h057rmlfcrmq9xt9ma',
-				'npub1tgftg8kptdrxxg0g3sm3hckuglv3j0uu3way4vylc5qyt0f44m0s3gun6e'
-			])
-		},
+    // Signup
+    signup: {
+      suggestedUsers: parseArray(env.SIGNUP_SUGGESTED_USERS, [
+        'npub1f7jar3qnu269uyx5p0e4v24hqxjnxysxudvujza2ur5ehltvdeqsly2fx9',
+        'npub1r30l8j4vmppvq8w23umcyvd3vct4zmfpfkn4c7h2h057rmlfcrmq9xt9ma',
+        'npub1tgftg8kptdrxxg0g3sm3hckuglv3j0uu3way4vylc5qyt0f44m0s3gun6e'
+      ])
+    },
 
-		// Blossom (media uploads)
-		blossom: {
-			maxFileSize: parseInt(env.BLOSSOM_MAX_FILE_SIZE, 5 * 1024 * 1024), // 5MB default
-		},
+    // Blossom (media uploads)
+    blossom: {
+      maxFileSize: parseInt(env.BLOSSOM_MAX_FILE_SIZE, 5 * 1024 * 1024) // 5MB default
+    },
 
-		// Geocoding (public settings only - API key stays on server)
-		geocoding: {
-			// Note: API key is NOT exposed here - it stays server-side
-			cacheDurationDays: parseInt(env.GEOCODING_CACHE_DURATION_DAYS, 30),
-			validation: {
-				minAddressLength: parseInt(env.GEOCODING_MIN_ADDRESS_LENGTH, 10),
-				minConfidenceScore: parseInt(env.GEOCODING_MIN_CONFIDENCE_SCORE, 5),
-				requireAddressComponents: parseBool(env.GEOCODING_REQUIRE_ADDRESS_COMPONENTS, false),
-				acceptedComponentTypes: parseArray(env.GEOCODING_ACCEPTED_COMPONENT_TYPES, [
-					'road', 'house', 'building', 'retail',
-					'commercial', 'industrial', 'residential',
-					'address', 'postcode', 'street', 'neighbourhood',
-					'city', 'town', 'village', 'municipality',
-					'county', 'state', 'country',
-					'amenity', 'venue', 'place', 'locality', 'university'
-				])
-			}
-		},
+    // Geocoding (public settings only - API key stays on server)
+    geocoding: {
+      // Note: API key is NOT exposed here - it stays server-side
+      cacheDurationDays: parseInt(env.GEOCODING_CACHE_DURATION_DAYS, 30),
+      validation: {
+        minAddressLength: parseInt(env.GEOCODING_MIN_ADDRESS_LENGTH, 10),
+        minConfidenceScore: parseInt(env.GEOCODING_MIN_CONFIDENCE_SCORE, 5),
+        requireAddressComponents: parseBool(env.GEOCODING_REQUIRE_ADDRESS_COMPONENTS, false),
+        acceptedComponentTypes: parseArray(env.GEOCODING_ACCEPTED_COMPONENT_TYPES, [
+          'road',
+          'house',
+          'building',
+          'retail',
+          'commercial',
+          'industrial',
+          'residential',
+          'address',
+          'postcode',
+          'street',
+          'neighbourhood',
+          'city',
+          'town',
+          'village',
+          'municipality',
+          'county',
+          'state',
+          'country',
+          'amenity',
+          'venue',
+          'place',
+          'locality',
+          'university'
+        ])
+      }
+    },
 
-	// Imprint
-	imprint: {
-		enabled: parseBool(env.IMPRINT_ENABLED, true),
-		organization: env.IMPRINT_ORGANIZATION || 'ComCal GbR',
-		address: {
-			street: env.IMPRINT_ADDRESS_STREET || '',
-			postalCode: env.IMPRINT_ADDRESS_POSTAL_CODE || '',
-			city: env.IMPRINT_ADDRESS_CITY || '',
-			country: env.IMPRINT_ADDRESS_COUNTRY || ''
-		},
-		contact: {
-			email: env.IMPRINT_CONTACT_EMAIL || 'mail@comcal.net',
-			phone: env.IMPRINT_CONTACT_PHONE || ''
-		},
-		representative: env.IMPRINT_REPRESENTATIVE || '',
-		registrationNumber: env.IMPRINT_REGISTRATION_NUMBER || '',
-		vatId: env.IMPRINT_VAT_ID || '',
-		responsibleForContent: env.IMPRINT_RESPONSIBLE_FOR_CONTENT || '',
-		funding: {
-			image: env.IMPRINT_FUNDING_IMAGE || '/BMBFSFJ.png',
-			text: env.IMPRINT_FUNDING_TEXT || 'Förderkennzeichen: 01PZ24007'
-		}
-	},
+    // Imprint
+    imprint: {
+      enabled: parseBool(env.IMPRINT_ENABLED, true),
+      organization: env.IMPRINT_ORGANIZATION || 'ComCal GbR',
+      address: {
+        street: env.IMPRINT_ADDRESS_STREET || '',
+        postalCode: env.IMPRINT_ADDRESS_POSTAL_CODE || '',
+        city: env.IMPRINT_ADDRESS_CITY || '',
+        country: env.IMPRINT_ADDRESS_COUNTRY || ''
+      },
+      contact: {
+        email: env.IMPRINT_CONTACT_EMAIL || 'mail@comcal.net',
+        phone: env.IMPRINT_CONTACT_PHONE || ''
+      },
+      representative: env.IMPRINT_REPRESENTATIVE || '',
+      registrationNumber: env.IMPRINT_REGISTRATION_NUMBER || '',
+      vatId: env.IMPRINT_VAT_ID || '',
+      responsibleForContent: env.IMPRINT_RESPONSIBLE_FOR_CONTENT || '',
+      funding: {
+        image: env.IMPRINT_FUNDING_IMAGE || '/BMBFSFJ.png',
+        text: env.IMPRINT_FUNDING_TEXT || 'Förderkennzeichen: 01PZ24007'
+      }
+    },
 
-	// Footer
-	footer: {
-		fundingText: env.FOOTER_FUNDING_TEXT || 'gefördert vom BMBFSFJ (FKZ01PZ24007)'
-	},
+    // Footer
+    footer: {
+      fundingText: env.FOOTER_FUNDING_TEXT || 'gefördert vom BMBFSFJ (FKZ01PZ24007)'
+    },
 
-		// Educational content
-		educational: {
-			searchDebounceMs: parseInt(env.EDUCATIONAL_SEARCH_DEBOUNCE_MS, 300),
-			vocabularies: {
-				learningResourceType: env.EDUCATIONAL_VOCAB_LEARNING_RESOURCE_TYPE || 'hcrt',
-				about: env.EDUCATIONAL_VOCAB_ABOUT || 'hochschulfaechersystematik',
-				audience: env.EDUCATIONAL_VOCAB_AUDIENCE || 'intendedEndUserRole'
-			}
-		},
+    // Educational content
+    educational: {
+      searchDebounceMs: parseInt(env.EDUCATIONAL_SEARCH_DEBOUNCE_MS, 300),
+      vocabularies: {
+        learningResourceType: env.EDUCATIONAL_VOCAB_LEARNING_RESOURCE_TYPE || 'hcrt',
+        about: env.EDUCATIONAL_VOCAB_ABOUT || 'hochschulfaechersystematik',
+        audience: env.EDUCATIONAL_VOCAB_AUDIENCE || 'intendedEndUserRole'
+      }
+    },
 
-		// UI settings
-		ui: {
-			defaultLightTheme: parseTheme(env.THEME_DEFAULT_LIGHT, 'light'),
-			defaultDarkTheme: parseTheme(env.THEME_DEFAULT_DARK, 'dark')
-		},
+    // UI settings
+    ui: {
+      defaultLightTheme: parseTheme(env.THEME_DEFAULT_LIGHT, 'light'),
+      defaultDarkTheme: parseTheme(env.THEME_DEFAULT_DARK, 'dark')
+    },
 
-		// Favicon configuration (allows whitelabel override)
-		favicon: {
-			ico: env.FAVICON_ICO || '/favicon.ico',
-			svg: env.FAVICON_SVG || '/favicon.svg',
-			png32: env.FAVICON_32 || '/favicon-32x32.png',
-			png16: env.FAVICON_16 || '/favicon-16x16.png'
-		}
-	};
+    // Favicon configuration (allows whitelabel override)
+    favicon: {
+      ico: env.FAVICON_ICO || '/favicon.ico',
+      svg: env.FAVICON_SVG || '/favicon.svg',
+      png32: env.FAVICON_32 || '/favicon-32x32.png',
+      png16: env.FAVICON_16 || '/favicon-16x16.png'
+    }
+  };
 
-	return json(config);
+  return json(config);
 }

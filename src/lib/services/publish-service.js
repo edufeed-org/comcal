@@ -21,18 +21,16 @@ import { isWarmAndAuthenticated } from './relay-warming-service.svelte.js';
  * @returns {Promise<boolean>} Whether auth succeeded
  */
 async function authenticateRelay(relay, signer, timeout = 3000) {
-	try {
-		await Promise.race([
-			relay.authenticate(signer),
-			new Promise((_, reject) =>
-				setTimeout(() => reject(new Error('Auth timeout')), timeout)
-			)
-		]);
-		return true;
-	} catch {
-		// Auth not required or timed out - continue anyway
-		return false;
-	}
+  try {
+    await Promise.race([
+      relay.authenticate(signer),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), timeout))
+    ]);
+    return true;
+  } catch {
+    // Auth not required or timed out - continue anyway
+    return false;
+  }
 }
 
 /**
@@ -56,8 +54,8 @@ const statusListeners = new Set();
  * @returns {() => void} Unsubscribe function
  */
 export function subscribeToPublishStatus(callback) {
-	statusListeners.add(callback);
-	return () => statusListeners.delete(callback);
+  statusListeners.add(callback);
+  return () => statusListeners.delete(callback);
 }
 
 /**
@@ -66,7 +64,7 @@ export function subscribeToPublishStatus(callback) {
  * @returns {PublishStatus | undefined}
  */
 export function getPublishStatus(eventId) {
-	return publishStatusMap.get(eventId);
+  return publishStatusMap.get(eventId);
 }
 
 /**
@@ -74,15 +72,15 @@ export function getPublishStatus(eventId) {
  * @param {PublishStatus} status
  */
 function notifyStatusUpdate(status) {
-	publishStatusMap.set(status.eventId, status);
-	statusListeners.forEach((cb) => cb(status));
+  publishStatusMap.set(status.eventId, status);
+  statusListeners.forEach((cb) => cb(status));
 
-	// Auto-cleanup after 10 seconds for completed statuses
-	if (status.status === 'success' || status.status === 'failed') {
-		setTimeout(() => {
-			publishStatusMap.delete(status.eventId);
-		}, 10000);
-	}
+  // Auto-cleanup after 10 seconds for completed statuses
+  if (status.status === 'success' || status.status === 'failed') {
+    setTimeout(() => {
+      publishStatusMap.delete(status.eventId);
+    }, 10000);
+  }
 }
 
 /**
@@ -97,66 +95,64 @@ function notifyStatusUpdate(status) {
  * @returns {Promise<{success: boolean, relays: string[], successCount: number}>}
  */
 export async function publishEvent(signedEvent, taggedPubkeys = [], opts = {}) {
-	// Reduced timeout from 15s to 5s - warm connections should be fast
-	const { timeout = 5000, communityEvent = null, additionalRelays = [] } = opts;
-	const relaySet = new Set();
+  // Reduced timeout from 15s to 5s - warm connections should be fast
+  const { timeout = 5000, communityEvent = null, additionalRelays = [] } = opts;
+  const relaySet = new Set();
 
-	// 1. Outbox model: author's write relays + tagged users' read relays
-	const outboxRelays = await getPublishRelays(signedEvent.pubkey, taggedPubkeys);
-	outboxRelays.forEach((r) => relaySet.add(r));
+  // 1. Outbox model: author's write relays + tagged users' read relays
+  const outboxRelays = await getPublishRelays(signedEvent.pubkey, taggedPubkeys);
+  outboxRelays.forEach((r) => relaySet.add(r));
 
-	// 2. App-specific relay for content type
-	const category = kindToAppRelayCategory(signedEvent.kind);
-	if (category) {
-		getAppRelaysForCategory(category).forEach((r) => relaySet.add(r));
-	}
+  // 2. App-specific relay for content type
+  const category = kindToAppRelayCategory(signedEvent.kind);
+  if (category) {
+    getAppRelaysForCategory(category).forEach((r) => relaySet.add(r));
+  }
 
-	// 3. If community-targeted, add community's relays
-	if (communityEvent) {
-		// Add communikey app relay (for discoverability)
-		getAppRelaysForCategory('communikey').forEach((r) => relaySet.add(r));
+  // 3. If community-targeted, add community's relays
+  if (communityEvent) {
+    // Add communikey app relay (for discoverability)
+    getAppRelaysForCategory('communikey').forEach((r) => relaySet.add(r));
 
-		// Add community's relays for this content type
-		getRelaysForKind(communityEvent, signedEvent.kind).forEach((r) => relaySet.add(r));
+    // Add community's relays for this content type
+    getRelaysForKind(communityEvent, signedEvent.kind).forEach((r) => relaySet.add(r));
 
-		// Add community's global relays
-		getCommunityGlobalRelays(communityEvent).forEach((r) => relaySet.add(r));
-	}
+    // Add community's global relays
+    getCommunityGlobalRelays(communityEvent).forEach((r) => relaySet.add(r));
+  }
 
-	// 4. Additional relays (explicit)
-	additionalRelays.forEach((r) => relaySet.add(r));
+  // 4. Additional relays (explicit)
+  additionalRelays.forEach((r) => relaySet.add(r));
 
-	const publishRelays = Array.from(relaySet);
+  const publishRelays = Array.from(relaySet);
 
-	// Publish to all calculated relays with timeout
-	const publishPromises = publishRelays.map(async (relayUrl) => {
-		try {
-			const relay = pool.relay(relayUrl);
+  // Publish to all calculated relays with timeout
+  const publishPromises = publishRelays.map(async (relayUrl) => {
+    try {
+      const relay = pool.relay(relayUrl);
 
-			// Authenticate if not already warm+authenticated (with 3s timeout)
-			if (!isWarmAndAuthenticated(relayUrl) && manager.active?.signer) {
-				await authenticateRelay(relay, manager.active.signer, 3000);
-			}
+      // Authenticate if not already warm+authenticated (with 3s timeout)
+      if (!isWarmAndAuthenticated(relayUrl) && manager.active?.signer) {
+        await authenticateRelay(relay, manager.active.signer, 3000);
+      }
 
-			await relay.publish(signedEvent, { timeout });
-			return { relay: relayUrl, success: true };
-		} catch (err) {
-			console.warn(`Failed to publish to ${relayUrl}:`, err);
-			return { relay: relayUrl, success: false, error: err };
-		}
-	});
+      await relay.publish(signedEvent, { timeout });
+      return { relay: relayUrl, success: true };
+    } catch (err) {
+      console.warn(`Failed to publish to ${relayUrl}:`, err);
+      return { relay: relayUrl, success: false, error: err };
+    }
+  });
 
-	const results = await Promise.allSettled(publishPromises);
-	const successCount = results.filter(
-		(r) => r.status === 'fulfilled' && r.value.success
-	).length;
+  const results = await Promise.allSettled(publishPromises);
+  const successCount = results.filter((r) => r.status === 'fulfilled' && r.value.success).length;
 
-	return {
-		success: successCount > 0,
-		relays: publishRelays,
-		successCount,
-		results: results.map((r) => (r.status === 'fulfilled' ? r.value : { success: false }))
-	};
+  return {
+    success: successCount > 0,
+    relays: publishRelays,
+    successCount,
+    results: results.map((r) => (r.status === 'fulfilled' ? r.value : { success: false }))
+  };
 }
 
 /**
@@ -169,14 +165,14 @@ export async function publishEvent(signedEvent, taggedPubkeys = [], opts = {}) {
  * @param {Object} opts - Options passed to publishEvent
  */
 export function publishEventInBackground(signedEvent, taggedPubkeys = [], onComplete, opts = {}) {
-	publishEvent(signedEvent, taggedPubkeys, opts)
-		.then((result) => {
-			if (onComplete) onComplete(result);
-		})
-		.catch((error) => {
-			console.error('Background publish failed:', error);
-			if (onComplete) onComplete({ success: false, relays: [], successCount: 0, error });
-		});
+  publishEvent(signedEvent, taggedPubkeys, opts)
+    .then((result) => {
+      if (onComplete) onComplete(result);
+    })
+    .catch((error) => {
+      console.error('Background publish failed:', error);
+      if (onComplete) onComplete({ success: false, relays: [], successCount: 0, error });
+    });
 }
 
 /**
@@ -193,98 +189,98 @@ export function publishEventInBackground(signedEvent, taggedPubkeys = [], onComp
  * @returns {void} Returns immediately after adding to EventStore
  */
 export function publishEventOptimistic(signedEvent, taggedPubkeys = [], opts = {}) {
-	const { timeout = 5000, communityEvent = null, additionalRelays = [], onStatusChange } = opts;
+  const { timeout = 5000, communityEvent = null, additionalRelays = [], onStatusChange } = opts;
 
-	// 1. Immediately add to EventStore for instant UI update
-	eventStore.add(signedEvent);
+  // 1. Immediately add to EventStore for instant UI update
+  eventStore.add(signedEvent);
 
-	// 2. Initialize status
-	const status = {
-		eventId: signedEvent.id,
-		status: /** @type {'pending' | 'publishing' | 'success' | 'failed'} */ ('pending'),
-		successCount: 0,
-		totalRelays: 0
-	};
-	notifyStatusUpdate(status);
-	onStatusChange?.(status);
+  // 2. Initialize status
+  const status = {
+    eventId: signedEvent.id,
+    status: /** @type {'pending' | 'publishing' | 'success' | 'failed'} */ ('pending'),
+    successCount: 0,
+    totalRelays: 0
+  };
+  notifyStatusUpdate(status);
+  onStatusChange?.(status);
 
-	// 3. Calculate relays and publish in background
-	(async () => {
-		const relaySet = new Set();
+  // 3. Calculate relays and publish in background
+  (async () => {
+    const relaySet = new Set();
 
-		// Outbox model: author's write relays + tagged users' read relays
-		const outboxRelays = await getPublishRelays(signedEvent.pubkey, taggedPubkeys);
-		outboxRelays.forEach((r) => relaySet.add(r));
+    // Outbox model: author's write relays + tagged users' read relays
+    const outboxRelays = await getPublishRelays(signedEvent.pubkey, taggedPubkeys);
+    outboxRelays.forEach((r) => relaySet.add(r));
 
-		// App-specific relay for content type
-		const category = kindToAppRelayCategory(signedEvent.kind);
-		if (category) {
-			getAppRelaysForCategory(category).forEach((r) => relaySet.add(r));
-		}
+    // App-specific relay for content type
+    const category = kindToAppRelayCategory(signedEvent.kind);
+    if (category) {
+      getAppRelaysForCategory(category).forEach((r) => relaySet.add(r));
+    }
 
-		// Community relays if community-targeted
-		if (communityEvent) {
-			getAppRelaysForCategory('communikey').forEach((r) => relaySet.add(r));
-			getRelaysForKind(communityEvent, signedEvent.kind).forEach((r) => relaySet.add(r));
-			getCommunityGlobalRelays(communityEvent).forEach((r) => relaySet.add(r));
-		}
+    // Community relays if community-targeted
+    if (communityEvent) {
+      getAppRelaysForCategory('communikey').forEach((r) => relaySet.add(r));
+      getRelaysForKind(communityEvent, signedEvent.kind).forEach((r) => relaySet.add(r));
+      getCommunityGlobalRelays(communityEvent).forEach((r) => relaySet.add(r));
+    }
 
-		// Additional relays
-		additionalRelays.forEach((r) => relaySet.add(r));
+    // Additional relays
+    additionalRelays.forEach((r) => relaySet.add(r));
 
-		const publishRelays = Array.from(relaySet);
-		status.totalRelays = publishRelays.length;
-		status.status = 'publishing';
-		notifyStatusUpdate({ ...status });
-		onStatusChange?.({ ...status });
+    const publishRelays = Array.from(relaySet);
+    status.totalRelays = publishRelays.length;
+    status.status = 'publishing';
+    notifyStatusUpdate({ ...status });
+    onStatusChange?.({ ...status });
 
-		let firstSuccess = false;
+    let firstSuccess = false;
 
-		// Publish to all relays, update status as each completes
-		const publishPromises = publishRelays.map(async (relayUrl) => {
-			try {
-				const relay = pool.relay(relayUrl);
+    // Publish to all relays, update status as each completes
+    const publishPromises = publishRelays.map(async (relayUrl) => {
+      try {
+        const relay = pool.relay(relayUrl);
 
-				// Authenticate if not already warm+authenticated (with 3s timeout)
-				if (!isWarmAndAuthenticated(relayUrl) && manager.active?.signer) {
-					await authenticateRelay(relay, manager.active.signer, 3000);
-				}
+        // Authenticate if not already warm+authenticated (with 3s timeout)
+        if (!isWarmAndAuthenticated(relayUrl) && manager.active?.signer) {
+          await authenticateRelay(relay, manager.active.signer, 3000);
+        }
 
-				await relay.publish(signedEvent, { timeout });
+        await relay.publish(signedEvent, { timeout });
 
-				// Update success count
-				status.successCount++;
+        // Update success count
+        status.successCount++;
 
-				// Mark as success on first successful publish
-				if (!firstSuccess) {
-					firstSuccess = true;
-					status.status = 'success';
-				}
+        // Mark as success on first successful publish
+        if (!firstSuccess) {
+          firstSuccess = true;
+          status.status = 'success';
+        }
 
-				notifyStatusUpdate({ ...status });
-				onStatusChange?.({ ...status });
+        notifyStatusUpdate({ ...status });
+        onStatusChange?.({ ...status });
 
-				return { relay: relayUrl, success: true };
-			} catch (err) {
-				console.warn(`Failed to publish to ${relayUrl}:`, err);
-				return { relay: relayUrl, success: false, error: err };
-			}
-		});
+        return { relay: relayUrl, success: true };
+      } catch (err) {
+        console.warn(`Failed to publish to ${relayUrl}:`, err);
+        return { relay: relayUrl, success: false, error: err };
+      }
+    });
 
-		// Wait for all to complete
-		await Promise.allSettled(publishPromises);
+    // Wait for all to complete
+    await Promise.allSettled(publishPromises);
 
-		// If no relays succeeded, mark as failed and remove from EventStore
-		if (status.successCount === 0) {
-			status.status = 'failed';
-			status.error = 'Failed to publish to any relay';
-			notifyStatusUpdate({ ...status });
-			onStatusChange?.({ ...status });
+    // If no relays succeeded, mark as failed and remove from EventStore
+    if (status.successCount === 0) {
+      status.status = 'failed';
+      status.error = 'Failed to publish to any relay';
+      notifyStatusUpdate({ ...status });
+      onStatusChange?.({ ...status });
 
-			// Remove optimistically added event since publish failed completely
-			eventStore.remove(signedEvent);
-		}
-	})();
+      // Remove optimistically added event since publish failed completely
+      eventStore.remove(signedEvent);
+    }
+  })();
 }
 
 /**
@@ -293,12 +289,12 @@ export function publishEventOptimistic(signedEvent, taggedPubkeys = [], opts = {
  * @returns {Promise<string[][]>} Array of p tags with relay hints
  */
 export async function buildPTagsWithHints(recipientPubkeys) {
-	return Promise.all(
-		recipientPubkeys.map(async (pubkey) => {
-			const relayHint = await getPrimaryWriteRelay(pubkey);
-			return ['p', pubkey, relayHint];
-		})
-	);
+  return Promise.all(
+    recipientPubkeys.map(async (pubkey) => {
+      const relayHint = await getPrimaryWriteRelay(pubkey);
+      return ['p', pubkey, relayHint];
+    })
+  );
 }
 
 /**
@@ -308,8 +304,8 @@ export async function buildPTagsWithHints(recipientPubkeys) {
  * @returns {Promise<string[]>} e tag with relay hint
  */
 export async function buildETagWithHint(eventId, authorPubkey) {
-	const relayHint = await getPrimaryWriteRelay(authorPubkey);
-	return ['e', eventId, relayHint];
+  const relayHint = await getPrimaryWriteRelay(authorPubkey);
+  return ['e', eventId, relayHint];
 }
 
 /**
@@ -318,12 +314,12 @@ export async function buildETagWithHint(eventId, authorPubkey) {
  * @returns {Promise<string[]>} a tag with relay hint
  */
 export async function buildATagWithHint(address) {
-	// Extract pubkey from address (format: "kind:pubkey:identifier")
-	const parts = address.split(':');
-	if (parts.length >= 2) {
-		const pubkey = parts[1];
-		const relayHint = await getPrimaryWriteRelay(pubkey);
-		return ['a', address, relayHint];
-	}
-	return ['a', address];
+  // Extract pubkey from address (format: "kind:pubkey:identifier")
+  const parts = address.split(':');
+  if (parts.length >= 2) {
+    const pubkey = parts[1];
+    const relayHint = await getPrimaryWriteRelay(pubkey);
+    return ['a', address, relayHint];
+  }
+  return ['a', address];
 }

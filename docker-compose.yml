@@ -5,39 +5,39 @@ services:
       dockerfile: Dockerfile
     container_name: comcal
     restart: unless-stopped
-    
+
     environment:
       # Required
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=${PORT:-3000}
       - ORIGIN=${ORIGIN}
-      
+
       # App Branding
       - APP_NAME=${APP_NAME:-ComCal}
       - APP_LOGO=${APP_LOGO}
       - APP_GIT_REPO=${APP_GIT_REPO}
-      
+
       # Theme Configuration
       - THEME_DEFAULT_LIGHT=${THEME_DEFAULT_LIGHT:-light}
       - THEME_DEFAULT_DARK=${THEME_DEFAULT_DARK:-dark}
-      
+
       # Relays
       - RELAYS=${RELAYS}
       - FALLBACK_RELAYS=${FALLBACK_RELAYS}
       - AMB_RELAYS=${AMB_RELAYS}
-      
+
       # Calendar
       - CALENDAR_WEEK_START_DAY=${CALENDAR_WEEK_START_DAY:-1}
       - CALENDAR_LOCALE=${CALENDAR_LOCALE:-de-DE}
       - CALENDAR_TIME_FORMAT=${CALENDAR_TIME_FORMAT:-24h}
-      
+
       # Signup
       - SIGNUP_SUGGESTED_USERS=${SIGNUP_SUGGESTED_USERS}
-      
+
       # Blossom
       - BLOSSOM_UPLOAD_ENDPOINT=${BLOSSOM_UPLOAD_ENDPOINT}
       - BLOSSOM_MAX_FILE_SIZE=${BLOSSOM_MAX_FILE_SIZE:-5242880}
-      
+
       # Geocoding (SECRET - keep secure!)
       - GEOCODING_API_KEY=${GEOCODING_API_KEY}
       - GEOCODING_CACHE_DURATION_DAYS=${GEOCODING_CACHE_DURATION_DAYS:-30}
@@ -45,7 +45,7 @@ services:
       - GEOCODING_MIN_CONFIDENCE_SCORE=${GEOCODING_MIN_CONFIDENCE_SCORE:-5}
       - GEOCODING_REQUIRE_ADDRESS_COMPONENTS=${GEOCODING_REQUIRE_ADDRESS_COMPONENTS:-false}
       - GEOCODING_ACCEPTED_COMPONENT_TYPES=${GEOCODING_ACCEPTED_COMPONENT_TYPES}
-      
+
       # Imprint
       - IMPRINT_ENABLED=${IMPRINT_ENABLED:-true}
       - IMPRINT_ORGANIZATION=${IMPRINT_ORGANIZATION}
@@ -59,27 +59,27 @@ services:
       - IMPRINT_REGISTRATION_NUMBER=${IMPRINT_REGISTRATION_NUMBER}
       - IMPRINT_VAT_ID=${IMPRINT_VAT_ID}
       - IMPRINT_RESPONSIBLE_FOR_CONTENT=${IMPRINT_RESPONSIBLE_FOR_CONTENT}
-      
+
       # Educational
       - EDUCATIONAL_SEARCH_DEBOUNCE_MS=${EDUCATIONAL_SEARCH_DEBOUNCE_MS:-300}
       - EDUCATIONAL_VOCAB_LEARNING_RESOURCE_TYPE=${EDUCATIONAL_VOCAB_LEARNING_RESOURCE_TYPE:-hcrt}
       - EDUCATIONAL_VOCAB_ABOUT=${EDUCATIONAL_VOCAB_ABOUT:-hochschulfaechersystematik}
       - EDUCATIONAL_VOCAB_AUDIENCE=${EDUCATIONAL_VOCAB_AUDIENCE:-intendedEndUserRole}
-    
+
     networks:
       - traefik_web
-    
+
     labels:
       # Enable Traefik for this service
-      - "traefik.enable=true"
-      - "traefik.docker.network=traefik_web"
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=traefik_web'
       # Service
-      - "traefik.http.services.comcal.loadbalancer.server.port=3000"
+      - 'traefik.http.services.comcal.loadbalancer.server.port=3000'
 
       # HTTP Router
-      - "traefik.http.routers.comcal.rule=Host(`your-domain.com`)"
-      - "traefik.http.routers.comcal.entrypoints=web,websecure"
-      - "traefik.http.routers.comcal.tls.certresolver=myresolver"
+      - 'traefik.http.routers.comcal.rule=Host(`your-domain.com`)'
+      - 'traefik.http.routers.comcal.entrypoints=web,websecure'
+      - 'traefik.http.routers.comcal.tls.certresolver=myresolver'
 
 networks:
   traefik_web:

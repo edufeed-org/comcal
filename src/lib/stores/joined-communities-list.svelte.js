@@ -10,65 +10,74 @@ import { CommunityRelationshipModel } from '$lib/models/community-relationship';
  * @returns {() => Array<import('nostr-tools').Event>} - Function returning reactive array of joined community events
  */
 export function useJoinedCommunitiesList() {
-	let activeUser = $state(manager.active);
-	let joinedCommunities = $state(/** @type {import('nostr-tools').Event[]} */ ([]));
+  let activeUser = $state(manager.active);
+  let joinedCommunities = $state(/** @type {import('nostr-tools').Event[]} */ ([]));
 
-	// Subscribe to account changes
-	$effect(() => {
-		const subscription = manager.active$.subscribe((user) => {
-			activeUser = user;
-		});
-		return () => subscription.unsubscribe();
-	});
+  // Subscribe to account changes
+  $effect(() => {
+    const subscription = manager.active$.subscribe((user) => {
+      activeUser = user;
+    });
+    return () => subscription.unsubscribe();
+  });
 
-	// Load relationship events using loader + model pattern
-	$effect(() => {
-		if (!activeUser?.pubkey) {
-			joinedCommunities = [];
-			return;
-		}
+  // Load relationship events using loader + model pattern
+  $effect(() => {
+    if (!activeUser?.pubkey) {
+      joinedCommunities = [];
+      return;
+    }
 
-		// 1. Bootstrap EventStore with author-specific relationship loader (fetches from relays)
-		const loaderSubscription = createRelationshipLoader(activeUser.pubkey)().subscribe();
+    // 1. Bootstrap EventStore with author-specific relationship loader (fetches from relays)
+    const loaderSubscription = createRelationshipLoader(activeUser.pubkey)().subscribe();
 
-		// 2. Subscribe to model for reactive filtered data from EventStore
-		const modelSubscription = eventStore
-			.model(CommunityRelationshipModel, activeUser.pubkey)
-			.subscribe((events) => {
-				joinedCommunities = events;
-			});
+    // 2. Subscribe to model for reactive filtered data from EventStore
+    const modelSubscription = eventStore
+      .model(CommunityRelationshipModel, activeUser.pubkey)
+      .subscribe((events) => {
+        joinedCommunities = events;
+      });
 
-		return () => {
-			loaderSubscription.unsubscribe();
-			modelSubscription.unsubscribe();
-		};
-	});
+    return () => {
+      loaderSubscription.unsubscribe();
+      modelSubscription.unsubscribe();
+    };
+  });
 
-	// Return a function that provides reactive access to joined communities
-	return () => joinedCommunities;
+  // Return a function that provides reactive access to joined communities
+  return () => joinedCommunities;
 }
 
 /**
  * Custom hook for checking community membership status
- * @param {string} communityPubkey - The pubkey of the community to check membership for
+ * @param {string | (() => string | undefined)} communityPubkeyOrGetter - The pubkey of the community or a getter function.
+ *                           Use a getter function (e.g., `() => props.pubkey`) to make the hook
+ *                           reactive to prop changes and avoid `state_referenced_locally` warnings.
  * @returns {() => boolean} - Reactive getter function indicating if current user has joined the community
  */
-export function useCommunityMembership(communityPubkey) {
-	const getJoinedCommunities = useJoinedCommunitiesList();
+export function useCommunityMembership(communityPubkeyOrGetter) {
+  const getJoinedCommunities = useJoinedCommunitiesList();
 
-	// Derive joined status from current state
-	const joined = $derived.by(() => {
-		if (!communityPubkey) {
-			return false;
-		}
+  // Normalize pubkey access - support both string and getter function
+  const getCommunityPubkey =
+    typeof communityPubkeyOrGetter === 'function'
+      ? communityPubkeyOrGetter
+      : () => communityPubkeyOrGetter;
 
-		const joinedCommunities = getJoinedCommunities();
-		return joinedCommunities.some(event => {
-			const community = getTagValue(event, 'd');
-			return community === communityPubkey;
-		});
-	});
+  // Derive joined status from current state
+  const joined = $derived.by(() => {
+    const communityPubkey = getCommunityPubkey();
+    if (!communityPubkey) {
+      return false;
+    }
 
-	// Return a getter function that provides reactive access to the joined state
-	return () => joined;
+    const joinedCommunities = getJoinedCommunities();
+    return joinedCommunities.some((event) => {
+      const community = getTagValue(event, 'd');
+      return community === communityPubkey;
+    });
+  });
+
+  // Return a getter function that provides reactive access to the joined state
+  return () => joined;
 }

@@ -21,13 +21,13 @@ import { createTimelineLoader } from 'applesauce-loaders/loaders';
  * @returns {Function} Factory function that returns loader function
  */
 export function createBadgeDefinitionLoader(pool, defaultRelays, eventStore, authorPubkey) {
-	return () =>
-		createTimelineLoader(
-			pool,
-			defaultRelays,
-			{ kinds: [30009], authors: [authorPubkey], limit: 200 },
-			{ eventStore }
-		);
+  return () =>
+    createTimelineLoader(
+      pool,
+      defaultRelays,
+      { kinds: [30009], authors: [authorPubkey], limit: 200 },
+      { eventStore }
+    );
 }
 
 /**
@@ -41,8 +41,13 @@ export function createBadgeDefinitionLoader(pool, defaultRelays, eventStore, aut
  * @returns {Function} Factory function that returns loader function
  */
 export function createBadgeAwardLoader(pool, relays, eventStore, badgeAddress) {
-	return () =>
-		createTimelineLoader(pool, relays, { kinds: [8], '#a': [badgeAddress], limit: 200 }, { eventStore });
+  return () =>
+    createTimelineLoader(
+      pool,
+      relays,
+      { kinds: [8], '#a': [badgeAddress], limit: 200 },
+      { eventStore }
+    );
 }
 
 /**
@@ -56,8 +61,13 @@ export function createBadgeAwardLoader(pool, relays, eventStore, badgeAddress) {
  * @returns {Function} Factory function that returns loader function
  */
 export function createUserAwardsLoader(pool, defaultRelays, eventStore, userPubkey) {
-	return () =>
-		createTimelineLoader(pool, defaultRelays, { kinds: [8], '#p': [userPubkey], limit: 200 }, { eventStore });
+  return () =>
+    createTimelineLoader(
+      pool,
+      defaultRelays,
+      { kinds: [8], '#p': [userPubkey], limit: 200 },
+      { eventStore }
+    );
 }
 
 /**
@@ -71,6 +81,11 @@ export function createUserAwardsLoader(pool, defaultRelays, eventStore, userPubk
  * @returns {Function} Factory function that returns loader function
  */
 export function createAwardsGivenLoader(pool, defaultRelays, eventStore, issuerPubkey) {
-	return () =>
-		createTimelineLoader(pool, defaultRelays, { kinds: [8], authors: [issuerPubkey], limit: 200 }, { eventStore });
+  return () =>
+    createTimelineLoader(
+      pool,
+      defaultRelays,
+      { kinds: [8], authors: [issuerPubkey], limit: 200 },
+      { eventStore }
+    );
 }

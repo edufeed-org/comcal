@@ -18,7 +18,7 @@ import { timedPool } from './base.js';
  * @returns {string[]}
  */
 function getTargetedPublicationRelays() {
-	return getCommunikeyRelays();
+  return getCommunikeyRelays();
 }
 
 /**
@@ -28,12 +28,12 @@ function getTargetedPublicationRelays() {
  * @returns {Function} Stateful timeline loader function
  */
 export function allTargetedPublicationsLoader(limit = 200) {
-	return createTimelineLoader(
-		timedPool,
-		getTargetedPublicationRelays(),
-		{ kinds: [30222] },
-		{ eventStore, limit }
-	);
+  return createTimelineLoader(
+    timedPool,
+    getTargetedPublicationRelays(),
+    { kinds: [30222] },
+    { eventStore, limit }
+  );
 }
 
 /**
@@ -42,15 +42,15 @@ export function allTargetedPublicationsLoader(limit = 200) {
  * @returns {Function} Stateful timeline loader function
  */
 export function articleTargetedPublicationsLoader(limit = 100) {
-	return createTimelineLoader(
-		timedPool,
-		getTargetedPublicationRelays(),
-		{
-			kinds: [30222],
-			'#k': ['30023'] // Only article shares
-		},
-		{ eventStore, limit }
-	);
+  return createTimelineLoader(
+    timedPool,
+    getTargetedPublicationRelays(),
+    {
+      kinds: [30222],
+      '#k': ['30023'] // Only article shares
+    },
+    { eventStore, limit }
+  );
 }
 
 /**
@@ -59,15 +59,15 @@ export function articleTargetedPublicationsLoader(limit = 100) {
  * @returns {Function} Stateful timeline loader function
  */
 export function ambTargetedPublicationsLoader(limit = 100) {
-	return createTimelineLoader(
-		timedPool,
-		getTargetedPublicationRelays(),
-		{
-			kinds: [30222],
-			'#k': ['30142'] // Only AMB resource shares
-		},
-		{ eventStore, limit }
-	);
+  return createTimelineLoader(
+    timedPool,
+    getTargetedPublicationRelays(),
+    {
+      kinds: [30222],
+      '#k': ['30142'] // Only AMB resource shares
+    },
+    { eventStore, limit }
+  );
 }
 
 /**
@@ -77,13 +77,13 @@ export function ambTargetedPublicationsLoader(limit = 100) {
  * @returns {Function} Stateful timeline loader function
  */
 export function feedTargetedPublicationsLoader(limit = 200) {
-	return createTimelineLoader(
-		timedPool,
-		getTargetedPublicationRelays(),
-		{
-			kinds: [30222],
-			'#k': ['30023', '30142', '31922', '31923'] // Articles, AMB resources, and calendar events
-		},
-		{ eventStore, limit }
-	);
+  return createTimelineLoader(
+    timedPool,
+    getTargetedPublicationRelays(),
+    {
+      kinds: [30222],
+      '#k': ['30023', '30142', '31922', '31923'] // Articles, AMB resources, and calendar events
+    },
+    { eventStore, limit }
+  );
 }

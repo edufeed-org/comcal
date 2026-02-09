@@ -6,13 +6,13 @@ export async function load({ params }) {
   try {
     // Decode npub to get pubkey
     const decoded = nip19.decode(params.npub);
-    
+
     if (decoded.type !== 'npub') {
       throw error(400, 'Invalid npub format');
     }
-    
+
     const pubkey = decoded.data;
-    
+
     return {
       pubkey,
       npub: params.npub

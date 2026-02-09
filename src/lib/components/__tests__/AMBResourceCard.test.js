@@ -5,55 +5,55 @@
  *
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/svelte';
 import AMBResourceCard from '../educational/AMBResourceCard.svelte';
 
 // Mock dependencies
 // Mock app-settings before any imports that transitively depend on it
 vi.mock('$lib/stores/app-settings.svelte.js', () => ({
-	appSettings: { debugMode: false, gatedMode: false }
+  appSettings: { debugMode: false, gatedMode: false }
 }));
 vi.mock('$lib/paraglide/messages.js', () => ({
-	amb_resource_free: () => 'Free',
-	amb_resource_view_content: () => 'View Content',
-	amb_resource_open_content: () => 'Open Content',
-	event_tags_view_all_tooltip: () => '',
-	event_tags_more_count: () => '',
-	debug_panel_raw_nostr_event: () => '',
-	common_copied: () => '',
-	common_copy: () => ''
+  amb_resource_free: () => 'Free',
+  amb_resource_view_content: () => 'View Content',
+  amb_resource_open_content: () => 'Open Content',
+  event_tags_view_all_tooltip: () => '',
+  event_tags_more_count: () => '',
+  debug_panel_raw_nostr_event: () => '',
+  common_copied: () => '',
+  common_copy: () => ''
 }));
 vi.mock('$lib/paraglide/runtime.js', () => ({
-	getLocale: () => 'en'
+  getLocale: () => 'en'
 }));
 vi.mock('$app/navigation', () => ({
-	goto: vi.fn()
+  goto: vi.fn()
 }));
 vi.mock('applesauce-core/helpers', () => ({
-	getProfilePicture: (profile) => profile?.picture || null,
-	getDisplayName: (profile, fallback) => profile?.name || fallback
+  getProfilePicture: (profile) => profile?.picture || null,
+  getDisplayName: (profile, fallback) => profile?.name || fallback
 }));
 vi.mock('$lib/helpers/calendar.js', () => ({
-	formatCalendarDate: () => 'Jan 15'
+  formatCalendarDate: () => 'Jan 15'
 }));
 vi.mock('$lib/helpers/educational/ambTransform.js', () => ({
-	getLabelsWithFallback: (tags, field) => {
-		if (field === 'learningResourceType') return [{ label: 'Text' }];
-		if (field === 'about') return [{ label: 'Mathematics' }];
-		if (field === 'educationalLevel') return [{ label: 'Higher Education' }];
-		return [];
-	}
+  getLabelsWithFallback: (tags, field) => {
+    if (field === 'learningResourceType') return [{ label: 'Text' }];
+    if (field === 'about') return [{ label: 'Mathematics' }];
+    if (field === 'educationalLevel') return [{ label: 'Higher Education' }];
+    return [];
+  }
 }));
 vi.mock('$lib/stores/config.svelte.js', () => ({
-	runtimeConfig: {
-		appRelays: { educational: ['wss://relay.example.com'] }
-	}
+  runtimeConfig: {
+    appRelays: { educational: ['wss://relay.example.com'] }
+  }
 }));
 vi.mock('nostr-tools', () => ({
-	nip19: {
-		naddrEncode: () => 'naddr1test'
-	}
+  nip19: {
+    naddrEncode: () => 'naddr1test'
+  }
 }));
 // Mock heavy sub-components to avoid deep dependency chains
 vi.mock('../reactions/ReactionBar.svelte', () => ({ default: () => ({}) }));
@@ -63,143 +63,143 @@ vi.mock('../shared/ImageWithFallback.svelte', () => ({ default: () => ({}) }));
 vi.mock('../shared/MarkdownRenderer.svelte', () => ({ default: () => ({}) }));
 
 const mockResource = {
-	id: 'a'.repeat(64),
-	pubkey: 'b'.repeat(64),
-	kind: 30142,
-	publishedDate: Math.floor(Date.now() / 1000),
-	name: 'Introduction to Mathematics',
-	description: 'A comprehensive guide to basic mathematics concepts.',
-	image: 'https://example.com/math.jpg',
-	identifier: 'https://example.com/resource',
-	license: { id: 'https://creativecommons.org/licenses/by/4.0/', label: 'CC BY 4.0' },
-	isFree: true,
-	languages: ['en', 'de'],
-	keywords: ['math', 'education'],
-	tags: [
-		['learningResourceType', 'text'],
-		['about', 'mathematics'],
-		['t', 'math']
-	],
-	sig: 'c'.repeat(128)
+  id: 'a'.repeat(64),
+  pubkey: 'b'.repeat(64),
+  kind: 30142,
+  publishedDate: Math.floor(Date.now() / 1000),
+  name: 'Introduction to Mathematics',
+  description: 'A comprehensive guide to basic mathematics concepts.',
+  image: 'https://example.com/math.jpg',
+  identifier: 'https://example.com/resource',
+  license: { id: 'https://creativecommons.org/licenses/by/4.0/', label: 'CC BY 4.0' },
+  isFree: true,
+  languages: ['en', 'de'],
+  keywords: ['math', 'education'],
+  tags: [
+    ['learningResourceType', 'text'],
+    ['about', 'mathematics'],
+    ['t', 'math']
+  ],
+  sig: 'c'.repeat(128)
 };
 
 const mockAuthorProfile = {
-	name: 'Prof. Test',
-	picture: 'https://example.com/avatar.jpg'
+  name: 'Prof. Test',
+  picture: 'https://example.com/avatar.jpg'
 };
 
 describe('AMBResourceCard', () => {
-	describe('default (card) variant', () => {
-		it('renders as vertical card layout by default', () => {
-			const { container } = render(AMBResourceCard, {
-				props: { resource: mockResource, authorProfile: mockAuthorProfile }
-			});
+  describe('default (card) variant', () => {
+    it('renders as vertical card layout by default', () => {
+      const { container } = render(AMBResourceCard, {
+        props: { resource: mockResource, authorProfile: mockAuthorProfile }
+      });
 
-			const card = container.querySelector('.amb-card');
-			expect(card).toBeTruthy();
-		});
+      const card = container.querySelector('.amb-card');
+      expect(card).toBeTruthy();
+    });
 
-		it('shows resource name', () => {
-			const { container } = render(AMBResourceCard, {
-				props: { resource: mockResource, authorProfile: mockAuthorProfile }
-			});
+    it('shows resource name', () => {
+      const { container } = render(AMBResourceCard, {
+        props: { resource: mockResource, authorProfile: mockAuthorProfile }
+      });
 
-			expect(container.textContent).toContain('Introduction to Mathematics');
-		});
-	});
+      expect(container.textContent).toContain('Introduction to Mathematics');
+    });
+  });
 
-	describe('list variant', () => {
-		it('renders with list-variant class', () => {
-			const { container } = render(AMBResourceCard, {
-				props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
-			});
+  describe('list variant', () => {
+    it('renders with list-variant class', () => {
+      const { container } = render(AMBResourceCard, {
+        props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
+      });
 
-			const listItem = container.querySelector('.amb-card-list');
-			expect(listItem).toBeTruthy();
-		});
+      const listItem = container.querySelector('.amb-card-list');
+      expect(listItem).toBeTruthy();
+    });
 
-		it('renders as horizontal flex row', () => {
-			const { container } = render(AMBResourceCard, {
-				props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
-			});
+    it('renders as horizontal flex row', () => {
+      const { container } = render(AMBResourceCard, {
+        props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
+      });
 
-			const listItem = container.querySelector('.amb-card-list');
-			expect(listItem).toBeTruthy();
-			expect(listItem.classList.contains('flex')).toBe(true);
-		});
+      const listItem = container.querySelector('.amb-card-list');
+      expect(listItem).toBeTruthy();
+      expect(listItem.classList.contains('flex')).toBe(true);
+    });
 
-		it('shows a small square thumbnail', () => {
-			const { container } = render(AMBResourceCard, {
-				props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
-			});
+    it('shows a small square thumbnail', () => {
+      const { container } = render(AMBResourceCard, {
+        props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
+      });
 
-			const thumbnail = container.querySelector('.amb-card-list .list-thumbnail');
-			expect(thumbnail).toBeTruthy();
-		});
+      const thumbnail = container.querySelector('.amb-card-list .list-thumbnail');
+      expect(thumbnail).toBeTruthy();
+    });
 
-		it('shows resource name', () => {
-			const { container } = render(AMBResourceCard, {
-				props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
-			});
+    it('shows resource name', () => {
+      const { container } = render(AMBResourceCard, {
+        props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
+      });
 
-			expect(container.textContent).toContain('Introduction to Mathematics');
-		});
+      expect(container.textContent).toContain('Introduction to Mathematics');
+    });
 
-		it('shows author name and date', () => {
-			const { container } = render(AMBResourceCard, {
-				props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
-			});
+    it('shows author name and date', () => {
+      const { container } = render(AMBResourceCard, {
+        props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
+      });
 
-			expect(container.textContent).toContain('Prof. Test');
-			expect(container.textContent).toContain('Jan 15');
-		});
+      expect(container.textContent).toContain('Prof. Test');
+      expect(container.textContent).toContain('Jan 15');
+    });
 
-		it('shows resource type badge', () => {
-			const { container } = render(AMBResourceCard, {
-				props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
-			});
+    it('shows resource type badge', () => {
+      const { container } = render(AMBResourceCard, {
+        props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
+      });
 
-			expect(container.textContent).toContain('Text');
-		});
+      expect(container.textContent).toContain('Text');
+    });
 
-		it('does not show reaction bar', () => {
-			const { container } = render(AMBResourceCard, {
-				props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
-			});
+    it('does not show reaction bar', () => {
+      const { container } = render(AMBResourceCard, {
+        props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
+      });
 
-			const listItem = container.querySelector('.amb-card-list');
-			// ReactionBar should not be present in list mode
-			const reactionBar = listItem?.querySelector('[data-testid="reaction-bar"]');
-			expect(reactionBar).toBeFalsy();
-		});
+      const listItem = container.querySelector('.amb-card-list');
+      // ReactionBar should not be present in list mode
+      const reactionBar = listItem?.querySelector('[data-testid="reaction-bar"]');
+      expect(reactionBar).toBeFalsy();
+    });
 
-		it('does not show description', () => {
-			const { container } = render(AMBResourceCard, {
-				props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
-			});
+    it('does not show description', () => {
+      const { container } = render(AMBResourceCard, {
+        props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
+      });
 
-			const listItem = container.querySelector('.amb-card-list');
-			// Full description block should not be present
-			expect(listItem?.querySelector('.line-clamp-3')).toBeFalsy();
-		});
+      const listItem = container.querySelector('.amb-card-list');
+      // Full description block should not be present
+      expect(listItem?.querySelector('.line-clamp-3')).toBeFalsy();
+    });
 
-		it('does not show action button', () => {
-			const { container } = render(AMBResourceCard, {
-				props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
-			});
+    it('does not show action button', () => {
+      const { container } = render(AMBResourceCard, {
+        props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
+      });
 
-			const btn = container.querySelector('.amb-card-list .btn');
-			expect(btn).toBeFalsy();
-		});
+      const btn = container.querySelector('.amb-card-list .btn');
+      expect(btn).toBeFalsy();
+    });
 
-		it('is clickable', () => {
-			const { container } = render(AMBResourceCard, {
-				props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
-			});
+    it('is clickable', () => {
+      const { container } = render(AMBResourceCard, {
+        props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
+      });
 
-			const listItem = container.querySelector('.amb-card-list');
-			expect(listItem?.getAttribute('role')).toBe('button');
-			expect(listItem?.getAttribute('tabindex')).toBe('0');
-		});
-	});
+      const listItem = container.querySelector('.amb-card-list');
+      expect(listItem?.getAttribute('role')).toBe('button');
+      expect(listItem?.getAttribute('tabindex')).toBe('0');
+    });
+  });
 });

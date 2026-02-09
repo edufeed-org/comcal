@@ -16,20 +16,20 @@ import { getRelaySetDTag, CATEGORIES } from '$lib/services/app-relay-service.sve
  * @returns {Function} Loader factory that returns an Observable
  */
 export function createAppRelaySetLoader(pool, lookupRelays, eventStore, userPubkey) {
-	// Build d-tags for all app relay categories
-	const dTags = Object.keys(CATEGORIES).map((category) => getRelaySetDTag(category));
+  // Build d-tags for all app relay categories
+  const dTags = Object.keys(CATEGORIES).map((category) => getRelaySetDTag(category));
 
-	return () =>
-		createTimelineLoader(
-			pool,
-			lookupRelays,
-			{
-				kinds: [30002],
-				authors: [userPubkey],
-				'#d': dTags
-			},
-			{ eventStore }
-		);
+  return () =>
+    createTimelineLoader(
+      pool,
+      lookupRelays,
+      {
+        kinds: [30002],
+        authors: [userPubkey],
+        '#d': dTags
+      },
+      { eventStore }
+    );
 }
 
 /**
@@ -43,23 +43,23 @@ export function createAppRelaySetLoader(pool, lookupRelays, eventStore, userPubk
  * @returns {Function} Loader factory that returns an Observable
  */
 export function createSingleAppRelaySetLoader(
-	pool,
-	lookupRelays,
-	eventStore,
-	userPubkey,
-	category
+  pool,
+  lookupRelays,
+  eventStore,
+  userPubkey,
+  category
 ) {
-	const dTag = getRelaySetDTag(category);
+  const dTag = getRelaySetDTag(category);
 
-	return () =>
-		createTimelineLoader(
-			pool,
-			lookupRelays,
-			{
-				kinds: [30002],
-				authors: [userPubkey],
-				'#d': [dTag]
-			},
-			{ eventStore }
-		);
+  return () =>
+    createTimelineLoader(
+      pool,
+      lookupRelays,
+      {
+        kinds: [30002],
+        authors: [userPubkey],
+        '#d': [dTag]
+      },
+      { eventStore }
+    );
 }
