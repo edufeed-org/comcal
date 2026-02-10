@@ -1,9 +1,12 @@
 import { defineConfig } from '@playwright/test';
 
-const RELAY_PORT = 9737;
-const HANGING_RELAY_PORT = 9738;
-const RELAY_URL = `ws://localhost:${RELAY_PORT}`;
-const _HANGING_RELAY_URL = `ws://localhost:${HANGING_RELAY_PORT}`; // Reserved for future tests
+// Docker relay ports
+const RELAY_URLS = {
+  amb: 'ws://localhost:7001',
+  calendar: 'ws://localhost:7002',
+  strfry: 'ws://localhost:7003',
+  hanging: 'ws://localhost:9738' // Mock relay for timedPool timeout tests
+};
 
 export default defineConfig({
   testDir: 'e2e',
@@ -41,13 +44,13 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {
-      CALENDAR_RELAYS: RELAY_URL,
-      COMMUNIKEY_RELAYS: RELAY_URL,
-      AMB_RELAYS: RELAY_URL, // Temporarily using only normal relay to test pagination
-      LONGFORM_CONTENT_RELAY: RELAY_URL,
-      FALLBACK_RELAYS: RELAY_URL,
-      RELAY_LIST_LOOKUP_RELAYS: RELAY_URL,
-      INDEXER_RELAYS: RELAY_URL,
+      CALENDAR_RELAYS: RELAY_URLS.calendar,
+      COMMUNIKEY_RELAYS: RELAY_URLS.strfry,
+      AMB_RELAYS: RELAY_URLS.amb,
+      LONGFORM_CONTENT_RELAY: RELAY_URLS.strfry,
+      FALLBACK_RELAYS: RELAY_URLS.strfry,
+      RELAY_LIST_LOOKUP_RELAYS: RELAY_URLS.strfry,
+      INDEXER_RELAYS: RELAY_URLS.strfry,
       GATED_MODE_DEFAULT: 'true',
       GATED_MODE_FORCE: 'true',
       ORIGIN: 'http://localhost:4173',

@@ -48,7 +48,13 @@ const communityAuthors = Array.from({ length: COMMUNITY_COUNT }, (_, i) => {
 
 const NOW = Math.floor(Date.now() / 1000);
 const BASE = NOW - 30 * 24 * 3600; // 30 days ago
-const RELAY_URL = 'ws://localhost:9737';
+
+// Relay URLs matching docker-compose.e2e.yml
+export const RELAY_URLS = {
+  amb: 'ws://localhost:7001',
+  calendar: 'ws://localhost:7002',
+  strfry: 'ws://localhost:7003'
+};
 
 const adjectives = [
   'Introduction to',
@@ -329,14 +335,14 @@ export function generateTestEvents() {
         1111,
         [
           // Root scope tags (UPPERCASE) - point to original event
-          ['A', calendarEventAddress, RELAY_URL],
+          ['A', calendarEventAddress, RELAY_URLS.calendar],
           ['K', '31922'],
-          ['P', calendarEventAuthor, RELAY_URL],
+          ['P', calendarEventAuthor, RELAY_URLS.calendar],
           // Parent scope tags (lowercase) - for top-level, same as root
-          ['a', calendarEventAddress, RELAY_URL],
-          ['e', calendarEventId, RELAY_URL],
+          ['a', calendarEventAddress, RELAY_URLS.calendar],
+          ['e', calendarEventId, RELAY_URLS.calendar],
           ['k', '31922'],
-          ['p', calendarEventAuthor, RELAY_URL]
+          ['p', calendarEventAuthor, RELAY_URLS.calendar]
         ],
         `This is test comment ${i} on the calendar event.`,
         BASE + (250 + i) * 600
@@ -355,13 +361,13 @@ export function generateTestEvents() {
           1111,
           [
             // Root scope tags - still point to original calendar event
-            ['A', calendarEventAddress, RELAY_URL],
+            ['A', calendarEventAddress, RELAY_URLS.calendar],
             ['K', '31922'],
-            ['P', calendarEventAuthor, RELAY_URL],
+            ['P', calendarEventAuthor, RELAY_URLS.calendar],
             // Parent scope tags - point to the comment being replied to
-            ['e', firstComment.id, RELAY_URL],
+            ['e', firstComment.id, RELAY_URLS.strfry],
             ['k', '1111'], // Parent is a comment
-            ['p', firstComment.pubkey, RELAY_URL]
+            ['p', firstComment.pubkey, RELAY_URLS.strfry]
           ],
           'This is a reply to the first comment.',
           BASE + 254 * 600
@@ -378,9 +384,9 @@ export function generateTestEvents() {
           author,
           7,
           [
-            ['e', calendarEventId, RELAY_URL, calendarEventAuthor],
-            ['p', calendarEventAuthor, RELAY_URL],
-            ['a', calendarEventAddress, RELAY_URL, calendarEventAuthor],
+            ['e', calendarEventId, RELAY_URLS.calendar, calendarEventAuthor],
+            ['p', calendarEventAuthor, RELAY_URLS.calendar],
+            ['a', calendarEventAddress, RELAY_URLS.calendar, calendarEventAuthor],
             ['k', '31922']
           ],
           reactionEmojis[i],
@@ -428,25 +434,25 @@ export const TEST_NADDRS = {
     kind: 30023,
     pubkey: contentAuthors[0].pk,
     identifier: 'article-0',
-    relays: [RELAY_URL]
+    relays: [RELAY_URLS.strfry]
   }),
   calendarDate: naddrEncode({
     kind: 31922,
     pubkey: contentAuthors[0].pk,
     identifier: 'date-event-0',
-    relays: [RELAY_URL]
+    relays: [RELAY_URLS.calendar]
   }),
   calendarTime: naddrEncode({
     kind: 31923,
     pubkey: contentAuthors[0].pk,
     identifier: 'time-event-0',
-    relays: [RELAY_URL]
+    relays: [RELAY_URLS.calendar]
   }),
   amb: naddrEncode({
     kind: 30142,
     pubkey: contentAuthors[0].pk,
     identifier: 'https://example.com/resource-0',
-    relays: [RELAY_URL]
+    relays: [RELAY_URLS.amb]
   })
 };
 

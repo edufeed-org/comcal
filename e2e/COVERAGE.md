@@ -300,14 +300,30 @@ This document tracks what E2E tests exist, what features they cover, and identif
 
 ## Test Infrastructure
 
-| File                 | Purpose                                                                                                                                        |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `test-utils.js`      | Reusable wait/verify helpers (waitForContent, waitForEventDetail, setupErrorCapture, etc.)                                                     |
-| `fixtures.js`        | Playwright fixtures (authenticatedPage), auth helpers (loginWithNsec, logout), creation helpers (openEventCreationModal, openAMBCreationModal) |
-| `test-data.js`       | Deterministic mock data generator (150+ events, profiles, TEST_AUTHOR, TEST_AUTHOR_2)                                                          |
-| `mock-relay.js`      | Mock Nostr relay with filter matching, hanging relay simulation                                                                                |
-| `global-setup.js`    | Starts normal relay (9737) + hanging relay (9738)                                                                                              |
-| `global-teardown.js` | Stops both relays                                                                                                                              |
+### Relay Architecture
+
+Tests use Docker Compose with three real Nostr relays plus a mock hanging relay:
+
+| Relay          | Port | Image                                    | Event Kinds                        |
+| -------------- | ---- | ---------------------------------------- | ---------------------------------- |
+| amb-relay      | 7001 | `git.edufeed.org/edufeed/amb-relay`      | 30142 (AMB educational)            |
+| calendar-relay | 7002 | `git.edufeed.org/edufeed/calendar-relay` | 31922-31925 (calendar)             |
+| strfry         | 7003 | `dockurr/strfry`                         | All others (profiles, notes, etc.) |
+| mock-relay     | 9738 | Node.js (local)                          | Hanging relay for timedPool tests  |
+
+### Files
+
+| File                     | Purpose                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------- |
+| `docker-compose.e2e.yml` | Docker Compose config for amb-relay, calendar-relay, strfry, typesense                |
+| `strfry.conf`            | Strfry relay configuration                                                            |
+| `seed-relays.js`         | Seeds test events to appropriate relays based on kind                                 |
+| `global-setup.js`        | Starts Docker Compose, waits for health, seeds data, starts hanging relay             |
+| `global-teardown.js`     | Stops Docker Compose (with --volumes), stops hanging relay                            |
+| `test-data.js`           | Deterministic mock data generator (150+ events, profiles, TEST_AUTHOR, TEST_AUTHOR_2) |
+| `mock-relay.js`          | Mock Nostr relay for hanging relay simulation (never sends EOSE for kind 30142)       |
+| `fixtures.js`            | Playwright fixtures (authenticatedPage), auth helpers, creation helpers               |
+| `test-utils.js`          | Reusable wait/verify helpers (waitForContent, waitForEventDetail, setupErrorCapture)  |
 
 ---
 
@@ -370,6 +386,20 @@ pnpm run test:e2e e2e/calendar.test.js
 
 # Run with UI (debugging)
 pnpm run test:e2e --ui
+
+# Start relays manually (for debugging)
+docker compose -f e2e/docker-compose.e2e.yml up -d
+
+# Check relay health
+curl -H "Accept: application/nostr+json" http://localhost:7001  # amb-relay
+curl -H "Accept: application/nostr+json" http://localhost:7002  # calendar-relay
+curl -H "Accept: application/nostr+json" http://localhost:7003  # strfry
+
+# Stop relays (with volume cleanup)
+docker compose -f e2e/docker-compose.e2e.yml down --volumes
 ```
 
-**Note:** Tests require the nix development shell for Chromium access.
+**Requirements:**
+
+- nix development shell (for Chromium)
+- Docker and Docker Compose (for relay containers)
