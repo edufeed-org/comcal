@@ -1,11 +1,13 @@
 <script>
+  import * as m from '$lib/paraglide/messages';
+
   let { userData, errors = $bindable({}) } = $props();
 
   function validateStep() {
     errors = {};
 
     if (!userData.name.trim()) {
-      errors.name = 'Name is required';
+      errors.name = m.profile_form_name_required();
       return false;
     }
 
@@ -14,7 +16,7 @@
       try {
         new URL(userData.website);
       } catch {
-        errors.website = 'Please enter a valid URL';
+        errors.website = m.profile_form_invalid_url();
         return false;
       }
     }
@@ -23,7 +25,7 @@
       try {
         new URL(userData.picture);
       } catch {
-        errors.picture = 'Please enter a valid image URL';
+        errors.picture = m.profile_form_invalid_image_url();
         return false;
       }
     }
@@ -32,7 +34,7 @@
       try {
         new URL(userData.banner);
       } catch {
-        errors.banner = 'Please enter a valid image URL';
+        errors.banner = m.profile_form_invalid_image_url();
         return false;
       }
     }
@@ -55,13 +57,13 @@
   <!-- Name -->
   <div class="form-control flex flex-col">
     <label class="label" for="profile-name">
-      <span class="label-text w-full text-center">Name *</span>
+      <span class="label-text w-full text-center">{m.profile_form_name_label()}</span>
     </label>
     <input
       id="profile-name"
       type="text"
       bind:value={userData.name}
-      placeholder="Your name or nickname"
+      placeholder={m.profile_form_name_placeholder()}
       class="input-bordered input w-full"
       class:input-error={errors.name}
     />
@@ -75,13 +77,13 @@
   <!-- Display Name -->
   <div class="form-control flex flex-col">
     <label class="label" for="profile-display-name">
-      <span class="label-text w-full text-center">Display Name</span>
+      <span class="label-text w-full text-center">{m.profile_form_display_name_label()}</span>
     </label>
     <input
       id="profile-display-name"
       type="text"
       bind:value={userData.display_name}
-      placeholder="@username"
+      placeholder={m.profile_form_display_name_placeholder()}
       class="input-bordered input w-full"
     />
   </div>
@@ -89,12 +91,12 @@
   <!-- About -->
   <div class="form-control flex flex-col">
     <label class="label" for="profile-about">
-      <span class="label-text w-full text-center">About</span>
+      <span class="label-text w-full text-center">{m.profile_form_about_label()}</span>
     </label>
     <textarea
       id="profile-about"
       bind:value={userData.about}
-      placeholder="Tell us something about yourself"
+      placeholder={m.profile_form_about_placeholder()}
       class="textarea-bordered textarea h-24 w-full"
     ></textarea>
   </div>
@@ -102,13 +104,13 @@
   <!-- Profile Picture URL -->
   <div class="form-control flex flex-col">
     <label class="label" for="profile-picture">
-      <span class="label-text w-full text-center">Profile Picture URL</span>
+      <span class="label-text w-full text-center">{m.profile_form_picture_label()}</span>
     </label>
     <input
       id="profile-picture"
       type="url"
       bind:value={userData.picture}
-      placeholder="https://example.com/avatar.jpg"
+      placeholder={m.profile_form_picture_placeholder()}
       class="input-bordered input w-full"
       class:input-error={errors.picture}
     />
@@ -122,13 +124,13 @@
   <!-- Banner Image URL -->
   <div class="form-control flex flex-col">
     <label class="label" for="profile-banner">
-      <span class="label-text w-full text-center">Banner Image URL</span>
+      <span class="label-text w-full text-center">{m.profile_form_banner_label()}</span>
     </label>
     <input
       id="profile-banner"
       type="url"
       bind:value={userData.banner}
-      placeholder="https://example.com/banner.jpg"
+      placeholder={m.profile_form_banner_placeholder()}
       class="input-bordered input w-full"
       class:input-error={errors.banner}
     />
@@ -142,13 +144,13 @@
   <!-- Website -->
   <div class="form-control flex flex-col">
     <label class="label" for="profile-website">
-      <span class="label-text w-full text-center">Website</span>
+      <span class="label-text w-full text-center">{m.profile_form_website_label()}</span>
     </label>
     <input
       id="profile-website"
       type="url"
       bind:value={userData.website}
-      placeholder="https://your-website.com"
+      placeholder={m.profile_form_website_placeholder()}
       class="input-bordered input w-full"
       class:input-error={errors.website}
     />
@@ -162,30 +164,32 @@
   <!-- NIP-05 Identifier -->
   <div class="form-control flex flex-col">
     <label class="label" for="profile-nip05">
-      <span class="label-text w-full text-center">NIP-05 Identifier</span>
+      <span class="label-text w-full text-center">{m.profile_form_nip05_label()}</span>
     </label>
     <input
       id="profile-nip05"
       type="text"
       bind:value={userData.nip05}
-      placeholder="name@domain.com"
+      placeholder={m.profile_form_nip05_placeholder()}
       class="input-bordered input w-full"
     />
     <div class="label">
-      <span class="label-text-alt w-full text-center text-gray-400">Verified identity</span>
+      <span class="label-text-alt w-full text-center text-gray-400"
+        >{m.profile_form_nip05_hint()}</span
+      >
     </div>
   </div>
 
   <!-- Lightning Address (LUD16) -->
   <div class="form-control flex flex-col">
     <label class="label" for="profile-lud16">
-      <span class="label-text w-full text-center">Lightning Address</span>
+      <span class="label-text w-full text-center">{m.profile_form_lightning_label()}</span>
     </label>
     <input
       id="profile-lud16"
       type="text"
       bind:value={userData.lud16}
-      placeholder="name@getalby.com"
+      placeholder={m.profile_form_lightning_placeholder()}
       class="input-bordered input w-full"
     />
   </div>

@@ -2,22 +2,25 @@
 
 This document tracks what E2E tests exist, what features they cover, and identifies gaps for future testing.
 
-**Last updated:** 2026-02-09
-**Total tests:** 79
+**Last updated:** 2026-02-11
+**Total tests:** 113
 
 ## Quick Summary
 
-| File                         | Tests | Auth | Coverage                                      |
-| ---------------------------- | ----- | ---- | --------------------------------------------- |
-| `account-management.test.js` | 14    | Both | Login, logout, persistence, account switching |
-| `calendar.test.js`           | 4     | No   | Calendar page, events, modal                  |
-| `calendar-creation.test.js`  | 10    | Yes  | FAB, event creation, validation, deletion     |
-| `amb-creation.test.js`       | 10    | Yes  | FAB, wizard modal, step 1 form, validation    |
-| `profile.test.js`            | 4     | No   | Profile page, notes, not-found                |
-| `event-detail.test.js`       | 4     | No   | naddr routes (articles, calendar, AMB)        |
-| `community.test.js`          | 5     | No   | Community Learning/Chat tabs                  |
-| `discover.test.js`           | 10    | No   | Discovery tabs, infinite scroll               |
-| `comments-reactions.test.js` | 18    | Both | Comments, reactions, auth flows               |
+| File                              | Tests | Auth | Coverage                                      |
+| --------------------------------- | ----- | ---- | --------------------------------------------- |
+| `account-management.test.js`      | 14    | Both | Login, logout, persistence, account switching |
+| `calendar.test.js`                | 4     | No   | Calendar page, events, modal                  |
+| `calendar-creation.test.js`       | 10    | Yes  | FAB, event creation, validation, deletion     |
+| `calendar-date-filtering.test.js` | 10    | No   | Date range loading, navigation, view modes    |
+| `amb-creation.test.js`            | 10    | Yes  | FAB, wizard modal, step 1 form, validation    |
+| `profile.test.js`                 | 4     | No   | Profile page, notes, not-found                |
+| `event-detail.test.js`            | 4     | No   | naddr routes (articles, calendar, AMB)        |
+| `community.test.js`               | 5     | No   | Community Learning/Chat tabs                  |
+| `discover.test.js`                | 10    | No   | Discovery tabs, infinite scroll               |
+| `discover-events-filter.test.js`  | 9     | No   | Events tab date range filter, URL persistence |
+| `comments-reactions.test.js`      | 18    | Both | Comments, reactions, auth flows               |
+| `settings.test.js`                | 15    | Both | Theme switching, relay settings, gated/debug  |
 
 ## Detailed Coverage
 
@@ -115,6 +118,40 @@ This document tracks what E2E tests exist, what features they cover, and identif
 | no critical JS errors during creation | Error capture throughout flow |
 
 **Components exercised:** FloatingActionButton, CalendarEventModal, EventManagementActions
+
+---
+
+### calendar-date-filtering.test.js (10 tests)
+
+**Route:** `/calendar`
+**Auth required:** No
+**Note:** Tests date range loading using calendar-relay's special filter syntax (#start_after, #start_before).
+
+#### Date Range Loading (4 tests)
+
+| Test                                             | What it verifies                           |
+| ------------------------------------------------ | ------------------------------------------ |
+| calendar page loads events for current month     | Current month events visible on load       |
+| navigating to next month loads new events        | Next button → next month events appear     |
+| navigating to previous month loads past events   | Previous button → past month events appear |
+| multi-day event spanning month boundary is shown | Events overlapping view edges included     |
+
+#### View Mode Changes (3 tests)
+
+| Test                                                 | What it verifies             |
+| ---------------------------------------------------- | ---------------------------- |
+| switching to week view shows events for current week | Week view narrows date range |
+| switching to day view shows single day events        | Day view shows precise range |
+| switching back to month view from week view works    | View mode transitions work   |
+
+#### Error Handling (2 tests)
+
+| Test                                                   | What it verifies               |
+| ------------------------------------------------------ | ------------------------------ |
+| no critical JavaScript errors during date navigation   | No JS errors on prev/next      |
+| no critical JavaScript errors during view mode changes | No JS errors on view switching |
+
+**Components exercised:** CalendarView, CalendarNavigation, CalendarGrid, createDateRangeCalendarLoader
 
 ---
 
@@ -241,6 +278,50 @@ This document tracks what E2E tests exist, what features they cover, and identif
 
 ---
 
+### discover-events-filter.test.js (9 tests)
+
+**Route:** `/discover` (Events tab)
+**Auth required:** No
+**Note:** Tests the EventDateRangeFilter component for calendar events on the discover page.
+
+#### Date Range Filter UI (4 tests)
+
+| Test                                                  | What it verifies                            |
+| ----------------------------------------------------- | ------------------------------------------- |
+| date range filter is visible on events tab            | Filter appears with current range displayed |
+| prev button shifts date range backward                | Range updates, URL params set               |
+| next button shifts date range forward                 | Range updates, URL params set               |
+| today button appears after navigating away and resets | Today button visibility, range reset        |
+
+#### URL Persistence (1 test)
+
+| Test                                                | What it verifies                     |
+| --------------------------------------------------- | ------------------------------------ |
+| date range persists in URL and survives page reload | eventStart/eventEnd params preserved |
+
+#### Custom Date Picker (2 tests)
+
+| Test                                                    | What it verifies                           |
+| ------------------------------------------------------- | ------------------------------------------ |
+| custom date picker opens and applies range              | Modal opens, dates selectable, apply works |
+| custom date picker cancel button closes without changes | Cancel preserves original range            |
+
+#### Tab Visibility (1 test)
+
+| Test                                        | What it verifies                |
+| ------------------------------------------- | ------------------------------- |
+| date range filter not visible on other tabs | Filter only shows on Events tab |
+
+#### Error Handling (1 test)
+
+| Test                                                 | What it verifies                      |
+| ---------------------------------------------------- | ------------------------------------- |
+| no critical JavaScript errors during date navigation | No JS errors during navigation/picker |
+
+**Components exercised:** EventDateRangeFilter, createDateRangeCalendarLoader
+
+---
+
 ### comments-reactions.test.js (18 tests)
 
 **Route:** `/calendar/event/[naddr]`
@@ -298,6 +379,60 @@ This document tracks what E2E tests exist, what features they cover, and identif
 
 ---
 
+### settings.test.js (15 tests)
+
+**Route:** `/settings`
+**Auth required:** Both authenticated and unauthenticated flows
+
+#### Theme Switching - Unauthenticated (3 tests)
+
+| Test                                          | What it verifies                     |
+| --------------------------------------------- | ------------------------------------ |
+| settings page loads and shows theme switcher  | Page loads with Appearance section   |
+| can switch between light and dark color modes | Dark/light buttons change data-theme |
+| can switch between theme families             | Default/STIL buttons change theme    |
+
+#### Unauthenticated State (2 tests)
+
+| Test                                    | What it verifies                       |
+| --------------------------------------- | -------------------------------------- |
+| shows login prompt when not logged in   | Warning alert with login prompt        |
+| hides relay settings when not logged in | Relay prefs and gated mode not visible |
+
+#### Relay Settings - Authenticated (4 tests)
+
+| Test                                       | What it verifies                          |
+| ------------------------------------------ | ----------------------------------------- |
+| shows relay preferences when logged in     | Relay Preferences section visible         |
+| can see existing relays or create defaults | Relay URLs or Create default button shown |
+| shows Blossom servers section              | Blossom/media server section visible      |
+| shows app-specific relay categories        | Calendar/Educational categories visible   |
+
+#### Gated Mode - Authenticated (2 tests)
+
+| Test                                   | What it verifies              |
+| -------------------------------------- | ----------------------------- |
+| shows gated mode toggle when logged in | Gated Mode card visible       |
+| gated mode toggle is functional        | Toggle is enabled/interactive |
+
+#### Debug Mode - Authenticated (2 tests)
+
+| Test                                   | What it verifies              |
+| -------------------------------------- | ----------------------------- |
+| shows debug mode toggle when logged in | Developer section visible     |
+| debug mode toggle is functional        | Toggle state changes on click |
+
+#### Error Handling (2 tests)
+
+| Test                                             | What it verifies               |
+| ------------------------------------------------ | ------------------------------ |
+| no critical JavaScript errors on settings page   | No JS errors (unauthenticated) |
+| no critical JavaScript errors when authenticated | No JS errors (authenticated)   |
+
+**Components exercised:** ThemeSwitcher, RelaySettings, GatedModeCard, DeveloperSettingsCard
+
+---
+
 ## Test Infrastructure
 
 ### Relay Architecture
@@ -331,28 +466,28 @@ Tests use Docker Compose with three real Nostr relays plus a mock hanging relay:
 
 ### Not Yet Tested
 
-| Feature                     | Priority | Notes                                                 |
-| --------------------------- | -------- | ----------------------------------------------------- |
-| **Article Creation**        | High     | No creation UI exists yet                             |
-| **Settings Page**           | Medium   | Gated mode toggle, relay settings, theme switching    |
-| **Search Functionality**    | Medium   | NIP-50 search on discover page                        |
-| **Community Management**    | Medium   | Create community, join/leave flows, chat messages     |
-| **Signup Wizard**           | Medium   | 4-step signup flow (intro, profile, key gen, follows) |
-| **Mobile Responsive**       | Low      | Viewport-specific tests                               |
-| **Accessibility (a11y)**    | Low      | Keyboard navigation, screen reader                    |
-| **Relay Override Settings** | Low      | Kind 30002 user relay customization                   |
-| **Error Recovery**          | Low      | Offline handling, relay failures                      |
+| Feature                     | Priority | Notes                                                  |
+| --------------------------- | -------- | ------------------------------------------------------ |
+| **Article Creation**        | High     | No creation UI exists yet                              |
+| **NIP-50 Search**           | Medium   | Full-text search on Learning tab (SKOS filters tested) |
+| **Community Management**    | Medium   | Create community, join/leave flows, chat messages      |
+| **Signup Wizard**           | Medium   | 4-step signup flow (intro, profile, key gen, follows)  |
+| **Mobile Responsive**       | Low      | Viewport-specific tests                                |
+| **Accessibility (a11y)**    | Low      | Keyboard navigation, screen reader                     |
+| **Relay Override Settings** | Low      | Kind 30002 user relay customization                    |
+| **Error Recovery**          | Low      | Offline handling, relay failures                       |
 
 ### Partially Covered
 
-| Feature            | What's Covered                             | What's Missing                                       |
-| ------------------ | ------------------------------------------ | ---------------------------------------------------- |
-| Account management | NSEC login, logout, persistence, switching | NIP-07 extension, NIP-49 encrypted keys              |
-| Calendar events    | View, create, delete                       | Edit event flow                                      |
-| AMB resources      | Modal UI, step 1 form, navigation          | Full creation (SKOS dropdowns, file upload, publish) |
-| Profile page       | View profile, notes                        | Edit profile, avatar upload                          |
-| Comments           | Post, reply, delete                        | Edit comment                                         |
-| Reactions          | Add, remove                                | Custom emoji support                                 |
+| Feature            | What's Covered                             | What's Missing                                        |
+| ------------------ | ------------------------------------------ | ----------------------------------------------------- |
+| Account management | NSEC login, logout, persistence, switching | NIP-07 extension, NIP-49 encrypted keys               |
+| Settings page      | Theme switching, gated mode, debug mode    | Relay editing, Blossom add/remove, kind 30002 publish |
+| Calendar events    | View, create, delete                       | Edit event flow                                       |
+| AMB resources      | Modal UI, step 1 form, navigation          | Full creation (SKOS dropdowns, file upload, publish)  |
+| Profile page       | View profile, notes                        | Edit profile, avatar upload                           |
+| Comments           | Post, reply, delete                        | Edit comment                                          |
+| Reactions          | Add, remove                                | Custom emoji support                                  |
 
 ---
 

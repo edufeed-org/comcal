@@ -6,6 +6,7 @@
 <script>
   import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
   import { SearchIcon } from '../icons';
+  import * as m from '$lib/paraglide/messages';
 
   // Props
   let { onSearchQueryChange = () => {} } = $props();
@@ -59,9 +60,9 @@
   <!-- Header -->
   <div class="mb-3 flex items-center gap-3">
     <SearchIcon class_="h-4 w-4 text-base-content/70" />
-    <span class="font-medium text-base-content">Search Events</span>
+    <span class="font-medium text-base-content">{m.calendar_search_title()}</span>
     {#if hasQuery}
-      <span class="badge badge-sm badge-primary">active</span>
+      <span class="badge badge-sm badge-primary">{m.calendar_search_active()}</span>
     {/if}
   </div>
 
@@ -70,20 +71,20 @@
     <input
       type="text"
       class="input-bordered input join-item w-full"
-      placeholder="Search by title or tag..."
+      placeholder={m.calendar_search_placeholder()}
       value={searchQuery}
       oninput={handleInput}
-      aria-label="Search calendar events"
+      aria-label={m.calendar_search_aria()}
     />
     {#if hasQuery}
       <button
         type="button"
         class="btn join-item btn-ghost"
         onclick={clearSearch}
-        aria-label="Clear search"
-        title="Clear search"
+        aria-label={m.calendar_search_clear_aria()}
+        title={m.calendar_search_clear_aria()}
       >
-        Clear
+        {m.calendar_search_clear()}
       </button>
     {/if}
   </div>
@@ -91,9 +92,9 @@
   <!-- Helper text -->
   <p class="mt-2 text-xs text-base-content/60">
     {#if hasQuery}
-      Searching in titles and tags. Press × to clear.
+      {m.calendar_search_helper_active()}
     {:else}
-      Search for events by typing keywords from titles or tags
+      {m.calendar_search_helper_inactive()}
     {/if}
   </p>
 </div>

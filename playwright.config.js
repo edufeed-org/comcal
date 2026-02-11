@@ -15,6 +15,11 @@ export default defineConfig({
   globalSetup: './e2e/global-setup.js',
   globalTeardown: './e2e/global-teardown.js',
 
+  // Run test files in parallel across workers
+  // Tests within each file still run sequentially (safe for create/modify flows)
+  // Using 2 workers for stability; increase for CI with more resources
+  workers: process.env.CI ? 4 : 2,
+
   timeout: 60_000,
   expect: { timeout: 15_000 },
   retries: 1,

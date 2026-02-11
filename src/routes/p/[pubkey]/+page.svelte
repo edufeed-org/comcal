@@ -7,6 +7,7 @@
   import NotesTimeline from '$lib/components/notes/NotesTimeline.svelte';
   import { useActiveUser } from '$lib/stores/accounts.svelte.js';
   import { modalStore } from '$lib/stores/modal.svelte.js';
+  import * as m from '$lib/paraglide/messages';
 
   /**
    * Get profile lookup relays from app config
@@ -153,7 +154,7 @@
       <div
         class="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-white border-t-transparent"
       ></div>
-      <p class="text-lg text-white">Loading profile...</p>
+      <p class="text-lg text-white">{m.profile_loading()}</p>
     </div>
   </div>
 {:else if loadingState === 'notFound' && isOwnProfile}
@@ -180,9 +181,9 @@
             />
           </svg>
         </div>
-        <h2 class="mb-2 text-2xl font-bold text-gray-900">Profile Not Found</h2>
+        <h2 class="mb-2 text-2xl font-bold text-gray-900">{m.profile_not_found_title()}</h2>
         <p class="mb-6 text-gray-600">
-          We couldn't find a Nostr profile for this account. Let's create one!
+          {m.profile_not_found_own_description()}
         </p>
       </div>
 
@@ -198,14 +199,13 @@
             d="M12 4v16m8-8H4"
           />
         </svg>
-        Create Your Profile
+        {m.profile_create_button()}
       </button>
 
       <div class="rounded-lg bg-blue-50 p-4 text-left">
         <p class="text-sm text-gray-700">
-          <span class="font-semibold">💡 What happens next:</span><br />
-          Your profile will be published to the Nostr network as a Kind 0 event, making it visible across
-          all Nostr clients.
+          <span class="font-semibold">💡 {m.profile_what_happens_next()}</span><br />
+          {m.profile_publish_info()}
         </p>
       </div>
     </div>
@@ -228,11 +228,11 @@
           />
         </svg>
       </div>
-      <h2 class="mb-3 text-3xl font-bold">Profile Not Found</h2>
-      <p class="mb-4 text-lg text-gray-200">This user hasn't created a Nostr profile yet.</p>
+      <h2 class="mb-3 text-3xl font-bold">{m.profile_not_found_title()}</h2>
+      <p class="mb-4 text-lg text-gray-200">{m.profile_not_found_other_description()}</p>
       <div class="bg-opacity-10 rounded-lg bg-white p-4 backdrop-blur-sm">
         <p class="text-sm text-gray-300">
-          The profile may not exist, or it hasn't been found on the connected relays.
+          {m.profile_not_found_relay_info()}
         </p>
       </div>
     </div>
@@ -273,7 +273,7 @@
                 onclick={openEditModal}
                 class="absolute top-2 right-2 rounded-full bg-gray-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
               >
-                Edit
+                {m.common_edit()}
               </button>
             {/if}
           </div>
@@ -347,7 +347,7 @@
               <button
                 onclick={() => copyToClipboard(data.npub || data.pubkey)}
                 class="rounded p-1 transition-colors hover:bg-gray-700"
-                title="Copy public key"
+                title={m.profile_copy_pubkey()}
               >
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -358,7 +358,10 @@
                   />
                 </svg>
               </button>
-              <button class="rounded p-1 transition-colors hover:bg-gray-700" title="Show QR code">
+              <button
+                class="rounded p-1 transition-colors hover:bg-gray-700"
+                title={m.profile_show_qr()}
+              >
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
@@ -406,7 +409,7 @@
               : 'text-gray-400 hover:text-gray-200'}"
             onclick={() => (activeTab = 'notes')}
           >
-            Notes
+            {m.profile_tab_notes()}
           </button>
           <!-- <button 
 						class="px-6 py-4 font-medium transition-colors relative {activeTab === 'replies' ? 'text-white border-b-2 border-blue-500' : 'text-gray-400 hover:text-gray-200'}"
@@ -452,8 +455,8 @@
                     d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                   />
                 </svg>
-                <p class="text-lg">No replies yet</p>
-                <p class="text-sm">Replies will appear here when available</p>
+                <p class="text-lg">{m.profile_no_replies_title()}</p>
+                <p class="text-sm">{m.profile_no_replies_description()}</p>
               </div>
             </div>
           {/if}
@@ -465,7 +468,7 @@
             class="flex w-full items-center justify-between px-6 py-4 text-left text-gray-400 transition-colors hover:text-gray-200"
             onclick={() => (showRawData = !showRawData)}
           >
-            <span class="font-medium">Developer Information</span>
+            <span class="font-medium">{m.profile_developer_info()}</span>
             <svg
               class="h-5 w-5 transform transition-transform {showRawData ? 'rotate-180' : ''}"
               fill="none"
@@ -485,23 +488,23 @@
             <div class="space-y-6 px-6 pb-6">
               <!-- Basic Information -->
               <div class="rounded-lg bg-gray-800 p-4">
-                <h3 class="mb-4 text-lg font-medium text-white">Basic Information</h3>
+                <h3 class="mb-4 text-lg font-medium text-white">{m.profile_basic_info()}</h3>
                 <div class="space-y-3 text-sm">
                   <div class="flex items-center justify-between">
-                    <span class="text-gray-400">Npub:</span>
+                    <span class="text-gray-400">{m.profile_npub_label()}</span>
                     <code class="rounded bg-gray-700 px-2 py-1 font-mono text-xs text-gray-200">
                       {data.npub || 'N/A'}
                     </code>
                   </div>
                   <div class="flex items-center justify-between">
-                    <span class="text-gray-400">Hex Public Key:</span>
+                    <span class="text-gray-400">{m.profile_hex_pubkey_label()}</span>
                     <code class="rounded bg-gray-700 px-2 py-1 font-mono text-xs text-gray-200">
                       {data.pubkey}
                     </code>
                   </div>
                   {#if profileEvent.created_at}
                     <div class="flex items-center justify-between">
-                      <span class="text-gray-400">Profile Created:</span>
+                      <span class="text-gray-400">{m.profile_created_label()}</span>
                       <span class="text-gray-200">
                         {formatCalendarDate(new Date(profileEvent.created_at * 1000), 'short')}
                       </span>
@@ -512,7 +515,7 @@
 
               <!-- Raw Profile Data -->
               <div class="rounded-lg bg-gray-800 p-4">
-                <h3 class="mb-4 text-lg font-medium text-white">Raw Profile Data</h3>
+                <h3 class="mb-4 text-lg font-medium text-white">{m.profile_raw_data()}</h3>
                 <div class="max-h-96 overflow-y-auto rounded bg-gray-900 p-4">
                   <pre class="font-mono text-xs whitespace-pre-wrap text-gray-300">{JSON.stringify(
                       profile || {},
@@ -524,7 +527,7 @@
 
               <!-- Raw Nostr Event -->
               <div class="rounded-lg bg-gray-800 p-4">
-                <h3 class="mb-4 text-lg font-medium text-white">Raw Nostr Event (Kind 0)</h3>
+                <h3 class="mb-4 text-lg font-medium text-white">{m.profile_raw_event()}</h3>
                 <div class="max-h-96 overflow-y-auto rounded bg-gray-900 p-4">
                   <pre class="font-mono text-xs whitespace-pre-wrap text-gray-300">{JSON.stringify(
                       profileEvent || {},

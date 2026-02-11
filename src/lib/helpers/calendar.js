@@ -680,6 +680,97 @@ export async function fetchCommunityCalendarEvents(communityPubkey, relays = [])
 }
 
 /**
+ * Padding in days to add before/after the view range to catch multi-day events
+ * that span view boundaries
+ * @type {number}
+ */
+export const VIEW_RANGE_PADDING_DAYS = 7;
+
+/**
+ * Check if a raw Nostr event falls within a date range
+ * This works with raw events from relay (not CalendarEvent objects).
+ * Extracts start/end timestamps from event tags.
+ *
+ * @param {import('nostr-tools').NostrEvent} event - Raw Nostr event
+ * @param {number} rangeStart - Start of range as Unix timestamp (seconds)
+ * @param {number} rangeEnd - End of range as Unix timestamp (seconds)
+ * @returns {boolean} True if event overlaps with date range
+ */
+export function isRawEventInDateRange(event, rangeStart, rangeEnd) {
+  if (!event || !event.tags) return false;
+
+  // Extract start timestamp from tags
+  const startTag = event.tags.find((/** @type {string[]} */ tag) => tag[0] === 'start');
+  if (!startTag || !startTag[1]) return false;
+
+  const eventStart = parseInt(startTag[1], 10);
+  if (isNaN(eventStart)) return false;
+
+  // Extract end timestamp from tags (optional)
+  const endTag = event.tags.find((/** @type {string[]} */ tag) => tag[0] === 'end');
+  const eventEnd = endTag && endTag[1] ? parseInt(endTag[1], 10) : eventStart;
+
+  // Check for overlap: eventStart < rangeEnd AND eventEnd >= rangeStart
+  return eventStart < rangeEnd && eventEnd >= rangeStart;
+}
+
+/**
+ * Get the date range for a given view (with padding for multi-day events)
+ * Returns Unix timestamps suitable for relay queries.
+ *
+ * The padding catches multi-day events that:
+ * - Start before the view but extend into it
+ * - Start in the view but extend past it
+ *
+ * @param {Date} currentDate - The current viewing date
+ * @param {'month' | 'week' | 'day'} viewMode - The view mode
+ * @returns {{ start: number, end: number }} Unix timestamps (seconds)
+ */
+export function getViewDateRange(currentDate, viewMode) {
+  let viewStart, viewEnd;
+
+  switch (viewMode) {
+    case 'day': {
+      // Single day view
+      viewStart = new Date(currentDate);
+      viewStart.setHours(0, 0, 0, 0);
+      viewEnd = new Date(currentDate);
+      viewEnd.setHours(23, 59, 59, 999);
+      break;
+    }
+    case 'week': {
+      // Week view - use getWeekDates for consistency with grid display
+      const weekDates = getWeekDates(currentDate);
+      viewStart = new Date(weekDates[0]);
+      viewStart.setHours(0, 0, 0, 0);
+      viewEnd = new Date(weekDates[weekDates.length - 1]);
+      viewEnd.setHours(23, 59, 59, 999);
+      break;
+    }
+    case 'month':
+    default: {
+      // Month view - use getMonthDates for consistency with grid display (42 days)
+      const monthDates = getMonthDates(currentDate);
+      viewStart = new Date(monthDates[0]);
+      viewStart.setHours(0, 0, 0, 0);
+      viewEnd = new Date(monthDates[monthDates.length - 1]);
+      viewEnd.setHours(23, 59, 59, 999);
+      break;
+    }
+  }
+
+  // Add padding to catch multi-day events spanning boundaries
+  const paddingMs = VIEW_RANGE_PADDING_DAYS * 24 * 60 * 60 * 1000;
+  const startWithPadding = new Date(viewStart.getTime() - paddingMs);
+  const endWithPadding = new Date(viewEnd.getTime() + paddingMs);
+
+  return {
+    start: Math.floor(startWithPadding.getTime() / 1000),
+    end: Math.floor(endWithPadding.getTime() / 1000)
+  };
+}
+
+/**
  * Get community calendar metadata for ICS generation
  * @param {string} communityPubkey - Community public key
  * @returns {Promise<{title: string, summary: string, relays: string[]}>} Calendar metadata

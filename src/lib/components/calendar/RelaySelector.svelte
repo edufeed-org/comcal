@@ -7,6 +7,7 @@
   import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
   import { runtimeConfig } from '$lib/stores/config.svelte.js';
   import { FilterIcon, CloseIcon, PlusIcon, RelayIcon } from '../icons';
+  import * as m from '$lib/paraglide/messages';
 
   // Props
   let { onApplyFilters = () => {} } = $props();
@@ -54,7 +55,7 @@
     if (!trimmed) return;
 
     if (!isValidRelayUrl(trimmed)) {
-      alert('Relay URL must start with wss:// or ws://');
+      alert(m.relay_filter_url_invalid());
       return;
     }
 
@@ -67,7 +68,7 @@
 
     // Check if already exists in default or custom relays
     if (defaultRelays.includes(relayUrl) || customRelays.includes(relayUrl)) {
-      alert('This relay is already in the list');
+      alert(m.relay_filter_already_exists());
       return;
     }
 
@@ -126,7 +127,9 @@
   let hasActiveFilters = $derived(selectedRelays.length > 0);
   let _allRelays = $derived([...defaultRelays, ...customRelays]);
   let applyButtonText = $derived(
-    selectedRelays.length > 0 ? `Apply Filters (${selectedRelays.length})` : 'Show All Relays'
+    selectedRelays.length > 0
+      ? `${m.relay_filter_apply()} (${selectedRelays.length})`
+      : m.relay_filter_show_all()
   );
 </script>
 
@@ -139,7 +142,7 @@
   >
     <div class="flex items-center gap-3">
       <FilterIcon class_="h-5 w-5 text-base-content/70" />
-      <span class="font-medium text-base-content">Filter by Relays</span>
+      <span class="font-medium text-base-content">{m.relay_filter_title()}</span>
       {#if hasActiveFilters}
         <span class="badge badge-sm badge-primary">{selectedRelays.length}</span>
       {/if}
@@ -160,7 +163,7 @@
     <div class="bg-base-50 border-t border-base-300 px-6 py-4">
       <!-- Popular Relays Section -->
       <div class="mb-4">
-        <h4 class="mb-2 text-sm font-medium text-base-content/70">Popular Relays</h4>
+        <h4 class="mb-2 text-sm font-medium text-base-content/70">{m.relay_filter_popular()}</h4>
         <div class="space-y-2">
           {#each defaultRelays as relay (relay)}
             <label class="flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-base-200">
@@ -181,12 +184,12 @@
 
       <!-- Custom Relay Section -->
       <div class="mb-4">
-        <h4 class="mb-2 text-sm font-medium text-base-content/70">Custom Relay</h4>
+        <h4 class="mb-2 text-sm font-medium text-base-content/70">{m.relay_filter_custom()}</h4>
         <div class="flex gap-2">
           <input
             type="text"
             class="input-bordered input input-sm flex-1"
-            placeholder="wss://custom.relay.com"
+            placeholder={m.relay_filter_custom_placeholder()}
             bind:value={customRelayInput}
             onkeydown={(e) => {
               if (e.key === 'Enter') {
@@ -201,7 +204,7 @@
             disabled={!customRelayInput.trim()}
           >
             <PlusIcon class_="h-4 w-4" />
-            Add
+            {m.relay_filter_add()}
           </button>
         </div>
       </div>
@@ -209,7 +212,9 @@
       <!-- Custom Relays List -->
       {#if customRelays.length > 0}
         <div class="mb-4">
-          <h4 class="mb-2 text-sm font-medium text-base-content/70">Custom Relays</h4>
+          <h4 class="mb-2 text-sm font-medium text-base-content/70">
+            {m.relay_filter_custom_relays()}
+          </h4>
           <div class="space-y-2">
             {#each customRelays as relay (relay)}
               <div
@@ -222,7 +227,7 @@
                 <button
                   class="btn btn-ghost btn-xs"
                   onclick={() => removeCustomRelay(relay)}
-                  title="Remove relay"
+                  title={m.relay_filter_remove()}
                 >
                   <CloseIcon class_="h-4 w-4" />
                 </button>
@@ -241,17 +246,17 @@
           class="btn btn-ghost btn-sm"
           onclick={resetSelection}
           disabled={selectedRelays.length === 0}
-          title="Clear checkbox selection"
+          title={m.relay_filter_clear_selection()}
         >
-          Reset Selection
+          {m.relay_filter_reset()}
         </button>
         {#if customRelays.length > 0}
           <button
             class="btn btn-ghost btn-sm btn-error"
             onclick={clearAll}
-            title="Remove all custom relays and reset filters"
+            title={m.relay_filter_clear_custom()}
           >
-            Clear All
+            {m.relay_filter_clear_all()}
           </button>
         {/if}
       </div>
@@ -259,12 +264,11 @@
       <!-- Info text -->
       <p class="mt-3 text-xs text-base-content/60">
         {#if calendarFilters.selectedRelays.length > 0}
-          ✓ Currently showing events from {calendarFilters.selectedRelays.length} selected
-          {calendarFilters.selectedRelays.length === 1 ? 'relay' : 'relays'}
+          ✓ {m.relay_filter_showing_selected({ count: calendarFilters.selectedRelays.length })}
         {:else if selectedRelays.length > 0}
-          Selection ready - click "{applyButtonText}" to apply
+          {m.relay_filter_selection_ready()}
         {:else}
-          ✓ Currently showing events from all relays
+          ✓ {m.relay_filter_showing_all()}
         {/if}
       </p>
     </div>

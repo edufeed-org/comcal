@@ -1,5 +1,6 @@
 <script>
   import { appSettings } from '$lib/stores/app-settings.svelte.js';
+  import * as m from '$lib/paraglide/messages';
 
   /** @type {Array<{value: 'default' | 'stil', label: string, icon: string}>} */
   const themeFamilies = [
@@ -17,9 +18,9 @@
 
 <div class="form-control">
   <div class="label">
-    <span class="label-text">Theme Family</span>
+    <span class="label-text">{m.theme_switcher_family()}</span>
   </div>
-  <div class="flex gap-2" role="group" aria-label="Theme Family">
+  <div class="flex gap-2" role="group" aria-label={m.theme_switcher_family()}>
     {#each themeFamilies as family (family.value)}
       <button
         class="btn flex-1 btn-sm"
@@ -36,9 +37,9 @@
 
 <div class="form-control mt-2">
   <div class="label">
-    <span class="label-text">Color Mode</span>
+    <span class="label-text">{m.theme_switcher_color_mode()}</span>
   </div>
-  <div class="flex gap-2" role="group" aria-label="Color Mode">
+  <div class="flex gap-2" role="group" aria-label={m.theme_switcher_color_mode()}>
     {#each colorModes as mode (mode.value)}
       <button
         class="btn flex-1 btn-sm"

@@ -4,7 +4,7 @@
   import { articleTimelineLoader } from '$lib/loaders/articles.js';
   import { ambTimelineLoader } from '$lib/loaders/amb.js';
   import { feedTargetedPublicationsLoader } from '$lib/loaders/targeted-publications.js';
-  import { calendarTimelineLoader } from '$lib/loaders/calendar.js';
+  import { createDateRangeCalendarLoader } from '$lib/loaders/calendar.js';
   import { addressLoader, timedPool } from '$lib/loaders/base.js';
   import { ambSearchLoader } from '$lib/loaders/amb-search.js';
   import {
@@ -36,6 +36,7 @@
   import CommunikeyCard from '$lib/components/CommunikeyCard.svelte';
   import ContentCardSkeleton from '$lib/components/shared/ContentCardSkeleton.svelte';
   import LearningContentFilters from '$lib/components/educational/LearningContentFilters.svelte';
+  import EventDateRangeFilter from '$lib/components/calendar/EventDateRangeFilter.svelte';
   import { SearchIcon } from '$lib/components/icons';
   import { timer, debounceTime } from 'rxjs';
   import { takeUntil } from 'rxjs/operators';
@@ -122,6 +123,15 @@
   let selectedTags = $state(/** @type {string[]} */ (initialFilters.tags));
   let communityFilter = $state(/** @type {string | null} */ (initialFilters.community));
   let relayFilter = $state(/** @type {string | null} */ (null));
+
+  // Events date range state (default: now to +3 months)
+  const DEFAULT_RANGE_SECONDS = 90 * 24 * 60 * 60; // 3 months
+  let eventsDateRangeStart = $state(initialFilters.eventStart ?? Math.floor(Date.now() / 1000));
+  let eventsDateRangeEnd = $state(
+    initialFilters.eventEnd ?? Math.floor(Date.now() / 1000) + DEFAULT_RANGE_SECONDS
+  );
+  /** @type {import('rxjs').Subscription | undefined} */
+  let dateRangeLoaderSub;
 
   // Initialize contentType from URL, with validation
   const initialContentType = VALID_CONTENT_TYPES.includes(initialFilters.type)
@@ -278,6 +288,29 @@
   }
 
   /**
+   * Handle events date range filter changes
+   * @param {{ start: number, end: number }} range
+   */
+  function handleEventsDateRangeChange(range) {
+    eventsDateRangeStart = range.start;
+    eventsDateRangeEnd = range.end;
+    hasMoreCalendarEvents = true; // Reset "has more" state
+
+    // Update URL params
+    updateQueryParams($page.url.searchParams, {
+      eventStart: String(range.start),
+      eventEnd: String(range.end)
+    });
+
+    // Cancel previous subscription and reload with new range
+    dateRangeLoaderSub?.unsubscribe();
+    const loader = createDateRangeCalendarLoader(range.start, range.end);
+    dateRangeLoaderSub = loader().subscribe({
+      error: (err) => console.error('🔍 Discover: Date range loader error:', err)
+    });
+  }
+
+  /**
    * Handle learning content filter changes
    * @param {import('$lib/helpers/educational/searchQueryBuilder.js').SearchFilters} filters
    */
@@ -323,7 +356,7 @@
   // Step 1: Create stateful loaders
   const articleLoader = articleTimelineLoader(BATCH_SIZE);
   const ambLoader = ambTimelineLoader(BATCH_SIZE);
-  const calendarLoader = calendarTimelineLoader();
+  // Calendar events use date range loader (not stateful pagination)
   const targetedPubsLoader = feedTargetedPublicationsLoader(200);
 
   // Step 2: Initial load (subscriptions captured for cleanup on destroy)
@@ -347,7 +380,12 @@
     }
   });
 
-  const initialCalendarSub = calendarLoader().subscribe({
+  // Initial calendar load uses date range loader
+  const calendarRangeLoader = createDateRangeCalendarLoader(
+    eventsDateRangeStart,
+    eventsDateRangeEnd
+  );
+  const initialCalendarSub = calendarRangeLoader().subscribe({
     complete: () => {
       isLoading = false;
     },
@@ -639,16 +677,17 @@
     if (contentType === 'events' || contentType === 'all') {
       if (hasMoreCalendarEvents) {
         pendingLoaders++;
-        let count = 0;
-        calendarLoader()
+        // Use date range loader for calendar events
+        const rangeLoader = createDateRangeCalendarLoader(eventsDateRangeStart, eventsDateRangeEnd);
+        rangeLoader()
           .pipe(takeUntil(timer(BATCH_TIMEOUT)))
           .subscribe({
             next: () => {
-              count++;
+              // Events loaded via date range - no count tracking needed
             },
             complete: () => {
-              // v5 filterDuplicateEvents may reduce count by 1 at batch boundaries
-              if (count === 0) hasMoreCalendarEvents = false;
+              // Date range loader loads all events for the range - no more pagination
+              hasMoreCalendarEvents = false;
               onLoaderDone();
             },
             error: (/** @type {any} */ error) => {
@@ -759,6 +798,9 @@
       initialAmbSub.unsubscribe();
       initialCalendarSub.unsubscribe();
       initialTargetedPubsSub.unsubscribe();
+
+      // Unsubscribe date range loader subscription
+      dateRangeLoaderSub?.unsubscribe();
 
       // Unsubscribe model subscriptions
       articleModelSub.unsubscribe();
@@ -1156,6 +1198,17 @@
               relayFilter = v;
             }}
             settingsCategory={tabRelayCategory}
+          />
+        </div>
+      {/if}
+
+      <!-- Events Date Range Filter (shown only on events tab) -->
+      {#if contentType === 'events'}
+        <div class="w-full sm:w-auto">
+          <EventDateRangeFilter
+            start={eventsDateRangeStart}
+            end={eventsDateRangeEnd}
+            onrangechange={handleEventsDateRangeChange}
           />
         </div>
       {/if}

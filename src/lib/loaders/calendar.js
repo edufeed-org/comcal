@@ -3,12 +3,14 @@
  * Includes timeline loaders and factory functions for custom filtering.
  */
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
-import { from } from 'rxjs';
-import { mergeMap } from 'rxjs/operators';
+import { from, merge, EMPTY } from 'rxjs';
+import { mergeMap, filter, tap } from 'rxjs/operators';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { addressLoader, timedPool } from './base.js';
-import { getCalendarRelays } from '$lib/helpers/relay-helper.js';
+import { getCalendarRelays, getFallbackRelays } from '$lib/helpers/relay-helper.js';
+import { getAppRelaysForCategory } from '$lib/services/app-relay-service.svelte.js';
 import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
+import { isRawEventInDateRange } from '$lib/helpers/calendar.js';
 
 // Global calendar events (kinds 31922, 31923)
 // Lazy factory to ensure relays are read from runtime config at call time, not module load time
@@ -43,6 +45,75 @@ export const createRelayFilteredCalendarLoader = (customRelays = [], additionalF
     { eventStore }
   );
 };
+
+/**
+ * Create a date-range aware calendar loader that:
+ * 1. Queries app relays (calendar-relay) with special date range filter syntax (#start_after, #start_before)
+ * 2. Queries fallback relays with standard query + client-side date filtering
+ *
+ * Both queries run in parallel. The EventStore handles deduplication.
+ *
+ * @param {number} startTimestamp - Start of date range as Unix timestamp (seconds)
+ * @param {number} endTimestamp - End of date range as Unix timestamp (seconds)
+ * @param {Object} [options] - Additional options
+ * @param {string[]} [options.authors] - Filter by specific authors
+ * @param {string[]} [options.customAppRelays] - Override app relays (for testing)
+ * @param {string[]} [options.customFallbackRelays] - Override fallback relays (for testing)
+ * @returns {Function} Loader function that returns an Observable
+ */
+export function createDateRangeCalendarLoader(startTimestamp, endTimestamp, options = {}) {
+  const { authors, customAppRelays, customFallbackRelays } = options;
+
+  return () => {
+    // Get relays - app relays support date range filter, fallback relays don't
+    const appRelays = customAppRelays || getAppRelaysForCategory('calendar');
+    const fallbackRelays = customFallbackRelays || getFallbackRelays();
+
+    // Build base filter
+    /** @type {import('nostr-tools').Filter} */
+    const baseFilter = {
+      kinds: [31922, 31923]
+    };
+    if (authors && authors.length > 0) {
+      baseFilter.authors = authors;
+    }
+
+    // Observable streams to merge
+    /** @type {import('rxjs').Observable<import('nostr-tools').NostrEvent>[]} */
+    const streams = [];
+
+    // Query 1: App relays with calendar-relay's special date range filter syntax
+    // These relays understand #start_after and #start_before as filter parameters
+    if (appRelays.length > 0) {
+      const appFilter = {
+        ...baseFilter,
+        '#start_after': [String(startTimestamp)],
+        '#start_before': [String(endTimestamp)]
+      };
+
+      const appQuery$ = timedPool(appRelays, appFilter).pipe(tap((event) => eventStore.add(event)));
+      streams.push(appQuery$);
+    }
+
+    // Query 2: Fallback relays with standard query + client-side date filtering
+    // These relays don't understand date range filters, so we filter client-side
+    if (fallbackRelays.length > 0) {
+      const fallbackFilter = {
+        ...baseFilter,
+        limit: 500 // Reasonable limit for fallback
+      };
+
+      const fallbackQuery$ = timedPool(fallbackRelays, fallbackFilter).pipe(
+        filter((event) => isRawEventInDateRange(event, startTimestamp, endTimestamp)),
+        tap((event) => eventStore.add(event))
+      );
+      streams.push(fallbackQuery$);
+    }
+
+    // Merge all streams - EventStore handles deduplication by event ID
+    return streams.length > 0 ? merge(...streams) : EMPTY;
+  };
+}
 
 // Calendar definition loader for personal calendars (kind 31924)
 // NOTE: This loads ALL calendars without filtering - use userCalendarLoader for user-specific calendars

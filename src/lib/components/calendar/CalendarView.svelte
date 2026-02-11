@@ -6,8 +6,10 @@
   import {
     communityCalendarTimelineLoader,
     createRelayFilteredCalendarLoader,
+    createDateRangeCalendarLoader,
     calendarEventReferencesLoader
   } from '$lib/loaders/calendar.js';
+  import { getViewDateRange } from '$lib/helpers/calendar.js';
   import { modalStore } from '$lib/stores/modal.svelte.js';
   import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
   import { manager, useActiveUser } from '$lib/stores/accounts.svelte';
@@ -87,6 +89,10 @@
   let loaderSubscription = $state();
   let modelSubscription = $state();
 
+  // Date range loading subscription (for global/author modes)
+  /** @type {import('rxjs').Subscription | undefined} */
+  let dateRangeLoaderSub;
+
   // Community mode specific state
   let resolutionErrors = $state(/** @type {string[]} */ ([]));
 
@@ -126,6 +132,44 @@
         communityEventLoader.loadByCommunity(communityPubkey);
       }
     }
+  });
+
+  // Date range loading for globalMode - reacts to currentDate and viewMode changes
+  // This effect loads events for the visible date range using the calendar-relay's
+  // special filter syntax (#start_after, #start_before) with fallback for other relays
+  $effect(() => {
+    if (!mounted || !globalMode) return;
+
+    // Calculate the date range for the current view (with 7-day padding)
+    const { start, end } = getViewDateRange(currentDate, viewMode);
+
+    console.log(
+      '📅 CalendarView: Loading events for date range:',
+      new Date(start * 1000).toISOString(),
+      'to',
+      new Date(end * 1000).toISOString()
+    );
+
+    // Clean up previous date range subscription
+    dateRangeLoaderSub?.unsubscribe();
+
+    // Get current filter state
+    const authors = calendarFilters.getSelectedAuthors();
+
+    // Create and subscribe to date range loader
+    const loader = createDateRangeCalendarLoader(start, end, { authors });
+    dateRangeLoaderSub = loader().subscribe({
+      error: (/** @type {any} */ err) => {
+        console.error('📅 CalendarView: Date range loader error:', err);
+      },
+      complete: () => {
+        console.log('📅 CalendarView: Date range loader complete');
+      }
+    });
+
+    return () => {
+      dateRangeLoaderSub?.unsubscribe();
+    };
   });
 
   // Sync initial URL state on mount
@@ -359,6 +403,7 @@
       calendarSubscription?.unsubscribe();
       loaderSubscription?.unsubscribe();
       modelSubscription?.unsubscribe();
+      dateRangeLoaderSub?.unsubscribe();
       communityEventLoader.cleanup();
     };
   });

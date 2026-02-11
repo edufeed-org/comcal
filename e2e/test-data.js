@@ -49,6 +49,47 @@ const communityAuthors = Array.from({ length: COMMUNITY_COUNT }, (_, i) => {
 const NOW = Math.floor(Date.now() / 1000);
 const BASE = NOW - 30 * 24 * 3600; // 30 days ago
 
+// Date range test helpers
+const DAY_SECONDS = 24 * 60 * 60;
+
+/**
+ * Get the start of the current month as a Unix timestamp (seconds)
+ * @returns {number}
+ */
+function getStartOfCurrentMonth() {
+  const now = new Date();
+  return Math.floor(new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000);
+}
+
+/**
+ * Get the start of next month as a Unix timestamp (seconds)
+ * @returns {number}
+ */
+function getStartOfNextMonth() {
+  const now = new Date();
+  return Math.floor(new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime() / 1000);
+}
+
+/**
+ * Get the start of previous month as a Unix timestamp (seconds)
+ * @returns {number}
+ */
+function getStartOfPreviousMonth() {
+  const now = new Date();
+  return Math.floor(new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime() / 1000);
+}
+
+/**
+ * Get the end of current month as a Unix timestamp (seconds)
+ * @returns {number}
+ */
+function getEndOfCurrentMonth() {
+  const now = new Date();
+  return Math.floor(
+    new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).getTime() / 1000
+  );
+}
+
 // Relay URLs matching docker-compose.e2e.yml
 export const RELAY_URLS = {
   amb: 'ws://localhost:7001',
@@ -204,6 +245,84 @@ export function generateTestEvents() {
       )
     );
   }
+
+  // === Date Range Test Events ===
+  // These events have specific dates for testing date range filtering
+
+  const currentMonthStart = getStartOfCurrentMonth();
+  const nextMonthStart = getStartOfNextMonth();
+  const previousMonthStart = getStartOfPreviousMonth();
+  const currentMonthEnd = getEndOfCurrentMonth();
+
+  // Event in the previous month (should NOT appear in current month view)
+  events.push(
+    make(
+      contentAuthors[0],
+      31922,
+      [
+        ['d', 'date-range-past-month'],
+        ['title', 'Past Month Event: History Seminar'],
+        ['start', String(previousMonthStart + 10 * DAY_SECONDS)], // 10th of previous month
+        ['t', 'daterange-test'],
+        ['t', 'past-month']
+      ],
+      'This event was in the previous month.',
+      BASE + 300 * 600
+    )
+  );
+
+  // Event in the current month (should appear in current month view)
+  events.push(
+    make(
+      contentAuthors[1],
+      31922,
+      [
+        ['d', 'date-range-current-month'],
+        ['title', 'Current Month Event: Science Fair'],
+        ['start', String(currentMonthStart + 15 * DAY_SECONDS)], // 15th of current month
+        ['t', 'daterange-test'],
+        ['t', 'current-month']
+      ],
+      'This event is in the current month.',
+      BASE + 301 * 600
+    )
+  );
+
+  // Event in the next month (should NOT appear in current month view, but appear after navigation)
+  events.push(
+    make(
+      contentAuthors[2],
+      31922,
+      [
+        ['d', 'date-range-next-month'],
+        ['title', 'Next Month Event: Art Exhibition'],
+        ['start', String(nextMonthStart + 5 * DAY_SECONDS)], // 5th of next month
+        ['t', 'daterange-test'],
+        ['t', 'next-month']
+      ],
+      'This event is in the next month.',
+      BASE + 302 * 600
+    )
+  );
+
+  // Multi-day event spanning from current month to next month
+  // Starts 2 days before month end, ends 2 days into next month
+  events.push(
+    make(
+      contentAuthors[3],
+      31923,
+      [
+        ['d', 'date-range-spanning-event'],
+        ['title', 'Spanning Event: Multi-Day Conference'],
+        ['start', String(currentMonthEnd - 2 * DAY_SECONDS)], // 2 days before month end
+        ['end', String(nextMonthStart + 2 * DAY_SECONDS)], // 2 days into next month
+        ['t', 'daterange-test'],
+        ['t', 'spanning']
+      ],
+      'This event spans from the current month into the next month.',
+      BASE + 303 * 600
+    )
+  );
 
   // 30 kind 10222 community definitions (one per unique keypair)
   for (let i = 0; i < COMMUNITY_COUNT; i++) {
@@ -474,5 +593,59 @@ export const TEST_COUNTS = {
   /** Total comments including replies */
   totalCommentsOnCalendarEvent: 4,
   /** Reactions on first calendar event (date-event-0) */
-  reactionsOnCalendarEvent: 3
+  reactionsOnCalendarEvent: 3,
+  /** Date range test events */
+  dateRangeTestEvents: 4
+};
+
+/** Date range test event identifiers and titles for E2E assertions */
+export const DATE_RANGE_TEST_EVENTS = {
+  pastMonth: {
+    identifier: 'date-range-past-month',
+    title: 'Past Month Event: History Seminar',
+    tag: 'past-month'
+  },
+  currentMonth: {
+    identifier: 'date-range-current-month',
+    title: 'Current Month Event: Science Fair',
+    tag: 'current-month'
+  },
+  nextMonth: {
+    identifier: 'date-range-next-month',
+    title: 'Next Month Event: Art Exhibition',
+    tag: 'next-month'
+  },
+  spanning: {
+    identifier: 'date-range-spanning-event',
+    title: 'Spanning Event: Multi-Day Conference',
+    tag: 'spanning'
+  }
+};
+
+/** naddr for date range test events */
+export const DATE_RANGE_NADDRS = {
+  pastMonth: naddrEncode({
+    kind: 31922,
+    pubkey: contentAuthors[0].pk,
+    identifier: 'date-range-past-month',
+    relays: [RELAY_URLS.calendar]
+  }),
+  currentMonth: naddrEncode({
+    kind: 31922,
+    pubkey: contentAuthors[1].pk,
+    identifier: 'date-range-current-month',
+    relays: [RELAY_URLS.calendar]
+  }),
+  nextMonth: naddrEncode({
+    kind: 31922,
+    pubkey: contentAuthors[2].pk,
+    identifier: 'date-range-next-month',
+    relays: [RELAY_URLS.calendar]
+  }),
+  spanning: naddrEncode({
+    kind: 31923,
+    pubkey: contentAuthors[3].pk,
+    identifier: 'date-range-spanning-event',
+    relays: [RELAY_URLS.calendar]
+  })
 };

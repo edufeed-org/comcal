@@ -197,6 +197,8 @@ export function clearAllFilters(basePath = '/calendar', options = {}) {
  * @property {string[]} tags - Tag filters
  * @property {string | null} community - Community filter (pubkey, 'joined', or null)
  * @property {string} type - Content type filter ('all', 'events', 'learning', 'articles', 'communities')
+ * @property {number | null} eventStart - Events date range start (Unix timestamp in seconds)
+ * @property {number | null} eventEnd - Events date range end (Unix timestamp in seconds)
  */
 
 /**
@@ -210,14 +212,21 @@ export function clearAllFilters(basePath = '/calendar', options = {}) {
  * // Returns: {
  * //   tags: ['bitcoin', 'nostr'],
  * //   community: 'abc123' | 'joined' | null,
- * //   type: 'all' | 'events' | 'learning' | 'articles' | 'communities'
+ * //   type: 'all' | 'events' | 'learning' | 'articles' | 'communities',
+ * //   eventStart: 1707696000 | null,
+ * //   eventEnd: 1715558400 | null
  * // }
  */
 export function parseFeedFilters(searchParams) {
+  const eventStartStr = searchParams.get('eventStart');
+  const eventEndStr = searchParams.get('eventEnd');
+
   return {
     tags: searchParams.getAll('tags'),
     community: searchParams.get('community') || null,
-    type: searchParams.get('type') || 'all'
+    type: searchParams.get('type') || 'all',
+    eventStart: eventStartStr ? parseInt(eventStartStr, 10) : null,
+    eventEnd: eventEndStr ? parseInt(eventEndStr, 10) : null
   };
 }
 
@@ -261,5 +270,10 @@ export function buildFeedURL(filters, basePath = '/discover') {
  * @returns {boolean} - True if any filters are active
  */
 export function hasFeedFilters(searchParams) {
-  return searchParams.getAll('tags').length > 0 || searchParams.get('community') !== null;
+  return (
+    searchParams.getAll('tags').length > 0 ||
+    searchParams.get('community') !== null ||
+    searchParams.get('eventStart') !== null ||
+    searchParams.get('eventEnd') !== null
+  );
 }

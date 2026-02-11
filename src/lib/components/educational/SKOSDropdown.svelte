@@ -14,6 +14,7 @@
     filterConcepts
   } from '$lib/helpers/educational/skosLoader.js';
   import { CloseIcon, SearchIcon, ChevronDownIcon } from '$lib/components/icons';
+  import * as m from '$lib/paraglide/messages';
 
   /**
    * @typedef {import('$lib/helpers/educational/skosLoader.js').SKOSConcept} SKOSConcept
@@ -32,7 +33,7 @@
     multiple = true,
     required = false,
     label = '',
-    placeholder = 'Select...',
+    placeholder = '',
     helpText = '',
     disabled = false,
     maxSelections = 10,
@@ -181,7 +182,7 @@
       {:else if error}
         <span class="text-sm text-error">{error}</span>
       {:else if selected.length === 0}
-        <span class="text-base-content/70">{placeholder}</span>
+        <span class="text-base-content/70">{placeholder || m.skos_dropdown_select()}</span>
       {:else}
         <!-- Selected items -->
         <div class="flex flex-wrap gap-1.5">
@@ -232,7 +233,7 @@
               type="text"
               bind:this={inputRef}
               bind:value={searchTerm}
-              placeholder="Search..."
+              placeholder={m.skos_dropdown_search()}
               class="input-bordered input input-sm w-full pl-9"
               onclick={(e) => e.stopPropagation()}
             />

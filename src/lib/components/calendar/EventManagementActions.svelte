@@ -7,6 +7,7 @@
   import { showToast } from '$lib/helpers/toast.js';
   import { deleteCalendarEvent } from '$lib/helpers/eventDeletion.js';
   import { EditIcon, TrashIcon } from '$lib/components/icons';
+  import * as m from '$lib/paraglide/messages';
 
   /**
    * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
@@ -32,7 +33,7 @@
       const result = await deleteCalendarEvent(event, activeUser);
 
       if (result.success) {
-        showToast('Event deleted successfully', 'success');
+        showToast(m.event_management_delete_success(), 'success');
         showDeleteConfirmation = false;
         success = true;
         // Call the parent's success callback
@@ -40,11 +41,11 @@
           onDeleteSuccess();
         }
       } else {
-        showToast(result.error || 'Failed to delete event', 'error');
+        showToast(result.error || m.event_management_delete_failed(), 'error');
       }
     } catch (error) {
       console.error('Failed to delete event:', error);
-      showToast('An error occurred while deleting the event', 'error');
+      showToast(m.event_management_delete_error(), 'error');
     } finally {
       isDeletingEvent = false;
       if (!success) {
@@ -56,7 +57,11 @@
 
 <!-- Edit/Delete Dropdown -->
 <div class="dropdown dropdown-end">
-  <button class="btn btn-circle btn-ghost btn-sm" title="Manage event" aria-label="Manage event">
+  <button
+    class="btn btn-circle btn-ghost btn-sm"
+    title={m.event_management_manage()}
+    aria-label={m.event_management_manage()}
+  >
     <EditIcon class="h-5 w-5" />
   </button>
   <ul
@@ -65,7 +70,7 @@
     <li>
       <button onclick={onEdit} class="flex items-center gap-2">
         <EditIcon class="h-4 w-4" />
-        <span>Edit Event</span>
+        <span>{m.event_management_edit()}</span>
       </button>
     </li>
     <li>
@@ -74,7 +79,7 @@
         class="flex items-center gap-2 text-error hover:bg-error/10"
       >
         <TrashIcon class="h-4 w-4" />
-        <span>Delete Event</span>
+        <span>{m.event_management_delete()}</span>
       </button>
     </li>
   </ul>
@@ -84,11 +89,11 @@
 {#if showDeleteConfirmation && event}
   <div class="modal-open modal">
     <div class="modal-box">
-      <h3 class="text-lg font-bold">Delete Event?</h3>
+      <h3 class="text-lg font-bold">{m.event_management_delete_confirm_title()}</h3>
       <p class="py-4">
-        Are you sure you want to delete <strong>{event.title}</strong>?
+        {m.event_management_delete_confirm_text()} <strong>{event.title}</strong>?
         <br />
-        This action cannot be undone.
+        {m.event_management_delete_cannot_undo()}
       </p>
       <div class="modal-action">
         <button
@@ -96,14 +101,14 @@
           onclick={() => (showDeleteConfirmation = false)}
           disabled={isDeletingEvent}
         >
-          Cancel
+          {m.common_cancel()}
         </button>
         <button class="btn btn-error" onclick={handleDeleteEvent} disabled={isDeletingEvent}>
           {#if isDeletingEvent}
             <span class="loading loading-sm loading-spinner"></span>
-            Deleting...
+            {m.event_management_deleting()}
           {:else}
-            Delete Event
+            {m.event_management_delete()}
           {/if}
         </button>
       </div>
