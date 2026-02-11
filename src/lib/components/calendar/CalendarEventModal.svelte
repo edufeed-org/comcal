@@ -15,6 +15,7 @@
   import { useCalendarManagement } from '../../stores/calendar-management-store.svelte.js';
   import { useJoinedCommunitiesList } from '../../stores/joined-communities-list.svelte.js';
   import { manager } from '$lib/stores/accounts.svelte';
+  import { modalStore } from '$lib/stores/modal.svelte.js';
   import CalendarSelector from './CalendarSelector.svelte';
   import CommunitySelector from './CommunitySelector.svelte';
   import LocationInput from '../shared/LocationInput.svelte';
@@ -26,18 +27,24 @@
    * @typedef {import('../../types/calendar.js').EventType} EventType
    */
 
-  let {
-    isOpen = false,
-    communityPubkey,
-    selectedDate = null,
-    mode = 'create',
-    existingEvent = null,
-    existingRawEvent = null,
-    onClose = () => {},
-    onEventCreated = () => {}
-  } = $props();
+  // Modal ID for dialog element
+  const modalId = 'calendar-event-modal';
 
-  // Get calendar actions - use $derived so it updates if communityPubkey prop changes
+  // Get props from modal store
+  let communityPubkey = $derived(
+    /** @type {string} */ (modalStore.modalProps?.communityPubkey) || ''
+  );
+  let selectedDate = $derived(
+    /** @type {Date | null} */ (modalStore.modalProps?.selectedDate) || null
+  );
+  let mode = $derived(/** @type {'create' | 'edit'} */ (modalStore.modalProps?.mode) || 'create');
+  let existingEvent = $derived(/** @type {any} */ (modalStore.modalProps?.existingEvent) || null);
+  let existingRawEvent = $derived(
+    /** @type {any} */ (modalStore.modalProps?.existingRawEvent) || null
+  );
+
+  // Get calendar actions - updates when communityPubkey changes
+
   const calendarActions = $derived(useCalendarActions(communityPubkey));
 
   // Form state
@@ -93,9 +100,48 @@
   let selectedCalendarIds = $state(/** @type {string[]} */ ([]));
   let selectedCommunityIds = $state(/** @type {string[]} */ ([]));
 
+  /**
+   * Sync dialog open/close with modal store state
+   */
+  $effect(() => {
+    const dialog = /** @type {HTMLDialogElement} */ (document.getElementById(modalId));
+    if (!dialog) return;
+
+    if (modalStore.activeModal === 'calendarEvent') {
+      if (!dialog.open) {
+        dialog.showModal();
+      }
+    } else {
+      if (dialog.open) {
+        dialog.close();
+      }
+    }
+  });
+
+  /**
+   * Sync dialog close events back to the modal store
+   * This handles Escape key and backdrop clicks via native dialog behavior
+   */
+  $effect(() => {
+    const dialog = /** @type {HTMLDialogElement} */ (document.getElementById(modalId));
+    if (!dialog) return;
+
+    const handleDialogClose = () => {
+      if (modalStore.activeModal === 'calendarEvent') {
+        resetFormState();
+        modalStore.closeModal();
+      }
+    };
+
+    dialog.addEventListener('close', handleDialogClose);
+    return () => {
+      dialog.removeEventListener('close', handleDialogClose);
+    };
+  });
+
   // Initialize form when modal opens
   $effect(() => {
-    if (isOpen) {
+    if (modalStore.activeModal === 'calendarEvent') {
       if (mode === 'edit' && existingEvent) {
         initializeFormForEdit();
       } else {
@@ -105,6 +151,32 @@
       selectedCommunityIds = [];
     }
   });
+
+  /**
+   * Reset form state to initial values
+   */
+  function resetFormState() {
+    formData = {
+      title: '',
+      summary: '',
+      image: '',
+      startDate: '',
+      startTime: '09:00',
+      endDate: '',
+      endTime: '10:00',
+      startTimezone: getCurrentTimezone(),
+      endTimezone: getCurrentTimezone(),
+      location: '',
+      isAllDay: false,
+      eventType: 'date',
+      references: []
+    };
+    validationErrors = [];
+    isSubmitting = false;
+    submitError = '';
+    selectedCalendarIds = [];
+    selectedCommunityIds = [];
+  }
 
   /**
    * Initialize form with default values for creating new event
@@ -225,8 +297,9 @@
         resultEvent = await calendarActions.updateEvent(formData, existingRawEvent);
         console.log('Event updated successfully');
 
-        onEventCreated();
         handleClose();
+        // Reload page to show updated event
+        window.location.reload();
       } else {
         // Create new event
         resultEvent = await calendarActions.createEvent(formData, communityPubkey);
@@ -256,7 +329,6 @@
           const naddr = encodeEventToNaddr(resultEvent, relayHints);
           console.log('Navigating to newly created event:', naddr);
 
-          onEventCreated();
           handleClose();
 
           // Navigate to the event page
@@ -278,51 +350,25 @@
    * Handle modal close
    */
   function handleClose() {
-    onClose();
-  }
-
-  /**
-   * Handle backdrop click
-   * @param {MouseEvent} e
-   */
-  function handleBackdropClick(e) {
-    if (e.target === e.currentTarget) {
-      handleClose();
-    }
-  }
-
-  /**
-   * Handle escape key
-   * @param {KeyboardEvent} e
-   */
-  function handleKeydown(e) {
-    if (e.key === 'Escape') {
-      handleClose();
-    }
+    resetFormState();
+    modalStore.closeModal();
   }
 </script>
 
-<!-- Modal Backdrop -->
-{#if isOpen}
-  <div
-    class="modal-open modal"
-    onclick={handleBackdropClick}
-    onkeydown={handleKeydown}
-    role="dialog"
-    tabindex="-1"
-    aria-modal="true"
-    aria-labelledby="modal-title"
-  >
+<!-- Modal -->
+{#if modalStore.activeModal === 'calendarEvent'}
+  <dialog id={modalId} class="modal" aria-labelledby="calendar-event-modal-title">
     <div class="modal-box max-h-screen w-full max-w-2xl overflow-y-auto">
       <!-- Modal Header -->
       <div class="mb-4 flex items-center justify-between">
-        <h2 id="modal-title" class="text-xl font-semibold text-base-content">
+        <h2 id="calendar-event-modal-title" class="text-xl font-semibold text-base-content">
           {mode === 'edit' ? m.event_modal_title_edit() : m.event_modal_title_create()}
         </h2>
         <button
           class="btn btn-circle btn-ghost btn-sm"
           onclick={handleClose}
           aria-label={m.event_modal_close_modal()}
+          disabled={isSubmitting}
         >
           <CloseIcon class_="w-6 h-6" />
         </button>
@@ -554,5 +600,9 @@
         </div>
       </form>
     </div>
-  </div>
+    <!-- Backdrop for clicking outside to close -->
+    <form method="dialog" class="modal-backdrop">
+      <button disabled={isSubmitting}>close</button>
+    </form>
+  </dialog>
 {/if}

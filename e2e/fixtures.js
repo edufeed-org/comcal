@@ -146,7 +146,7 @@ export async function openEventCreationModal(page) {
   await page.locator('button[data-tip="Create Event"]').click();
 
   // Wait for modal to appear
-  await expect(page.locator('.modal-open .modal-box')).toBeVisible({ timeout: 5000 });
+  await expect(page.locator('dialog[open] .modal-box')).toBeVisible({ timeout: 5000 });
 }
 
 /**
@@ -177,8 +177,8 @@ export async function openAMBCreationModal(page, communityNpub) {
   // Click the "Create Learning Content" button
   await page.locator('button[data-tip="Create Learning Content"]').first().click();
 
-  // Wait for modal to appear (it's a dialog element)
-  await expect(page.locator('[role="dialog"]')).toBeVisible({ timeout: 5000 });
+  // Wait for modal to appear (it's a native dialog element)
+  await expect(page.locator('dialog[open] .modal-box')).toBeVisible({ timeout: 5000 });
 }
 
 /**

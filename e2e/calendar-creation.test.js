@@ -26,7 +26,7 @@ test.describe('Calendar Event Creation - FAB and Modal UI', () => {
     await openEventCreationModal(page);
 
     // Modal should be visible with form
-    await expect(page.locator('.modal-open .modal-box')).toBeVisible();
+    await expect(page.locator('dialog[open] .modal-box')).toBeVisible();
 
     // Should have title input
     await expect(page.locator('#title')).toBeVisible();
@@ -42,13 +42,13 @@ test.describe('Calendar Event Creation - FAB and Modal UI', () => {
     await openEventCreationModal(page);
 
     // Modal should be visible
-    await expect(page.locator('.modal-open .modal-box')).toBeVisible();
+    await expect(page.locator('dialog[open] .modal-box')).toBeVisible();
 
     // Click the close button (X button in header)
     await page.locator('.modal-box button.btn-circle.btn-ghost').click();
 
     // Modal should close
-    await expect(page.locator('.modal-open .modal-box')).not.toBeVisible({ timeout: 3000 });
+    await expect(page.locator('dialog[open] .modal-box')).not.toBeVisible({ timeout: 3000 });
   });
 });
 
@@ -179,7 +179,7 @@ test.describe('Calendar Event Creation - Form Validation', () => {
     await page.waitForTimeout(500);
 
     // Either validation error appears or we stay on the modal (HTML5 validation)
-    const modalStillOpen = await page.locator('.modal-open .modal-box').isVisible();
+    const modalStillOpen = await page.locator('dialog[open] .modal-box').isVisible();
     const validationError = await page.locator('.alert-error').isVisible();
 
     // One of these should be true
@@ -208,7 +208,7 @@ test.describe('Calendar Event Creation - Form Validation', () => {
     await page.waitForTimeout(500);
 
     // Modal should still be open (validation failed)
-    const modalStillOpen = await page.locator('.modal-open .modal-box').isVisible();
+    const modalStillOpen = await page.locator('dialog[open] .modal-box').isVisible();
     const validationError = await page.locator('.alert-error').isVisible();
 
     expect(modalStillOpen || validationError).toBe(true);
@@ -252,13 +252,13 @@ test.describe('Calendar Event Creation - Deletion', () => {
     await expect(deleteOption).toBeVisible();
     await deleteOption.click();
 
-    // Wait for confirmation modal
+    // Wait for confirmation modal (still uses div-based pattern, not dialog)
     await expect(page.locator('.modal-open .modal-box h3')).toHaveText('Delete Event?', {
       timeout: 5000
     });
 
     // Click the "Delete Event" confirmation button
-    await page.locator('.modal-box button.btn-error').click();
+    await page.locator('.modal-open .modal-box button.btn-error').click();
 
     // Wait for deletion to process and redirect
     await page.waitForTimeout(3000);

@@ -4,6 +4,9 @@
   import LoginWithPrivateKey from './LoginWithPrivateKey.svelte';
   import SignupModal from './SignupModal.svelte';
   import CalendarEventDetailsModal from './calendar/CalendarEventDetailsModal.svelte';
+  import CalendarCreationModal from './calendar/CalendarCreationModal.svelte';
+  import CalendarEventModal from './calendar/CalendarEventModal.svelte';
+  import AMBUploadModal from './educational/AMBUploadModal.svelte';
   import CreateCommunityModal from './CreateCommunityModal.svelte';
   import EditCommunityModal from './EditCommunityModal.svelte';
   import WebcalQRCodeModal from './calendar/WebcalQRCodeModal.svelte';
@@ -169,4 +172,10 @@
   <WebcalQRCodeModal />
 {:else if modal.activeModal === 'profile'}
   <EditProfileModal modalId={editProfileModalId} />
+{:else if modal.activeModal === 'createCalendar'}
+  <CalendarCreationModal />
+{:else if modal.activeModal === 'calendarEvent'}
+  <CalendarEventModal />
+{:else if modal.activeModal === 'ambUpload'}
+  <AMBUploadModal />
 {/if}

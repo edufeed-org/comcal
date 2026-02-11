@@ -1,62 +1,26 @@
 <script>
   import { PlusIcon, CalendarIcon } from '$lib/components/icons';
-  import CalendarEventModal from './CalendarEventModal.svelte';
-  import CalendarCreationModal from './CalendarCreationModal.svelte';
+  import { modalStore } from '$lib/stores/modal.svelte.js';
 
   // Props
   let { communityPubkey = '' } = $props();
-
-  // Event modal state
-  let isEventModalOpen = $state(false);
-  let selectedDateForNewEvent = $state(/** @type {Date | null} */ (null));
-
-  // Calendar modal state
-  let isCalendarModalOpen = $state(false);
 
   /**
    * Handle creating a new event
    */
   function handleCreateEvent() {
-    selectedDateForNewEvent = new Date();
-    isEventModalOpen = true;
+    modalStore.openModal('calendarEvent', {
+      communityPubkey,
+      selectedDate: new Date(),
+      mode: 'create'
+    });
   }
 
   /**
    * Handle creating a new calendar
    */
   function handleCreateCalendar() {
-    isCalendarModalOpen = true;
-  }
-
-  /**
-   * Handle event modal close
-   */
-  function handleEventModalClose() {
-    isEventModalOpen = false;
-    selectedDateForNewEvent = null;
-  }
-
-  /**
-   * Handle calendar modal close
-   */
-  function handleCalendarModalClose() {
-    isCalendarModalOpen = false;
-  }
-
-  /**
-   * Handle event created
-   */
-  function handleEventCreated() {
-    // Event was created successfully
-    // Could add a toast notification here
-  }
-
-  /**
-   * Handle calendar created
-   */
-  function handleCalendarCreated() {
-    // Calendar was created successfully
-    // Could add a toast notification here
+    modalStore.openModal('createCalendar');
   }
 </script>
 
@@ -102,18 +66,4 @@
   {/if}
 </div>
 
-<!-- Event Creation Modal -->
-<CalendarEventModal
-  isOpen={isEventModalOpen}
-  {communityPubkey}
-  selectedDate={selectedDateForNewEvent}
-  onClose={handleEventModalClose}
-  onEventCreated={handleEventCreated}
-/>
-
-<!-- Calendar Creation Modal -->
-<CalendarCreationModal
-  isOpen={isCalendarModalOpen}
-  onClose={handleCalendarModalClose}
-  onCalendarCreated={handleCalendarCreated}
-/>
+<!-- Both CalendarEventModal and CalendarCreationModal are now rendered by ModalManager -->

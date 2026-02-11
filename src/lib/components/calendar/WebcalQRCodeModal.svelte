@@ -104,26 +104,6 @@
   }
 
   /**
-   * Handle backdrop click
-   * @param {MouseEvent} e
-   */
-  function handleBackdropClick(e) {
-    if (e.target === e.currentTarget) {
-      handleClose();
-    }
-  }
-
-  /**
-   * Handle escape key
-   * @param {KeyboardEvent} e
-   */
-  function handleKeydown(e) {
-    if (e.key === 'Escape') {
-      handleClose();
-    }
-  }
-
-  /**
    * Copy webcal URL to clipboard
    */
   async function handleCopyUrl() {
@@ -177,13 +157,7 @@
 
 <!-- QR Code Modal -->
 {#if modal.activeModal === 'webcalQRCode'}
-  <dialog
-    id={modalId}
-    class="modal"
-    onclick={handleBackdropClick}
-    onkeydown={handleKeydown}
-    aria-labelledby="qr-modal-title"
-  >
+  <dialog id={modalId} class="modal" aria-labelledby="qr-modal-title">
     <div class="modal-box w-full max-w-md">
       <!-- Modal Header -->
       <div class="mb-6 flex items-center justify-between">
@@ -282,5 +256,6 @@
         </button>
       </div>
     </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
   </dialog>
 {/if}

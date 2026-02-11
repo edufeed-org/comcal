@@ -40,7 +40,7 @@ test.describe('AMB Resource Creation - FAB and Modal UI', () => {
     await openAMBCreationModal(page, TEST_COMMUNITY.npub);
 
     // Modal should be visible with wizard content
-    await expect(page.locator('[role="dialog"]')).toBeVisible();
+    await expect(page.locator('dialog[open]')).toBeVisible();
 
     // Should show Step 1 title input
     await expect(page.locator('#amb-title')).toBeVisible();
@@ -53,27 +53,26 @@ test.describe('AMB Resource Creation - FAB and Modal UI', () => {
     await openAMBCreationModal(page, TEST_COMMUNITY.npub);
 
     // Modal should be visible
-    await expect(page.locator('[role="dialog"]')).toBeVisible();
+    await expect(page.locator('dialog[open]')).toBeVisible();
 
     // Click the close button (X button in modal header)
-    await page.locator('[role="dialog"] button.btn-circle').first().click();
+    await page.locator('dialog[open] button.btn-circle').first().click();
 
     // Modal should close
-    await expect(page.locator('[role="dialog"]')).not.toBeVisible({ timeout: 3000 });
+    await expect(page.locator('dialog[open]')).not.toBeVisible({ timeout: 3000 });
   });
 
-  test('modal closes on backdrop click', async ({ authenticatedPage: page }) => {
+  test('modal closes on Escape key', async ({ authenticatedPage: page }) => {
     await openAMBCreationModal(page, TEST_COMMUNITY.npub);
 
     // Modal should be visible
-    await expect(page.locator('[role="dialog"]')).toBeVisible();
+    await expect(page.locator('dialog[open]')).toBeVisible();
 
-    // Click on the backdrop (outside the modal box)
-    // The modal overlay has class .modal-open.modal, clicking outside .modal-box closes it
-    await page.locator('.modal-open.modal').click({ position: { x: 10, y: 10 } });
+    // Press Escape key to close the modal (native dialog behavior)
+    await page.keyboard.press('Escape');
 
     // Modal should close
-    await expect(page.locator('[role="dialog"]')).not.toBeVisible({ timeout: 3000 });
+    await expect(page.locator('dialog[open]')).not.toBeVisible({ timeout: 3000 });
   });
 });
 

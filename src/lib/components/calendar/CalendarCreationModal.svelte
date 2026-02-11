@@ -4,19 +4,14 @@
   import { useCalendarManagement } from '$lib/stores/calendar-management-store.svelte.js';
   import { useCalendarActions } from '$lib/stores/calendar-actions.svelte.js';
   import { manager } from '$lib/stores/accounts.svelte';
+  import { modalStore } from '$lib/stores/modal.svelte.js';
   import { CloseIcon, AlertIcon } from '$lib/components/icons';
   import { encodeEventToNaddr } from '$lib/helpers/nostrUtils';
   import { getCalendarRelays } from '$lib/helpers/relay-helper.js';
   import * as m from '$lib/paraglide/messages';
 
-  /**
-   * @typedef {Object} Props
-   * @property {boolean} isOpen - Whether the modal is open
-   * @property {() => void} onClose - Callback when modal closes
-   * @property {() => void} [onCalendarCreated] - Optional callback when calendar is created
-   */
-
-  let { isOpen = false, onClose, onCalendarCreated } = $props();
+  // Modal ID for dialog element
+  const modalId = 'calendar-creation-modal';
 
   // Form state
   let title = $state('');
@@ -29,6 +24,56 @@
 
   // Get calendar management store for UI updates
   const calendarManagement = manager.active ? useCalendarManagement(manager.active.pubkey) : null;
+
+  /**
+   * Sync dialog open/close with modal store state
+   */
+  $effect(() => {
+    const dialog = /** @type {HTMLDialogElement} */ (document.getElementById(modalId));
+    if (!dialog) return;
+
+    if (modalStore.activeModal === 'createCalendar') {
+      if (!dialog.open) {
+        dialog.showModal();
+      }
+    } else {
+      if (dialog.open) {
+        dialog.close();
+      }
+    }
+  });
+
+  /**
+   * Sync dialog close events back to the modal store
+   * This handles Escape key and backdrop clicks via native dialog behavior
+   */
+  $effect(() => {
+    const dialog = /** @type {HTMLDialogElement} */ (document.getElementById(modalId));
+    if (!dialog) return;
+
+    const handleDialogClose = () => {
+      if (modalStore.activeModal === 'createCalendar') {
+        // Reset form state on close
+        resetFormState();
+        modalStore.closeModal();
+      }
+    };
+
+    dialog.addEventListener('close', handleDialogClose);
+    return () => {
+      dialog.removeEventListener('close', handleDialogClose);
+    };
+  });
+
+  /**
+   * Reset form state to initial values
+   */
+  function resetFormState() {
+    title = '';
+    description = '';
+    error = '';
+    isSubmitting = false;
+  }
 
   /**
    * Handle form submission
@@ -64,11 +109,6 @@
         const naddr = encodeEventToNaddr(resultCalendar, relayHints);
         console.log('Navigating to newly created calendar:', naddr);
 
-        // Call optional success callback
-        if (onCalendarCreated) {
-          onCalendarCreated();
-        }
-
         handleClose();
 
         // Navigate to the calendar page
@@ -88,14 +128,8 @@
    * Handle modal close
    */
   function handleClose() {
-    // Reset form state
-    title = '';
-    description = '';
-    error = '';
-    isSubmitting = false;
-
-    // Call close callback
-    onClose();
+    resetFormState();
+    modalStore.closeModal();
   }
 
   /**
@@ -110,22 +144,19 @@
   }
 </script>
 
-{#if isOpen}
-  <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-  <div
-    class="modal-open modal"
-    onclick={(e) => {
-      if (e.target === e.currentTarget) handleClose();
-    }}
-  >
+{#if modalStore.activeModal === 'createCalendar'}
+  <dialog id={modalId} class="modal" aria-labelledby="calendar-creation-title">
     <div class="modal-box max-w-md">
       <!-- Modal Header -->
       <div class="mb-6 flex items-center justify-between">
-        <h3 class="text-lg font-bold text-base-content">{m.calendar_creation_modal_title()}</h3>
+        <h3 id="calendar-creation-title" class="text-lg font-bold text-base-content">
+          {m.calendar_creation_modal_title()}
+        </h3>
         <button
           class="btn btn-circle btn-ghost btn-sm"
           onclick={handleClose}
           aria-label={m.calendar_creation_modal_close_modal()}
+          disabled={isSubmitting}
         >
           <CloseIcon class_="h-5 w-5" />
         </button>
@@ -200,5 +231,9 @@
         </div>
       </form>
     </div>
-  </div>
+    <!-- Backdrop for clicking outside to close -->
+    <form method="dialog" class="modal-backdrop">
+      <button disabled={isSubmitting}>close</button>
+    </form>
+  </dialog>
 {/if}

@@ -3,7 +3,7 @@
 This document tracks what E2E tests exist, what features they cover, and identifies gaps for future testing.
 
 **Last updated:** 2026-02-11
-**Total tests:** 113
+**Total tests:** 160
 
 ## Quick Summary
 
@@ -12,13 +12,17 @@ This document tracks what E2E tests exist, what features they cover, and identif
 | `account-management.test.js`      | 14    | Both | Login, logout, persistence, account switching |
 | `calendar.test.js`                | 4     | No   | Calendar page, events, modal                  |
 | `calendar-creation.test.js`       | 10    | Yes  | FAB, event creation, validation, deletion     |
+| `calendar-editing.test.js`        | 10    | Yes  | Edit button, form pre-population, validation  |
 | `calendar-date-filtering.test.js` | 10    | No   | Date range loading, navigation, view modes    |
 | `amb-creation.test.js`            | 10    | Yes  | FAB, wizard modal, step 1 form, validation    |
 | `profile.test.js`                 | 4     | No   | Profile page, notes, not-found                |
 | `event-detail.test.js`            | 4     | No   | naddr routes (articles, calendar, AMB)        |
 | `community.test.js`               | 5     | No   | Community Learning/Chat tabs                  |
+| `community-membership.test.js`    | 12    | Both | Join/leave flows, persistence, error handling |
+| `community-creation.test.js`      | 12    | Yes  | Modal access, keypair selection, settings     |
 | `discover.test.js`                | 10    | No   | Discovery tabs, infinite scroll               |
 | `discover-events-filter.test.js`  | 9     | No   | Events tab date range filter, URL persistence |
+| `learning-search.test.js`         | 13    | No   | Search input, SKOS filters, tab visibility    |
 | `comments-reactions.test.js`      | 18    | Both | Comments, reactions, auth flows               |
 | `settings.test.js`                | 15    | Both | Theme switching, relay settings, gated/debug  |
 
@@ -118,6 +122,48 @@ This document tracks what E2E tests exist, what features they cover, and identif
 | no critical JS errors during creation | Error capture throughout flow |
 
 **Components exercised:** FloatingActionButton, CalendarEventModal, EventManagementActions
+
+---
+
+### calendar-editing.test.js (10 tests)
+
+**Route:** `/calendar/event/[naddr]`
+**Auth required:** Yes (all tests use `authenticatedPage` fixture)
+**Note:** 3 update flow tests skipped due to app bug (`state_unsafe_mutation` in CalendarEventModal).
+
+#### Edit Button Access (4 tests)
+
+| Test                                       | What it verifies                      |
+| ------------------------------------------ | ------------------------------------- |
+| edit button visible in dropdown for owner  | Manage dropdown shows Edit option     |
+| edit button not visible for non-owner      | Edit hidden when not event owner      |
+| clicking Edit opens modal in edit mode     | Modal opens with pre-filled form      |
+| edit modal has different title than create | "Edit Calendar Event" not "Create..." |
+
+#### Form Pre-population (3 tests)
+
+| Test                                 | What it verifies          |
+| ------------------------------------ | ------------------------- |
+| form shows correct event title       | Title field matches event |
+| form shows correct event description | Description field matches |
+| form shows correct dates and times   | Date fields pre-populated |
+
+#### Update Flow (2 tests) - SKIPPED
+
+| Test                            | What it verifies            | Status  |
+| ------------------------------- | --------------------------- | ------- |
+| can update title and save       | Title change persists       | SKIPPED |
+| can update description and save | Description change persists | SKIPPED |
+
+**Skip reason:** `state_unsafe_mutation` error in CalendarEventModal prevents saves. Tracked for fix.
+
+#### Error Handling (1 test)
+
+| Test                                      | What it verifies              |
+| ----------------------------------------- | ----------------------------- |
+| no critical JavaScript errors during edit | Error capture throughout flow |
+
+**Components exercised:** EventManagementActions (dropdown), CalendarEventModal (edit mode)
 
 ---
 
@@ -256,6 +302,99 @@ This document tracks what E2E tests exist, what features they cover, and identif
 
 ---
 
+### community-membership.test.js (12 tests)
+
+**Route:** `/discover` (Communities tab), `/c/[pubkey]`
+**Auth required:** Both authenticated and unauthenticated flows
+
+#### Unauthenticated (3 tests)
+
+| Test                                                         | What it verifies                  |
+| ------------------------------------------------------------ | --------------------------------- |
+| join button not visible on discover page when not logged in  | Button hidden for unauthenticated |
+| community header shows "Not Joined" badge when not logged in | Badge indicates non-member status |
+| join button in header is visible when not logged in          | Header shows join option          |
+
+#### Join Flow - Authenticated (4 tests)
+
+| Test                                                | What it verifies                      |
+| --------------------------------------------------- | ------------------------------------- |
+| join button visible on discover page when logged in | Button shown for authenticated user   |
+| can join community from discover page               | Button changes to "Leave" after join  |
+| can join community from community page header       | "Joined" badge appears                |
+| join shows loading state during publish             | Loading spinner visible during action |
+
+#### Leave Flow - Authenticated (2 tests)
+
+| Test                                          | What it verifies              |
+| --------------------------------------------- | ----------------------------- |
+| can leave joined community from discover page | Button changes back to "Join" |
+| leave removes joined badge from card          | Card styling updates on leave |
+
+#### Persistence (1 test)
+
+| Test                                             | What it verifies                     |
+| ------------------------------------------------ | ------------------------------------ |
+| membership state persists across page navigation | Leave button still visible after nav |
+
+#### Error Handling (2 tests)
+
+| Test                                            | What it verifies     |
+| ----------------------------------------------- | -------------------- |
+| no critical JavaScript errors during join flow  | No JS errors joining |
+| no critical JavaScript errors during leave flow | No JS errors leaving |
+
+**Components exercised:** CommunikeyCard (join button), CommunikeyHeader (join button, badges), community.js helpers
+
+---
+
+### community-creation.test.js (12 tests)
+
+**Route:** `/discover` (Communities tab), `/c/[pubkey]`
+**Auth required:** Yes (all tests use `authenticatedPage` fixture)
+**Note:** Tests create communities using "Use Current Keypair" path (simpler 2-step flow).
+
+#### Modal Access (3 tests)
+
+| Test                                                   | What it verifies                     |
+| ------------------------------------------------------ | ------------------------------------ |
+| Create Community button not visible when not logged in | Button hidden for unauthenticated    |
+| Create Community button visible when logged in         | Button shown for authenticated users |
+| clicking Create Community button opens modal           | Modal opens with keypair options     |
+
+#### Step 0 - Keypair Selection (2 tests)
+
+| Test                                               | What it verifies                  |
+| -------------------------------------------------- | --------------------------------- |
+| step 0 shows two keypair options                   | Use Current vs Create New buttons |
+| selecting "Use Current Keypair" advances to step 1 | Navigation to community settings  |
+
+#### Step 1 - Community Settings (3 tests)
+
+| Test                              | What it verifies                       |
+| --------------------------------- | -------------------------------------- |
+| step 1 shows settings form fields | Relays, content types sections visible |
+| can toggle content types          | Checkbox toggling works                |
+| default relay is pre-populated    | wss://relay.edufeed.org present        |
+
+#### Creation Flow (3 tests)
+
+| Test                                   | What it verifies                  |
+| -------------------------------------- | --------------------------------- |
+| can advance to confirmation step       | Next button navigates to step 2   |
+| can complete community creation        | Creation navigates to /c/[pubkey] |
+| created community shows user as joined | Auto-join works (kind 30382)      |
+
+#### Error Handling (1 test)
+
+| Test                                                   | What it verifies              |
+| ------------------------------------------------------ | ----------------------------- |
+| no critical JavaScript errors during modal interaction | Error capture throughout flow |
+
+**Components exercised:** CreateCommunityModal, discover page CTA buttons
+
+---
+
 ### discover.test.js (10 tests)
 
 **Route:** `/discover`
@@ -319,6 +458,54 @@ This document tracks what E2E tests exist, what features they cover, and identif
 | no critical JavaScript errors during date navigation | No JS errors during navigation/picker |
 
 **Components exercised:** EventDateRangeFilter, createDateRangeCalendarLoader
+
+---
+
+### learning-search.test.js (13 tests)
+
+**Route:** `/discover` (Learning tab)
+**Auth required:** No
+**Note:** Tests UI element presence and basic interactions. Full NIP-50 search flow depends on relay behavior.
+
+#### Search Input (3 tests)
+
+| Test                                                | What it verifies                 |
+| --------------------------------------------------- | -------------------------------- |
+| search input visible on Learning tab                | Search input renders             |
+| can type in search input                            | Input accepts and retains text   |
+| clear button appears and works when text is entered | Clear button removes search text |
+
+#### SKOS Filters (3 tests)
+
+| Test                                              | What it verifies                                    |
+| ------------------------------------------------- | --------------------------------------------------- |
+| Resource Type dropdown is visible on Learning tab | SKOS dropdown label + button visible                |
+| Subject dropdown is visible on Learning tab       | Second SKOS dropdown visible                        |
+| Resource Type dropdown opens with options         | Dropdown expands, shows options (Text, Video, etc.) |
+
+#### Tab Navigation (3 tests)
+
+| Test                                                | What it verifies                    |
+| --------------------------------------------------- | ----------------------------------- |
+| SKOS filters not visible on Events tab              | Filters hidden on non-Learning tabs |
+| SKOS filters not visible on Communities tab         | Filters hidden on Communities tab   |
+| SKOS filters appear after switching to Learning tab | Filters show only on Learning tab   |
+
+#### Common Filters (2 tests)
+
+| Test                                             | What it verifies               |
+| ------------------------------------------------ | ------------------------------ |
+| Sort dropdown is visible on Learning tab         | Sort by Newest/Oldest dropdown |
+| Relay filter dropdown is visible on Learning tab | Relay filter UI present        |
+
+#### Error Handling (2 tests)
+
+| Test                                                | What it verifies           |
+| --------------------------------------------------- | -------------------------- |
+| no critical JavaScript errors during page load      | No JS errors on tab switch |
+| no critical JavaScript errors when typing in search | No JS errors during search |
+
+**Components exercised:** LearningContentFilters, SKOSDropdown, SearchInput, DiscoverPage tabs
 
 ---
 
@@ -466,28 +653,29 @@ Tests use Docker Compose with three real Nostr relays plus a mock hanging relay:
 
 ### Not Yet Tested
 
-| Feature                     | Priority | Notes                                                  |
-| --------------------------- | -------- | ------------------------------------------------------ |
-| **Article Creation**        | High     | No creation UI exists yet                              |
-| **NIP-50 Search**           | Medium   | Full-text search on Learning tab (SKOS filters tested) |
-| **Community Management**    | Medium   | Create community, join/leave flows, chat messages      |
-| **Signup Wizard**           | Medium   | 4-step signup flow (intro, profile, key gen, follows)  |
-| **Mobile Responsive**       | Low      | Viewport-specific tests                                |
-| **Accessibility (a11y)**    | Low      | Keyboard navigation, screen reader                     |
-| **Relay Override Settings** | Low      | Kind 30002 user relay customization                    |
-| **Error Recovery**          | Low      | Offline handling, relay failures                       |
+| Feature                     | Priority | Notes                                                 |
+| --------------------------- | -------- | ----------------------------------------------------- |
+| **Article Creation**        | High     | No creation UI exists yet                             |
+| **Signup Wizard**           | Medium   | 4-step signup flow (intro, profile, key gen, follows) |
+| **Mobile Responsive**       | Low      | Viewport-specific tests                               |
+| **Accessibility (a11y)**    | Low      | Keyboard navigation, screen reader                    |
+| **Relay Override Settings** | Low      | Kind 30002 user relay customization                   |
+| **Error Recovery**          | Low      | Offline handling, relay failures                      |
 
 ### Partially Covered
 
-| Feature            | What's Covered                             | What's Missing                                        |
-| ------------------ | ------------------------------------------ | ----------------------------------------------------- |
-| Account management | NSEC login, logout, persistence, switching | NIP-07 extension, NIP-49 encrypted keys               |
-| Settings page      | Theme switching, gated mode, debug mode    | Relay editing, Blossom add/remove, kind 30002 publish |
-| Calendar events    | View, create, delete                       | Edit event flow                                       |
-| AMB resources      | Modal UI, step 1 form, navigation          | Full creation (SKOS dropdowns, file upload, publish)  |
-| Profile page       | View profile, notes                        | Edit profile, avatar upload                           |
-| Comments           | Post, reply, delete                        | Edit comment                                          |
-| Reactions          | Add, remove                                | Custom emoji support                                  |
+| Feature              | What's Covered                               | What's Missing                                        |
+| -------------------- | -------------------------------------------- | ----------------------------------------------------- |
+| Account management   | NSEC login, logout, persistence, switching   | NIP-07 extension, NIP-49 encrypted keys               |
+| Settings page        | Theme switching, gated mode, debug mode      | Relay editing, Blossom add/remove, kind 30002 publish |
+| Calendar events      | View, create, delete, edit UI (modal/form)   | Edit save flow (blocked by app bug)                   |
+| AMB resources        | Modal UI, step 1 form, navigation            | Full creation (SKOS dropdowns, file upload, publish)  |
+| Profile page         | View profile, notes                          | Edit profile, avatar upload                           |
+| Comments             | Post, reply, delete                          | Edit comment                                          |
+| Reactions            | Add, remove                                  | Custom emoji support                                  |
+| NIP-50 Search        | Search input, SKOS filter UI, tab visibility | Full search flow (depends on relay NIP-50 support)    |
+| Community membership | Join/leave on discover & community pages     | Chat message posting                                  |
+| Community creation   | Use Current Keypair flow, settings, publish  | Create New Keypair flow (4 steps), badge access ctrl  |
 
 ---
 

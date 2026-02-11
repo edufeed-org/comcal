@@ -17,7 +17,7 @@
   import CommentList from '../comments/CommentList.svelte';
   import EventTags from '../calendar/EventTags.svelte';
   import CommunityShare from '../shared/CommunityShare.svelte';
-  import AMBUploadModal from './AMBUploadModal.svelte';
+  import { modalStore } from '$lib/stores/modal.svelte.js';
   import { getLocale } from '$lib/paraglide/runtime.js';
   import { getLabelsWithFallback } from '$lib/helpers/educational/ambTransform.js';
   import { buildAMBJsonLd } from '$lib/helpers/educational/ambJsonLd.js';
@@ -54,9 +54,6 @@
   // Share UI state
   let showShareUI = $state(false);
 
-  // Edit modal state
-  let showEditModal = $state(false);
-
   // Delete state
   let showDeleteConfirmation = $state(false);
   let isDeletingResource = $state(false);
@@ -68,24 +65,22 @@
    * Handle edit button click
    */
   function handleEditClick() {
-    showEditModal = true;
-  }
-
-  /**
-   * Handle edit modal close
-   */
-  function handleEditModalClose() {
-    showEditModal = false;
-  }
-
-  /**
-   * Handle resource updated
-   * @param {string} _naddr - The naddr of the updated resource (unused - we reload instead)
-   */
-  function handleResourceUpdated(_naddr) {
-    showEditModal = false;
-    // Refresh the page to show updated content
-    window.location.reload();
+    const communityPubkey =
+      event.tags?.find((/** @type {string[]} */ t) => t[0] === 'h')?.[1] || '';
+    modalStore.openModal(
+      'ambUpload',
+      {
+        editEvent: event,
+        editResource: resource,
+        communityPubkey
+      },
+      {
+        onPublished: () => {
+          // Refresh the page to show updated content
+          window.location.reload();
+        }
+      }
+    );
   }
 
   /**
@@ -724,17 +719,7 @@
   </div>
 </article>
 
-<!-- Edit Modal -->
-{#if isOwner}
-  <AMBUploadModal
-    isOpen={showEditModal}
-    editEvent={event}
-    editResource={resource}
-    communityPubkey={event.tags?.find((/** @type {string[]} */ t) => t[0] === 'h')?.[1] || ''}
-    onClose={handleEditModalClose}
-    onPublished={handleResourceUpdated}
-  />
-{/if}
+<!-- AMBUploadModal is now rendered by ModalManager -->
 
 <!-- Delete Confirmation Modal -->
 {#if showDeleteConfirmation}

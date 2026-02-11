@@ -1,7 +1,7 @@
 <script>
   import { PlusIcon } from '$lib/components/icons';
   import { manager } from '$lib/stores/accounts.svelte';
-  import AMBUploadModal from './AMBUploadModal.svelte';
+  import { modalStore } from '$lib/stores/modal.svelte.js';
 
   /**
    * @typedef {Object} Props
@@ -10,9 +10,6 @@
 
   /** @type {Props} */
   let { communityPubkey } = $props();
-
-  // Modal state
-  let isModalOpen = $state(false);
 
   /**
    * Handle creating a new educational resource
@@ -23,24 +20,7 @@
       console.warn('User must be logged in to create resources');
       return;
     }
-    isModalOpen = true;
-  }
-
-  /**
-   * Handle modal close
-   */
-  function handleModalClose() {
-    isModalOpen = false;
-  }
-
-  /**
-   * Handle resource published
-   * @param {string} naddr - The naddr of the published resource
-   */
-  function handleResourcePublished(naddr) {
-    console.log('📚 Resource published:', naddr);
-    // Modal handles navigation, just close it
-    isModalOpen = false;
+    modalStore.openModal('ambUpload', { communityPubkey });
   }
 </script>
 
@@ -75,13 +55,7 @@
   </button>
 </div>
 
-<!-- Educational Resource Upload Modal -->
-<AMBUploadModal
-  isOpen={isModalOpen}
-  {communityPubkey}
-  onClose={handleModalClose}
-  onPublished={handleResourcePublished}
-/>
+<!-- AMBUploadModal is now rendered by ModalManager -->
 
 <style>
   /* FAB container with hover expand */

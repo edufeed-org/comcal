@@ -102,6 +102,12 @@
     if (!dialog) return;
 
     const handleDialogClose = () => {
+      // Prevent closing during publishing
+      if (isPublishing) {
+        // Re-open the dialog if it was closed during publishing
+        dialog.showModal();
+        return;
+      }
       // Only update store if this modal is currently active
       if (modalStore.activeModal === 'createCommunity') {
         console.log('CreateCommunityModal: Dialog closed, syncing with store');
@@ -493,6 +499,8 @@
   }
 
   function closeModal() {
+    // Prevent closing during publishing
+    if (isPublishing) return;
     modalStore.closeModal();
     // Reset state
     currentStep = 0;

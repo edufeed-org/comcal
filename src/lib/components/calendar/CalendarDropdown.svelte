@@ -9,7 +9,7 @@
   import { manager } from '$lib/stores/accounts.svelte';
   import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte';
   import { useUserProfile } from '$lib/stores/user-profile.svelte';
-  import CalendarCreationModal from './CalendarCreationModal.svelte';
+  import { modalStore } from '$lib/stores/modal.svelte.js';
   import {
     CalendarIcon,
     GlobeIcon,
@@ -61,9 +61,6 @@
 
   // Check if we're on the global calendar route (synchronous with navigation)
   let isOnGlobalRoute = $derived($page.url.pathname === '/calendar');
-
-  // Calendar modal state
-  let isCalendarModalOpen = $state(false);
 
   // subs
   let calendarSubscription = $state();
@@ -161,16 +158,7 @@
   }
 
   function handleCreateCalendar() {
-    isCalendarModalOpen = true;
-  }
-
-  function handleCalendarModalClose() {
-    isCalendarModalOpen = false;
-  }
-
-  function handleCalendarCreated() {
-    // Refresh calendar list after creation
-    loadUserCalendars();
+    modalStore.openModal('createCalendar');
   }
 
   async function handleRefresh() {
@@ -422,9 +410,4 @@
   </ul>
 </div>
 
-<!-- Calendar Creation Modal -->
-<CalendarCreationModal
-  isOpen={isCalendarModalOpen}
-  onClose={handleCalendarModalClose}
-  onCalendarCreated={handleCalendarCreated}
-/>
+<!-- CalendarCreationModal is now rendered by ModalManager -->

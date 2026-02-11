@@ -55,6 +55,12 @@
     if (!dialog) return;
 
     const handleDialogClose = () => {
+      // Prevent closing during key generation or publishing
+      if (isGeneratingKeys || isPublishing) {
+        // Re-open the dialog if it was closed during an operation
+        dialog.showModal();
+        return;
+      }
       // Only update store if this modal is currently active
       if (modalStore.activeModal === 'signup') {
         console.log('SignupModal: Dialog closed, syncing with store');
@@ -311,6 +317,8 @@
   }
 
   function closeModal() {
+    // Prevent closing during key generation or publishing
+    if (isGeneratingKeys || isPublishing) return;
     modalStore.closeModal();
     // Reset state
     currentStep = 1;

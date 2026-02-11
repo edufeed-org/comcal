@@ -26,7 +26,7 @@
   } from '$lib/components/icons';
   import AddToCalendarDropdown from '$lib/components/calendar/AddToCalendarDropdown.svelte';
   import EventTags from '$lib/components/calendar/EventTags.svelte';
-  import CalendarEventModal from '$lib/components/calendar/CalendarEventModal.svelte';
+  import { modalStore } from '$lib/stores/modal.svelte.js';
   import LocationLink from '$lib/components/shared/LocationLink.svelte';
   import MarkdownRenderer from '$lib/components/shared/MarkdownRenderer.svelte';
   import EventLocationMap from '$lib/components/calendar/EventLocationMap.svelte';
@@ -48,7 +48,6 @@
   // Reactive state
   let featuredCalendars = $state(/** @type {any[]} */ ([]));
   let isLoadingCalendars = $state(true);
-  let isEditModalOpen = $state(false);
 
   // Get event from data
   let event = $derived(data.event);
@@ -173,7 +172,13 @@
    * Handle edit action - open edit modal
    */
   function handleEdit() {
-    isEditModalOpen = true;
+    if (!event || !rawEvent) return;
+    modalStore.openModal('calendarEvent', {
+      mode: 'edit',
+      existingEvent: event,
+      existingRawEvent: rawEvent,
+      communityPubkey: event.pubkey
+    });
   }
 
   /**
@@ -518,19 +523,4 @@
   </div>
 {/if}
 
-<!-- Edit Modal -->
-{#if event && rawEvent}
-  <CalendarEventModal
-    isOpen={isEditModalOpen}
-    mode="edit"
-    existingEvent={event}
-    existingRawEvent={rawEvent}
-    communityPubkey={event.pubkey}
-    onClose={() => (isEditModalOpen = false)}
-    onEventCreated={() => {
-      isEditModalOpen = false;
-      // Reload page to show updated event
-      window.location.reload();
-    }}
-  />
-{/if}
+<!-- CalendarEventModal is now rendered by ModalManager -->
