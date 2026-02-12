@@ -17,7 +17,7 @@ services:
     image: git.edufeed.org/edufeed/amb-relay:main
     restart: on-failure
     ports:
-      - "7001:3334"
+      - "17001:3334"
     environment:
       - NAME=E2E AMB Relay
       - TS_HOST=http://typesense:8108
@@ -38,7 +38,7 @@ services:
     image: git.edufeed.org/edufeed/calendar-relay:main
     restart: on-failure
     ports:
-      - "7002:3334"
+      - "17002:3334"
     environment:
       - NAME=E2E Calendar Relay
       - PORT=3334
@@ -56,7 +56,7 @@ services:
     image: dockurr/strfry:latest
     restart: on-failure
     ports:
-      - "7003:7777"
+      - "17003:7777"
     volumes:
       - strfry-data:/app/strfry-db
       - ./strfry.conf:/etc/strfry.conf:ro
@@ -74,7 +74,7 @@ services:
     image: ghcr.io/hzrd149/blossom-server:latest
     restart: on-failure
     ports:
-      - "3000:3000"
+      - "13000:3000"
     environment:
       - DATA_PATH=/data
     volumes:

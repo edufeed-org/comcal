@@ -90,11 +90,11 @@ function getEndOfCurrentMonth() {
   );
 }
 
-// Relay URLs matching docker-compose.e2e.yml
+// Relay URLs matching docker-compose.e2e.yml - using 17xxx range to avoid port conflicts
 export const RELAY_URLS = {
-  amb: 'ws://localhost:7001',
-  calendar: 'ws://localhost:7002',
-  strfry: 'ws://localhost:7003'
+  amb: 'ws://localhost:17001',
+  calendar: 'ws://localhost:17002',
+  strfry: 'ws://localhost:17003'
 };
 
 const adjectives = [

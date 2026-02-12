@@ -1,15 +1,18 @@
 import { defineConfig } from '@playwright/test';
 
-// Docker relay ports
+// Docker relay ports - Using 17xxx range to avoid conflicts with other projects
 const RELAY_URLS = {
-  amb: 'ws://localhost:7001',
-  calendar: 'ws://localhost:7002',
-  strfry: 'ws://localhost:7003',
-  hanging: 'ws://localhost:9738' // Mock relay for timedPool timeout tests
+  amb: 'ws://localhost:17001',
+  calendar: 'ws://localhost:17002',
+  strfry: 'ws://localhost:17003',
+  hanging: 'ws://localhost:19738' // Mock relay for timedPool timeout tests
 };
 
 // Blossom server for file uploads
-const BLOSSOM_SERVER_URL = 'http://localhost:3000';
+const BLOSSOM_SERVER_URL = 'http://localhost:13000';
+
+// Web server port - Using 14173 to avoid conflicts with other projects
+const WEB_SERVER_PORT = 14173;
 
 export default defineConfig({
   testDir: 'e2e',
@@ -29,7 +32,7 @@ export default defineConfig({
   reporter: 'html',
 
   use: {
-    baseURL: 'http://localhost:4173',
+    baseURL: `http://localhost:${WEB_SERVER_PORT}`,
     screenshot: 'only-on-failure',
     trace: 'on-first-retry'
   },
@@ -47,8 +50,8 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'pnpm run build && pnpm run preview',
-    port: 4173,
+    command: `pnpm run build && pnpm run preview --port ${WEB_SERVER_PORT}`,
+    port: WEB_SERVER_PORT,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {
@@ -62,9 +65,9 @@ export default defineConfig({
       BLOSSOM_SERVER_URL: BLOSSOM_SERVER_URL,
       GATED_MODE_DEFAULT: 'true',
       GATED_MODE_FORCE: 'true',
-      ORIGIN: 'http://localhost:4173',
+      ORIGIN: `http://localhost:${WEB_SERVER_PORT}`,
       NODE_ENV: 'production',
-      PORT: '4173'
+      PORT: String(WEB_SERVER_PORT)
     }
   }
 });

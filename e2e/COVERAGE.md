@@ -3,7 +3,7 @@
 This document tracks what E2E tests exist, what features they cover, and identifies gaps for future testing.
 
 **Last updated:** 2026-02-12
-**Total tests:** 232
+**Total tests:** 249
 
 ## Quick Summary
 
@@ -15,13 +15,14 @@ This document tracks what E2E tests exist, what features they cover, and identif
 | `calendar-editing.test.js`        | 10    | Yes  | Edit button, form pre-population, validation  |
 | `calendar-date-filtering.test.js` | 10    | No   | Date range loading, navigation, view modes    |
 | `amb-creation.test.js`            | 20    | Yes  | FAB, wizard modal, all 4 steps, validation    |
+| `amb-creation-full.test.js`       | 16    | Yes  | Full flow, SKOS mocks, Blossom upload, relay  |
 | `profile.test.js`                 | 4     | No   | Profile page, notes, not-found                |
 | `profile-editing.test.js`         | 10    | Yes  | Edit modal, form pre-population, save flow    |
 | `event-detail.test.js`            | 4     | No   | naddr routes (articles, calendar, AMB)        |
 | `community.test.js`               | 5     | No   | Community Learning/Chat tabs                  |
 | `community-membership.test.js`    | 12    | Both | Join/leave flows, persistence, error handling |
 | `community-creation.test.js`      | 23    | Yes  | Both keypair flows, all steps, settings       |
-| `discover.test.js`                | 10    | No   | Discovery tabs, infinite scroll               |
+| `discover.test.js`                | 11    | No   | Discovery tabs, infinite scroll, profiles     |
 | `discover-events-filter.test.js`  | 9     | No   | Events tab date range filter, URL persistence |
 | `learning-search.test.js`         | 13    | No   | Search input, SKOS filters, tab visibility    |
 | `comments-reactions.test.js`      | 18    | Both | Comments, reactions, auth flows               |
@@ -265,6 +266,70 @@ This document tracks what E2E tests exist, what features they cover, and identif
 
 ---
 
+### amb-creation-full.test.js (16 tests)
+
+**Route:** `/c/[pubkey]` (community Learning tab)
+**Auth required:** Yes (all tests use `authenticatedPage` fixture)
+**Infrastructure:** SKOS mocks via `page.route()`, Blossom server (port 3000), amb-relay (port 7001)
+
+This file completes the full AMB creation flow that `amb-creation.test.js` cannot cover due to external SKOS dependencies. It uses Playwright route interception to mock SKOS vocabulary APIs.
+
+#### Full Creation Flow (3 tests)
+
+| Test                                      | What it verifies                                        |
+| ----------------------------------------- | ------------------------------------------------------- |
+| completes full creation flow              | All 4 steps → publish → naddr navigation                |
+| published event appears on amb-relay      | WebSocket query finds kind 30142 with correct tags      |
+| published event has correct metadata tags | name, description, inLanguage, license.id tags verified |
+
+#### SKOS Dropdowns (3 tests)
+
+| Test                                       | What it verifies                             |
+| ------------------------------------------ | -------------------------------------------- |
+| SKOS dropdown shows mocked resource types  | Text, Video, Audio options from mock data    |
+| SKOS dropdown shows mocked subject options | Computer Science, Mathematics from mock data |
+| can select multiple resource types         | Multi-select badges appear correctly         |
+
+#### File Upload (4 tests)
+
+| Test                                          | What it verifies                        |
+| --------------------------------------------- | --------------------------------------- |
+| can upload file to Blossom server             | File chooser → upload → file in list    |
+| uploaded file appears in file list            | Filename and remove button visible      |
+| can remove uploaded file                      | Remove button works, file disappears    |
+| full creation with file includes encoding tag | Published event has encoding.contentUrl |
+
+#### Keywords and URLs (2 tests)
+
+| Test                            | What it verifies          |
+| ------------------------------- | ------------------------- |
+| can add keywords in step 2      | Keywords appear as badges |
+| can add external URLs in step 3 | URLs appear in list       |
+
+#### Error Handling (2 tests)
+
+| Test                                            | What it verifies                    |
+| ----------------------------------------------- | ----------------------------------- |
+| no critical JS errors during full creation flow | Error capture clean throughout      |
+| shows error when SKOS selection is missing      | Validation blocks step 2 navigation |
+
+#### Navigation (2 tests)
+
+| Test                                       | What it verifies           |
+| ------------------------------------------ | -------------------------- |
+| resource visible on community Learning tab | Card appears after publish |
+| back button preserves form state on step 2 | Title preserved after back |
+
+**Components exercised:** AMBUploadModal (all steps), SKOSDropdown (with mocks), BlossomUploader, CreatorInput, ExternalUrlInput, educational-actions.svelte.js
+
+**New infrastructure files:**
+
+- `e2e/mock-skos-data.js` - Mock SKOS vocabulary data
+- `e2e/relay-verification.js` - WebSocket relay query helpers
+- `e2e/fixtures.js` - Added `setupSKOSMocks()`, `clearSKOSCache()`, step completion helpers
+
+---
+
 ### calendar.test.js (4 tests)
 
 **Route:** `/calendar`
@@ -484,7 +549,7 @@ This document tracks what E2E tests exist, what features they cover, and identif
 
 ---
 
-### discover.test.js (10 tests)
+### discover.test.js (11 tests)
 
 **Route:** `/discover`
 **Auth required:** No
@@ -501,8 +566,9 @@ This document tracks what E2E tests exist, what features they cover, and identif
 | Articles tab: shows "no more content" after all items loaded   | End-of-content message                  |
 | Learning tab: spinner stops after all content loaded           | Tests timedPool timeout (hanging relay) |
 | page loads without critical JavaScript errors                  | No JS errors                            |
+| Learning tab: shows author profile names on resource cards     | Profiles load via useProfileMap hook    |
 
-**Components exercised:** DiscoverPage, ContentCard, InfiniteScroll sentinel
+**Components exercised:** DiscoverPage, ContentCard, InfiniteScroll sentinel, useProfileMap
 
 ---
 
@@ -892,7 +958,7 @@ Tests use Docker Compose with three real Nostr relays plus a mock hanging relay:
 | Account management   | NSEC login, logout, persistence, switching       | NIP-07 extension, NIP-49 encrypted keys            |
 | Settings page        | Theme, gated/debug mode, relay editing, Blossom  | Kind 30002 publish verification                    |
 | Calendar events      | View, create, delete, edit (full CRUD)           | -                                                  |
-| AMB resources        | Modal UI, all 4 steps, navigation                | Full creation (file upload, kind 30142 publish)    |
+| AMB resources        | Full creation flow, file upload, relay publish   | -                                                  |
 | Profile page         | View profile, notes, edit modal, save flow       | Avatar upload (Blossom integration)                |
 | Comments             | Post, reply, delete                              | Edit comment                                       |
 | Reactions            | Add, remove                                      | Custom emoji support                               |

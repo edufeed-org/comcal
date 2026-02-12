@@ -209,4 +209,26 @@ test.describe('Discover page - infinite scroll', () => {
 
     errorCapture.assertNoCriticalErrors();
   });
+
+  test('Learning tab: shows author profile names on resource cards', async ({ page }) => {
+    await page.goto('/discover');
+    await waitForContent(page);
+
+    await page.locator('[data-testid="tab-learning"]').click();
+    await expect(page.locator('.amb-card-list').first()).toBeVisible({ timeout: 15_000 });
+
+    // Wait for profiles to load asynchronously via useProfileMap
+    // Profiles resolve via EventStore batching (bufferTime ~1000ms)
+    await expect(async () => {
+      // Get all author name elements from list variant cards
+      // In AMBResourceCard list variant, author name is in the second line div
+      const authorLines = await page
+        .locator('.amb-card-list .text-base-content\\/60')
+        .allTextContents();
+      // At least one card should show a resolved profile name (not a truncated pubkey)
+      // Test data uses "Test Author X" naming convention
+      const hasProfileName = authorLines.some((line) => line.includes('Test Author'));
+      expect(hasProfileName).toBe(true);
+    }).toPass({ timeout: 15_000 });
+  });
 });

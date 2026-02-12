@@ -3,8 +3,8 @@ import { startRelay } from './mock-relay.js';
 import { seedAllRelays, RELAY_URLS } from './seed-relays.js';
 import { generateTestEvents } from './test-data.js';
 
-const HANGING_RELAY_PORT = 9738;
-const BLOSSOM_URL = 'http://localhost:3000';
+const HANGING_RELAY_PORT = 19738;
+const BLOSSOM_URL = 'http://localhost:13000';
 const DEBUG = process.env.DEBUG;
 
 /**

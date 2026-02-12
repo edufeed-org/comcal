@@ -62,21 +62,28 @@
   // Svelte 5's $state() proxy breaks Symbol-based properties (e.g. getSeenRelays)
   // because Set.prototype.has() fails on proxied Sets.
   // These arrays are always replaced entirely, so $state.raw() preserves reactivity.
+  // Use $state.raw() to preserve Symbol-based relay provenance (getSeenRelays)
   let articles = $state.raw(/** @type {any[]} */ ([]));
   let ambResources = $state.raw(/** @type {any[]} */ ([]));
   let calendarEvents = $state.raw(/** @type {any[]} */ ([]));
   let targetedPubs = $state.raw(/** @type {any[]} */ ([]));
-  const getAuthorProfiles = useProfileMap(
-    () =>
-      new Set([
-        ...articles.map((a) => a.pubkey),
-        ...ambResources.map((r) => r.pubkey),
-        ...calendarEvents.map((e) => e.pubkey),
-        ...communities.map((c) => getTagValue(c, 'd') || c.pubkey)
-      ])
-  );
-  const getCommunityProfiles = useProfileMap(() => allCommunities.map((c) => c.pubkey));
+
+  // Trigger counter to force profile hook re-evaluation when $state.raw() arrays are updated
+  let profileTrigger = $state(0);
+
+  // Profile loading using useProfileMap hook
+  // The getter reads profileTrigger to re-run when data changes (since $state.raw doesn't track)
+  const getAuthorProfiles = useProfileMap(() => {
+    const _ = profileTrigger; // Establish dependency on trigger
+    return [
+      ...articles.map((a) => a.pubkey),
+      ...ambResources.map((r) => r.pubkey),
+      ...calendarEvents.map((e) => e.pubkey)
+    ].filter(Boolean);
+  });
   let authorProfiles = $derived(getAuthorProfiles());
+
+  const getCommunityProfiles = useProfileMap(() => allCommunities.map((c) => c.pubkey));
   let communityProfiles = $derived(getCommunityProfiles());
   let isLoading = $state(true);
   let isLoadingMore = $state(false);
@@ -486,6 +493,7 @@
     .subscribe((timeline) => {
       articles = timeline || [];
       isLoading = false;
+      profileTrigger++; // Trigger profile loading for new articles
     });
 
   // Subscribe to AMB resources (debounced via RxJS)
@@ -496,6 +504,7 @@
     .subscribe((resources) => {
       ambResources = resources || [];
       isLoading = false;
+      profileTrigger++; // Trigger profile loading for new resources
     });
 
   // Subscribe to calendar events (debounced via RxJS)
@@ -506,6 +515,7 @@
     .subscribe((events) => {
       calendarEvents = events || [];
       isLoading = false;
+      profileTrigger++; // Trigger profile loading for new events
     });
 
   // Community-specific calendar event loader subscriptions

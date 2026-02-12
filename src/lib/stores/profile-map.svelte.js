@@ -10,6 +10,7 @@
 /* eslint-disable svelte/prefer-svelte-reactivity -- Map used intentionally to avoid infinite loops */
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { addressLoader } from '$lib/loaders/base.js';
+import { getAllLookupRelays } from '$lib/helpers/relay-helper.js';
 
 /**
  * Hook: Subscribe to profiles for a reactive collection of pubkeys.
@@ -29,13 +30,17 @@ export function useProfileMap(getPubkeys) {
 
   // Subscribe to new pubkeys as they appear
   $effect(() => {
-    for (const pubkey of getPubkeys()) {
+    const pubkeys = [...getPubkeys()];
+    const relays = getAllLookupRelays();
+
+    for (const pubkey of pubkeys) {
       if (subscriptions.has(pubkey)) continue;
 
       const subs = [];
 
       // Step 1: Loader — fetch profile from relays → populates EventStore
-      const loaderSub = addressLoader({ kind: 0, pubkey }).subscribe();
+      // Include relays in the address pointer so createAddressLoader knows where to query
+      const loaderSub = addressLoader({ kind: 0, pubkey, relays }).subscribe();
       subs.push(loaderSub);
 
       // Step 2: Model — subscribe to parsed profile from EventStore
