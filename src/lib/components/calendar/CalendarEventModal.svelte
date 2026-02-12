@@ -6,7 +6,7 @@
 <script>
   import { SvelteDate } from 'svelte/reactivity';
   import * as m from '$lib/paraglide/messages';
-  import { goto } from '$app/navigation';
+  import { goto, invalidateAll } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { validateEventForm, getCurrentTimezone } from '../../helpers/calendar.js';
   import { encodeEventToNaddr } from '../../helpers/nostrUtils.js';
@@ -44,8 +44,15 @@
   );
 
   // Get calendar actions - updates when communityPubkey changes
+  // Using $state + $effect instead of $derived because useCalendarActions
+  // may mutate a SvelteMap cache, which is not allowed inside $derived
+  /** @type {import('../../stores/calendar-actions.svelte.js').CalendarActions | null} */
+  // eslint-disable-next-line svelte/prefer-writable-derived -- $derived causes state_unsafe_mutation
+  let calendarActions = $state(null);
 
-  const calendarActions = $derived(useCalendarActions(communityPubkey));
+  $effect(() => {
+    calendarActions = useCalendarActions(communityPubkey);
+  });
 
   // Form state
   /** @type {EventFormData} */
@@ -286,6 +293,13 @@
       return;
     }
 
+    // Ensure calendarActions is available
+    if (!calendarActions) {
+      submitError = 'Calendar actions not ready. Please try again.';
+      console.error('calendarActions is null in handleSubmit');
+      return;
+    }
+
     isSubmitting = true;
     submitError = '';
 
@@ -298,8 +312,10 @@
         console.log('Event updated successfully');
 
         handleClose();
-        // Reload page to show updated event
-        window.location.reload();
+        // Refresh data to show the updated event
+        // Using invalidateAll() instead of window.location.reload() to preserve
+        // the JavaScript context
+        await invalidateAll();
       } else {
         // Create new event
         resultEvent = await calendarActions.createEvent(formData, communityPubkey);

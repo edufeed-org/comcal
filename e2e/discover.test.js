@@ -30,7 +30,9 @@ test.describe('Discover page - infinite scroll', () => {
     }).toPass({ timeout: 15_000 });
   });
 
-  test('Events tab: loads calendar events and supports infinite scroll', async ({ page }) => {
+  test('Events tab: loads calendar events for date range', async ({ page }) => {
+    // Note: Events tab uses date range filtering, not infinite scroll pagination.
+    // The loader fetches ALL events within the selected date range at once.
     await page.goto('/discover');
     await waitForContent(page);
 
@@ -42,20 +44,12 @@ test.describe('Discover page - infinite scroll', () => {
       timeout: 15_000
     });
 
-    const initialCount = await getCardCount(page);
-    expect(initialCount).toBeGreaterThan(0);
+    const count = await getCardCount(page);
+    expect(count).toBeGreaterThan(0);
 
     // No articles or AMB should be visible
     expect(await page.locator('.article-card-list').count()).toBe(0);
     expect(await page.locator('.amb-card-list').count()).toBe(0);
-
-    // Trigger infinite scroll
-    await triggerInfiniteScroll(page);
-
-    await expect(async () => {
-      const newCount = await getCardCount(page);
-      expect(newCount).toBeGreaterThan(initialCount);
-    }).toPass({ timeout: 15_000 });
   });
 
   test('Learning tab: loads AMB resources and supports infinite scroll', async ({ page }) => {

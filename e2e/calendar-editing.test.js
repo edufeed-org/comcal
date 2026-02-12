@@ -150,12 +150,7 @@ test.describe('Calendar Event Editing - Form Pre-population', () => {
 // ============================================================================
 
 test.describe('Calendar Event Editing - Update Flow', () => {
-  // NOTE: These tests are skipped because there's a state_unsafe_mutation error
-  // in the CalendarEventModal component when submitting edits. The error prevents
-  // the update from being saved properly. This needs to be fixed in the component.
-  // See: https://svelte.dev/e/state_unsafe_mutation
-
-  test.skip('can update title and save', async ({ authenticatedPage: page }) => {
+  test('can update title and save', async ({ authenticatedPage: page }) => {
     // First create an event to edit (so we don't modify seeded data)
     await page.goto('/calendar');
     await page.waitForTimeout(2000);
@@ -205,7 +200,7 @@ test.describe('Calendar Event Editing - Update Flow', () => {
     await expect(page.locator('h1').filter({ hasText: newTitle })).toBeVisible({ timeout: 10000 });
   });
 
-  test.skip('can update description and save', async ({ authenticatedPage: page }) => {
+  test('can update description and save', async ({ authenticatedPage: page }) => {
     // Create an event to edit
     await page.goto('/calendar');
     await page.waitForTimeout(2000);
@@ -275,7 +270,7 @@ test.describe('Calendar Event Editing - Form Validation', () => {
     expect(modalStillOpen || validationError).toBe(true);
   });
 
-  test.skip('updated event shows new data after reload', async ({ authenticatedPage: page }) => {
+  test('updated event shows new data after reload', async ({ authenticatedPage: page }) => {
     // Create an event to edit
     await page.goto('/calendar');
     await page.waitForTimeout(2000);

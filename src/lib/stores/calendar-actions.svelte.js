@@ -287,8 +287,10 @@ export function createCalendarActions(_communityPubkey) {
         calendarStore.setEvents(updatedEvents);
         console.log('📅 Calendar Actions: Updated event in store');
 
-        // Publish optimistically in background
-        publishEventOptimistic(updatedEvent, [], { communityEvent });
+        // Await publish for updates to ensure event is saved before returning
+        // Unlike creation which navigates away, updates reload the same page
+        // and need the updated event to be available immediately
+        await publishEvent(updatedEvent, [], { communityEvent });
 
         // Return the updated event
         return eventWithDTag;

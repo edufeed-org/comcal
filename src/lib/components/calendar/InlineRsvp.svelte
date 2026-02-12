@@ -43,8 +43,16 @@
   /** @type {any[]} */
   let rsvps = $state([]);
 
-  // Get calendar actions - use $derived so it updates if communityPubkey prop changes
-  const calendarActions = $derived(useCalendarActions(communityPubkey));
+  // Get calendar actions - updates when communityPubkey changes
+  // Using $state + $effect instead of $derived because useCalendarActions
+  // may mutate a SvelteMap cache, which is not allowed inside $derived
+  /** @type {import('../../stores/calendar-actions.svelte.js').CalendarActions | null} */
+  // eslint-disable-next-line svelte/prefer-writable-derived -- $derived causes state_unsafe_mutation
+  let calendarActions = $state(null);
+
+  $effect(() => {
+    calendarActions = useCalendarActions(communityPubkey);
+  });
 
   // Use reactive getter for active user to ensure proper reactivity on login/logout
   const getActiveUser = useActiveUser();
@@ -114,6 +122,12 @@
 
     if (!calendarEvent) {
       showToast(m.inline_rsvp_toast_event_unavailable(), 'error');
+      return;
+    }
+
+    if (!calendarActions) {
+      showToast('Calendar actions not ready. Please try again.', 'error');
+      console.error('calendarActions is null in handleRsvp');
       return;
     }
 
