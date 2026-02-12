@@ -3,7 +3,7 @@
 This document tracks what E2E tests exist, what features they cover, and identifies gaps for future testing.
 
 **Last updated:** 2026-02-12
-**Total tests:** 225
+**Total tests:** 232
 
 ## Quick Summary
 
