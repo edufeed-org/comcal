@@ -211,6 +211,102 @@ authTest.describe('Settings page - Authenticated', () => {
     });
   });
 
+  authTest.describe('Relay editing', () => {
+    /**
+     * Helper to ensure relay list exists before testing Add Relay form.
+     * If no relay list exists, clicks "Create Relay List with Defaults" button.
+     * @param {import('@playwright/test').Page} page
+     */
+    async function ensureRelayListExists(page) {
+      await page.goto('/settings');
+
+      await expect(page.locator('h1').filter({ hasText: /settings/i })).toBeVisible({
+        timeout: 10_000
+      });
+
+      // Wait for settings to load
+      await page.waitForTimeout(5000);
+
+      // Check if "Create Relay List with Defaults" button exists (means no relay list)
+      const createDefaultsButton = page.locator('button:has-text("Create Relay List")');
+      const hasNoRelayList = await createDefaultsButton.isVisible().catch(() => false);
+
+      if (hasNoRelayList) {
+        // Create default relay list first
+        await createDefaultsButton.click();
+        await page.waitForTimeout(1000);
+      }
+    }
+
+    authTest('can see Add Relay form', async ({ authenticatedPage: page }) => {
+      await ensureRelayListExists(page);
+
+      // Should see Add Relay section
+      const addRelayDivider = page.locator('text=/add relay/i').first();
+      await expect(addRelayDivider).toBeVisible({ timeout: 5000 });
+
+      // Should see relay URL input
+      const relayInput = page.locator('input[placeholder*="wss://"]').first();
+      await expect(relayInput).toBeVisible();
+    });
+
+    authTest('can type relay URL in input', async ({ authenticatedPage: page }) => {
+      await ensureRelayListExists(page);
+
+      // Find relay URL input and type
+      const relayInput = page.locator('input[placeholder*="wss://"]').first();
+      await relayInput.fill('wss://test-relay.example.com');
+
+      // Verify the input value
+      await expect(relayInput).toHaveValue('wss://test-relay.example.com');
+    });
+
+    authTest('Add button is visible next to relay input', async ({ authenticatedPage: page }) => {
+      await ensureRelayListExists(page);
+
+      // Add button should be visible (in the join group with input)
+      const addButton = page.locator('.join button:has-text("Add")').first();
+      await expect(addButton).toBeVisible();
+    });
+
+    authTest(
+      'read/write checkboxes are visible in add relay form',
+      async ({ authenticatedPage: page }) => {
+        await ensureRelayListExists(page);
+
+        // Read and Write checkboxes for new relay should be visible
+        // They use label-text class with "Read" and "Write" text
+        const readLabel = page.locator('.label-text:has-text("Read")').first();
+        const writeLabel = page.locator('.label-text:has-text("Write")').first();
+
+        await expect(readLabel).toBeVisible();
+        await expect(writeLabel).toBeVisible();
+      }
+    );
+
+    authTest('can toggle read/write checkboxes', async ({ authenticatedPage: page }) => {
+      await ensureRelayListExists(page);
+
+      // Find the Read checkbox in the Add Relay form section (below the divider)
+      // The checkbox is inside a label with gap-2 class
+      const readCheckbox = page.locator('.label.gap-2 input[type="checkbox"]').first();
+
+      // Get initial state
+      const initialState = await readCheckbox.isChecked();
+
+      // Toggle
+      await readCheckbox.click();
+      await page.waitForTimeout(300);
+
+      // Verify state changed
+      const newState = await readCheckbox.isChecked();
+      expect(newState).toBe(!initialState);
+
+      // Toggle back
+      await readCheckbox.click();
+    });
+  });
+
   authTest.describe('Gated mode', () => {
     authTest('shows gated mode toggle when logged in', async ({ authenticatedPage: page }) => {
       await page.goto('/settings');

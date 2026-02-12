@@ -103,6 +103,205 @@ test.describe('Community Creation - Keypair Selection', () => {
 });
 
 // ============================================================================
+// Create New Keypair Flow Tests
+// ============================================================================
+
+test.describe('Community Creation - New Keypair Flow', () => {
+  /**
+   * Helper to navigate to the new keypair profile step.
+   * @param {import('@playwright/test').Page} page
+   */
+  async function selectCreateNewKeypair(page) {
+    await navigateToCommunitiesTab(page);
+    await openCreateCommunityModal(page);
+
+    // Click "Create New Keypair"
+    const createNewButton = page.locator('button', { hasText: 'Create New Keypair' });
+    await createNewButton.click();
+    await page.waitForTimeout(500);
+  }
+
+  test('selecting "Create New Keypair" advances to profile step', async ({
+    authenticatedPage: page
+  }) => {
+    await selectCreateNewKeypair(page);
+
+    // Should show profile form with name input
+    const nameInput = page.locator('#profile-name').first();
+    await expect(nameInput).toBeVisible({ timeout: 5000 });
+  });
+
+  test('profile step shows name input field', async ({ authenticatedPage: page }) => {
+    await selectCreateNewKeypair(page);
+
+    // Name input should be visible
+    const nameInput = page.locator('#profile-name').first();
+    await expect(nameInput).toBeVisible({ timeout: 5000 });
+  });
+
+  test('profile step shows about textarea', async ({ authenticatedPage: page }) => {
+    await selectCreateNewKeypair(page);
+
+    // About textarea should be visible
+    const aboutTextarea = page.locator('#profile-about');
+    await expect(aboutTextarea).toBeVisible({ timeout: 5000 });
+  });
+
+  test('profile step shows picture URL input', async ({ authenticatedPage: page }) => {
+    await selectCreateNewKeypair(page);
+
+    // Picture input should be visible
+    const pictureInput = page.locator('#profile-picture');
+    await expect(pictureInput).toBeVisible({ timeout: 5000 });
+  });
+
+  test('can fill profile form and proceed to key generation', async ({
+    authenticatedPage: page
+  }) => {
+    await selectCreateNewKeypair(page);
+
+    // Fill profile form
+    const nameInput = page.locator('#profile-name').first();
+    await nameInput.fill('Test Community');
+
+    const aboutTextarea = page.locator('#profile-about');
+    if (await aboutTextarea.isVisible()) {
+      await aboutTextarea.fill('A test community for E2E testing');
+    }
+
+    // Click Next to proceed to key generation
+    const nextButton = page.locator('.modal-box button', { hasText: 'Next' });
+    await nextButton.click();
+    await page.waitForTimeout(1000);
+
+    // Should show key generation step with public key display
+    const publicKeyDisplay = page.locator('code').filter({ hasText: /^npub1/ });
+    await expect(publicKeyDisplay).toBeVisible({ timeout: 10000 });
+  });
+
+  test('key generation step shows public key (npub)', async ({ authenticatedPage: page }) => {
+    await selectCreateNewKeypair(page);
+
+    // Fill required name field
+    const nameInput = page.locator('#profile-name').first();
+    await nameInput.fill('Test Community');
+
+    // Proceed to key generation
+    const nextButton = page.locator('.modal-box button', { hasText: 'Next' });
+    await nextButton.click();
+    await page.waitForTimeout(1000);
+
+    // Public key (npub) should be displayed
+    const npubDisplay = page.locator('code').filter({ hasText: /^npub1/ });
+    await expect(npubDisplay).toBeVisible({ timeout: 10000 });
+  });
+
+  test('key generation step shows download backup button', async ({ authenticatedPage: page }) => {
+    await selectCreateNewKeypair(page);
+
+    // Fill required name field
+    const nameInput = page.locator('#profile-name').first();
+    await nameInput.fill('Test Community');
+
+    // Proceed to key generation
+    const nextButton = page.locator('.modal-box button', { hasText: 'Next' });
+    await nextButton.click();
+    await page.waitForTimeout(1000);
+
+    // Download backup button should be visible
+    const downloadButton = page.locator('button:has-text("Download")').first();
+    await expect(downloadButton).toBeVisible({ timeout: 10000 });
+  });
+
+  test('key generation step shows encrypted backup option', async ({ authenticatedPage: page }) => {
+    await selectCreateNewKeypair(page);
+
+    // Fill required name field
+    const nameInput = page.locator('#profile-name').first();
+    await nameInput.fill('Test Community');
+
+    // Proceed to key generation
+    const nextButton = page.locator('.modal-box button', { hasText: 'Next' });
+    await nextButton.click();
+    await page.waitForTimeout(1000);
+
+    // Encrypted password input should be visible (KeypairGenerator uses #keypair-password)
+    await expect(page.locator('#keypair-password')).toBeVisible({ timeout: 10000 });
+  });
+
+  test('cannot proceed from key generation without downloading backup', async ({
+    authenticatedPage: page
+  }) => {
+    await selectCreateNewKeypair(page);
+
+    // Fill required name field
+    const nameInput = page.locator('#profile-name').first();
+    await nameInput.fill('Test Community');
+
+    // Proceed to key generation
+    const nextButton = page.locator('.modal-box button', { hasText: 'Next' });
+    await nextButton.click();
+    await page.waitForTimeout(1000);
+
+    // Try to click Next without downloading
+    await nextButton.click();
+    await page.waitForTimeout(500);
+
+    // Should show error or still be on key generation step
+    const errorAlert = page.locator('.alert-error');
+    const stillOnKeyGen = await page.locator('#keypair-password').isVisible();
+
+    expect((await errorAlert.isVisible()) || stillOnKeyGen).toBe(true);
+  });
+
+  test('back button is NOT visible on profile step (step 1)', async ({
+    authenticatedPage: page
+  }) => {
+    await selectCreateNewKeypair(page);
+
+    // Should be on profile step
+    await expect(page.locator('#profile-name').first()).toBeVisible({
+      timeout: 5000
+    });
+
+    // Back button should NOT be visible at step 1 (only Cancel is available)
+    // Component logic: {#if currentStep > 1} shows Back button
+    const backButton = page.locator('.modal-box button', { hasText: 'Back' });
+    await expect(backButton).not.toBeVisible({ timeout: 3000 });
+
+    // Cancel button should be visible as the only way to exit at step 1
+    const cancelButton = page.locator('.modal-box button', { hasText: 'Cancel' });
+    await expect(cancelButton).toBeVisible();
+  });
+
+  test('back button works on key generation step', async ({ authenticatedPage: page }) => {
+    await selectCreateNewKeypair(page);
+
+    // Fill name and proceed to key generation
+    const nameInput = page.locator('#profile-name').first();
+    await nameInput.fill('Test Community');
+
+    const nextButton = page.locator('.modal-box button', { hasText: 'Next' });
+    await nextButton.click();
+    await page.waitForTimeout(1000);
+
+    // Should be on key generation step
+    await expect(page.locator('code').filter({ hasText: /^npub1/ })).toBeVisible({
+      timeout: 10000
+    });
+
+    // Click Back
+    const backButton = page.locator('.modal-box button', { hasText: 'Back' });
+    await backButton.click();
+    await page.waitForTimeout(500);
+
+    // Should be back on profile step with name preserved
+    await expect(nameInput).toBeVisible({ timeout: 5000 });
+    await expect(nameInput).toHaveValue('Test Community');
+  });
+});
+
+// ============================================================================
 // Step 1 - Community Settings Tests
 // ============================================================================
 

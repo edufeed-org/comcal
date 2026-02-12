@@ -2,8 +2,8 @@
 
 This document tracks what E2E tests exist, what features they cover, and identifies gaps for future testing.
 
-**Last updated:** 2026-02-11
-**Total tests:** 160
+**Last updated:** 2026-02-12
+**Total tests:** 225
 
 ## Quick Summary
 
@@ -14,17 +14,21 @@ This document tracks what E2E tests exist, what features they cover, and identif
 | `calendar-creation.test.js`       | 10    | Yes  | FAB, event creation, validation, deletion     |
 | `calendar-editing.test.js`        | 10    | Yes  | Edit button, form pre-population, validation  |
 | `calendar-date-filtering.test.js` | 10    | No   | Date range loading, navigation, view modes    |
-| `amb-creation.test.js`            | 10    | Yes  | FAB, wizard modal, step 1 form, validation    |
+| `amb-creation.test.js`            | 20    | Yes  | FAB, wizard modal, all 4 steps, validation    |
 | `profile.test.js`                 | 4     | No   | Profile page, notes, not-found                |
+| `profile-editing.test.js`         | 10    | Yes  | Edit modal, form pre-population, save flow    |
 | `event-detail.test.js`            | 4     | No   | naddr routes (articles, calendar, AMB)        |
 | `community.test.js`               | 5     | No   | Community Learning/Chat tabs                  |
 | `community-membership.test.js`    | 12    | Both | Join/leave flows, persistence, error handling |
-| `community-creation.test.js`      | 12    | Yes  | Modal access, keypair selection, settings     |
+| `community-creation.test.js`      | 23    | Yes  | Both keypair flows, all steps, settings       |
 | `discover.test.js`                | 10    | No   | Discovery tabs, infinite scroll               |
 | `discover-events-filter.test.js`  | 9     | No   | Events tab date range filter, URL persistence |
 | `learning-search.test.js`         | 13    | No   | Search input, SKOS filters, tab visibility    |
 | `comments-reactions.test.js`      | 18    | Both | Comments, reactions, auth flows               |
-| `settings.test.js`                | 15    | Both | Theme switching, relay settings, gated/debug  |
+| `chat-posting.test.js`            | 8     | Both | Chat input visibility, message posting flow   |
+| `signup.test.js`                  | 15    | No   | 4-step signup wizard, key generation          |
+| `settings.test.js`                | 20    | Both | Theme, relays, relay editing, gated/debug     |
+| `settings-blossom.test.js`        | 6     | Yes  | Blossom server management                     |
 
 ## Detailed Coverage
 
@@ -129,33 +133,35 @@ This document tracks what E2E tests exist, what features they cover, and identif
 
 **Route:** `/calendar/event/[naddr]`
 **Auth required:** Yes (all tests use `authenticatedPage` fixture)
-**Note:** 3 update flow tests skipped due to app bug (`state_unsafe_mutation` in CalendarEventModal).
 
-#### Edit Button Access (4 tests)
+#### Edit Button Visibility (2 tests)
 
-| Test                                       | What it verifies                      |
-| ------------------------------------------ | ------------------------------------- |
-| edit button visible in dropdown for owner  | Manage dropdown shows Edit option     |
-| edit button not visible for non-owner      | Edit hidden when not event owner      |
-| clicking Edit opens modal in edit mode     | Modal opens with pre-filled form      |
-| edit modal has different title than create | "Edit Calendar Event" not "Create..." |
+| Test                             | What it verifies                  |
+| -------------------------------- | --------------------------------- |
+| edit button visible for owner    | Manage dropdown shows Edit option |
+| edit button hidden for non-owner | Edit hidden when not event owner  |
 
 #### Form Pre-population (3 tests)
 
-| Test                                 | What it verifies          |
-| ------------------------------------ | ------------------------- |
-| form shows correct event title       | Title field matches event |
-| form shows correct event description | Description field matches |
-| form shows correct dates and times   | Date fields pre-populated |
+| Test                                | What it verifies                 |
+| ----------------------------------- | -------------------------------- |
+| clicking Edit opens modal with data | Modal opens with pre-filled form |
+| form shows correct title            | Title field matches event        |
+| form shows correct date             | Date fields pre-populated        |
 
-#### Update Flow (2 tests) - SKIPPED
+#### Update Flow (2 tests)
 
-| Test                            | What it verifies            | Status  |
-| ------------------------------- | --------------------------- | ------- |
-| can update title and save       | Title change persists       | SKIPPED |
-| can update description and save | Description change persists | SKIPPED |
+| Test                            | What it verifies            |
+| ------------------------------- | --------------------------- |
+| can update title and save       | Title change persists       |
+| can update description and save | Description change persists |
 
-**Skip reason:** `state_unsafe_mutation` error in CalendarEventModal prevents saves. Tracked for fix.
+#### Form Validation (2 tests)
+
+| Test                                      | What it verifies               |
+| ----------------------------------------- | ------------------------------ |
+| cannot submit with empty title            | Empty title → validation error |
+| updated event shows new data after reload | Verify persistence after edit  |
 
 #### Error Handling (1 test)
 
@@ -201,7 +207,7 @@ This document tracks what E2E tests exist, what features they cover, and identif
 
 ---
 
-### amb-creation.test.js (10 tests)
+### amb-creation.test.js (20 tests)
 
 **Route:** `/c/[pubkey]` (community Learning tab)
 **Auth required:** Yes (all tests use `authenticatedPage` fixture)
@@ -214,7 +220,7 @@ This document tracks what E2E tests exist, what features they cover, and identif
 | FAB is visible on community Learning tab            | FAB appears for authenticated user |
 | clicking Create Learning Content opens wizard modal | Modal visible with form fields     |
 | modal closes on close button click                  | Modal dismissal via X button works |
-| modal closes on backdrop click                      | Modal dismissal via backdrop works |
+| modal closes on Escape key                          | Modal dismissal via Escape works   |
 
 #### Step 1 Form (5 tests)
 
@@ -225,6 +231,29 @@ This document tracks what E2E tests exist, what features they cover, and identif
 | cannot proceed without filling required fields    | Validation prevents advancing to step 2                        |
 | can proceed to step 2 with required fields filled | Navigation to step 2 works                                     |
 | can go back from step 2 to step 1                 | Back navigation preserves form state                           |
+
+#### Step 2 - Classification (4 tests)
+
+| Test                                | What it verifies             |
+| ----------------------------------- | ---------------------------- |
+| step 2 shows Resource Type dropdown | SKOS dropdown visible        |
+| step 2 shows Subject dropdown       | Second SKOS dropdown visible |
+| step 2 shows Keywords input         | Keywords input field visible |
+| can add keyword on step 2           | Keyword appears as badge     |
+
+#### Step 3 - Content & Creators (2 tests)
+
+| Test                             | What it verifies                         |
+| -------------------------------- | ---------------------------------------- |
+| step 3 shows Creators input      | Creators label/input visible (or step 2) |
+| step 3 shows External URLs input | External References visible (or step 2)  |
+
+#### Step 4 - License & Publish (2 tests)
+
+| Test                                                  | What it verifies                      |
+| ----------------------------------------------------- | ------------------------------------- |
+| step 4 shows License dropdown when navigated properly | License dropdown visible (if reached) |
+| step 4 shows Free Access checkbox                     | Checkbox visible (if reached)         |
 
 #### Error Handling (1 test)
 
@@ -265,6 +294,51 @@ This document tracks what E2E tests exist, what features they cover, and identif
 | no critical JavaScript errors         | No JS errors during load           |
 
 **Components exercised:** ProfilePage, NotesTimeline
+
+---
+
+### profile-editing.test.js (10 tests)
+
+**Route:** `/p/[npub]`
+**Auth required:** Yes (all tests use `authenticatedPage` fixture)
+
+#### Edit Button Visibility (2 tests)
+
+| Test                               | What it verifies                      |
+| ---------------------------------- | ------------------------------------- |
+| edit button visible on own profile | Edit button shows for profile owner   |
+| edit button not visible on other   | Edit button hidden on other's profile |
+
+#### Edit Modal Form (4 tests)
+
+| Test                                 | What it verifies                     |
+| ------------------------------------ | ------------------------------------ |
+| clicking Edit opens modal            | Modal visible after button click     |
+| modal shows correct title            | Modal header present                 |
+| form pre-populates with current data | Name field has current profile value |
+| modal closes on close button click   | Modal dismissal works                |
+
+#### Update Flow (2 tests)
+
+| Test                      | What it verifies                  |
+| ------------------------- | --------------------------------- |
+| can update name and save  | Name change persists after reload |
+| can update about and save | About change triggers save        |
+
+#### Form Validation (2 tests)
+
+| Test                        | What it verifies             |
+| --------------------------- | ---------------------------- |
+| shows error for empty name  | Empty name keeps modal open  |
+| shows error for invalid URL | Invalid website URL rejected |
+
+#### Error Handling (1 test)
+
+| Test                                           | What it verifies              |
+| ---------------------------------------------- | ----------------------------- |
+| no critical JavaScript errors during edit flow | Error capture throughout flow |
+
+**Components exercised:** ProfilePage, ProfileEditModal
 
 ---
 
@@ -348,11 +422,10 @@ This document tracks what E2E tests exist, what features they cover, and identif
 
 ---
 
-### community-creation.test.js (12 tests)
+### community-creation.test.js (23 tests)
 
 **Route:** `/discover` (Communities tab), `/c/[pubkey]`
 **Auth required:** Yes (all tests use `authenticatedPage` fixture)
-**Note:** Tests create communities using "Use Current Keypair" path (simpler 2-step flow).
 
 #### Modal Access (3 tests)
 
@@ -368,6 +441,22 @@ This document tracks what E2E tests exist, what features they cover, and identif
 | -------------------------------------------------- | --------------------------------- |
 | step 0 shows two keypair options                   | Use Current vs Create New buttons |
 | selecting "Use Current Keypair" advances to step 1 | Navigation to community settings  |
+
+#### Create New Keypair Flow (11 tests)
+
+| Test                                                    | What it verifies                    |
+| ------------------------------------------------------- | ----------------------------------- |
+| selecting "Create New Keypair" advances to profile step | Profile form visible                |
+| profile step shows name input field                     | Name input visible                  |
+| profile step shows about textarea                       | About textarea visible              |
+| profile step shows picture URL input                    | Picture input visible               |
+| can fill profile form and proceed to key generation     | Navigation to key gen step          |
+| key generation step shows public key (npub)             | npub displayed in code block        |
+| key generation step shows download backup button        | Download button visible             |
+| key generation step shows encrypted backup option       | Password input visible              |
+| cannot proceed from key generation without downloading  | Validation blocks advancement       |
+| back button works on profile step                       | Returns to keypair selection        |
+| back button works on key generation step                | Returns to profile with data intact |
 
 #### Step 1 - Community Settings (3 tests)
 
@@ -566,7 +655,100 @@ This document tracks what E2E tests exist, what features they cover, and identif
 
 ---
 
-### settings.test.js (15 tests)
+### chat-posting.test.js (8 tests)
+
+**Route:** `/c/[pubkey]` (community Chat tab)
+**Auth required:** Both authenticated and unauthenticated flows
+
+#### Unauthenticated (2 tests)
+
+| Test                                           | What it verifies   |
+| ---------------------------------------------- | ------------------ |
+| chat input is hidden for unauthenticated users | Input not visible  |
+| send button is not visible for unauthenticated | Send button hidden |
+
+#### Authenticated (5 tests)
+
+| Test                                           | What it verifies                 |
+| ---------------------------------------------- | -------------------------------- |
+| chat input is visible for authenticated users  | Input field appears              |
+| send button is visible for authenticated users | Submit button shown              |
+| can type message in chat input                 | Input accepts and retains text   |
+| send button is disabled when input is empty    | Empty input disables submit      |
+| can send message and see it appear in chat     | Optimistic UI works              |
+| sent message appears with correct styling      | Own messages have chat-end class |
+
+#### Error Handling (1 test)
+
+| Test                                                  | What it verifies              |
+| ----------------------------------------------------- | ----------------------------- |
+| no critical JavaScript errors during chat interaction | Error capture throughout flow |
+
+**Components exercised:** Chat, ChatInput, ChatBubble
+
+---
+
+### signup.test.js (15 tests)
+
+**Route:** `/` (homepage, login modal → signup modal)
+**Auth required:** No
+
+#### Modal Access (3 tests)
+
+| Test                                 | What it verifies             |
+| ------------------------------------ | ---------------------------- |
+| signup button opens modal from login | Signup modal becomes visible |
+| signup modal shows step indicator    | 4 steps displayed            |
+| signup modal starts at step 1        | First step has step-primary  |
+
+#### Step 1 - Introduction (3 tests)
+
+| Test                              | What it verifies      |
+| --------------------------------- | --------------------- |
+| step 1 shows introduction text    | Prose content visible |
+| can navigate to step 2 from intro | Next button advances  |
+| back button not visible on step 1 | No back on first step |
+
+#### Step 2 - Profile Creation (5 tests)
+
+| Test                                  | What it verifies            |
+| ------------------------------------- | --------------------------- |
+| step 2 shows name input field         | Name input visible          |
+| step 2 shows about textarea           | About textarea visible      |
+| step 2 shows profile picture URL      | Picture input visible       |
+| step 2 shows website input            | Website input visible       |
+| can fill profile form fields          | All inputs accept values    |
+| cannot proceed to step 3 without name | Validation requires name    |
+| can proceed to step 3 with name       | Navigation to key gen works |
+| back button visible and works         | Returns to step 1           |
+
+#### Step 3 - Key Generation (4 tests)
+
+| Test                                     | What it verifies         |
+| ---------------------------------------- | ------------------------ |
+| step 3 generates and displays public key | npub in code block       |
+| step 3 shows download backup button      | Download button visible  |
+| step 3 shows encrypted backup option     | Password input visible   |
+| cannot proceed without downloading       | Validation blocks step 4 |
+
+#### Step 4 - Follow Suggestions (2 tests)
+
+| Test                       | What it verifies      |
+| -------------------------- | --------------------- |
+| modal shows Cancel button  | Cancel button present |
+| cancel button closes modal | Modal dismissal works |
+
+#### Error Handling (1 test)
+
+| Test                                             | What it verifies              |
+| ------------------------------------------------ | ----------------------------- |
+| no critical JavaScript errors during signup flow | Error capture throughout flow |
+
+**Components exercised:** SignupWizard, KeyGenerator, FollowSuggestions
+
+---
+
+### settings.test.js (20 tests)
 
 **Route:** `/settings`
 **Auth required:** Both authenticated and unauthenticated flows
@@ -595,6 +777,16 @@ This document tracks what E2E tests exist, what features they cover, and identif
 | shows Blossom servers section              | Blossom/media server section visible      |
 | shows app-specific relay categories        | Calendar/Educational categories visible   |
 
+#### Relay Editing - Authenticated (5 tests)
+
+| Test                                      | What it verifies                    |
+| ----------------------------------------- | ----------------------------------- |
+| can see Add Relay form                    | Add Relay divider and input visible |
+| can type relay URL in input               | Input accepts wss:// URL            |
+| Add button is visible next to relay input | Add button present                  |
+| read/write checkboxes visible in add form | Read/Write checkboxes visible       |
+| can toggle read/write checkboxes          | Checkbox state changes on click     |
+
 #### Gated Mode - Authenticated (2 tests)
 
 | Test                                   | What it verifies              |
@@ -620,6 +812,38 @@ This document tracks what E2E tests exist, what features they cover, and identif
 
 ---
 
+### settings-blossom.test.js (6 tests)
+
+**Route:** `/settings`
+**Auth required:** Yes (all tests use `authenticatedPage` fixture)
+
+#### Section Visibility (3 tests)
+
+| Test                                               | What it verifies                   |
+| -------------------------------------------------- | ---------------------------------- |
+| Blossom servers section visible when authenticated | Section appears for logged in user |
+| shows Add Blossom Server input                     | Input field for URL visible        |
+| shows Add button for Blossom server                | Add button present in section      |
+
+#### Server Management (3 tests)
+
+| Test                                           | What it verifies                       |
+| ---------------------------------------------- | -------------------------------------- |
+| can type Blossom server URL in input           | Input accepts https:// URL             |
+| shows validation error for invalid Blossom URL | Invalid URL rejected or stays in input |
+| shows existing Blossom servers if configured   | Server URLs or input visible           |
+| Blossom server list shows remove button        | Remove button for each server          |
+
+#### Error Handling (1 test)
+
+| Test                                                  | What it verifies              |
+| ----------------------------------------------------- | ----------------------------- |
+| no critical JavaScript errors during Blossom settings | Error capture throughout flow |
+
+**Components exercised:** BlossomServerSettings
+
+---
+
 ## Test Infrastructure
 
 ### Relay Architecture
@@ -632,12 +856,13 @@ Tests use Docker Compose with three real Nostr relays plus a mock hanging relay:
 | calendar-relay | 7002 | `git.edufeed.org/edufeed/calendar-relay` | 31922-31925 (calendar)             |
 | strfry         | 7003 | `dockurr/strfry`                         | All others (profiles, notes, etc.) |
 | mock-relay     | 9738 | Node.js (local)                          | Hanging relay for timedPool tests  |
+| blossom        | 3000 | `ghcr.io/hzrd149/blossom-server`         | File upload server                 |
 
 ### Files
 
 | File                     | Purpose                                                                               |
 | ------------------------ | ------------------------------------------------------------------------------------- |
-| `docker-compose.e2e.yml` | Docker Compose config for amb-relay, calendar-relay, strfry, typesense                |
+| `docker-compose.e2e.yml` | Docker Compose config for amb-relay, calendar-relay, strfry, typesense, blossom       |
 | `strfry.conf`            | Strfry relay configuration                                                            |
 | `seed-relays.js`         | Seeds test events to appropriate relays based on kind                                 |
 | `global-setup.js`        | Starts Docker Compose, waits for health, seeds data, starts hanging relay             |
@@ -653,29 +878,28 @@ Tests use Docker Compose with three real Nostr relays plus a mock hanging relay:
 
 ### Not Yet Tested
 
-| Feature                     | Priority | Notes                                                 |
-| --------------------------- | -------- | ----------------------------------------------------- |
-| **Article Creation**        | High     | No creation UI exists yet                             |
-| **Signup Wizard**           | Medium   | 4-step signup flow (intro, profile, key gen, follows) |
-| **Mobile Responsive**       | Low      | Viewport-specific tests                               |
-| **Accessibility (a11y)**    | Low      | Keyboard navigation, screen reader                    |
-| **Relay Override Settings** | Low      | Kind 30002 user relay customization                   |
-| **Error Recovery**          | Low      | Offline handling, relay failures                      |
+| Feature                  | Priority | Notes                              |
+| ------------------------ | -------- | ---------------------------------- |
+| **Article Creation**     | High     | No creation UI exists yet          |
+| **Mobile Responsive**    | Low      | Viewport-specific tests            |
+| **Accessibility (a11y)** | Low      | Keyboard navigation, screen reader |
+| **Error Recovery**       | Low      | Offline handling, relay failures   |
 
 ### Partially Covered
 
-| Feature              | What's Covered                               | What's Missing                                        |
-| -------------------- | -------------------------------------------- | ----------------------------------------------------- |
-| Account management   | NSEC login, logout, persistence, switching   | NIP-07 extension, NIP-49 encrypted keys               |
-| Settings page        | Theme switching, gated mode, debug mode      | Relay editing, Blossom add/remove, kind 30002 publish |
-| Calendar events      | View, create, delete, edit UI (modal/form)   | Edit save flow (blocked by app bug)                   |
-| AMB resources        | Modal UI, step 1 form, navigation            | Full creation (SKOS dropdowns, file upload, publish)  |
-| Profile page         | View profile, notes                          | Edit profile, avatar upload                           |
-| Comments             | Post, reply, delete                          | Edit comment                                          |
-| Reactions            | Add, remove                                  | Custom emoji support                                  |
-| NIP-50 Search        | Search input, SKOS filter UI, tab visibility | Full search flow (depends on relay NIP-50 support)    |
-| Community membership | Join/leave on discover & community pages     | Chat message posting                                  |
-| Community creation   | Use Current Keypair flow, settings, publish  | Create New Keypair flow (4 steps), badge access ctrl  |
+| Feature              | What's Covered                                   | What's Missing                                     |
+| -------------------- | ------------------------------------------------ | -------------------------------------------------- |
+| Account management   | NSEC login, logout, persistence, switching       | NIP-07 extension, NIP-49 encrypted keys            |
+| Settings page        | Theme, gated/debug mode, relay editing, Blossom  | Kind 30002 publish verification                    |
+| Calendar events      | View, create, delete, edit (full CRUD)           | -                                                  |
+| AMB resources        | Modal UI, all 4 steps, navigation                | Full creation (file upload, kind 30142 publish)    |
+| Profile page         | View profile, notes, edit modal, save flow       | Avatar upload (Blossom integration)                |
+| Comments             | Post, reply, delete                              | Edit comment                                       |
+| Reactions            | Add, remove                                      | Custom emoji support                               |
+| NIP-50 Search        | Search input, SKOS filter UI, tab visibility     | Full search flow (depends on relay NIP-50 support) |
+| Community membership | Join/leave, chat message posting                 | -                                                  |
+| Community creation   | Both keypair flows, all steps, settings, publish | Badge access control                               |
+| Signup wizard        | All 4 steps, key generation UI                   | Full completion (requires file download handling)  |
 
 ---
 

@@ -8,6 +8,9 @@ const RELAY_URLS = {
   hanging: 'ws://localhost:9738' // Mock relay for timedPool timeout tests
 };
 
+// Blossom server for file uploads
+const BLOSSOM_SERVER_URL = 'http://localhost:3000';
+
 export default defineConfig({
   testDir: 'e2e',
   testMatch: '**/*.test.js',
@@ -17,8 +20,8 @@ export default defineConfig({
 
   // Run test files in parallel across workers
   // Tests within each file still run sequentially (safe for create/modify flows)
-  // Using 2 workers for stability; increase for CI with more resources
-  workers: process.env.CI ? 4 : 2,
+  // Increased workers for better parallelization: 6 local, 8 CI
+  workers: process.env.CI ? 8 : 6,
 
   timeout: 60_000,
   expect: { timeout: 15_000 },
@@ -56,6 +59,7 @@ export default defineConfig({
       FALLBACK_RELAYS: RELAY_URLS.strfry,
       RELAY_LIST_LOOKUP_RELAYS: RELAY_URLS.strfry,
       INDEXER_RELAYS: RELAY_URLS.strfry,
+      BLOSSOM_SERVER_URL: BLOSSOM_SERVER_URL,
       GATED_MODE_DEFAULT: 'true',
       GATED_MODE_FORCE: 'true',
       ORIGIN: 'http://localhost:4173',

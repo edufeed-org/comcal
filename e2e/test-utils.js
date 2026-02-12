@@ -39,20 +39,22 @@ export function setupErrorCapture(page) {
 
 /**
  * Wait for content cards to appear on the discover page.
- * Includes time for timedPool (2s) to complete so pagination is ready.
+ * Uses smart polling instead of hardcoded waits.
  *
  * @param {import('@playwright/test').Page} page
  * @param {Object} options
  * @param {number} [options.timeout=30000] - Timeout in milliseconds
+ * @param {number} [options.minCards=1] - Minimum number of cards to wait for
  */
 export async function waitForContent(page, options = {}) {
   const timeout = options.timeout || 30_000;
-  await page
-    .locator('[data-testid="content-card"]')
-    .first()
-    .waitFor({ state: 'attached', timeout });
-  // Allow timedPool (2s) to complete + debounced state updates + DOM rendering
-  await page.waitForTimeout(2500);
+  const minCards = options.minCards || 1;
+
+  // Use expect().toPass() for smart polling instead of hardcoded waits
+  await expect(async () => {
+    const count = await page.locator('[data-testid="content-card"]').count();
+    expect(count).toBeGreaterThanOrEqual(minCards);
+  }).toPass({ timeout, intervals: [100, 250, 500, 1000] });
 }
 
 /**
@@ -66,15 +68,30 @@ export async function getCardCount(page) {
 }
 
 /**
- * Scroll the infinite scroll sentinel into view and wait for loading.
+ * Scroll the infinite scroll sentinel into view and wait for more content to load.
+ * Uses smart polling to detect when new content has loaded.
  *
  * @param {import('@playwright/test').Page} page
+ * @param {Object} options
+ * @param {number} [options.timeout=10000] - Timeout in milliseconds
  */
-export async function triggerInfiniteScroll(page) {
+export async function triggerInfiniteScroll(page, options = {}) {
+  const timeout = options.timeout || 10_000;
+
+  // Get current card count before scrolling
+  const initialCount = await page.locator('[data-testid="content-card"]').count();
+
+  // Scroll sentinel into view
   const sentinel = page.locator('#load-more-sentinel');
   await sentinel.scrollIntoViewIfNeeded();
-  // Wait for: timedPool (2s) + WebSocket roundtrip + debounce + DOM update
-  await page.waitForTimeout(4000);
+
+  // Wait for more content to load using smart polling
+  await expect(async () => {
+    const currentCount = await page.locator('[data-testid="content-card"]').count();
+    // Either more cards loaded, or we've reached the end (no more sentinel)
+    const sentinelGone = !(await sentinel.isVisible());
+    expect(currentCount > initialCount || sentinelGone).toBe(true);
+  }).toPass({ timeout, intervals: [100, 250, 500, 1000] });
 }
 
 /**

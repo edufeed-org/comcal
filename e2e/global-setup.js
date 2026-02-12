@@ -4,6 +4,7 @@ import { seedAllRelays, RELAY_URLS } from './seed-relays.js';
 import { generateTestEvents } from './test-data.js';
 
 const HANGING_RELAY_PORT = 9738;
+const BLOSSOM_URL = 'http://localhost:3000';
 const DEBUG = process.env.DEBUG;
 
 /**
@@ -34,22 +35,51 @@ async function waitForRelay(wsUrl, timeout = 30000) {
 }
 
 /**
- * Start Docker Compose and wait for all relays
+ * Wait for Blossom server to respond
+ * @param {string} url
+ * @param {number} timeout
+ * @returns {Promise<boolean>}
+ */
+async function waitForBlossom(url, timeout = 30000) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    try {
+      const response = await fetch(url);
+      if (response.ok || response.status === 404) {
+        // 404 is OK - Blossom returns 404 for root path but server is ready
+        if (DEBUG) console.log(`[E2E Setup] Blossom server is ready at ${url}`);
+        return true;
+      }
+    } catch {
+      // Server not ready yet
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error(`Blossom server ${url} not ready after ${timeout}ms`);
+}
+
+/**
+ * Start Docker Compose and wait for all relays and Blossom server
  * @returns {Promise<void>}
  */
 async function startDockerCompose() {
   if (DEBUG) console.log('[E2E Setup] Starting Docker Compose...');
 
-  // Start containers in detached mode with --wait for health checks
-  execSync('docker compose -f e2e/docker-compose.e2e.yml up -d --wait', {
+  // Start containers in detached mode (without --wait, we do our own health checks)
+  execSync('docker compose -f e2e/docker-compose.e2e.yml up -d', {
     stdio: DEBUG ? 'inherit' : 'pipe',
     cwd: process.cwd()
   });
 
-  // Wait for all relays to respond to NIP-11
-  await Promise.all(Object.values(RELAY_URLS).map((url) => waitForRelay(url)));
+  // Wait for all relays to respond to NIP-11 and Blossom server to be ready
+  // This is more reliable than --wait because we control the timeout
+  await Promise.all([
+    ...Object.values(RELAY_URLS).map((url) => waitForRelay(url)),
+    waitForBlossom(BLOSSOM_URL)
+  ]);
 
-  if (DEBUG) console.log('[E2E Setup] All Docker relays ready');
+  if (DEBUG) console.log('[E2E Setup] All Docker services ready');
 }
 
 export default async function globalSetup() {
