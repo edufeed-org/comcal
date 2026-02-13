@@ -2,34 +2,35 @@
 
 This document tracks what E2E tests exist, what features they cover, and identifies gaps for future testing.
 
-**Last updated:** 2026-02-12
-**Total tests:** 249
+**Last updated:** 2026-02-13
+**Total tests:** 255
 
 ## Quick Summary
 
-| File                              | Tests | Auth | Coverage                                      |
-| --------------------------------- | ----- | ---- | --------------------------------------------- |
-| `account-management.test.js`      | 14    | Both | Login, logout, persistence, account switching |
-| `calendar.test.js`                | 4     | No   | Calendar page, events, modal                  |
-| `calendar-creation.test.js`       | 10    | Yes  | FAB, event creation, validation, deletion     |
-| `calendar-editing.test.js`        | 10    | Yes  | Edit button, form pre-population, validation  |
-| `calendar-date-filtering.test.js` | 10    | No   | Date range loading, navigation, view modes    |
-| `amb-creation.test.js`            | 20    | Yes  | FAB, wizard modal, all 4 steps, validation    |
-| `amb-creation-full.test.js`       | 16    | Yes  | Full flow, SKOS mocks, Blossom upload, relay  |
-| `profile.test.js`                 | 4     | No   | Profile page, notes, not-found                |
-| `profile-editing.test.js`         | 10    | Yes  | Edit modal, form pre-population, save flow    |
-| `event-detail.test.js`            | 4     | No   | naddr routes (articles, calendar, AMB)        |
-| `community.test.js`               | 5     | No   | Community Learning/Chat tabs                  |
-| `community-membership.test.js`    | 12    | Both | Join/leave flows, persistence, error handling |
-| `community-creation.test.js`      | 23    | Yes  | Both keypair flows, all steps, settings       |
-| `discover.test.js`                | 11    | No   | Discovery tabs, infinite scroll, profiles     |
-| `discover-events-filter.test.js`  | 9     | No   | Events tab date range filter, URL persistence |
-| `learning-search.test.js`         | 13    | No   | Search input, SKOS filters, tab visibility    |
-| `comments-reactions.test.js`      | 18    | Both | Comments, reactions, auth flows               |
-| `chat-posting.test.js`            | 8     | Both | Chat input visibility, message posting flow   |
-| `signup.test.js`                  | 15    | No   | 4-step signup wizard, key generation          |
-| `settings.test.js`                | 20    | Both | Theme, relays, relay editing, gated/debug     |
-| `settings-blossom.test.js`        | 6     | Yes  | Blossom server management                     |
+| File                                | Tests | Auth | Coverage                                           |
+| ----------------------------------- | ----- | ---- | -------------------------------------------------- |
+| `account-management.test.js`        | 14    | Both | Login, logout, persistence, account switching      |
+| `calendar.test.js`                  | 4     | No   | Calendar page, events, modal                       |
+| `calendar-creation.test.js`         | 10    | Yes  | FAB, event creation, validation, deletion          |
+| `calendar-editing.test.js`          | 10    | Yes  | Edit button, form pre-population, validation       |
+| `calendar-date-filtering.test.js`   | 10    | No   | Date range loading, navigation, view modes         |
+| `amb-creation.test.js`              | 20    | Yes  | FAB, wizard modal, all 4 steps, validation         |
+| `amb-creation-full.test.js`         | 16    | Yes  | Full flow, SKOS mocks, Blossom upload, relay       |
+| `profile.test.js`                   | 4     | No   | Profile page, notes, not-found                     |
+| `profile-editing.test.js`           | 10    | Yes  | Edit modal, form pre-population, save flow         |
+| `event-detail.test.js`              | 4     | No   | naddr routes (articles, calendar, AMB)             |
+| `community.test.js`                 | 5     | No   | Community Learning/Chat tabs                       |
+| `community-membership.test.js`      | 12    | Both | Join/leave flows, persistence, error handling      |
+| `community-creation.test.js`        | 23    | Yes  | Both keypair flows, all steps, settings            |
+| `discover.test.js`                  | 11    | No   | Discovery tabs, infinite scroll, profiles          |
+| `discover-events-filter.test.js`    | 9     | No   | Events tab date range filter, URL persistence      |
+| `learning-search.test.js`           | 13    | No   | Search input, SKOS filters, tab visibility         |
+| `relay-override-pagination.test.js` | 6     | Yes  | Kind 30002 relay overrides, multi-relay pagination |
+| `comments-reactions.test.js`        | 18    | Both | Comments, reactions, auth flows                    |
+| `chat-posting.test.js`              | 8     | Both | Chat input visibility, message posting flow        |
+| `signup.test.js`                    | 15    | No   | 4-step signup wizard, key generation               |
+| `settings.test.js`                  | 20    | Both | Theme, relays, relay editing, gated/debug          |
+| `settings-blossom.test.js`          | 6     | Yes  | Blossom server management                          |
 
 ## Detailed Coverage
 
@@ -910,6 +911,42 @@ This file completes the full AMB creation flow that `amb-creation.test.js` canno
 
 ---
 
+### relay-override-pagination.test.js (6 tests)
+
+**Route:** `/settings`, `/discover`
+**Auth required:** Yes (all tests use `authenticatedPage` fixture)
+**Note:** Tests per-relay pagination with user-configured relay overrides (kind 30002). Dynamically seeds events to strfry during tests to simulate content from multiple relays with different timestamp ranges.
+
+#### Educational Relay Override (3 tests)
+
+| Test                                                           | What it verifies                                |
+| -------------------------------------------------------------- | ----------------------------------------------- |
+| pagination continues when user adds educational relay override | Pagination doesn't stop when one relay exhausts |
+| content from both default and override relays appears          | Events from both relays load                    |
+| no critical JavaScript errors during relay override pagination | Error capture throughout flow                   |
+
+#### Calendar Relay Override (1 test)
+
+| Test                                                 | What it verifies                   |
+| ---------------------------------------------------- | ---------------------------------- |
+| pagination works with user-configured calendar relay | Calendar events from override load |
+
+#### Communikey Relay Override (1 test)
+
+| Test                                                   | What it verifies                         |
+| ------------------------------------------------------ | ---------------------------------------- |
+| pagination works with user-configured communikey relay | Community definitions from override load |
+
+**Components exercised:** Settings (relay override UI), Discover (pagination), `app-relay-service.svelte.js` (kind 30002 cache)
+
+**Test infrastructure additions:**
+
+- `seedEventsToRelay()` in `relay-verification.js` - Seeds events to a specific relay during tests
+- `addRelayOverride()` in `fixtures.js` - Adds relay override via Settings UI
+- `triggerInfiniteScroll()` in `fixtures.js` - Scrolls to trigger pagination
+
+---
+
 ## Test Infrastructure
 
 ### Relay Architecture
@@ -926,17 +963,18 @@ Tests use Docker Compose with three real Nostr relays plus a mock hanging relay:
 
 ### Files
 
-| File                     | Purpose                                                                               |
-| ------------------------ | ------------------------------------------------------------------------------------- |
-| `docker-compose.e2e.yml` | Docker Compose config for amb-relay, calendar-relay, strfry, typesense, blossom       |
-| `strfry.conf`            | Strfry relay configuration                                                            |
-| `seed-relays.js`         | Seeds test events to appropriate relays based on kind                                 |
-| `global-setup.js`        | Starts Docker Compose, waits for health, seeds data, starts hanging relay             |
-| `global-teardown.js`     | Stops Docker Compose (with --volumes), stops hanging relay                            |
-| `test-data.js`           | Deterministic mock data generator (150+ events, profiles, TEST_AUTHOR, TEST_AUTHOR_2) |
-| `mock-relay.js`          | Mock Nostr relay for hanging relay simulation (never sends EOSE for kind 30142)       |
-| `fixtures.js`            | Playwright fixtures (authenticatedPage), auth helpers, creation helpers               |
-| `test-utils.js`          | Reusable wait/verify helpers (waitForContent, waitForEventDetail, setupErrorCapture)  |
+| File                     | Purpose                                                                                         |
+| ------------------------ | ----------------------------------------------------------------------------------------------- |
+| `docker-compose.e2e.yml` | Docker Compose config for amb-relay, calendar-relay, strfry, typesense, blossom                 |
+| `strfry.conf`            | Strfry relay configuration                                                                      |
+| `seed-relays.js`         | Seeds test events to appropriate relays based on kind                                           |
+| `global-setup.js`        | Starts Docker Compose, waits for health, seeds data, starts hanging relay                       |
+| `global-teardown.js`     | Stops Docker Compose (with --volumes), stops hanging relay                                      |
+| `test-data.js`           | Deterministic mock data generator (150+ events, profiles, TEST_AUTHOR, TEST_AUTHOR_2)           |
+| `mock-relay.js`          | Mock Nostr relay for hanging relay simulation (never sends EOSE for kind 30142)                 |
+| `fixtures.js`            | Playwright fixtures (authenticatedPage), auth helpers, creation helpers, relay override helpers |
+| `relay-verification.js`  | WebSocket helpers for querying/seeding relays during tests                                      |
+| `test-utils.js`          | Reusable wait/verify helpers (waitForContent, waitForEventDetail, setupErrorCapture)            |
 
 ---
 
@@ -953,19 +991,20 @@ Tests use Docker Compose with three real Nostr relays plus a mock hanging relay:
 
 ### Partially Covered
 
-| Feature              | What's Covered                                   | What's Missing                                     |
-| -------------------- | ------------------------------------------------ | -------------------------------------------------- |
-| Account management   | NSEC login, logout, persistence, switching       | NIP-07 extension, NIP-49 encrypted keys            |
-| Settings page        | Theme, gated/debug mode, relay editing, Blossom  | Kind 30002 publish verification                    |
-| Calendar events      | View, create, delete, edit (full CRUD)           | -                                                  |
-| AMB resources        | Full creation flow, file upload, relay publish   | -                                                  |
-| Profile page         | View profile, notes, edit modal, save flow       | Avatar upload (Blossom integration)                |
-| Comments             | Post, reply, delete                              | Edit comment                                       |
-| Reactions            | Add, remove                                      | Custom emoji support                               |
-| NIP-50 Search        | Search input, SKOS filter UI, tab visibility     | Full search flow (depends on relay NIP-50 support) |
-| Community membership | Join/leave, chat message posting                 | -                                                  |
-| Community creation   | Both keypair flows, all steps, settings, publish | Badge access control                               |
-| Signup wizard        | All 4 steps, key generation UI                   | Full completion (requires file download handling)  |
+| Feature              | What's Covered                                                              | What's Missing                                     |
+| -------------------- | --------------------------------------------------------------------------- | -------------------------------------------------- |
+| Account management   | NSEC login, logout, persistence, switching                                  | NIP-07 extension, NIP-49 encrypted keys            |
+| Settings page        | Theme, gated/debug mode, relay editing, Blossom, kind 30002 relay overrides | -                                                  |
+| Calendar events      | View, create, delete, edit (full CRUD)                                      | -                                                  |
+| AMB resources        | Full creation flow, file upload, relay publish                              | -                                                  |
+| Profile page         | View profile, notes, edit modal, save flow                                  | Avatar upload (Blossom integration)                |
+| Comments             | Post, reply, delete                                                         | Edit comment                                       |
+| Reactions            | Add, remove                                                                 | Custom emoji support                               |
+| NIP-50 Search        | Search input, SKOS filter UI, tab visibility                                | Full search flow (depends on relay NIP-50 support) |
+| Community membership | Join/leave, chat message posting                                            | -                                                  |
+| Community creation   | Both keypair flows, all steps, settings, publish                            | Badge access control                               |
+| Signup wizard        | All 4 steps, key generation UI                                              | Full completion (requires file download handling)  |
+| Discover pagination  | Basic infinite scroll, multi-relay with kind 30002                          | -                                                  |
 
 ---
 

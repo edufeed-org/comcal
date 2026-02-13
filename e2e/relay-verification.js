@@ -164,3 +164,78 @@ export async function countEventsOnRelay(filter, options = {}) {
   const events = await queryEventsFromRelay(filter, options);
   return events.length;
 }
+
+/**
+ * Seed events to a specific relay.
+ * Useful for adding test data dynamically during tests.
+ *
+ * @param {object[]} events - Array of signed Nostr events
+ * @param {object} [options] - Options
+ * @param {string} [options.relay] - Relay WebSocket URL (default: strfry)
+ * @param {number} [options.timeout] - Timeout in ms (default: 10000)
+ * @returns {Promise<number>} Number of events successfully seeded
+ */
+export async function seedEventsToRelay(events, options = {}) {
+  const { relay = RELAY_URLS.strfry, timeout = 10000 } = options;
+
+  if (events.length === 0) return 0;
+
+  return new Promise((resolve, reject) => {
+    const pending = new Map();
+    let completed = 0;
+    let ws;
+
+    const timer = setTimeout(() => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+      // Resolve with what we have, even if some are pending
+      resolve(completed);
+    }, timeout);
+
+    try {
+      ws = new WebSocket(relay);
+
+      ws.on('open', () => {
+        for (const event of events) {
+          pending.set(event.id, event);
+          ws.send(JSON.stringify(['EVENT', event]));
+        }
+      });
+
+      ws.on('message', (data) => {
+        try {
+          const msg = JSON.parse(data.toString());
+          if (msg[0] === 'OK') {
+            const [, eventId, success] = msg;
+            if (success) {
+              pending.delete(eventId);
+              completed++;
+            }
+
+            if (pending.size === 0) {
+              clearTimeout(timer);
+              ws.close();
+              resolve(completed);
+            }
+          }
+        } catch (_parseError) {
+          // Ignore parse errors
+        }
+      });
+
+      ws.on('error', (err) => {
+        clearTimeout(timer);
+        reject(new Error(`WebSocket error seeding ${relay}: ${err.message}`));
+      });
+
+      ws.on('close', () => {
+        clearTimeout(timer);
+        resolve(completed);
+      });
+    } catch (err) {
+      clearTimeout(timer);
+      reject(err);
+    }
+  });
+}

@@ -434,3 +434,120 @@ export async function completeAMBStep4(page, data = {}) {
   // Click Publish to submit
   await page.locator('button:has-text("Publish Resource")').click();
 }
+
+// ============================================================================
+// Relay Override Helpers
+// ============================================================================
+
+/**
+ * Add a relay override for a specific content category via the Settings UI.
+ * Navigates to Settings, finds the app-specific relay section, adds the relay,
+ * and publishes a kind 30002 event.
+ *
+ * @param {import('@playwright/test').Page} page - Playwright page (must be authenticated)
+ * @param {string} category - 'calendar' | 'educational' | 'communikey' | 'longform'
+ * @param {string} relayUrl - The relay URL to add (e.g., 'ws://localhost:17003')
+ */
+export async function addRelayOverride(page, category, relayUrl) {
+  // Navigate to Settings
+  await page.goto('/settings');
+  await page.waitForTimeout(3000);
+
+  // Category labels as they appear in the UI
+  const categoryLabels = {
+    calendar: 'Calendar Events',
+    educational: 'Educational Resources',
+    communikey: 'Community Events',
+    longform: 'Articles & Long-form Content'
+  };
+  const label = categoryLabels[category];
+  if (!label) throw new Error(`Unknown category: ${category}`);
+
+  // Wait for App-Specific Relays section to load and scroll to it
+  await expect(page.locator('text=App-Specific Relays')).toBeVisible({ timeout: 15000 });
+  await page.locator('text=App-Specific Relays').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(500);
+
+  // Find the category section (rounded-lg bg-base-100 p-4 div containing the label)
+  const categorySection = page.locator('.rounded-lg.bg-base-100.p-4').filter({ hasText: label });
+  await expect(categorySection).toBeVisible({ timeout: 5000 });
+  await categorySection.scrollIntoViewIfNeeded();
+
+  // Click "Add relay" button to enter editing mode
+  await categorySection.locator('button:has-text("Add relay")').click();
+  await page.waitForTimeout(500);
+
+  // Wait for the input field to appear
+  const relayInput = categorySection.locator('input[placeholder*="wss://"]');
+  await expect(relayInput).toBeVisible({ timeout: 5000 });
+
+  // Type the relay URL
+  await relayInput.fill(relayUrl);
+
+  // Click Add button (in the join group)
+  await categorySection.locator('.join button:has-text("Add")').click();
+  await page.waitForTimeout(1000);
+
+  // The relay should now be added (no separate Save step needed - it auto-saves)
+  // Verify the relay appears in the list
+  await expect(categorySection.locator(`text=${relayUrl}`).first()).toBeVisible({ timeout: 5000 });
+}
+
+/**
+ * Remove all relay overrides for a category (reset to defaults).
+ *
+ * @param {import('@playwright/test').Page} page - Playwright page (must be authenticated)
+ * @param {string} category - 'calendar' | 'educational' | 'communikey' | 'longform'
+ */
+export async function resetRelayOverride(page, category) {
+  await page.goto('/settings');
+  await page.waitForTimeout(2000);
+
+  await expect(page.locator('text=App-Specific Relays')).toBeVisible({ timeout: 10000 });
+
+  const categoryLabels = {
+    calendar: 'Calendar Events',
+    educational: 'Educational Resources',
+    communikey: 'Community Events',
+    longform: 'Articles & Long-form Content'
+  };
+  const label = categoryLabels[category];
+
+  const categorySection = page.locator('.bg-base-100').filter({ hasText: label });
+
+  // Check if there's an override to reset
+  const hasOverride = await categorySection.locator('button:has-text("Reset")').isVisible();
+  if (hasOverride) {
+    await categorySection.locator('button:has-text("Reset")').click();
+    await page.waitForTimeout(1500);
+  }
+}
+
+/**
+ * Trigger infinite scroll on the current page by scrolling to the bottom.
+ * Waits for the sentinel element to become visible and scrolls to it.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} [times=1] - Number of times to trigger scroll
+ * @returns {Promise<void>}
+ */
+export async function triggerInfiniteScroll(page, times = 1) {
+  for (let i = 0; i < times; i++) {
+    // Scroll to bottom
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForTimeout(1000);
+
+    // Wait for potential new content to load
+    await page.waitForTimeout(1500);
+  }
+}
+
+/**
+ * Get the count of content cards currently displayed on the discover page.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<number>}
+ */
+export async function getContentCardCount(page) {
+  return await page.locator('.card').count();
+}
