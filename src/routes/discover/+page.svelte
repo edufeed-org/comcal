@@ -12,7 +12,6 @@
     createEmptyFilters
   } from '$lib/helpers/educational/searchQueryBuilder.js';
   import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-  import { runtimeConfig } from '$lib/stores/config.svelte.js';
   import { createTimelineLoader } from 'applesauce-loaders/loaders';
   import {
     getEducationalRelays,
@@ -93,10 +92,8 @@
   let sortBy = $state('newest');
   let searchQuery = $state('');
 
-  // Debounced search for main content filtering (learning tab has its own debouncing)
-  let debouncedMainSearchQuery = $state('');
-  /** @type {ReturnType<typeof setTimeout> | undefined} */
-  let mainSearchDebounceTimer;
+  // Active search query (set when user presses Enter or clicks search button)
+  let activeSearchQuery = $state('');
 
   // Lazy rendering - track which items are visible
   let visibleItemIds = $state(/** @type {Set<string>} */ (new Set()));
@@ -110,17 +107,12 @@
   let learningSearchResults = $state(/** @type {import('nostr-tools').Event[]} */ ([]));
   /** @type {import('rxjs').Subscription | null} */
   let currentSearchSubscription = $state(null);
-  /** @type {ReturnType<typeof setTimeout> | null} */
-  let searchDebounceTimer = null;
 
   // Get current locale (kept for future i18n features)
   const _locale = $derived(getLocale());
 
   // Search input reference for auto-focus
   let searchInputRef = $state(/** @type {HTMLInputElement | null} */ (null));
-
-  // Debounced search text for learning tab (triggers NIP-50 search)
-  let debouncedSearchQuery = $state('');
 
   // Valid content types
   const VALID_CONTENT_TYPES = ['all', 'events', 'learning', 'articles', 'communities'];
@@ -167,22 +159,6 @@
       activeUser = user;
     });
     return () => subscription.unsubscribe();
-  });
-
-  // Debounce search query for main content (not learning tab which has its own)
-  $effect(() => {
-    // Learning tab has its own debouncing, so sync immediately
-    if (contentType === 'learning') {
-      debouncedMainSearchQuery = searchQuery;
-      return;
-    }
-
-    clearTimeout(mainSearchDebounceTimer);
-    mainSearchDebounceTimer = setTimeout(() => {
-      debouncedMainSearchQuery = searchQuery;
-    }, 300);
-
-    return () => clearTimeout(mainSearchDebounceTimer);
   });
 
   // IntersectionObserver for lazy rendering cards
@@ -625,15 +601,49 @@
     }
   });
 
-  // Debounce search query for learning tab NIP-50 search
+  /**
+   * Execute search - triggers when user presses Enter or clicks search button
+   */
+  function executeSearch() {
+    activeSearchQuery = searchQuery.trim();
+  }
+
+  /**
+   * Handle Enter key in search input
+   * @param {KeyboardEvent} event
+   */
+  function handleSearchKeydown(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      executeSearch();
+    }
+  }
+
+  /**
+   * Clear search query and active search
+   */
+  function clearSearch() {
+    searchQuery = '';
+    activeSearchQuery = '';
+  }
+
+  // Track previous search query to avoid unnecessary re-triggers
+  let previousActiveSearchQuery = '';
+
+  // Trigger learning search when activeSearchQuery changes (on learning tab)
+  // This directly calls handleLearningFilterChange instead of relying on
+  // LearningContentFilters component's $effect propagation
   $effect(() => {
-    if (contentType === 'learning') {
-      if (searchDebounceTimer) {
-        clearTimeout(searchDebounceTimer);
-      }
-      searchDebounceTimer = setTimeout(() => {
-        debouncedSearchQuery = searchQuery;
-      }, runtimeConfig.educational?.searchDebounceMs || 300);
+    if (contentType === 'learning' && activeSearchQuery !== previousActiveSearchQuery) {
+      previousActiveSearchQuery = activeSearchQuery;
+      // Build filters with current search text and any selected SKOS filters
+      const filters = {
+        searchText: activeSearchQuery,
+        learningResourceType: _learningFilters.learningResourceType || [],
+        about: _learningFilters.about || [],
+        audience: _learningFilters.audience || []
+      };
+      handleLearningFilterChange(filters);
     }
   });
 
@@ -776,8 +786,8 @@
     let filtered = communities;
 
     // Apply search filter by name and description
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
+    if (activeSearchQuery.trim()) {
+      const query = activeSearchQuery.toLowerCase();
       filtered = filtered.filter((community) => {
         const communityPubkey = getTagValue(community, 'd') || community.pubkey;
         const profile = communityProfiles.get(communityPubkey);
@@ -794,7 +804,7 @@
 
   // Reset displayed count when search changes
   $effect(() => {
-    if (searchQuery) {
+    if (activeSearchQuery) {
       displayedCommunitiesCount = 20;
       hasMoreCommunities = true;
     }
@@ -1016,13 +1026,10 @@
 
   // Step 4: Apply text search (only runs when search query changes)
   const searchFilteredItems = $derived.by(() => {
-    if (
-      !debouncedMainSearchQuery.trim() ||
-      (contentType === 'learning' && isLearningSearchActive)
-    ) {
+    if (!activeSearchQuery.trim() || (contentType === 'learning' && isLearningSearchActive)) {
       return relayFilteredItems;
     }
-    const query = debouncedMainSearchQuery.toLowerCase();
+    const query = activeSearchQuery.toLowerCase();
     return relayFilteredItems.filter((item) => matchesTextSearch(item, query, authorProfiles));
   });
 
@@ -1142,33 +1149,40 @@
 
   <!-- Unified Filter Section (shown for all content types) -->
   <div class="container mx-auto space-y-4 px-4 py-6">
-    <!-- Row 1: Search Input -->
-    <div class="relative w-full">
-      <div class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2">
-        {#if contentType === 'learning' && isLearningSearchActive && learningSearchResults.length === 0}
-          <span class="loading loading-sm loading-spinner text-primary"></span>
-        {:else}
-          <SearchIcon class_="h-5 w-5 text-base-content/50" />
+    <!-- Row 1: Search Input with Button -->
+    <div class="flex w-full gap-2">
+      <div class="relative flex-1">
+        <div class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2">
+          {#if contentType === 'learning' && isLearningSearchActive && learningSearchResults.length === 0}
+            <span class="loading loading-sm loading-spinner text-primary"></span>
+          {:else}
+            <SearchIcon class_="h-5 w-5 text-base-content/50" />
+          {/if}
+        </div>
+        <input
+          bind:this={searchInputRef}
+          type="text"
+          placeholder={m.discover_content_search_placeholder()}
+          bind:value={searchQuery}
+          onkeydown={handleSearchKeydown}
+          class="input-bordered input w-full pr-10 pl-9"
+          aria-label={m.discover_content_search_aria()}
+        />
+        {#if searchQuery}
+          <button
+            type="button"
+            class="btn absolute top-1/2 right-2 btn-circle -translate-y-1/2 btn-ghost btn-sm"
+            onclick={clearSearch}
+            aria-label={m.discover_content_clear_search()}
+          >
+            ✕
+          </button>
         {/if}
       </div>
-      <input
-        bind:this={searchInputRef}
-        type="text"
-        placeholder={m.discover_content_search_placeholder()}
-        bind:value={searchQuery}
-        class="input-bordered input w-full pr-10 pl-9"
-        aria-label={m.discover_content_search_aria()}
-      />
-      {#if searchQuery}
-        <button
-          type="button"
-          class="btn absolute top-1/2 right-2 btn-circle -translate-y-1/2 btn-ghost btn-sm"
-          onclick={() => (searchQuery = '')}
-          aria-label={m.discover_content_clear_search()}
-        >
-          ✕
-        </button>
-      {/if}
+      <button type="button" class="btn btn-primary" onclick={executeSearch}>
+        <SearchIcon class_="h-5 w-5" />
+        <span class="sr-only sm:not-sr-only">{m.discover_search_button()}</span>
+      </button>
     </div>
 
     <!-- Row 2: All dropdown filters in a unified row -->
@@ -1229,7 +1243,7 @@
           <LearningContentFilters
             onfilterchange={handleLearningFilterChange}
             isSearching={isLearningSearchActive && learningSearchResults.length === 0}
-            searchText={debouncedSearchQuery}
+            searchText={activeSearchQuery}
           />
         </div>
       {/if}

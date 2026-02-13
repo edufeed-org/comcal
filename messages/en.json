@@ -314,6 +314,7 @@
   "discover_events_date_range_to": "To",
   "discover_events_date_range_apply": "Apply",
   "discover_events_date_range_cancel": "Cancel",
+  "discover_search_button": "Search",
   "auth_login_private_key_title": "Add an Account",
   "auth_login_private_key_description": "Enter your private key (nsec) or encrypted key (ncryptsec)",
   "auth_login_private_key_label": "Private Key",

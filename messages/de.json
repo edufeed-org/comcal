@@ -281,6 +281,7 @@
   "discover_events_date_range_to": "Bis",
   "discover_events_date_range_apply": "Anwenden",
   "discover_events_date_range_cancel": "Abbrechen",
+  "discover_search_button": "Suchen",
   "auth_login_private_key_title": "Konto hinzufügen",
   "auth_login_private_key_description": "Geben Sie Ihren privaten Schlüssel (nsec) oder verschlüsselten Schlüssel (ncryptsec) ein",
   "auth_login_private_key_label": "Privater Schlüssel",

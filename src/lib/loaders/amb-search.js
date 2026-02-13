@@ -2,15 +2,15 @@
  * NIP-50 Search Loader for Educational Content (kind 30142)
  *
  * Uses the specialized AMB relay with Typesense backend for full-text search.
- * Uses applesauce's createTimelineLoader with the shared RelayPool for consistency
- * with the rest of the application.
+ * Uses pool.request() directly to ensure the NIP-50 search field is preserved.
+ * Note: createTimelineLoader strips unknown filter fields during pagination,
+ * so we bypass it for search queries.
  */
 import { Observable } from 'rxjs';
-import { createTimelineLoader } from 'applesauce-loaders/loaders';
-import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+import { tap } from 'rxjs/operators';
+import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { getEducationalRelays } from '$lib/helpers/relay-helper.js';
 import { buildSearchQuery, hasActiveFilters } from '$lib/helpers/educational/searchQueryBuilder.js';
-import { timedPool } from './base.js';
 
 /**
  * @typedef {import('$lib/helpers/educational/searchQueryBuilder.js').SearchFilters} SearchFilters
@@ -19,8 +19,8 @@ import { timedPool } from './base.js';
 /**
  * Create a search loader for AMB resources using NIP-50 full-text search
  *
- * Returns a stateful loader function that fetches results from the AMB relay.
- * The loader returns an Observable that emits individual events as they arrive.
+ * Returns an Observable that emits individual events as they arrive from relays.
+ * Uses pool.request() directly to preserve the NIP-50 search field.
  *
  * @param {SearchFilters} filters - The search filters
  * @param {number} limit - Maximum number of results
@@ -43,22 +43,18 @@ export function ambSearchLoader(filters, limit = 50) {
     });
   }
 
-  console.log('🔍 AMB Search: Querying with:', searchQuery);
+  const relays = getEducationalRelays();
+  const filter = {
+    kinds: [30142],
+    search: searchQuery,
+    limit
+  };
 
-  // Use applesauce's createTimelineLoader with NIP-50 search filter
-  // This properly serializes the REQ message according to Nostr protocol
-  const loader = createTimelineLoader(
-    timedPool,
-    getEducationalRelays(),
-    {
-      kinds: [30142],
-      search: searchQuery
-    },
-    { eventStore, limit }
+  // Use pool.request() directly to preserve the search field
+  // createTimelineLoader strips unknown filter fields during pagination
+  return pool.request(relays, filter, { timeout: 5000 }).pipe(
+    tap((event) => eventStore.add(event)) // Add to eventStore for caching
   );
-
-  // Return the loader function called immediately to get the Observable
-  return loader();
 }
 
 /**

@@ -49,20 +49,20 @@ let userOverrideCache = new SvelteMap();
 
 /**
  * Update the cache for a category (called from subscription in settings page)
+ * Mutates in place to preserve reactive subscriptions from $effect() calls
  * @param {string} category - Category name
  * @param {string[]} relays - Relay URLs
  */
 export function updateUserOverrideCache(category, relays) {
-  const next = new SvelteMap(userOverrideCache);
-  next.set(category, relays);
-  userOverrideCache = next;
+  userOverrideCache.set(category, relays);
 }
 
 /**
  * Clear the cache (on logout)
+ * Clears in place to preserve reactive subscriptions from $effect() calls
  */
 export function clearUserOverrideCache() {
-  userOverrideCache = new SvelteMap();
+  userOverrideCache.clear();
 }
 
 /**
