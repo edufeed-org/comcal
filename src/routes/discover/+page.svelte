@@ -255,6 +255,11 @@
   function handleContentTypeChange(newType) {
     contentType = newType;
     relayFilter = null;
+
+    // Clear search when switching tabs (search is tab-specific)
+    searchQuery = '';
+    activeSearchQuery = '';
+
     // Update URL - use null for 'all' to keep URL clean
     updateQueryParams($page.url.searchParams, { type: newType === 'all' ? null : newType });
 
