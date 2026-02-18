@@ -54,7 +54,18 @@ async function initializeAccountPersistence() {
   });
 
   // Step 5: Load user's app-specific relay sets (kind 30002) on login
-  manager.active$.subscribe(async (account) => {
+  // Uses combineLatest pattern to wait for BOTH config AND active account to be ready
+  // This fixes race condition where relay set loading runs before config is initialized
+  const { combineLatest } = await import('rxjs');
+  const { configReady } = await import('$lib/stores/config.svelte.js');
+
+  // Convert Svelte store to Observable
+  const configReady$ = new (await import('rxjs')).Observable((subscriber) => {
+    const unsubscribe = configReady.subscribe((ready) => subscriber.next(ready));
+    return () => unsubscribe();
+  });
+
+  combineLatest([configReady$, manager.active$]).subscribe(async ([isConfigReady, account]) => {
     const {
       clearUserOverrideCache,
       updateUserOverrideCache,
@@ -68,11 +79,32 @@ async function initializeAccountPersistence() {
       return;
     }
 
+    // Wait for config to be ready before loading relay sets
+    // This ensures relayListLookupRelays has been populated from API
+    if (!isConfigReady) {
+      console.log('⏳ Waiting for config before loading relay sets...');
+      return;
+    }
+
     const { pool, eventStore } = await import('$lib/stores/nostr-infrastructure.svelte');
     const { createAppRelaySetLoader } = await import('$lib/loaders/app-relay-set-loader.js');
     const { getRelayListLookupRelays } = await import('$lib/services/relay-service.svelte.js');
 
     const lookupRelays = getRelayListLookupRelays();
+
+    // Double-check we have lookup relays (belt and suspenders)
+    if (lookupRelays.length === 0) {
+      console.warn('⚠️ No lookup relays configured, cannot load relay sets');
+      return;
+    }
+
+    console.log(
+      '🔄 Loading relay sets for account:',
+      account.pubkey.slice(0, 8),
+      'using',
+      lookupRelays.length,
+      'lookup relays'
+    );
     const loader = createAppRelaySetLoader(pool, lookupRelays, eventStore, account.pubkey);
     loader()().subscribe();
 

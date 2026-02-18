@@ -1,22 +1,26 @@
 <script>
-  import { SvelteMap, SvelteDate } from 'svelte/reactivity';
+  import { SvelteMap, SvelteDate, SvelteSet } from 'svelte/reactivity';
   import { onMount } from 'svelte';
   import { afterNavigate } from '$app/navigation';
   import { page } from '$app/stores';
   import {
     communityCalendarTimelineLoader,
-    createRelayFilteredCalendarLoader,
     createDateRangeCalendarLoader,
+    createRelayFilteredCalendarLoader,
     calendarEventReferencesLoader
   } from '$lib/loaders/calendar.js';
+  import { createTimelineLoader } from 'applesauce-loaders/loaders';
+  import { timedPool } from '$lib/loaders/base.js';
   import { getViewDateRange } from '$lib/helpers/calendar.js';
+  import { getCalendarRelays } from '$lib/helpers/relay-helper.js';
+  import { relayUpdateSignal } from '$lib/services/app-relay-service.svelte.js';
   import { modalStore } from '$lib/stores/modal.svelte.js';
   import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
   import { manager, useActiveUser } from '$lib/stores/accounts.svelte';
   import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
   import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
   import { GlobalCalendarEventModel } from '$lib/models/global-calendar-event.js';
-  import { PersonalCalendarEventsModel } from '$lib/models';
+  import { PersonalCalendarEventsModel, CalendarEventRangeModel } from '$lib/models';
   import {
     createUrlSyncHandler,
     syncInitialUrlState,
@@ -85,9 +89,13 @@
   let processingTimeout = /** @type {ReturnType<typeof setTimeout> | null} */ (null);
 
   // Subscription management for loaders and models
-  let calendarSubscription = $state();
-  let loaderSubscription = $state();
-  let modelSubscription = $state();
+  // Using plain let (not $state) for subscriptions to avoid infinite loops in $effect
+  /** @type {import('rxjs').Subscription | undefined} */
+  let calendarSubscription;
+  /** @type {import('rxjs').Subscription | undefined} */
+  let loaderSubscription;
+  /** @type {import('rxjs').Subscription | undefined} */
+  let modelSubscription;
 
   // Date range loading subscription (for global/author modes)
   /** @type {import('rxjs').Subscription | undefined} */
@@ -98,6 +106,14 @@
 
   // Guard to prevent effect from running before mount
   let mounted = $state(false);
+
+  // Reactive check for relay availability - effects will wait until relays are configured
+  // This resolves the race condition where effects run before config is initialized
+  let relaysReady = $derived(getCalendarRelays().length > 0);
+
+  // Track initial relays at component mount for supplemental loading pattern
+  // When user override relays (kind 30002) arrive asynchronously, we detect and query them
+  const initialCalendarRelays = new SvelteSet(getCalendarRelays());
 
   // Track previous community pubkey to detect actual changes
   let previousCommunityPubkey = $state('');
@@ -134,42 +150,184 @@
     }
   });
 
-  // Date range loading for globalMode - reacts to currentDate and viewMode changes
+  // Date range loading for globalMode/authorMode - reacts to currentDate and viewMode changes
   // This effect loads events for the visible date range using the calendar-relay's
   // special filter syntax (#start_after, #start_before) with fallback for other relays
   $effect(() => {
-    if (!mounted || !globalMode) return;
+    // Subscribe to relay update signal via Svelte store auto-subscription ($storeName)
+    // This ensures the effect re-runs when user relay overrides are loaded
+    const _relaySignal = $relayUpdateSignal;
 
-    // Calculate the date range for the current view (with 7-day padding)
-    const { start, end } = getViewDateRange(currentDate, viewMode);
-
+    // Debug: trace effect execution
     console.log(
-      '📅 CalendarView: Loading events for date range:',
-      new Date(start * 1000).toISOString(),
-      'to',
-      new Date(end * 1000).toISOString()
+      '📅 CalendarView: Main effect running - globalMode:',
+      globalMode,
+      'authorPubkey:',
+      authorPubkey,
+      'relaysReady:',
+      relaysReady,
+      'relaySignal:',
+      _relaySignal
     );
+
+    // Only run for globalMode or authorPubkey modes
+    if (!globalMode && !authorPubkey) {
+      console.log('📅 CalendarView: Skipping - not globalMode or authorPubkey');
+      return;
+    }
+    // Skip if in community mode or using a specific calendar
+    if (communityMode || calendar) {
+      console.log('📅 CalendarView: Skipping - communityMode or calendar');
+      return;
+    }
+    // Wait for relays to be configured (resolves race condition with async config)
+    if (!relaysReady) {
+      console.log('📅 CalendarView: Waiting for relay config...');
+      return;
+    }
 
     // Clean up previous date range subscription
     dateRangeLoaderSub?.unsubscribe();
 
-    // Get current filter state
-    const authors = calendarFilters.getSelectedAuthors();
+    // Get authors filter - use authorPubkey if set, otherwise use filter state
+    const authors = authorPubkey ? [authorPubkey] : calendarFilters.getSelectedAuthors();
 
-    // Create and subscribe to date range loader
-    const loader = createDateRangeCalendarLoader(start, end, { authors });
-    dateRangeLoaderSub = loader().subscribe({
-      error: (/** @type {any} */ err) => {
-        console.error('📅 CalendarView: Date range loader error:', err);
-      },
-      complete: () => {
-        console.log('📅 CalendarView: Date range loader complete');
-      }
-    });
+    if (viewMode === 'all') {
+      // 'all' view mode: No date filtering, use standard loader
+      console.log('📅 CalendarView: Loading all events (no date filter)');
+      const relays = calendarFilters.selectedRelays;
+      const loader = createRelayFilteredCalendarLoader(relays, { authors });
+      dateRangeLoaderSub = loader().subscribe({
+        error: (/** @type {any} */ err) => {
+          console.error('📅 CalendarView: All events loader error:', err);
+        },
+        complete: () => {
+          console.log('📅 CalendarView: All events loader complete');
+        }
+      });
+    } else {
+      // Date-filtered view: Use date range loader with NIP-52 filter syntax
+      const { start, end } = getViewDateRange(currentDate, viewMode);
+
+      console.log(
+        '📅 CalendarView: Loading events for date range:',
+        new Date(start * 1000).toISOString(),
+        'to',
+        new Date(end * 1000).toISOString()
+      );
+
+      const loader = createDateRangeCalendarLoader(
+        {
+          startAfter: start,
+          startBefore: end,
+          endAfter: start // Include events still ongoing
+        },
+        { authors }
+      );
+      dateRangeLoaderSub = loader().subscribe({
+        error: (/** @type {any} */ err) => {
+          console.error('📅 CalendarView: Date range loader error:', err);
+        },
+        complete: () => {
+          console.log('📅 CalendarView: Date range loader complete');
+        }
+      });
+    }
 
     return () => {
       dateRangeLoaderSub?.unsubscribe();
     };
+  });
+
+  // Supplemental relay loading: when user override relays (kind 30002) arrive after
+  // initial mount, this effect detects the new relays and queries them.
+  // This pattern ensures we don't miss events from user-configured relays that
+  // weren't available at initial load time.
+  $effect(() => {
+    // Subscribe to relay update signal to trigger re-runs when user overrides arrive
+    // Svelte 5 doesn't auto-track reactive reads inside helper functions, so we need
+    // this explicit subscription to know when userOverrideCache changes
+    const _relaySignal = $relayUpdateSignal;
+
+    // Only run for globalMode or authorPubkey modes (not community or specific calendar)
+    if (!globalMode && !authorPubkey) return;
+    if (communityMode || calendar) return;
+
+    const currentRelays = getCalendarRelays();
+    const newRelays = currentRelays.filter((r) => !initialCalendarRelays.has(r));
+
+    if (newRelays.length === 0) return;
+
+    console.log('📅 CalendarView: Supplemental relay loading - new relays detected:', newRelays);
+
+    // Add new relays to tracking set so we don't re-query them
+    newRelays.forEach((r) => initialCalendarRelays.add(r));
+
+    // Create a loader for just the new relays
+    const loader = createTimelineLoader(
+      timedPool,
+      newRelays,
+      { kinds: [31922, 31923], limit: 40 },
+      { eventStore }
+    );
+
+    const sub = loader().subscribe({
+      error: (/** @type {any} */ err) => {
+        console.error('📅 CalendarView: Supplemental relay loader error:', err);
+      },
+      complete: () => {
+        console.log('📅 CalendarView: Supplemental relay loader complete');
+      }
+    });
+
+    return () => sub.unsubscribe();
+  });
+
+  // Reactive model subscription for globalMode/authorMode - reacts to date range changes
+  // This effect uses CalendarEventRangeModel for date-filtered views (month/week/day)
+  // and GlobalCalendarEventModel for 'all' view mode
+  $effect(() => {
+    // Only handle globalMode or authorPubkey modes
+    if (!globalMode && !authorPubkey) return;
+    // Skip if in community mode - that's handled by communityEventLoader
+    if (communityMode) return;
+    // Skip if using a specific calendar - that's handled by loadEvents()
+    if (calendar) return;
+    // Wait for relays to be configured
+    if (!relaysReady) return;
+
+    // Get authors filter
+    const authors = authorPubkey ? [authorPubkey] : calendarFilters.getSelectedAuthors();
+
+    // Clean up previous model subscription
+    modelSubscription?.unsubscribe();
+
+    if (viewMode === 'all') {
+      // 'all' view: No date filtering, use GlobalCalendarEventModel
+      modelSubscription = eventStore
+        .model(GlobalCalendarEventModel, authors)
+        .subscribe((/** @type {any} */ calendarEvents) => {
+          allCalendarEvents = calendarEvents;
+          loading = false;
+        });
+    } else {
+      // Date-filtered view: Use CalendarEventRangeModel
+      const { start, end } = getViewDateRange(currentDate, viewMode);
+      console.log(
+        '📅 CalendarView: Model subscription for date range:',
+        new Date(start * 1000).toISOString(),
+        'to',
+        new Date(end * 1000).toISOString()
+      );
+      modelSubscription = eventStore
+        .model(CalendarEventRangeModel, start, end, authors)
+        .subscribe((/** @type {any} */ calendarEvents) => {
+          allCalendarEvents = calendarEvents;
+          loading = false;
+        });
+    }
+
+    return () => modelSubscription?.unsubscribe();
   });
 
   // Sync initial URL state on mount
@@ -236,85 +394,22 @@
         communityPubkey
       );
       communityEventLoader.loadByCommunity(communityPubkey);
-    } else if (globalMode) {
-      // Global mode: Load all events from relays
-      console.log('📅 CalendarView: Loading global calendar events');
-      const relays = calendarFilters.selectedRelays;
-      const authors = calendarFilters.getSelectedAuthors();
+    } else if (globalMode || authorPubkey) {
+      // Global mode or Author mode: Loading is handled by the reactive $effect
+      // The $effect uses createDateRangeCalendarLoader for proper NIP-52 date filtering
+      // and CalendarEventRangeModel for reactive model subscriptions
+      console.log(
+        '📅 CalendarView: Global/Author mode - loader managed by reactive $effect',
+        globalMode ? 'globalMode' : `authorPubkey: ${authorPubkey}`
+      );
 
-      // Track if relay filter is active
+      // Reset relay filter state
+      const relays = calendarFilters.selectedRelays;
       relayFilterActive = relays.length > 0;
       relayFilteredEventIds = [];
 
-      // Temporary array to collect IDs during loader subscription
-      const trackedIds = /** @type {string[]} */ ([]);
-
-      // 1. Loader: Fetch from relays → EventStore
-      loaderSubscription = createRelayFilteredCalendarLoader(relays, authors)().subscribe({
-        next: (/** @type {any} */ event) => {
-          // Track event IDs from selected relays
-          if (relayFilterActive) {
-            trackedIds.push(event.id);
-            // Trigger reactivity by reassigning
-            relayFilteredEventIds = [...trackedIds];
-            console.log(
-              '📅 CalendarView: Tracked event from relay:',
-              event.id,
-              `(${trackedIds.length} total)`
-            );
-          }
-        },
-        error: (/** @type {any} */ err) => {
-          console.error('📅 CalendarView: Global calendar loader error:', err);
-          error = err.message || 'Failed to load calendar events';
-          loading = false;
-        }
-      });
-
-      // 2. Model: Transform and provide reactive updates from EventStore
-      modelSubscription = eventStore
-        .model(GlobalCalendarEventModel, authors)
-        .subscribe((/** @type {any} */ calendarEvents) => {
-          allCalendarEvents = calendarEvents;
-          loading = false;
-        });
-    } else if (authorPubkey) {
-      // Author mode: Load events by specific author
-      console.log('📅 CalendarView: Loading calendar events for author:', authorPubkey);
-      const relays = calendarFilters.selectedRelays;
-
-      // Track if relay filter is active
-      relayFilterActive = relays.length > 0;
-      relayFilteredEventIds = [];
-
-      // Temporary array to collect IDs during loader subscription
-      const trackedIds = /** @type {string[]} */ ([]);
-
-      // 1. Loader: Fetch from relays → EventStore
-      loaderSubscription = createRelayFilteredCalendarLoader(relays, [authorPubkey])().subscribe({
-        next: (/** @type {any} */ event) => {
-          // Track event IDs from selected relays
-          if (relayFilterActive) {
-            trackedIds.push(event.id);
-            // Trigger reactivity by reassigning
-            relayFilteredEventIds = [...trackedIds];
-          }
-        },
-        error: (/** @type {any} */ err) => {
-          console.error('📅 CalendarView: Author calendar loader error:', err);
-          error = err.message || 'Failed to load calendar events';
-          loading = false;
-        }
-      });
-
-      // 2. Model: Transform and provide reactive updates from EventStore
-      modelSubscription = eventStore
-        .model(GlobalCalendarEventModel, [authorPubkey])
-        .subscribe((/** @type {any} */ calendarEvents) => {
-          console.log('📅 CalendarView: Received', calendarEvents.length, 'author calendar events');
-          allCalendarEvents = calendarEvents;
-          loading = false;
-        });
+      // Note: The actual loader and model subscriptions are managed by the reactive $effects
+      // which will run after mount and react to currentDate/viewMode changes
     } else if (calendar && rawCalendar) {
       // Calendar mode: Load events from specific calendar
       console.log('📅 CalendarView: Loading events for calendar:', calendar.id);

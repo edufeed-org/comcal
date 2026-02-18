@@ -4,6 +4,7 @@
  * Users can override app relays via kind 30002 events with app-specific d-tags.
  * D-tags are based on APP_NAME from config (e.g., "ComCal/calendar")
  */
+import { writable } from 'svelte/store';
 import { SvelteMap } from 'svelte/reactivity';
 import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
@@ -48,6 +49,13 @@ export function getRelaySetDTag(category) {
 let userOverrideCache = new SvelteMap();
 
 /**
+ * Reactive signal for relay updates - Svelte writable store for cross-component reactivity.
+ * Use $relayUpdateSignal (with $ prefix) in .svelte components to auto-subscribe.
+ * @type {import('svelte/store').Writable<number>}
+ */
+export const relayUpdateSignal = writable(0);
+
+/**
  * Update the cache for a category (called from subscription in settings page)
  * Mutates in place to preserve reactive subscriptions from $effect() calls
  * @param {string} category - Category name
@@ -55,6 +63,8 @@ let userOverrideCache = new SvelteMap();
  */
 export function updateUserOverrideCache(category, relays) {
   userOverrideCache.set(category, relays);
+  relayUpdateSignal.update((n) => n + 1); // Trigger reactive updates via store
+  console.log('🔄 Relay override cache updated:', category, relays.length, 'relays');
 }
 
 /**

@@ -21,9 +21,12 @@
           ];
 
           shellHook = ''
-            export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
+            export PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/playwright-browsers
             export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
             export CHROMIUM_BIN=${pkgs.chromium}/bin/chromium
+            export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=${pkgs.chromium}/bin/chromium
+            export PLAYWRIGHT_MCP_EXECUTABLE_PATH=${pkgs.chromium}/bin/chromium
+            mkdir -p $PLAYWRIGHT_BROWSERS_PATH
             echo "Comcal dev environment loaded - Node $(node --version)"
           '';
         };

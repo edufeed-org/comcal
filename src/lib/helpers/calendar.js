@@ -715,6 +715,60 @@ export function isRawEventInDateRange(event, rangeStart, rangeEnd) {
 }
 
 /**
+ * Check if an event's start time is after a given timestamp
+ * Used for client-side filtering when paginating calendar events by start time.
+ *
+ * @param {import('nostr-tools').NostrEvent} event - Raw Nostr event
+ * @param {number} timestamp - Unix timestamp in seconds
+ * @returns {boolean} True if event start is after the timestamp
+ */
+export function isEventStartAfter(event, timestamp) {
+  if (!event || !event.tags) return false;
+  const startTag = event.tags.find((/** @type {string[]} */ tag) => tag[0] === 'start');
+  const eventStart = startTag ? parseInt(startTag[1], 10) : 0;
+  return eventStart > timestamp;
+}
+
+/**
+ * Get the start timestamp from an event
+ * @param {import('nostr-tools').NostrEvent} event - Raw Nostr event
+ * @returns {number} The start timestamp, or 0 if not found
+ */
+export function getEventStartTimestamp(event) {
+  if (!event || !event.tags) return 0;
+  const startTag = event.tags.find((/** @type {string[]} */ tag) => tag[0] === 'start');
+  return startTag ? parseInt(startTag[1], 10) : 0;
+}
+
+/**
+ * Get the end timestamp from an event
+ * @param {import('nostr-tools').NostrEvent} event - Raw Nostr event
+ * @returns {number} The end timestamp, or 0 if not found
+ */
+export function getEventEndTimestamp(event) {
+  if (!event || !event.tags) return 0;
+  const endTag = event.tags.find((/** @type {string[]} */ tag) => tag[0] === 'end');
+  return endTag ? parseInt(endTag[1], 10) : 0;
+}
+
+/**
+ * Check if a calendar event overlaps with a date range
+ * Works with CalendarEvent objects (processed events with start/end properties).
+ * An event overlaps if it starts before range end AND ends after range start.
+ *
+ * @param {Object} event - Calendar event with start/end properties (Unix seconds)
+ * @param {number} rangeStart - Range start timestamp (Unix seconds)
+ * @param {number} rangeEnd - Range end timestamp (Unix seconds)
+ * @returns {boolean} True if event overlaps with the date range
+ */
+export function eventOverlapsDateRange(event, rangeStart, rangeEnd) {
+  const eventStart = event.start || 0;
+  const eventEnd = event.end || eventStart;
+  // Event overlaps if it starts before range end AND ends after range start
+  return eventStart <= rangeEnd && eventEnd >= rangeStart;
+}
+
+/**
  * Get the date range for a given view (with padding for multi-day events)
  * Returns Unix timestamps suitable for relay queries.
  *

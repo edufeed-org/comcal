@@ -306,6 +306,36 @@ export async function completeAMBStep1(page, data = {}) {
 }
 
 /**
+ * Wait for a SKOS dropdown to finish loading and be ready for interaction.
+ * The dropdown button shows "Loading..." while fetching vocabulary data.
+ *
+ * SKOSDropdown structure:
+ *   <div class="form-control">
+ *     <div class="label"><span>Label Text</span></div>
+ *     <div class="dropdown">
+ *       <button class="select-trigger">...</button>
+ *       <div class="dropdown-content">...</div>
+ *     </div>
+ *   </div>
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} labelText - The label text to find the dropdown (e.g., 'Resource Type')
+ * @returns {Promise<import('@playwright/test').Locator>} The dropdown locator (.dropdown element)
+ */
+async function waitForSkosDropdownReady(page, labelText) {
+  // Find the form-control wrapper that contains the label text
+  const formControl = page.locator('.form-control').filter({ hasText: labelText }).first();
+  // Get the dropdown element inside it
+  const dropdown = formControl.locator('.dropdown');
+  // Wait for the select trigger button (has .select-trigger class) to NOT show "Loading..."
+  const triggerButton = dropdown.locator('button.select-trigger');
+  await expect(triggerButton).toBeVisible({ timeout: 15000 });
+  // Wait for loading to complete - button text should NOT contain "Loading"
+  await expect(triggerButton).not.toContainText('Loading', { timeout: 15000 });
+  return dropdown;
+}
+
+/**
  * Complete AMB wizard Step 2 (Classification).
  * Selects resource type and subject from SKOS dropdowns.
  * Requires SKOS mocks to be set up via setupSKOSMocks().
@@ -320,36 +350,46 @@ export async function completeAMBStep2(page, data = {}) {
   const resourceType = data.resourceType || 'Text';
   const subject = data.subject || 'Computer Science';
 
-  // Wait for SKOS dropdowns to load (they fetch on mount)
+  // Wait for step 2 to be visible
   await expect(page.locator('text=Resource Type').first()).toBeVisible({ timeout: 10000 });
 
-  // Click Resource Type dropdown trigger
-  const resourceTypeDropdown = page
-    .locator('.dropdown')
-    .filter({ hasText: 'Resource Type' })
-    .first();
-  await resourceTypeDropdown.locator('button').first().click();
-  await page.waitForTimeout(300);
+  // Wait for Resource Type SKOS dropdown to finish loading
+  const resourceTypeDropdown = await waitForSkosDropdownReady(page, 'Resource Type');
 
-  // Select the resource type option
-  await page.locator(`.dropdown-content button:has-text("${resourceType}")`).first().click();
-  await page.waitForTimeout(300);
+  // Click Resource Type dropdown trigger (use .select-trigger to avoid matching option buttons)
+  await resourceTypeDropdown.locator('button.select-trigger').click();
 
-  // Click outside to close dropdown
-  await page.locator('body').click({ position: { x: 0, y: 0 } });
+  // Wait for THIS dropdown's content to render (scoped to avoid navbar dropdowns)
+  await expect(resourceTypeDropdown.locator('.dropdown-content')).toBeVisible({ timeout: 5000 });
   await page.waitForTimeout(200);
 
-  // Click Subject dropdown trigger
-  const subjectDropdown = page.locator('.dropdown').filter({ hasText: 'Subject' }).first();
-  await subjectDropdown.locator('button').first().click();
+  // Select the resource type option (scoped to this dropdown)
+  await resourceTypeDropdown
+    .locator(`.dropdown-content button:has-text("${resourceType}")`)
+    .click();
   await page.waitForTimeout(300);
 
-  // Select the subject option
-  await page.locator(`.dropdown-content button:has-text("${subject}")`).first().click();
+  // Close dropdown by clicking outside it (on the modal title)
+  // Clicking the trigger toggles, which might not work reliably
+  await page.locator('h2:has-text("Create Educational Resource")').click();
   await page.waitForTimeout(300);
 
-  // Click outside to close dropdown
-  await page.locator('body').click({ position: { x: 0, y: 0 } });
+  // Wait for Subject SKOS dropdown to finish loading
+  const subjectDropdown = await waitForSkosDropdownReady(page, 'Subject');
+
+  // Click Subject dropdown trigger (use .select-trigger to avoid matching option buttons)
+  await subjectDropdown.locator('button.select-trigger').click();
+
+  // Wait for THIS dropdown's content to render (scoped to avoid navbar dropdowns)
+  await expect(subjectDropdown.locator('.dropdown-content')).toBeVisible({ timeout: 5000 });
+  await page.waitForTimeout(200);
+
+  // Select the subject option (scoped to this dropdown)
+  await subjectDropdown.locator(`.dropdown-content button:has-text("${subject}")`).click();
+  await page.waitForTimeout(300);
+
+  // Close dropdown by clicking outside it (on the modal title)
+  await page.locator('h2:has-text("Create Educational Resource")').click();
   await page.waitForTimeout(200);
 
   // Add keywords if provided

@@ -98,9 +98,12 @@ test.describe('Learning Search - SKOS Filters', () => {
     const resourceTypeLabel = page.locator('text=Resource Type');
     await expect(resourceTypeLabel).toBeVisible({ timeout: 10000 });
 
-    // The "Select type..." button should be visible
-    const selectButton = page.locator('button', { hasText: 'Select type...' });
-    await expect(selectButton).toBeVisible({ timeout: 5000 });
+    // Wait for SKOS dropdown trigger button to be visible and not loading
+    // Note: The label is in .form-control wrapper, not inside .dropdown
+    const formControl = page.locator('.form-control').filter({ hasText: 'Resource Type' }).first();
+    const triggerButton = formControl.locator('button.select-trigger');
+    await expect(triggerButton).toBeVisible({ timeout: 15000 });
+    await expect(triggerButton).not.toContainText('Loading', { timeout: 15000 });
   });
 
   test('Subject dropdown is visible on Learning tab', async ({ page }) => {
@@ -110,22 +113,31 @@ test.describe('Learning Search - SKOS Filters', () => {
     const subjectLabel = page.getByText('Subject', { exact: true });
     await expect(subjectLabel).toBeVisible({ timeout: 10000 });
 
-    // The "Select subject..." button should be visible
-    const selectButton = page.locator('button', { hasText: 'Select subject...' });
-    await expect(selectButton).toBeVisible({ timeout: 5000 });
+    // Wait for SKOS dropdown trigger button to be visible and not loading
+    // Note: The label is in .form-control wrapper, not inside .dropdown
+    const formControl = page.locator('.form-control').filter({ hasText: 'Subject' }).first();
+    const triggerButton = formControl.locator('button.select-trigger');
+    await expect(triggerButton).toBeVisible({ timeout: 15000 });
+    await expect(triggerButton).not.toContainText('Loading', { timeout: 15000 });
   });
 
   test('Resource Type dropdown opens with options', async ({ page }) => {
     await navigateToLearningTab(page);
 
+    // Wait for SKOS dropdown trigger to be ready
+    // Note: The label is in .form-control wrapper, not inside .dropdown
+    const formControl = page.locator('.form-control').filter({ hasText: 'Resource Type' }).first();
+    const dropdown = formControl.locator('.dropdown');
+    const triggerButton = dropdown.locator('button.select-trigger');
+    await expect(triggerButton).toBeVisible({ timeout: 15000 });
+    await expect(triggerButton).not.toContainText('Loading', { timeout: 15000 });
+
     // Click to open the dropdown
-    const resourceTypeButton = page.locator('button', { hasText: 'Select type...' });
-    await expect(resourceTypeButton).toBeVisible({ timeout: 10000 });
-    await resourceTypeButton.click();
+    await triggerButton.click();
     await page.waitForTimeout(500);
 
-    // Should show options (e.g., "Text", "Video", etc.)
-    const textOption = page.locator('button', { hasText: 'Text' }).first();
+    // Should show options (e.g., "Text", "Video", etc.) - scope to this dropdown
+    const textOption = dropdown.locator('.dropdown-content button', { hasText: 'Text' }).first();
     await expect(textOption).toBeVisible({ timeout: 5000 });
   });
 });

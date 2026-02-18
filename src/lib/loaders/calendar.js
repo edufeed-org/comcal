@@ -4,13 +4,17 @@
  */
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { from, merge, EMPTY } from 'rxjs';
-import { mergeMap, filter, tap } from 'rxjs/operators';
+import { mergeMap, filter, tap, switchMap } from 'rxjs/operators';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { addressLoader, timedPool } from './base.js';
-import { getCalendarRelays, getFallbackRelays } from '$lib/helpers/relay-helper.js';
-import { getAppRelaysForCategory } from '$lib/services/app-relay-service.svelte.js';
+import { getCalendarRelays } from '$lib/helpers/relay-helper.js';
 import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
-import { isRawEventInDateRange } from '$lib/helpers/calendar.js';
+import {
+  isEventStartAfter,
+  getEventStartTimestamp,
+  getEventEndTimestamp
+} from '$lib/helpers/calendar.js';
+import { partitionRelaysByNip52Support } from '$lib/services/relay-capabilities.js';
 
 // Global calendar events (kinds 31922, 31923)
 // Lazy factory to ensure relays are read from runtime config at call time, not module load time
@@ -26,51 +30,59 @@ export const calendarTimelineLoader = () =>
   );
 
 /**
- * Create a timeline loader for calendar events with custom relay filtering
+ * Create a timeline loader for calendar events with custom relay filtering.
+ * Note: Relay resolution is deferred to loader execution time to ensure
+ * user override relays (kind 30002) are included even if they load asynchronously.
  * @param {string[]} customRelays - Array of relay URLs to query. If empty, uses default relays.
  * @param {Object} additionalFilters - Additional filter parameters (e.g., authors, limit)
  * @returns {Function} Timeline loader function that returns an Observable
  */
 export const createRelayFilteredCalendarLoader = (customRelays = [], additionalFilters = {}) => {
-  const relaysToUse = customRelays.length > 0 ? customRelays : getCalendarRelays();
+  return () => {
+    // Resolve relays at execution time, not creation time
+    const relaysToUse = customRelays.length > 0 ? customRelays : getCalendarRelays();
 
-  return createTimelineLoader(
-    timedPool,
-    relaysToUse,
-    {
-      kinds: [31922, 31923], // NIP-52 calendar events
-      limit: 200,
-      ...additionalFilters
-    },
-    { eventStore }
-  );
+    return createTimelineLoader(
+      timedPool,
+      relaysToUse,
+      {
+        kinds: [31922, 31923], // NIP-52 calendar events
+        limit: 200,
+        ...additionalFilters
+      },
+      { eventStore }
+    )();
+  };
 };
 
 /**
- * Create a date-range aware calendar loader that:
- * 1. Queries app relays (calendar-relay) with special date range filter syntax (#start_after, #start_before)
- * 2. Queries fallback relays with standard query + client-side date filtering
+ * @typedef {Object} DateRangeFilters
+ * @property {number} [startAfter] - Events starting at or after this timestamp
+ * @property {number} [startBefore] - Events starting before this timestamp
+ * @property {number} [endAfter] - Events ending at or after this timestamp
+ * @property {number} [endBefore] - Events ending before this timestamp
+ */
+
+/**
+ * Create a date-range aware calendar loader with full NIP-52 filter support.
+ * Intelligently routes queries based on relay NIP-52 support:
+ * - NIP-52 relays: Use #start_after, #start_before, etc. for server-side filtering
+ * - Standard relays: Use standard query + client-side date filtering
  *
- * Both queries run in parallel. The EventStore handles deduplication.
- *
- * @param {number} startTimestamp - Start of date range as Unix timestamp (seconds)
- * @param {number} endTimestamp - End of date range as Unix timestamp (seconds)
+ * @param {DateRangeFilters} dateRange - Date range filter parameters
  * @param {Object} [options] - Additional options
  * @param {string[]} [options.authors] - Filter by specific authors
- * @param {string[]} [options.customAppRelays] - Override app relays (for testing)
- * @param {string[]} [options.customFallbackRelays] - Override fallback relays (for testing)
  * @returns {Function} Loader function that returns an Observable
  */
-export function createDateRangeCalendarLoader(startTimestamp, endTimestamp, options = {}) {
-  const { authors, customAppRelays, customFallbackRelays } = options;
+export function createDateRangeCalendarLoader(dateRange, options = {}) {
+  const { startAfter, startBefore, endAfter, endBefore } = dateRange;
+  const { authors } = options;
 
   return () => {
-    // Get relays - app relays support date range filter, fallback relays don't
-    const appRelays = customAppRelays || getAppRelaysForCategory('calendar');
-    const fallbackRelays = customFallbackRelays || getFallbackRelays();
+    const allRelays = getCalendarRelays();
 
     // Build base filter
-    /** @type {import('nostr-tools').Filter} */
+    /** @type {any} */
     const baseFilter = {
       kinds: [31922, 31923]
     };
@@ -78,40 +90,108 @@ export function createDateRangeCalendarLoader(startTimestamp, endTimestamp, opti
       baseFilter.authors = authors;
     }
 
-    // Observable streams to merge
-    /** @type {import('rxjs').Observable<import('nostr-tools').NostrEvent>[]} */
-    const streams = [];
+    // Partition relays by actual NIP-52 support, then query appropriately
+    return from(partitionRelaysByNip52Support(allRelays)).pipe(
+      switchMap(({ nip52Relays, standardRelays }) => {
+        /** @type {import('rxjs').Observable<import('nostr-tools').NostrEvent>[]} */
+        const streams = [];
 
-    // Query 1: App relays with calendar-relay's special date range filter syntax
-    // These relays understand #start_after and #start_before as filter parameters
-    if (appRelays.length > 0) {
-      const appFilter = {
-        ...baseFilter,
-        '#start_after': [String(startTimestamp)],
-        '#start_before': [String(endTimestamp)]
-      };
+        // NIP-52 relays: server-side date filtering via special filter syntax
+        if (nip52Relays.length > 0) {
+          /** @type {any} */
+          const nip52Filter = { ...baseFilter };
+          if (startAfter !== undefined) nip52Filter['#start_after'] = [String(startAfter)];
+          if (startBefore !== undefined) nip52Filter['#start_before'] = [String(startBefore)];
+          if (endAfter !== undefined) nip52Filter['#end_after'] = [String(endAfter)];
+          if (endBefore !== undefined) nip52Filter['#end_before'] = [String(endBefore)];
 
-      const appQuery$ = timedPool(appRelays, appFilter).pipe(tap((event) => eventStore.add(event)));
-      streams.push(appQuery$);
-    }
+          streams.push(timedPool(nip52Relays, nip52Filter).pipe(tap((e) => eventStore.add(e))));
+        }
 
-    // Query 2: Fallback relays with standard query + client-side date filtering
-    // These relays don't understand date range filters, so we filter client-side
-    if (fallbackRelays.length > 0) {
-      const fallbackFilter = {
-        ...baseFilter,
-        limit: 500 // Reasonable limit for fallback
-      };
+        // Standard relays: client-side date filtering
+        // These relays don't understand NIP-52 date filters, so we over-fetch and filter client-side
+        if (standardRelays.length > 0) {
+          const standardFilter = {
+            ...baseFilter,
+            limit: 500 // Over-fetch since we filter client-side
+          };
 
-      const fallbackQuery$ = timedPool(fallbackRelays, fallbackFilter).pipe(
-        filter((event) => isRawEventInDateRange(event, startTimestamp, endTimestamp)),
-        tap((event) => eventStore.add(event))
-      );
-      streams.push(fallbackQuery$);
-    }
+          streams.push(
+            timedPool(standardRelays, standardFilter).pipe(
+              filter((event) => {
+                const eventStart = getEventStartTimestamp(event);
+                const eventEnd = getEventEndTimestamp(event) || eventStart;
+                if (startAfter !== undefined && eventStart < startAfter) return false;
+                if (startBefore !== undefined && eventStart >= startBefore) return false;
+                if (endAfter !== undefined && eventEnd < endAfter) return false;
+                if (endBefore !== undefined && eventEnd >= endBefore) return false;
+                return true;
+              }),
+              tap((e) => eventStore.add(e))
+            )
+          );
+        }
 
-    // Merge all streams - EventStore handles deduplication by event ID
-    return streams.length > 0 ? merge(...streams) : EMPTY;
+        // Merge all streams - EventStore handles deduplication by event ID
+        return streams.length > 0 ? merge(...streams) : EMPTY;
+      })
+    );
+  };
+}
+
+/**
+ * Create a paginated calendar loader that loads events by start time.
+ * Intelligently routes queries based on relay NIP-52 support:
+ * - NIP-52 relays: Use #start_after filter for server-side filtering
+ * - Standard relays: Use higher limit + client-side filtering by start tag
+ *
+ * Uses timedPool wrapper which adds a timeout to pool.request().
+ *
+ * @param {number} afterStartTimestamp - Load events with start > this timestamp (Unix seconds)
+ * @param {Object} [options] - Additional options
+ * @param {number} [options.limit=20] - Max events to return per relay type
+ * @returns {Function} Loader function that returns an Observable
+ */
+export function createPaginatedCalendarLoader(afterStartTimestamp, options = {}) {
+  const { limit = 20 } = options;
+
+  return () => {
+    const allRelays = getCalendarRelays();
+
+    // First partition relays by NIP-52 support, then query
+    return from(partitionRelaysByNip52Support(allRelays)).pipe(
+      switchMap(({ nip52Relays, standardRelays }) => {
+        /** @type {import('rxjs').Observable<import('nostr-tools').NostrEvent>[]} */
+        const streams = [];
+
+        // NIP-52 relays: server-side start filtering via #start_after
+        if (nip52Relays.length > 0) {
+          const nip52Filter = {
+            kinds: [31922, 31923],
+            '#start_after': [String(afterStartTimestamp)],
+            limit
+          };
+          streams.push(timedPool(nip52Relays, nip52Filter).pipe(tap((e) => eventStore.add(e))));
+        }
+
+        // Standard relays: client-side start filtering
+        // These relays don't understand #start_after, so we over-fetch and filter client-side
+        if (standardRelays.length > 0) {
+          const standardFilter = {
+            kinds: [31922, 31923],
+            limit: limit * 3 // Over-fetch since we filter client-side
+          };
+          streams.push(
+            timedPool(standardRelays, standardFilter).pipe(
+              filter((event) => isEventStartAfter(event, afterStartTimestamp)),
+              tap((e) => eventStore.add(e))
+            )
+          );
+        }
+
+        return streams.length > 0 ? merge(...streams) : EMPTY;
+      })
+    );
   };
 }
 

@@ -1,7 +1,7 @@
 /**
- * Global Calendar Event Model
- * Provides reactive access to calendar events from the global timeline
- * Can optionally filter by authors
+ * Calendar Event Range Model
+ * Filters calendar events by date range, sorted by start time (soonest first).
+ * Reusable across discover page, calendar views, profile pages, etc.
  *
  * Uses TimelineModel from applesauce-core which automatically:
  * - Filters out deleted events (NIP-09 deletion events)
@@ -9,30 +9,28 @@
  * - Re-emits when deletion events are added to EventStore
  * - Provides proper reactive updates
  *
- * Events are sorted by start time (soonest first), not by created_at.
- * This is the expected behavior for calendar views.
- *
- * Required loaders (must be started before using this model):
- * - Global calendar events (kinds 31922, 31923)
- * - Deletion events for event authors (kind 5)
- *
+ * @param {number} rangeStart - Start of date range (Unix timestamp seconds)
+ * @param {number} rangeEnd - End of date range (Unix timestamp seconds)
  * @param {string[]} [authors] - Optional array of author pubkeys to filter by
- * @returns {import('applesauce-core').Model<Array<import('$lib/types/calendar.js').CalendarEvent>>} Model that emits array of calendar events
+ * @returns {import('applesauce-core').Model<Array<import('$lib/types/calendar.js').CalendarEvent>>}
  */
 import { TimelineModel } from 'applesauce-core/models';
 import { map } from 'rxjs/operators';
 import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
+import { eventOverlapsDateRange } from '$lib/helpers/calendar.js';
 
 /**
+ * @param {number} rangeStart
+ * @param {number} rangeEnd
  * @param {string[]} [authors]
  */
-export function GlobalCalendarEventModel(authors = []) {
+export function CalendarEventRangeModel(rangeStart, rangeEnd, authors = []) {
   return (/** @type {any} */ eventStore) => {
     // Build filter for timeline query
     /** @type {any} */
     const filter = {
       kinds: [31922, 31923],
-      limit: 300
+      limit: 500
     };
 
     // Add author filter if provided
@@ -41,18 +39,20 @@ export function GlobalCalendarEventModel(authors = []) {
     }
 
     // Use TimelineModel which handles deletion filtering automatically
-    // TimelineModel will:
-    // 1. Filter out events that have deletion events (kind 5) in EventStore
-    // 2. Re-emit when new deletion events are added
-    // 3. Maintain proper reactivity
     return eventStore.model(TimelineModel, filter).pipe(
-      // Transform raw Nostr events to CalendarEvent objects and sort by start time
+      // Transform raw Nostr events to CalendarEvent objects, filter by date range, and sort
       map((events) => {
         const calendarEvents = events.map((/** @type {any} */ event) =>
           getCalendarEventMetadata(event)
         );
+
+        // Filter to only events that overlap with the date range
+        const filteredEvents = calendarEvents.filter((/** @type {any} */ e) =>
+          eventOverlapsDateRange(e, rangeStart, rangeEnd)
+        );
+
         // Sort by start time ascending (soonest first)
-        return calendarEvents.sort(
+        return filteredEvents.sort(
           (/** @type {any} */ a, /** @type {any} */ b) => (a.start || 0) - (b.start || 0)
         );
       })

@@ -5,6 +5,7 @@
  *
  * Configuration source of truth: .env file → /api/config endpoint → this store
  */
+import { writable } from 'svelte/store';
 
 /**
  * Default configuration structure
@@ -140,6 +141,14 @@ let config = $state(defaultConfig);
 let initialized = false;
 
 /**
+ * Reactive store to signal when config is fully initialized.
+ * Components can subscribe to this to wait for config before running config-dependent code.
+ * Use $configReady (with $ prefix) in .svelte files for auto-subscription.
+ * @type {import('svelte/store').Writable<boolean>}
+ */
+export const configReady = writable(false);
+
+/**
  * Initialize or update the configuration
  * Called from the root layout after loading config from API
  * @param {any} runtimeConfig - Configuration from API endpoint
@@ -234,6 +243,9 @@ export function initializeConfig(runtimeConfig) {
   };
 
   console.log('Config initialized with runtime values');
+
+  // Signal that config is ready for dependent code
+  configReady.set(true);
 }
 
 /**

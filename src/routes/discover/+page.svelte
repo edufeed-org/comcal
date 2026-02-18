@@ -4,7 +4,11 @@
   import { articleTimelineLoader } from '$lib/loaders/articles.js';
   import { ambTimelineLoader } from '$lib/loaders/amb.js';
   import { feedTargetedPublicationsLoader } from '$lib/loaders/targeted-publications.js';
-  import { createDateRangeCalendarLoader } from '$lib/loaders/calendar.js';
+  import {
+    createDateRangeCalendarLoader,
+    createPaginatedCalendarLoader
+  } from '$lib/loaders/calendar.js';
+  import { preWarmRelayCapabilitiesCache } from '$lib/services/relay-capabilities.js';
   import { addressLoader, timedPool } from '$lib/loaders/base.js';
   import { ambSearchLoader } from '$lib/loaders/amb-search.js';
   import {
@@ -20,7 +24,7 @@
     getCommunikeyRelays
   } from '$lib/helpers/relay-helper.js';
   import { TimelineModel } from 'applesauce-core/models';
-  import { AMBResourceModel, GlobalCalendarEventModel } from '$lib/models';
+  import { AMBResourceModel, CalendarEventRangeModel } from '$lib/models';
   import { useProfileMap } from '$lib/stores/profile-map.svelte.js';
   import { getTagValue } from 'applesauce-core/helpers';
   import { getArticlePublished } from 'applesauce-common/helpers';
@@ -87,8 +91,29 @@
   let isLoading = $state(true);
   let isLoadingMore = $state(false);
   let hasMoreArticles = $state(true);
-  let hasMoreAMB = $state(true);
   let hasMoreCalendarEvents = $state(true);
+
+  // Track per-relay exhaustion for educational content pagination.
+  // Only stop pagination when ALL educational relays have been exhausted.
+  // This fixes the bug where pagination stopped early when one relay returned 0 events
+  // while another (e.g., user-added localhost:3334) still had content.
+  // IMPORTANT: Use $state.raw() because Svelte 5's $state() proxy breaks Set.prototype.has()
+  /** @type {Set<string>} */
+  let exhaustedEducationalRelays = $state.raw(new Set());
+
+  // Derived: hasMoreAMB is true if ANY educational relay is not yet exhausted
+  const hasMoreAMB = $derived.by(() => {
+    const currentRelays = getEducationalRelays();
+    return currentRelays.some((r) => !exhaustedEducationalRelays.has(r));
+  });
+
+  // Track oldest timestamps PER RELAY for dynamic relay pagination.
+  // This fixes the bug where pagination stopped early because the global `until` timestamp
+  // excluded events from newly-added relays with different timestamp ranges.
+  // Use $state.raw() because Map methods like .get()/.set() don't work through Svelte proxies.
+  /** @type {Map<string, number>} */
+  let perRelayOldestTimestamp = $state.raw(new Map());
+
   let sortBy = $state('newest');
   let searchQuery = $state('');
 
@@ -291,8 +316,13 @@
     });
 
     // Cancel previous subscription and reload with new range
+    // Use full NIP-52 date filter parameters
     dateRangeLoaderSub?.unsubscribe();
-    const loader = createDateRangeCalendarLoader(range.start, range.end);
+    const loader = createDateRangeCalendarLoader({
+      startAfter: range.start,
+      startBefore: range.end,
+      endAfter: range.start // Include events that are still ongoing
+    });
     dateRangeLoaderSub = loader().subscribe({
       error: (err) => console.error('🔍 Discover: Date range loader error:', err)
     });
@@ -338,7 +368,7 @@
 
   // Batch sizes for loading
   const BATCH_SIZE = 20;
-  const _CALENDAR_BATCH_SIZE = 40; // Matches limit in calendarTimelineLoader
+  const CALENDAR_BATCH_SIZE = 20; // Events per pagination batch
   const BATCH_TIMEOUT = 4_000; // Safety timeout per batch (timedPool is 2s + buffer)
 
   // Step 1: Create stateful loaders
@@ -368,12 +398,18 @@
     }
   });
 
-  // Initial calendar load uses date range loader
-  const calendarRangeLoader = createDateRangeCalendarLoader(
-    eventsDateRangeStart,
-    eventsDateRangeEnd
-  );
-  const initialCalendarSub = calendarRangeLoader().subscribe({
+  // Pre-warm relay capabilities cache for calendar relays
+  // This ensures pagination doesn't wait 2-3s for NIP-52 detection on each scroll
+  preWarmRelayCapabilitiesCache(getCalendarRelays());
+
+  // Initial calendar load - load events within the default date range
+  // Uses createDateRangeCalendarLoader with full NIP-52 filter support
+  const initialCalendarLoader = createDateRangeCalendarLoader({
+    startAfter: eventsDateRangeStart,
+    startBefore: eventsDateRangeEnd,
+    endAfter: eventsDateRangeStart // Include events that are still ongoing
+  });
+  const initialCalendarSub = initialCalendarLoader().subscribe({
     complete: () => {
       isLoading = false;
     },
@@ -486,18 +522,57 @@
       ambResources = resources || [];
       isLoading = false;
       profileTrigger++; // Trigger profile loading for new resources
+
+      // Track per-relay oldest timestamps for pagination.
+      // This uses getSeenRelays() to determine which relay each event came from.
+      if (resources && resources.length > 0) {
+        const newMap = new Map(perRelayOldestTimestamp); // eslint-disable-line svelte/prefer-svelte-reactivity
+        let mapUpdated = false;
+
+        for (const resource of resources) {
+          const event = resource.event || resource;
+          const ts = event?.created_at;
+          if (!ts) continue;
+
+          // Get which relay(s) this event was seen on
+          const seenRelays = getSeenRelays(event);
+          if (!seenRelays || seenRelays.size === 0) continue;
+
+          for (const relay of seenRelays) {
+            const existing = newMap.get(relay);
+            if (existing === undefined || ts < existing) {
+              newMap.set(relay, ts);
+              mapUpdated = true;
+            }
+          }
+        }
+
+        if (mapUpdated) {
+          perRelayOldestTimestamp = newMap; // Reassign to trigger reactivity
+        }
+      }
     });
 
-  // Subscribe to calendar events (debounced via RxJS)
-  const calendarModelSub = /** @type {import('rxjs').Observable<any[]>} */ (
-    eventStore.model(GlobalCalendarEventModel, [])
-  )
-    .pipe(debounceTime(100))
-    .subscribe((events) => {
-      calendarEvents = events || [];
-      isLoading = false;
-      profileTrigger++; // Trigger profile loading for new events
-    });
+  // Subscribe to calendar events with date range filtering (reactive)
+  // Re-subscribes when date range changes to filter events appropriately
+  // Note: Plain let (not $state) to avoid infinite loops in $effect
+  /** @type {import('rxjs').Subscription | undefined} */
+  let calendarModelSub;
+
+  $effect(() => {
+    calendarModelSub?.unsubscribe();
+    calendarModelSub = /** @type {import('rxjs').Observable<any[]>} */ (
+      eventStore.model(CalendarEventRangeModel, eventsDateRangeStart, eventsDateRangeEnd)
+    )
+      .pipe(debounceTime(100))
+      .subscribe((events) => {
+        calendarEvents = events || [];
+        isLoading = false;
+        profileTrigger++; // Trigger profile loading for new events
+      });
+
+    return () => calendarModelSub?.unsubscribe();
+  });
 
   // Community-specific calendar event loader subscriptions
   // Note: Plain let (not $state) to avoid infinite loops in $effect
@@ -663,7 +738,9 @@
       (contentType === 'communities' && hasMoreCommunities) ||
       (contentType === 'all' && (hasMoreArticles || hasMoreAMB || hasMoreCalendarEvents));
 
-    if (isLoadingMore || !hasMore) return;
+    if (isLoadingMore || !hasMore) {
+      return;
+    }
 
     isLoadingMore = true;
 
@@ -702,18 +779,36 @@
     if (contentType === 'events' || contentType === 'all') {
       if (hasMoreCalendarEvents) {
         pendingLoaders++;
-        // Use date range loader for calendar events
-        const rangeLoader = createDateRangeCalendarLoader(eventsDateRangeStart, eventsDateRangeEnd);
-        rangeLoader()
+        let count = 0;
+        const calendarCountBefore = calendarEvents.length;
+
+        // Get the highest start timestamp from current events to paginate forward
+        const lastStartTimestamp =
+          calendarEvents.length > 0
+            ? Math.max(...calendarEvents.map((e) => e.start || 0))
+            : Math.floor(Date.now() / 1000);
+
+        const paginatedLoader = createPaginatedCalendarLoader(lastStartTimestamp, {
+          limit: CALENDAR_BATCH_SIZE
+        });
+
+        paginatedLoader()
           .pipe(takeUntil(timer(BATCH_TIMEOUT)))
           .subscribe({
             next: () => {
-              // Events loaded via date range - no count tracking needed
+              count++;
             },
             complete: () => {
-              // Date range loader loads all events for the range - no more pagination
-              hasMoreCalendarEvents = false;
-              onLoaderDone();
+              if (count === 0) {
+                hasMoreCalendarEvents = false;
+                onLoaderDone();
+              } else {
+                // Wait for model debounce + Svelte reactivity to settle
+                setTimeout(() => {
+                  if (calendarEvents.length <= calendarCountBefore) hasMoreCalendarEvents = false;
+                  onLoaderDone();
+                }, 500);
+              }
             },
             error: (/** @type {any} */ error) => {
               console.error('🔍 Discover: Calendar pagination error:', error);
@@ -749,35 +844,88 @@
     if (contentType === 'learning' || contentType === 'all') {
       // Skip AMB pagination when learning search is active - search results are a single batch
       if (hasMoreAMB && !(contentType === 'learning' && isLearningSearchActive)) {
-        pendingLoaders++;
-        let count = 0;
-        const ambCountBefore = ambResources.length;
-        ambLoader()
-          .pipe(takeUntil(timer(BATCH_TIMEOUT)))
-          .subscribe({
-            next: () => {
-              count++;
-            },
-            complete: () => {
-              if (count === 0) {
-                hasMoreAMB = false;
-                onLoaderDone();
-              } else {
-                // v5 filterDuplicateEvents may reduce count at batch boundaries.
-                // Wait for the model debounce (100ms) + Svelte reactivity to settle,
-                // then check if content actually grew. 500ms provides adequate buffer
-                // for the EventStore → Model → UI pipeline.
-                setTimeout(() => {
-                  if (ambResources.length <= ambCountBefore) hasMoreAMB = false;
-                  onLoaderDone();
-                }, 500);
-              }
-            },
-            error: (/** @type {any} */ error) => {
-              console.error('🔍 Discover: AMB pagination error:', error);
-              onLoaderDone();
+        // Get non-exhausted relays for pagination
+        const currentRelays = getEducationalRelays();
+        const activeRelays = currentRelays.filter((r) => !exhaustedEducationalRelays.has(r));
+
+        if (activeRelays.length === 0) {
+          // All relays exhausted, nothing to do
+        } else {
+          // Query each non-exhausted relay individually to track per-relay exhaustion.
+          // Use per-relay timestamps: only apply `until` filter if we've seen events from that relay.
+          // This fixes the bug where pagination stopped early because a global `until` timestamp
+          // excluded events from relays with different (newer) timestamp ranges.
+          let relaysPending = activeRelays.length;
+          pendingLoaders++;
+
+          for (const relay of activeRelays) {
+            let relayCount = 0;
+            let relayOldestTimestamp = Infinity;
+            /** @type {Set<string>} */
+            const batchEventIds = new Set(); // eslint-disable-line svelte/prefer-svelte-reactivity
+
+            /** @type {import('nostr-tools').Filter} */
+            const paginationFilter = { kinds: [30142] };
+
+            // Use this relay's specific oldest timestamp (if we've seen events from it)
+            // Subtract 1 to exclude events AT that timestamp (already fetched in previous batch)
+            const relayTimestamp = perRelayOldestTimestamp.get(relay);
+            if (relayTimestamp !== undefined) {
+              paginationFilter.until = relayTimestamp - 1;
             }
-          });
+            // If no timestamp for this relay yet, fetch without `until` to get its newest events
+
+            const relayLoader = createTimelineLoader(timedPool, [relay], paginationFilter, {
+              eventStore,
+              limit: BATCH_SIZE
+            });
+
+            relayLoader()
+              .pipe(takeUntil(timer(BATCH_TIMEOUT)))
+              .subscribe({
+                next: (/** @type {any} */ event) => {
+                  relayCount++;
+                  if (event?.id) batchEventIds.add(event.id);
+                  // Track this relay's oldest timestamp for future pagination
+                  const ts = event?.created_at;
+                  if (ts && ts < relayOldestTimestamp) {
+                    relayOldestTimestamp = ts;
+                  }
+                },
+                complete: () => {
+                  // Update per-relay timestamp if we received events with older timestamps
+                  if (relayOldestTimestamp !== Infinity) {
+                    const newMap = new Map(perRelayOldestTimestamp); // eslint-disable-line svelte/prefer-svelte-reactivity
+                    const existing = newMap.get(relay);
+                    if (existing === undefined || relayOldestTimestamp < existing) {
+                      newMap.set(relay, relayOldestTimestamp);
+                      perRelayOldestTimestamp = newMap; // Reassign to trigger reactivity
+                    }
+                  }
+
+                  if (relayCount === 0) {
+                    // Mark this specific relay as exhausted
+                    exhaustedEducationalRelays = new Set([...exhaustedEducationalRelays, relay]);
+                  }
+
+                  relaysPending--;
+                  if (relaysPending === 0) {
+                    // All relays have completed - debounce model update before checking hasMore
+                    setTimeout(() => {
+                      onLoaderDone();
+                    }, 500);
+                  }
+                },
+                error: (/** @type {any} */ error) => {
+                  console.error('AMB pagination error for relay:', relay, error);
+                  relaysPending--;
+                  if (relaysPending === 0) {
+                    onLoaderDone();
+                  }
+                }
+              });
+          }
+        }
       }
     }
 
@@ -854,10 +1002,14 @@
       hasMore = hasMoreArticles || hasMoreAMB || hasMoreCalendarEvents;
     }
 
-    if (!hasContent || !hasMore || isLoading) return;
+    if (!hasContent || !hasMore || isLoading) {
+      return;
+    }
 
     const sentinel = document.getElementById('load-more-sentinel');
-    if (!sentinel) return;
+    if (!sentinel) {
+      return;
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -870,7 +1022,9 @@
 
     observer.observe(sentinel);
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+    };
   });
 
   // Get all unique tags
@@ -1045,11 +1199,14 @@
   });
 
   // Step 6: Sort (only runs when filtered items or sort order changes)
+  // Events tab defaults to 'oldest' (soonest first) - this is the expected behavior for calendar views
+  const effectiveSortBy = $derived(contentType === 'events' ? 'oldest' : sortBy);
+
   const combinedContent = $derived.by(() => {
     return [...tagFilteredItems].sort((a, b) => {
       const aDate = getItemTimestamp(a);
       const bDate = getItemTimestamp(b);
-      return sortBy === 'newest' ? bDate - aDate : aDate - bDate;
+      return effectiveSortBy === 'newest' ? bDate - aDate : aDate - bDate;
     });
   });
 

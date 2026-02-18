@@ -5,6 +5,7 @@
 export { CommunityRelationshipModel, CommunityMembersModel } from './community-relationship.js';
 export { CommunityCalendarEventModel } from './community-calendar-event.js';
 export { GlobalCalendarEventModel } from './global-calendar-event.js';
+export { CalendarEventRangeModel } from './calendar-event-range.js';
 export { PersonalCalendarEventsModel } from './personal-calendar-events.js';
 export { AMBResourceModel } from './amb-resource.js';
 export { CommunityAMBResourceModel } from './community-amb-resource.js';
