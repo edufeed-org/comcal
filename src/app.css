@@ -84,6 +84,96 @@
   --color-error-content: oklch(1 0 0);
 }
 
+/* RPI Light Theme - RPI Blue + Orange brand */
+@plugin "daisyui/theme" {
+  name: 'rpi';
+  default: false;
+  color-scheme: light;
+
+  /* Primary - RPI Blue #203A8F */
+  --color-primary: oklch(0.35 0.16 264);
+  --color-primary-content: oklch(1 0 0);
+
+  /* Secondary - Orange #FFA500 */
+  --color-secondary: oklch(0.79 0.17 70);
+  --color-secondary-content: oklch(0.2 0 0);
+
+  /* Accent - Orange */
+  --color-accent: oklch(0.79 0.17 70);
+  --color-accent-content: oklch(0.2 0 0);
+
+  /* Neutral */
+  --color-neutral: oklch(0.3 0.02 264);
+  --color-neutral-content: oklch(1 0 0);
+
+  /* Base colors - white background */
+  --color-base-100: oklch(1 0 0);
+  --color-base-200: oklch(0.97 0.005 264);
+  --color-base-300: oklch(0.94 0.01 264);
+  --color-base-content: oklch(0.25 0.02 264);
+
+  /* Feedback colors */
+  --color-info: oklch(0.72 0.11 230);
+  --color-info-content: oklch(1 0 0);
+  --color-success: oklch(0.72 0.15 150);
+  --color-success-content: oklch(1 0 0);
+  --color-warning: oklch(0.82 0.17 85);
+  --color-warning-content: oklch(0.2 0 0);
+  --color-error: oklch(0.65 0.2 25);
+  --color-error-content: oklch(1 0 0);
+}
+
+/* RPI Dark Theme - Dark variant with lightened RPI Blue */
+@plugin "daisyui/theme" {
+  name: 'rpi-dark';
+  default: false;
+  color-scheme: dark;
+
+  /* Primary - Lightened RPI Blue for dark mode */
+  --color-primary: oklch(0.55 0.16 264);
+  --color-primary-content: oklch(1 0 0);
+
+  /* Secondary - Orange */
+  --color-secondary: oklch(0.79 0.17 70);
+  --color-secondary-content: oklch(0.15 0 0);
+
+  /* Accent - Orange */
+  --color-accent: oklch(0.79 0.17 70);
+  --color-accent-content: oklch(0.15 0 0);
+
+  /* Neutral */
+  --color-neutral: oklch(0.3 0.01 264);
+  --color-neutral-content: oklch(0.9 0 0);
+
+  /* Base colors - dark background with blue undertone */
+  --color-base-100: oklch(0.22 0.02 264);
+  --color-base-200: oklch(0.18 0.02 264);
+  --color-base-300: oklch(0.14 0.02 264);
+  --color-base-content: oklch(0.9 0 0);
+
+  /* Feedback colors */
+  --color-info: oklch(0.72 0.11 230);
+  --color-info-content: oklch(0.15 0 0);
+  --color-success: oklch(0.72 0.15 150);
+  --color-success-content: oklch(0.15 0 0);
+  --color-warning: oklch(0.82 0.17 85);
+  --color-warning-content: oklch(0.15 0 0);
+  --color-error: oklch(0.65 0.2 25);
+  --color-error-content: oklch(1 0 0);
+}
+
+/* RPI Theme Font Overrides */
+[data-theme='rpi'],
+[data-theme='rpi-dark'] {
+  --font-sans: 'Roboto Condensed Variable', 'Roboto Condensed', sans-serif;
+  --font-community: 'Yanone Kaffeesatz Variable', 'Yanone Kaffeesatz', sans-serif;
+}
+
+/* Community font utility - resolves to Yanone Kaffeesatz in rpi theme, inherits otherwise */
+.font-community {
+  font-family: var(--font-community, inherit);
+}
+
 /*
  * Custom dropdown trigger that matches DaisyUI .select appearance.
  * Use on non-<select> elements (e.g. <button>) alongside .select:

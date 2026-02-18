@@ -13,7 +13,7 @@ const CONFIG_DEFAULTS_KEY = 'app-settings-config-defaults';
  * Default settings
  * @typedef {Object} AppSettings
  * @property {boolean} debugMode
- * @property {'default' | 'stil'} themeFamily
+ * @property {'default' | 'stil' | 'rpi'} themeFamily
  * @property {'light' | 'dark' | 'system'} colorMode
  * @property {boolean} gatedMode
  */
@@ -49,8 +49,8 @@ function saveConfigDefaults(lightTheme, darkTheme) {
 
 /**
  * Map theme name to themeFamily and colorMode
- * @param {'light' | 'dark' | 'stil' | 'stil-dark'} theme
- * @returns {{themeFamily: 'default' | 'stil', colorMode: 'light' | 'dark'}}
+ * @param {'light' | 'dark' | 'stil' | 'stil-dark' | 'rpi' | 'rpi-dark'} theme
+ * @returns {{themeFamily: 'default' | 'stil' | 'rpi', colorMode: 'light' | 'dark'}}
  */
 function parseThemeToSettings(theme) {
   switch (theme) {
@@ -58,6 +58,10 @@ function parseThemeToSettings(theme) {
       return { themeFamily: 'stil', colorMode: 'light' };
     case 'stil-dark':
       return { themeFamily: 'stil', colorMode: 'dark' };
+    case 'rpi':
+      return { themeFamily: 'rpi', colorMode: 'light' };
+    case 'rpi-dark':
+      return { themeFamily: 'rpi', colorMode: 'dark' };
     case 'dark':
       return { themeFamily: 'default', colorMode: 'dark' };
     case 'light':
@@ -128,6 +132,12 @@ function migrateSettings(stored) {
     colorMode = 'light';
   } else if (oldTheme === 'stil-dark') {
     themeFamily = 'stil';
+    colorMode = 'dark';
+  } else if (oldTheme === 'rpi') {
+    themeFamily = 'rpi';
+    colorMode = 'light';
+  } else if (oldTheme === 'rpi-dark') {
+    themeFamily = 'rpi';
     colorMode = 'dark';
   }
 
@@ -248,16 +258,20 @@ export function initializeAppSettings() {
 /**
  * Compute effective theme reactively
  * Combines themeFamily + colorMode to produce the actual theme name
- * @type {'light' | 'dark' | 'stil' | 'stil-dark'}
+ * @type {'light' | 'dark' | 'stil' | 'stil-dark' | 'rpi' | 'rpi-dark'}
  */
 let effectiveTheme = $derived(
   settings.colorMode === 'dark' || (settings.colorMode === 'system' && systemTheme === 'dark')
     ? settings.themeFamily === 'stil'
       ? 'stil-dark'
-      : 'dark'
+      : settings.themeFamily === 'rpi'
+        ? 'rpi-dark'
+        : 'dark'
     : settings.themeFamily === 'stil'
       ? 'stil'
-      : 'light'
+      : settings.themeFamily === 'rpi'
+        ? 'rpi'
+        : 'light'
 );
 
 /**
@@ -289,7 +303,7 @@ export const appSettings = {
 
   /**
    * Get theme family preference
-   * @returns {'default' | 'stil'}
+   * @returns {'default' | 'stil' | 'rpi'}
    */
   get themeFamily() {
     return settings.themeFamily;
@@ -297,10 +311,10 @@ export const appSettings = {
 
   /**
    * Set theme family preference
-   * @param {'default' | 'stil'} value
+   * @param {'default' | 'stil' | 'rpi'} value
    */
   set themeFamily(value) {
-    settings.themeFamily = /** @type {'default' | 'stil'} */ (value);
+    settings.themeFamily = /** @type {'default' | 'stil' | 'rpi'} */ (value);
     saveSettings(settings);
   },
 
@@ -323,7 +337,7 @@ export const appSettings = {
 
   /**
    * Get effective theme (resolves family + mode to actual theme)
-   * @returns {'light' | 'dark' | 'stil' | 'stil-dark'}
+   * @returns {'light' | 'dark' | 'stil' | 'stil-dark' | 'rpi' | 'rpi-dark'}
    */
   get effectiveTheme() {
     return effectiveTheme;

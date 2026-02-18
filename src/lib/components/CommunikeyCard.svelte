@@ -92,7 +92,7 @@
   </figure>
   <div class="card-body w-full items-center p-0 text-center">
     <h2
-      class="mb-2 card-title text-xl font-semibold text-base-content transition-colors duration-300 hover:text-primary"
+      class="font-community mb-2 card-title text-xl font-semibold text-base-content transition-colors duration-300 hover:text-primary"
     >
       {getProfile()?.name || m.communikey_card_unknown_user()}
     </h2>

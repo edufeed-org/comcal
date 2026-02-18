@@ -39,7 +39,7 @@
 
   <!-- Community Name -->
   <div class="min-w-0 flex-1">
-    <h2 class="truncate text-sm font-semibold text-base-content">
+    <h2 class="font-community truncate text-sm font-semibold text-base-content">
       {displayName}
     </h2>
   </div>

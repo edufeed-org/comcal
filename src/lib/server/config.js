@@ -32,8 +32,8 @@ function parseBool(value, defaultValue) {
 /**
  * Parse theme value
  * @param {string | undefined} value
- * @param {'light' | 'dark' | 'stil' | 'stil-dark'} defaultValue
- * @returns {'light' | 'dark' | 'stil' | 'stil-dark'}
+ * @param {'light' | 'dark' | 'stil' | 'stil-dark' | 'rpi' | 'rpi-dark'} defaultValue
+ * @returns {'light' | 'dark' | 'stil' | 'stil-dark' | 'rpi' | 'rpi-dark'}
  */
 function parseTheme(value, defaultValue) {
   if (!value) return defaultValue;
@@ -42,7 +42,9 @@ function parseTheme(value, defaultValue) {
     normalized === 'light' ||
     normalized === 'dark' ||
     normalized === 'stil' ||
-    normalized === 'stil-dark'
+    normalized === 'stil-dark' ||
+    normalized === 'rpi' ||
+    normalized === 'rpi-dark'
   ) {
     return normalized;
   }

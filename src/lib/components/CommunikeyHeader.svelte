@@ -64,7 +64,7 @@
     </div>
 
     <div class="min-w-0 flex-1">
-      <h1 class="truncate text-base font-bold text-base-content">{profile.name}</h1>
+      <h1 class="font-community truncate text-base font-bold text-base-content">{profile.name}</h1>
     </div>
 
     <div class="ml-auto flex items-center gap-2">

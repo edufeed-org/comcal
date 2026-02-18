@@ -2,10 +2,11 @@
   import { appSettings } from '$lib/stores/app-settings.svelte.js';
   import * as m from '$lib/paraglide/messages';
 
-  /** @type {Array<{value: 'default' | 'stil', label: string, icon: string}>} */
+  /** @type {Array<{value: 'default' | 'stil' | 'rpi', label: string, icon: string}>} */
   const themeFamilies = [
     { value: 'default', label: 'Default', icon: '🎨' },
-    { value: 'stil', label: 'STIL', icon: '🧡' }
+    { value: 'stil', label: 'STIL', icon: '🧡' },
+    { value: 'rpi', label: 'RPI', icon: '🔵' }
   ];
 
   /** @type {Array<{value: 'light' | 'dark' | 'system', label: string, icon: string}>} */
@@ -62,7 +63,11 @@
             ? '🧡 STIL'
             : appSettings.effectiveTheme === 'stil-dark'
               ? '🖤 STIL Dark'
-              : 'Unknown'}
+              : appSettings.effectiveTheme === 'rpi'
+                ? '🔵 RPI'
+                : appSettings.effectiveTheme === 'rpi-dark'
+                  ? '🔷 RPI Dark'
+                  : 'Unknown'}
     </span>
   </div>
 </div>

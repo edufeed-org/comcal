@@ -1,5 +1,7 @@
 <script>
   import '../app.css';
+  import '@fontsource-variable/roboto-condensed';
+  import '@fontsource-variable/yanone-kaffeesatz';
   import Navbar from '$lib/components/Navbar.svelte';
   import ModalManager from '$lib/components/ModalManager.svelte';
   import Footer from '$lib/components/Footer.svelte';

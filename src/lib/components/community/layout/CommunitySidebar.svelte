@@ -141,7 +141,7 @@
               />
             </div>
           </div>
-          <span class="flex-1 truncate text-left text-sm font-medium">
+          <span class="font-community flex-1 truncate text-left text-sm font-medium">
             {getDisplayName(communityProfile)}
           </span>
         </button>
