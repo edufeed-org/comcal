@@ -50,5 +50,6 @@ CLAUDE.md
 test-results/
 playwright-report/
 .playwright-mcp/
+screenshots/
 
 .claude/settings.local.json

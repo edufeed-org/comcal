@@ -2,8 +2,8 @@
 
 This document tracks what E2E tests exist, what features they cover, and identifies gaps for future testing.
 
-**Last updated:** 2026-02-13
-**Total tests:** 255
+**Last updated:** 2026-02-20
+**Total tests:** 262
 
 ## Quick Summary
 
@@ -31,6 +31,7 @@ This document tracks what E2E tests exist, what features they cover, and identif
 | `signup.test.js`                    | 15    | No   | 4-step signup wizard, key generation               |
 | `settings.test.js`                  | 20    | Both | Theme, relays, relay editing, gated/debug          |
 | `settings-blossom.test.js`          | 6     | Yes  | Blossom server management                          |
+| `mobile-navigation.test.js`         | 7     | No   | Mobile hamburger menu, responsive layout           |
 
 ## Detailed Coverage
 
@@ -947,6 +948,33 @@ This file completes the full AMB creation flow that `amb-creation.test.js` canno
 
 ---
 
+### mobile-navigation.test.js (7 tests)
+
+**Route:** `/` (homepage), `/discover`
+**Auth required:** No
+**Note:** Tests responsive Navbar behavior across mobile (375x667) and desktop (1280x720) viewports.
+
+#### Mobile Viewport - 375x667 (6 tests)
+
+| Test                                                   | What it verifies                               |
+| ------------------------------------------------------ | ---------------------------------------------- |
+| hamburger menu is visible and desktop nav links hidden | Hamburger visible, desktop nav hidden          |
+| hamburger click opens dropdown with nav links          | Dropdown shows Communities, Discover, Calendar |
+| nav link click navigates correctly                     | Discover link navigates to /discover           |
+| login button is accessible in mobile dropdown          | Login button present in dropdown               |
+| no horizontal overflow on mobile                       | Document width <= viewport width               |
+| no critical JavaScript errors on mobile                | No JS errors during hamburger interaction      |
+
+#### Desktop Viewport - 1280x720 (1 test)
+
+| Test                                              | What it verifies                      |
+| ------------------------------------------------- | ------------------------------------- |
+| desktop nav links visible and hamburger is hidden | Desktop nav visible, hamburger hidden |
+
+**Components exercised:** Navbar (mobile hamburger dropdown, desktop nav)
+
+---
+
 ## Test Infrastructure
 
 ### Relay Architecture
@@ -982,12 +1010,12 @@ Tests use Docker Compose with three real Nostr relays plus a mock hanging relay:
 
 ### Not Yet Tested
 
-| Feature                  | Priority | Notes                              |
-| ------------------------ | -------- | ---------------------------------- |
-| **Article Creation**     | High     | No creation UI exists yet          |
-| **Mobile Responsive**    | Low      | Viewport-specific tests            |
-| **Accessibility (a11y)** | Low      | Keyboard navigation, screen reader |
-| **Error Recovery**       | Low      | Offline handling, relay failures   |
+| Feature                  | Priority | Notes                                                            |
+| ------------------------ | -------- | ---------------------------------------------------------------- |
+| **Article Creation**     | High     | No creation UI exists yet                                        |
+| **Mobile Responsive**    | Low      | Basic coverage in mobile-navigation.test.js, more pages possible |
+| **Accessibility (a11y)** | Low      | Keyboard navigation, screen reader                               |
+| **Error Recovery**       | Low      | Offline handling, relay failures                                 |
 
 ### Partially Covered
 
