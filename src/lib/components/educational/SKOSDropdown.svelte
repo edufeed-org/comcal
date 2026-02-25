@@ -1,7 +1,8 @@
 <!--
   SKOSDropdown Component
-  A reusable dropdown for selecting SKOS concepts with search and multi-select support
-  Using DaisyUI 5 dropdown component
+  A reusable dropdown for selecting SKOS concepts with search, multi-select,
+  collapsible hierarchy, keyboard navigation, and accessibility support.
+  Using DaisyUI 5 dropdown component.
 -->
 
 <script>
@@ -13,7 +14,8 @@
     sortConceptsByLabel,
     filterConcepts
   } from '$lib/helpers/educational/skosLoader.js';
-  import { CloseIcon, SearchIcon, ChevronDownIcon } from '$lib/components/icons';
+  import { CloseIcon, SearchIcon, ChevronDownIcon, ChevronRightIcon } from '$lib/components/icons';
+  import { SvelteSet } from 'svelte/reactivity';
   import * as m from '$lib/paraglide/messages';
 
   /**
@@ -46,16 +48,41 @@
   let error = $state(/** @type {string | null} */ (null));
   let isOpen = $state(false);
   let searchTerm = $state('');
-  let dropdownRef = $state(/** @type {HTMLDivElement | null} */ (null));
-  let inputRef = $state(/** @type {HTMLInputElement | null} */ (null));
+  /** @type {HTMLDivElement | null} */
+  let dropdownRef = $state(null);
+  /** @type {HTMLInputElement | null} */
+  let inputRef = $state(null);
+  /** @type {HTMLDivElement | null} */
+  let listRef = $state(null);
+  /** @type {HTMLButtonElement | null} */
+  let triggerRef = $state(null);
+
+  // Keyboard navigation state
+  let activeIndex = $state(-1);
+
+  // Collapsible hierarchy state
+  /** @type {Set<string>} */
+  let collapsedCategories = new SvelteSet();
 
   // Get current locale
   const locale = $derived(getLocale());
+
+  // Set of concept IDs that have children
+  const parentIds = $derived(new Set(concepts.filter((c) => c.parentId).map((c) => c.parentId)));
 
   // Filtered and sorted concepts
   const filteredConcepts = $derived.by(() => {
     let filtered = filterConcepts(concepts, searchTerm, locale);
     return sortConceptsByLabel(filtered, locale);
+  });
+
+  // Visible concepts (respects collapse state, bypassed when searching)
+  const visibleConcepts = $derived.by(() => {
+    if (searchTerm.trim()) return filteredConcepts;
+    return filteredConcepts.filter((c) => {
+      if (!c.level || c.level === 0) return true;
+      return !collapsedCategories.has(c.parentId ?? '');
+    });
   });
 
   // Load vocabulary on mount
@@ -69,13 +96,28 @@
     }
   });
 
+  // Default collapsed for large vocabularies
+  $effect(() => {
+    if (concepts.length > 30) {
+      collapsedCategories.clear();
+      for (const c of concepts) {
+        if (c.parentId) collapsedCategories.add(c.parentId);
+      }
+    }
+  });
+
+  // Reset active index when search term changes
+  $effect(() => {
+    void searchTerm;
+    activeIndex = -1;
+  });
+
   // Close dropdown when clicking outside
-  /**
-   * @param {MouseEvent} event
-   */
+  /** @param {MouseEvent} event */
   function handleClickOutside(event) {
     if (dropdownRef && event.target instanceof Node && !dropdownRef.contains(event.target)) {
       isOpen = false;
+      activeIndex = -1;
     }
   }
 
@@ -83,7 +125,6 @@
   $effect(() => {
     if (isOpen) {
       document.addEventListener('click', handleClickOutside);
-      // Focus search input when dropdown opens
       setTimeout(() => inputRef?.focus(), 0);
     } else {
       document.removeEventListener('click', handleClickOutside);
@@ -98,19 +139,16 @@
    */
   function toggleSelection(concept) {
     const conceptLabel = getConceptLabel(concept, locale);
-    const isSelected = selected.some((s) => s.id === concept.id);
+    const isAlreadySelected = selected.some((s) => s.id === concept.id);
 
-    if (isSelected) {
-      // Remove
+    if (isAlreadySelected) {
       selected = selected.filter((s) => s.id !== concept.id);
     } else {
-      // Add (if not at max)
       if (multiple) {
         if (selected.length < maxSelections) {
           selected = [...selected, { id: concept.id, label: conceptLabel }];
         }
       } else {
-        // Single select - replace
         selected = [{ id: concept.id, label: conceptLabel }];
         isOpen = false;
       }
@@ -140,15 +178,106 @@
   }
 
   /**
+   * Toggle collapse/expand of a parent category
+   * @param {string} conceptId
+   * @param {Event} event
+   */
+  function toggleCategory(conceptId, event) {
+    event.stopPropagation();
+    if (collapsedCategories.has(conceptId)) {
+      collapsedCategories.delete(conceptId);
+    } else {
+      collapsedCategories.add(conceptId);
+    }
+  }
+
+  /** Scroll the active option into view */
+  function scrollActiveIntoView() {
+    if (!listRef || activeIndex < 0) return;
+    const el = listRef.querySelector(`[data-option-index="${activeIndex}"]`);
+    el?.scrollIntoView({ block: 'nearest' });
+  }
+
+  /**
    * Handle keyboard navigation
    * @param {KeyboardEvent} event
    */
   function handleKeydown(event) {
-    if (event.key === 'Escape') {
-      isOpen = false;
-    } else if (event.key === 'Enter' && !isOpen) {
-      isOpen = true;
+    if (!isOpen) {
+      if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        isOpen = true;
+        activeIndex = -1;
+      }
+      return;
     }
+
+    switch (event.key) {
+      case 'Escape':
+        event.preventDefault();
+        isOpen = false;
+        activeIndex = -1;
+        triggerRef?.focus();
+        break;
+
+      case 'ArrowDown':
+        event.preventDefault();
+        if (activeIndex < visibleConcepts.length - 1) {
+          activeIndex++;
+          scrollActiveIntoView();
+        }
+        break;
+
+      case 'ArrowUp':
+        event.preventDefault();
+        if (activeIndex > 0) {
+          activeIndex--;
+          scrollActiveIntoView();
+        } else if (activeIndex === 0) {
+          activeIndex = -1;
+          inputRef?.focus();
+        }
+        break;
+
+      case 'Enter':
+      case ' ':
+        if (activeIndex >= 0 && activeIndex < visibleConcepts.length) {
+          event.preventDefault();
+          toggleSelection(visibleConcepts[activeIndex]);
+        }
+        break;
+
+      case 'Home':
+        event.preventDefault();
+        activeIndex = 0;
+        scrollActiveIntoView();
+        break;
+
+      case 'End':
+        event.preventDefault();
+        activeIndex = visibleConcepts.length - 1;
+        scrollActiveIntoView();
+        break;
+    }
+  }
+
+  /**
+   * Split a label into segments for search highlighting
+   * @param {string} labelText
+   * @param {string} term
+   * @returns {{ text: string, highlight: boolean }[]}
+   */
+  function getHighlightSegments(labelText, term) {
+    if (!term.trim()) return [{ text: labelText, highlight: false }];
+    const lowerLabel = labelText.toLowerCase();
+    const lowerTerm = term.toLowerCase().trim();
+    const idx = lowerLabel.indexOf(lowerTerm);
+    if (idx === -1) return [{ text: labelText, highlight: false }];
+    return [
+      { text: labelText.slice(0, idx), highlight: false },
+      { text: labelText.slice(idx, idx + lowerTerm.length), highlight: true },
+      { text: labelText.slice(idx + lowerTerm.length), highlight: false }
+    ].filter((s) => s.text);
   }
 </script>
 
@@ -165,15 +294,28 @@
     </div>
   {/if}
 
-  <!-- DaisyUI Dropdown -->
-  <div class="dropdown w-full" class:dropdown-open={isOpen} bind:this={dropdownRef}>
-    <!-- Dropdown Trigger -->
+  <!-- Dropdown wrapper -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div
+    class="dropdown w-full"
+    class:dropdown-open={isOpen}
+    bind:this={dropdownRef}
+    onkeydown={handleKeydown}
+  >
+    <!-- Trigger button -->
     <button
       type="button"
+      bind:this={triggerRef}
+      role="combobox"
+      aria-haspopup="listbox"
+      aria-expanded={isOpen}
+      aria-controls="skos-listbox-{vocabularyKey}"
+      aria-activedescendant={activeIndex >= 0
+        ? `skos-option-${vocabularyKey}-${activeIndex}`
+        : undefined}
       class="select-bordered select-trigger select w-full pr-8"
       class:select-disabled={disabled}
       onclick={() => !disabled && (isOpen = !isOpen)}
-      onkeydown={handleKeydown}
       {disabled}
     >
       {#if isLoading}
@@ -184,7 +326,7 @@
       {:else if selected.length === 0}
         <span class="text-base-content/70">{placeholder || m.skos_dropdown_select()}</span>
       {:else}
-        <!-- Selected items -->
+        <!-- Selected items as badges -->
         <div class="flex flex-wrap gap-1.5">
           {#each selected as item (item.id)}
             <span class="badge gap-1 py-2 badge-primary">
@@ -218,10 +360,10 @@
       <ChevronDownIcon class_="w-4 h-4 text-base-content/50" />
     </div>
 
-    <!-- Dropdown Menu using DaisyUI dropdown-content -->
-    {#if !isLoading && !error}
+    <!-- Dropdown panel -->
+    {#if !isLoading && !error && isOpen}
       <div
-        class="dropdown-content z-[100] mt-1 flex max-h-80 w-full flex-col overflow-hidden rounded-lg border border-base-300 bg-base-100 shadow-lg"
+        class="dropdown-content z-[100] mt-1 flex max-h-[min(60vh,480px)] w-max max-w-[calc(100vw-2rem)] min-w-[20rem] flex-col overflow-hidden rounded-lg border border-base-300 bg-base-100 shadow-lg sm:min-w-[24rem]"
       >
         <!-- Search Input -->
         <div class="sticky top-0 z-10 border-b border-base-300 bg-base-100 p-2">
@@ -234,6 +376,7 @@
               bind:this={inputRef}
               bind:value={searchTerm}
               placeholder={m.skos_dropdown_search()}
+              aria-label={m.skos_dropdown_search()}
               class="input-bordered input input-sm w-full pl-9"
               onclick={(e) => e.stopPropagation()}
             />
@@ -241,57 +384,110 @@
         </div>
 
         <!-- Options List -->
-        <div class="flex-1 overflow-y-auto">
-          {#if filteredConcepts.length === 0}
-            <div class="p-4 text-center text-base-content/50">No results found</div>
+        <div
+          bind:this={listRef}
+          class="flex-1 overflow-y-auto"
+          role="listbox"
+          id="skos-listbox-{vocabularyKey}"
+          aria-multiselectable={multiple}
+        >
+          {#if visibleConcepts.length === 0}
+            <div class="p-4 text-center text-base-content/50">
+              {m.skos_dropdown_no_results()}
+            </div>
           {:else}
-            {#each filteredConcepts as concept (concept.id)}
+            {#each visibleConcepts as concept, index (concept.id)}
               {@const conceptLabel = getConceptLabel(concept, locale)}
               {@const conceptSelected = isSelected(concept.id)}
               {@const indentLevel = concept.level || 0}
-              <button
-                type="button"
-                class="flex w-full items-center gap-2 py-2 text-left transition-colors hover:bg-base-200 {conceptSelected
+              {@const hasChildren = parentIds.has(concept.id)}
+              {@const isCollapsed = collapsedCategories.has(concept.id)}
+              {@const isActive = index === activeIndex}
+
+              <div
+                data-option-index={index}
+                id="skos-option-{vocabularyKey}-{index}"
+                role="option"
+                aria-selected={conceptSelected}
+                class="flex min-h-[2.75rem] w-full items-center transition-colors hover:bg-base-200 {conceptSelected
                   ? 'bg-primary/10'
+                  : ''} {isActive
+                  ? 'bg-base-200 outline outline-2 -outline-offset-2 outline-primary/30'
                   : ''}"
-                style="padding-left: {16 + indentLevel * 16}px; padding-right: 16px;"
-                onclick={() => toggleSelection(concept)}
+                style="padding-left: {8 + indentLevel * 20}px; padding-right: 8px;"
               >
-                {#if multiple}
-                  <input
-                    type="checkbox"
-                    class="checkbox flex-shrink-0 checkbox-sm checkbox-primary"
-                    checked={conceptSelected}
-                    readonly
-                  />
-                {/if}
-                <span
-                  class="flex-1 truncate {indentLevel > 0 && !conceptSelected
-                    ? 'text-base-content/70'
-                    : ''}"
-                  class:font-medium={conceptSelected}
-                >
-                  {#if indentLevel > 0}
-                    <span class="mr-1 text-base-content/40"
-                      >{'└'.repeat(Math.min(indentLevel, 1))}</span
-                    >
-                  {/if}
-                  {conceptLabel}
-                </span>
-                {#if conceptSelected && !multiple}
-                  <svg
-                    class="h-4 w-4 flex-shrink-0 text-primary"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
+                <!-- Collapse/expand toggle for parent concepts -->
+                {#if hasChildren && !searchTerm.trim()}
+                  <button
+                    type="button"
+                    class="flex-shrink-0 rounded p-1 transition-transform hover:bg-base-300"
+                    class:rotate-90={!isCollapsed}
+                    onclick={(e) => toggleCategory(concept.id, e)}
+                    aria-label={isCollapsed ? m.skos_dropdown_expand() : m.skos_dropdown_collapse()}
+                    tabindex="-1"
                   >
-                    <path
-                      fill-rule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clip-rule="evenodd"
-                    />
-                  </svg>
+                    <ChevronRightIcon class_="w-3.5 h-3.5 text-base-content/50" />
+                  </button>
+                {:else if indentLevel > 0 && !searchTerm.trim()}
+                  <!-- Spacer for leaf nodes to align with parents that have toggles -->
+                  <span class="w-[1.625rem] flex-shrink-0"></span>
                 {/if}
-              </button>
+
+                <!-- Selection button -->
+                <button
+                  type="button"
+                  class="flex min-w-0 flex-1 items-center gap-2 py-2 text-left"
+                  onclick={() => toggleSelection(concept)}
+                  tabindex="-1"
+                >
+                  {#if multiple}
+                    <input
+                      type="checkbox"
+                      class="checkbox flex-shrink-0 checkbox-sm checkbox-primary"
+                      checked={conceptSelected}
+                      readonly
+                      tabindex="-1"
+                    />
+                  {/if}
+                  <span
+                    class="flex-1 {indentLevel > 0 && !conceptSelected
+                      ? 'text-base-content/70'
+                      : ''}"
+                    class:font-semibold={indentLevel === 0 && hasChildren}
+                    class:font-medium={conceptSelected}
+                  >
+                    {#if searchTerm.trim()}
+                      {#each getHighlightSegments(conceptLabel, searchTerm) as segment, i (i)}
+                        {#if segment.highlight}
+                          <mark class="rounded-sm bg-warning/30 text-inherit">{segment.text}</mark>
+                        {:else}
+                          {segment.text}
+                        {/if}
+                      {/each}
+                    {:else}
+                      {conceptLabel}
+                    {/if}
+                  </span>
+                  <!-- Child count badge for collapsed parents -->
+                  {#if hasChildren && isCollapsed && !searchTerm.trim()}
+                    {@const childCount = concepts.filter((c) => c.parentId === concept.id).length}
+                    <span class="badge flex-shrink-0 badge-ghost badge-xs">{childCount}</span>
+                  {/if}
+                  {#if conceptSelected && !multiple}
+                    <svg
+                      class="h-4 w-4 flex-shrink-0 text-primary"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                  {/if}
+                </button>
+              </div>
             {/each}
           {/if}
         </div>
