@@ -183,7 +183,7 @@ describe('SKOSDropdown', () => {
   });
 
   describe('Dropdown panel sizing', () => {
-    it('uses responsive width classes instead of w-full', async () => {
+    it('uses w-full to constrain panel within parent container', async () => {
       const { container } = render(SKOSDropdown, {
         props: { vocabularyKey: 'learningResourceType' }
       });
@@ -196,8 +196,7 @@ describe('SKOSDropdown', () => {
 
       const panel = container.querySelector('.dropdown-content');
       expect(panel).toBeTruthy();
-      expect(panel.classList.contains('w-full')).toBe(false);
-      expect(panel.classList.contains('w-max')).toBe(true);
+      expect(panel.classList.contains('w-full')).toBe(true);
     });
   });
 

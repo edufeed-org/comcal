@@ -363,7 +363,7 @@
     <!-- Dropdown panel -->
     {#if !isLoading && !error && isOpen}
       <div
-        class="dropdown-content z-[100] mt-1 flex max-h-[min(60vh,480px)] w-max max-w-[calc(100vw-2rem)] min-w-[20rem] flex-col overflow-hidden rounded-lg border border-base-300 bg-base-100 shadow-lg sm:min-w-[24rem]"
+        class="dropdown-content z-[100] mt-1 flex max-h-[min(60vh,480px)] w-full min-w-[min(20rem,100%)] flex-col overflow-hidden rounded-lg border border-base-300 bg-base-100 shadow-lg sm:min-w-[min(24rem,100%)]"
       >
         <!-- Search Input -->
         <div class="sticky top-0 z-10 border-b border-base-300 bg-base-100 p-2">
