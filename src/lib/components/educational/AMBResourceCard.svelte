@@ -15,9 +15,14 @@
   import EventDebugPanel from '../shared/EventDebugPanel.svelte';
   import { getLocale } from '$lib/paraglide/runtime.js';
   import { getLabelsWithFallback } from '$lib/helpers/educational/ambTransform.js';
+  import { getCachedConcepts, ensureVocabularyLoaded } from '$lib/stores/skos-cache.svelte.js';
   import { runtimeConfig } from '$lib/stores/config.svelte.js';
   import * as m from '$lib/paraglide/messages.js';
   import MarkdownRenderer from '../shared/MarkdownRenderer.svelte';
+
+  // Trigger SKOS vocabulary loading for label resolution
+  ensureVocabularyLoaded('learningResourceType');
+  ensureVocabularyLoaded('about');
 
   // Helper to determine if identifier is a nostr URI
   /**
@@ -49,12 +54,18 @@
   // Get published date
   const publishedAt = $derived(new Date(resource.publishedDate * 1000));
 
-  // Language-aware labels - reactive to locale changes!
-  // Uses fallback: user's language → English → ID
+  // Reactive SKOS concepts for URI-to-label resolution
+  const resourceTypeConcepts = $derived(getCachedConcepts('learningResourceType'));
+  const aboutConcepts = $derived(getCachedConcepts('about'));
+
+  // Language-aware labels - reactive to locale changes and SKOS cache!
+  // Fallback chain: user's language → English → SKOS concept → URI label
   const localizedLearningResourceTypes = $derived(
-    getLabelsWithFallback(resource.tags, 'learningResourceType', getLocale())
+    getLabelsWithFallback(resource.tags, 'learningResourceType', getLocale(), resourceTypeConcepts)
   );
-  const localizedSubjects = $derived(getLabelsWithFallback(resource.tags, 'about', getLocale()));
+  const localizedSubjects = $derived(
+    getLabelsWithFallback(resource.tags, 'about', getLocale(), aboutConcepts)
+  );
   const localizedEducationalLevels = $derived(
     getLabelsWithFallback(resource.tags, 'educationalLevel', getLocale())
   );

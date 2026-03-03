@@ -63,7 +63,7 @@ export function getConceptLabel(concept, preferredLang = 'en') {
  * @param {string} uri - The URI to extract from
  * @returns {string} A human-readable label
  */
-function extractLabelFromUri(uri) {
+export function extractLabelFromUri(uri) {
   try {
     const url = new URL(uri);
     const pathParts = url.pathname.split('/').filter(Boolean);

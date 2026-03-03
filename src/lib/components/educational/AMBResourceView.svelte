@@ -19,6 +19,7 @@
   import CommunityShare from '../shared/CommunityShare.svelte';
   import { getLocale } from '$lib/paraglide/runtime.js';
   import { getLabelsWithFallback } from '$lib/helpers/educational/ambTransform.js';
+  import { getCachedConcepts, ensureVocabularyLoaded } from '$lib/stores/skos-cache.svelte.js';
   import { buildAMBJsonLd } from '$lib/helpers/educational/ambJsonLd.js';
   import { page } from '$app/stores';
   import * as m from '$lib/paraglide/messages.js';
@@ -26,6 +27,10 @@
   import { deleteEvent } from '$lib/helpers/eventDeletion.js';
   import { showToast } from '$lib/helpers/toast.js';
   import { TrashIcon } from '$lib/components/icons';
+
+  // Trigger SKOS vocabulary loading for label resolution
+  ensureVocabularyLoaded('learningResourceType');
+  ensureVocabularyLoaded('about');
 
   /**
    * @typedef {Object} Props
@@ -36,12 +41,18 @@
   /** @type {Props} */
   let { event, resource } = $props();
 
-  // Language-aware labels - reactive to locale changes!
-  // Uses fallback: user's language → English → ID
+  // Reactive SKOS concepts for URI-to-label resolution
+  const resourceTypeConcepts = $derived(getCachedConcepts('learningResourceType'));
+  const aboutConcepts = $derived(getCachedConcepts('about'));
+
+  // Language-aware labels - reactive to locale changes and SKOS cache!
+  // Fallback chain: user's language → English → SKOS concept → URI label
   const localizedLearningResourceTypes = $derived(
-    getLabelsWithFallback(event.tags, 'learningResourceType', getLocale())
+    getLabelsWithFallback(event.tags, 'learningResourceType', getLocale(), resourceTypeConcepts)
   );
-  const localizedSubjects = $derived(getLabelsWithFallback(event.tags, 'about', getLocale()));
+  const localizedSubjects = $derived(
+    getLabelsWithFallback(event.tags, 'about', getLocale(), aboutConcepts)
+  );
   const localizedEducationalLevels = $derived(
     getLabelsWithFallback(event.tags, 'educationalLevel', getLocale())
   );

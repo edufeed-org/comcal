@@ -15,6 +15,7 @@
     filterConcepts
   } from '$lib/helpers/educational/skosLoader.js';
   import { CloseIcon, SearchIcon, ChevronDownIcon, ChevronRightIcon } from '$lib/components/icons';
+  import { setCachedConcepts } from '$lib/stores/skos-cache.svelte.js';
   import { SvelteSet } from 'svelte/reactivity';
   import * as m from '$lib/paraglide/messages';
 
@@ -93,6 +94,7 @@
   onMount(async () => {
     try {
       concepts = await fetchVocabulary(vocabularyKey);
+      setCachedConcepts(vocabularyKey, concepts);
       isLoading = false;
     } catch (e) {
       error = e instanceof Error ? e.message : 'Failed to load vocabulary';

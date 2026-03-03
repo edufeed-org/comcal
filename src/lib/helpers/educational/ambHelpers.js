@@ -90,9 +90,15 @@ export function getAMBLicense(event) {
   const licenseId = getTagValue(event.tags, 'license:id');
   if (!licenseId) return null;
 
-  // Extract license name from URL (e.g., CC BY 4.0 from URL)
-  const match = licenseId.match(/licenses\/([^/]+)\/([^/]+)/);
-  const label = match ? `${match[1].toUpperCase()} ${match[2]}` : licenseId;
+  // Extract license name from URL
+  // Handles /licenses/by/4.0 → "BY 4.0" and /publicdomain/zero/1.0 → "CC0 1.0"
+  const licenseMatch = licenseId.match(/licenses\/([^/]+)\/([^/]+)/);
+  const pdMatch = !licenseMatch && licenseId.match(/publicdomain\/([^/]+)\/([^/]+)/);
+  const label = licenseMatch
+    ? `${licenseMatch[1].toUpperCase()} ${licenseMatch[2]}`
+    : pdMatch
+      ? `CC0 ${pdMatch[2]}`
+      : licenseId;
 
   return { id: licenseId, label };
 }
