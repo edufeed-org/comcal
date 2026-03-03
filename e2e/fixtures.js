@@ -76,8 +76,8 @@ export async function logout(page) {
   await page.goto('/discover');
   await page.waitForTimeout(2000);
 
-  // Click the profile avatar button to open dropdown
-  await page.locator('.dropdown .btn-circle').click();
+  // Click the profile avatar button to open dropdown (use .first() to skip mobile hamburger)
+  await page.locator('.dropdown .btn-circle').first().click();
 
   // Wait for dropdown to open
   await page.waitForTimeout(300);
@@ -89,8 +89,8 @@ export async function logout(page) {
     .first()
     .click();
 
-  // Wait for logout to complete - login button should reappear
-  await expect(page.locator('button:has-text("Login")')).toBeVisible({ timeout: 5000 });
+  // Wait for logout to complete - login button should reappear (use .first() for responsive navbar)
+  await expect(page.locator('button:has-text("Login")').first()).toBeVisible({ timeout: 5000 });
 }
 
 /**
@@ -155,36 +155,25 @@ export async function openEventCreationModal(page) {
 }
 
 /**
- * Helper to open the AMB resource creation modal on a community's Learning tab.
- * Navigates to the community, clicks the FAB, and opens the creation modal.
+ * Helper to navigate to the AMB resource creation page.
+ * Navigates directly to /create/resource with the community query param.
  * @param {import('@playwright/test').Page} page
  * @param {string} communityNpub - The community's npub (bech32)
  */
-export async function openAMBCreationModal(page, communityNpub) {
-  // Navigate to community page
-  await page.goto(`/c/${communityNpub}`);
+export async function navigateToAMBCreation(page, communityNpub) {
+  // Navigate directly to the creation page with community param
+  await page.goto(`/create/resource?community=${communityNpub}`);
   await page.waitForTimeout(2000);
 
-  // Wait for community sidebar to load
-  await expect(page.locator('nav.menu').first()).toBeVisible({ timeout: 15000 });
-
-  // Click on Learning tab using nav.menu button selector (matches community.test.js)
-  await page.locator('nav.menu button', { hasText: 'Learning' }).click();
-  await page.waitForTimeout(2000);
-
-  // Wait for FAB to be visible (always present on Learning tab for authenticated users)
-  await expect(page.locator('.fab').first()).toBeVisible({ timeout: 15000 });
-
-  // Click the FAB to expand it (use first() for mobile/desktop FAB)
-  await page.locator('.fab [role="button"]').first().click();
-  await page.waitForTimeout(300);
-
-  // Click the "Create Learning Content" button
-  await page.locator('button[data-tip="Create Learning Content"]').first().click();
-
-  // Wait for modal to appear (it's a native dialog element)
-  await expect(page.locator('dialog[open] .modal-box')).toBeVisible({ timeout: 5000 });
+  // Wait for the form to render (title input should be visible on step 1)
+  await expect(page.locator('#amb-title')).toBeVisible({ timeout: 10000 });
 }
+
+/**
+ * @deprecated Use navigateToAMBCreation instead
+ * Alias for backwards compatibility with existing test imports
+ */
+export const openAMBCreationModal = navigateToAMBCreation;
 
 /**
  * Helper to navigate to a calendar event detail page.
@@ -369,9 +358,14 @@ export async function completeAMBStep2(page, data = {}) {
     .click();
   await page.waitForTimeout(300);
 
-  // Close dropdown by clicking outside it (on the modal title)
+  // Close dropdown by clicking outside it (on the page title)
   // Clicking the trigger toggles, which might not work reliably
-  await page.locator('h2:has-text("Create Educational Resource")').click();
+  await page
+    .locator(
+      'h2:has-text("Create Educational Resource"), h1:has-text("Create Educational Resource")'
+    )
+    .first()
+    .click();
   await page.waitForTimeout(300);
 
   // Wait for Subject SKOS dropdown to finish loading
@@ -419,7 +413,7 @@ export async function completeAMBStep2(page, data = {}) {
  */
 export async function completeAMBStep3(page, data = {}) {
   // Wait for step 3 to load
-  await expect(page.locator('text=Creators').or(page.locator('text=External'))).toBeVisible({
+  await expect(page.getByText('Creators / Authors')).toBeVisible({
     timeout: 5000
   });
 
@@ -451,7 +445,7 @@ export async function completeAMBStep3(page, data = {}) {
  */
 export async function completeAMBStep4(page, data = {}) {
   // Wait for step 4 to load
-  await expect(page.locator('#amb-license').or(page.locator('text=License'))).toBeVisible({
+  await expect(page.locator('#amb-license')).toBeVisible({
     timeout: 5000
   });
 

@@ -17,7 +17,6 @@
   import CommentList from '../comments/CommentList.svelte';
   import EventTags from '../calendar/EventTags.svelte';
   import CommunityShare from '../shared/CommunityShare.svelte';
-  import { modalStore } from '$lib/stores/modal.svelte.js';
   import { getLocale } from '$lib/paraglide/runtime.js';
   import { getLabelsWithFallback } from '$lib/helpers/educational/ambTransform.js';
   import { buildAMBJsonLd } from '$lib/helpers/educational/ambJsonLd.js';
@@ -62,25 +61,16 @@
   const isOwner = $derived(activeUser?.pubkey === event.pubkey);
 
   /**
-   * Handle edit button click
+   * Handle edit button click - navigate to edit page
    */
   function handleEditClick() {
-    const communityPubkey =
-      event.tags?.find((/** @type {string[]} */ t) => t[0] === 'h')?.[1] || '';
-    modalStore.openModal(
-      'ambUpload',
-      {
-        editEvent: event,
-        editResource: resource,
-        communityPubkey
-      },
-      {
-        onPublished: () => {
-          // Refresh the page to show updated content
-          window.location.reload();
-        }
-      }
-    );
+    const dTag = event.tags?.find((/** @type {string[]} */ t) => t[0] === 'd')?.[1] || '';
+    const editNaddr = nip19.naddrEncode({
+      kind: event.kind,
+      pubkey: event.pubkey,
+      identifier: dTag
+    });
+    goto(resolve(`/create/resource?edit=${editNaddr}`));
   }
 
   /**
@@ -718,8 +708,6 @@
     <CommentList rootEvent={event} {activeUser} />
   </div>
 </article>
-
-<!-- AMBUploadModal is now rendered by ModalManager -->
 
 <!-- Delete Confirmation Modal -->
 {#if showDeleteConfirmation}

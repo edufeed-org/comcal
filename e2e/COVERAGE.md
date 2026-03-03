@@ -3,7 +3,7 @@
 This document tracks what E2E tests exist, what features they cover, and identifies gaps for future testing.
 
 **Last updated:** 2026-02-20
-**Total tests:** 262
+**Total tests:** 260
 
 ## Quick Summary
 
@@ -14,7 +14,7 @@ This document tracks what E2E tests exist, what features they cover, and identif
 | `calendar-creation.test.js`         | 10    | Yes  | FAB, event creation, validation, deletion          |
 | `calendar-editing.test.js`          | 10    | Yes  | Edit button, form pre-population, validation       |
 | `calendar-date-filtering.test.js`   | 10    | No   | Date range loading, navigation, view modes         |
-| `amb-creation.test.js`              | 20    | Yes  | FAB, wizard modal, all 4 steps, validation         |
+| `amb-creation.test.js`              | 18    | Yes  | FAB, creation page, all 4 steps, validation        |
 | `amb-creation-full.test.js`         | 16    | Yes  | Full flow, SKOS mocks, Blossom upload, relay       |
 | `profile.test.js`                   | 4     | No   | Profile page, notes, not-found                     |
 | `profile-editing.test.js`           | 10    | Yes  | Edit modal, form pre-population, save flow         |
@@ -210,20 +210,20 @@ This document tracks what E2E tests exist, what features they cover, and identif
 
 ---
 
-### amb-creation.test.js (20 tests)
+### amb-creation.test.js (18 tests)
 
-**Route:** `/c/[pubkey]` (community Learning tab)
+**Route:** `/create/resource`, `/c/[pubkey]` (community Learning tab for FAB test)
 **Auth required:** Yes (all tests use `authenticatedPage` fixture)
-**Note:** Full creation flow testing limited because SKOS dropdowns require external vocabulary data.
+**Note:** Full creation flow testing limited because SKOS dropdowns require external vocabulary data. Form is now a full-page route (`/create/resource`) instead of a modal.
 
-#### FAB and Modal UI (4 tests)
+#### FAB and Page Navigation (4 tests)
 
-| Test                                                | What it verifies                   |
-| --------------------------------------------------- | ---------------------------------- |
-| FAB is visible on community Learning tab            | FAB appears for authenticated user |
-| clicking Create Learning Content opens wizard modal | Modal visible with form fields     |
-| modal closes on close button click                  | Modal dismissal via X button works |
-| modal closes on Escape key                          | Modal dismissal via Escape works   |
+| Test                                                        | What it verifies                              |
+| ----------------------------------------------------------- | --------------------------------------------- |
+| FAB is visible on community Learning tab                    | FAB appears for authenticated user            |
+| clicking Create Learning Content navigates to creation page | FAB navigates to /create/resource             |
+| creation page loads correctly from direct URL               | Direct URL renders form with title input      |
+| back button navigates to previous page                      | Back button returns to previous history entry |
 
 #### Step 1 Form (5 tests)
 
@@ -260,21 +260,21 @@ This document tracks what E2E tests exist, what features they cover, and identif
 
 #### Error Handling (1 test)
 
-| Test                                                   | What it verifies              |
-| ------------------------------------------------------ | ----------------------------- |
-| no critical JavaScript errors during modal interaction | Error capture throughout flow |
+| Test                                                  | What it verifies              |
+| ----------------------------------------------------- | ----------------------------- |
+| no critical JavaScript errors during page interaction | Error capture throughout flow |
 
-**Components exercised:** EducationalFAB, AMBUploadModal, SKOSDropdown (partial)
+**Components exercised:** EducationalFAB, AMBResourceForm (/create/resource page), SKOSDropdown (partial)
 
 ---
 
 ### amb-creation-full.test.js (16 tests)
 
-**Route:** `/c/[pubkey]` (community Learning tab)
+**Route:** `/create/resource` (full-page creation form)
 **Auth required:** Yes (all tests use `authenticatedPage` fixture)
 **Infrastructure:** SKOS mocks via `page.route()`, Blossom server (port 3000), amb-relay (port 7001)
 
-This file completes the full AMB creation flow that `amb-creation.test.js` cannot cover due to external SKOS dependencies. It uses Playwright route interception to mock SKOS vocabulary APIs.
+This file completes the full AMB creation flow that `amb-creation.test.js` cannot cover due to external SKOS dependencies. It uses Playwright route interception to mock SKOS vocabulary APIs. Uses `navigateToAMBCreation()` helper which navigates to `/create/resource?community=<npub>`.
 
 #### Full Creation Flow (3 tests)
 
@@ -322,7 +322,7 @@ This file completes the full AMB creation flow that `amb-creation.test.js` canno
 | resource visible on community Learning tab | Card appears after publish |
 | back button preserves form state on step 2 | Title preserved after back |
 
-**Components exercised:** AMBUploadModal (all steps), SKOSDropdown (with mocks), BlossomUploader, CreatorInput, ExternalUrlInput, educational-actions.svelte.js
+**Components exercised:** AMBResourceForm (all steps, /create/resource page), SKOSDropdown (with mocks), BlossomUploader, CreatorInput, ExternalUrlInput, educational-actions.svelte.js
 
 **New infrastructure files:**
 
@@ -1024,7 +1024,7 @@ Tests use Docker Compose with three real Nostr relays plus a mock hanging relay:
 | Account management   | NSEC login, logout, persistence, switching                                  | NIP-07 extension, NIP-49 encrypted keys            |
 | Settings page        | Theme, gated/debug mode, relay editing, Blossom, kind 30002 relay overrides | -                                                  |
 | Calendar events      | View, create, delete, edit (full CRUD)                                      | -                                                  |
-| AMB resources        | Full creation flow, file upload, relay publish                              | -                                                  |
+| AMB resources        | Full creation flow (page route), file upload, relay publish                 | Edit mode via naddr URL param                      |
 | Profile page         | View profile, notes, edit modal, save flow                                  | Avatar upload (Blossom integration)                |
 | Comments             | Post, reply, delete                                                         | Edit comment                                       |
 | Reactions            | Add, remove                                                                 | Custom emoji support                               |

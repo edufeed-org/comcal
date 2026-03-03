@@ -1,7 +1,8 @@
 <script>
+  import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { PlusIcon } from '$lib/components/icons';
   import { manager } from '$lib/stores/accounts.svelte';
-  import { modalStore } from '$lib/stores/modal.svelte.js';
 
   /**
    * @typedef {Object} Props
@@ -20,7 +21,7 @@
       console.warn('User must be logged in to create resources');
       return;
     }
-    modalStore.openModal('ambUpload', { communityPubkey });
+    goto(resolve(`/create/resource${communityPubkey ? `?community=${communityPubkey}` : ''}`));
   }
 </script>
 
@@ -54,8 +55,6 @@
     </svg>
   </button>
 </div>
-
-<!-- AMBUploadModal is now rendered by ModalManager -->
 
 <style>
   /* FAB container with hover expand */

@@ -262,7 +262,7 @@ export function publishEventOptimistic(signedEvent, taggedPubkeys = [], opts = {
 
         return { relay: relayUrl, success: true };
       } catch (err) {
-        console.warn(`Failed to publish to ${relayUrl}:`, err);
+        console.warn(`Failed to publish to ${relayUrl}:`, err?.message || err);
         return { relay: relayUrl, success: false, error: err };
       }
     });

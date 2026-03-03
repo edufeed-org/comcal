@@ -1,21 +1,21 @@
 /**
  * E2E tests for AMB (Educational Resource) creation flow.
  *
- * Tests the FAB, modal wizard UI, and step 1 form interaction.
+ * Tests the FAB, creation page UI, and step 1 form interaction.
  * All tests require authentication and use a test community.
  *
  * Note: Full creation flow testing is limited because SKOS dropdowns
  * require external vocabulary data that may not load in E2E environment.
  */
-import { test, expect, openAMBCreationModal } from './fixtures.js';
+import { test, expect, navigateToAMBCreation } from './fixtures.js';
 import { setupErrorCapture } from './test-utils.js';
 import { TEST_COMMUNITY } from './test-data.js';
 
 // ============================================================================
-// FAB and Modal UI Tests
+// FAB and Page Navigation Tests
 // ============================================================================
 
-test.describe('AMB Resource Creation - FAB and Modal UI', () => {
+test.describe('AMB Resource Creation - FAB and Page Navigation', () => {
   test('FAB is visible on community Learning tab for authenticated user', async ({
     authenticatedPage: page
   }) => {
@@ -34,45 +34,73 @@ test.describe('AMB Resource Creation - FAB and Modal UI', () => {
     await expect(page.locator('.fab').first()).toBeVisible({ timeout: 10000 });
   });
 
-  test('clicking Create Learning Content opens wizard modal', async ({
+  test('clicking Create Learning Content navigates to creation page', async ({
     authenticatedPage: page
   }) => {
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    // Navigate to community page
+    await page.goto(`/c/${TEST_COMMUNITY.npub}`);
+    await page.waitForTimeout(2000);
 
-    // Modal should be visible with wizard content
-    await expect(page.locator('dialog[open]')).toBeVisible();
+    // Wait for community sidebar to load
+    await expect(page.locator('nav.menu').first()).toBeVisible({ timeout: 15000 });
+
+    // Click on Learning tab
+    await page.locator('nav.menu button', { hasText: 'Learning' }).click();
+    await page.waitForTimeout(2000);
+
+    // Wait for FAB
+    await expect(page.locator('.fab').first()).toBeVisible({ timeout: 15000 });
+
+    // Click FAB to expand
+    await page.locator('.fab [role="button"]').first().click();
+    await page.waitForTimeout(300);
+
+    // Click the "Create Learning Content" button
+    await page.locator('button[data-tip="Create Learning Content"]').first().click();
+
+    // Should navigate to the creation page
+    await expect(page).toHaveURL(/\/create\/resource/, { timeout: 10000 });
 
     // Should show Step 1 title input
-    await expect(page.locator('#amb-title')).toBeVisible();
+    await expect(page.locator('#amb-title')).toBeVisible({ timeout: 5000 });
 
     // Should have navigation buttons (Next should be visible on step 1)
     await expect(page.locator('button:has-text("Next")')).toBeVisible();
   });
 
-  test('modal closes on close button click', async ({ authenticatedPage: page }) => {
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+  test('creation page loads correctly from direct URL', async ({ authenticatedPage: page }) => {
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
 
-    // Modal should be visible
-    await expect(page.locator('dialog[open]')).toBeVisible();
+    // Should show the creation page with form
+    await expect(page.locator('#amb-title')).toBeVisible();
+    await expect(page.locator('button:has-text("Next")')).toBeVisible();
 
-    // Click the close button (X button in modal header)
-    await page.locator('dialog[open] button.btn-circle').first().click();
-
-    // Modal should close
-    await expect(page.locator('dialog[open]')).not.toBeVisible({ timeout: 3000 });
+    // Should show the page header
+    await expect(
+      page
+        .locator(
+          'h1:has-text("Create Educational Resource"), h2:has-text("Create Educational Resource")'
+        )
+        .first()
+    ).toBeVisible();
   });
 
-  test('modal closes on Escape key', async ({ authenticatedPage: page }) => {
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+  test('back button navigates to previous page', async ({ authenticatedPage: page }) => {
+    // First go to discover page (so we have a history entry)
+    await page.goto('/discover');
+    await page.waitForTimeout(1000);
 
-    // Modal should be visible
-    await expect(page.locator('dialog[open]')).toBeVisible();
+    // Then navigate to creation page
+    await page.goto(`/create/resource?community=${TEST_COMMUNITY.npub}`);
+    await page.waitForTimeout(2000);
+    await expect(page.locator('#amb-title')).toBeVisible({ timeout: 10000 });
 
-    // Press Escape key to close the modal (native dialog behavior)
-    await page.keyboard.press('Escape');
+    // Click the back button in the top bar
+    await page.locator('button[aria-label="Go back"]').click();
+    await page.waitForTimeout(1000);
 
-    // Modal should close
-    await expect(page.locator('dialog[open]')).not.toBeVisible({ timeout: 3000 });
+    // Should have navigated back
+    await expect(page).toHaveURL(/\/discover/, { timeout: 5000 });
   });
 });
 
@@ -82,7 +110,7 @@ test.describe('AMB Resource Creation - FAB and Modal UI', () => {
 
 test.describe('AMB Resource Creation - Step 1 Form', () => {
   test('step 1 shows all required form fields', async ({ authenticatedPage: page }) => {
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
 
     // Should show identifier (URL) field
     await expect(page.locator('#amb-identifier')).toBeVisible();
@@ -101,7 +129,7 @@ test.describe('AMB Resource Creation - Step 1 Form', () => {
   });
 
   test('can fill step 1 form fields', async ({ authenticatedPage: page }) => {
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
 
     // Fill in the form
     await page.locator('#amb-identifier').fill('https://example.com/resource');
@@ -118,7 +146,7 @@ test.describe('AMB Resource Creation - Step 1 Form', () => {
   });
 
   test('cannot proceed without filling required fields', async ({ authenticatedPage: page }) => {
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
 
     // Try to click Next without filling anything
     await page.locator('button:has-text("Next")').click();
@@ -137,7 +165,7 @@ test.describe('AMB Resource Creation - Step 1 Form', () => {
   });
 
   test('can proceed to step 2 with required fields filled', async ({ authenticatedPage: page }) => {
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
 
     // Fill required fields
     await page.locator('#amb-title').fill('Test Educational Resource');
@@ -158,7 +186,7 @@ test.describe('AMB Resource Creation - Step 1 Form', () => {
   });
 
   test('can go back from step 2 to step 1', async ({ authenticatedPage: page }) => {
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
 
     // Fill required fields and go to step 2
     await page.locator('#amb-title').fill('Test Resource');
@@ -188,7 +216,7 @@ test.describe('AMB Resource Creation - Step 2 (Classification)', () => {
    * @param {import('@playwright/test').Page} page
    */
   async function goToStep2(page) {
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
     await page.locator('#amb-title').fill('Test Resource');
     await page.locator('#amb-description').fill('Test description');
     await page.locator('#amb-language').selectOption('en');
@@ -246,7 +274,7 @@ test.describe('AMB Resource Creation - Step 3 (Content & Creators)', () => {
    * @param {import('@playwright/test').Page} page
    */
   async function goToStep3(page) {
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
 
     // Fill step 1
     await page.locator('#amb-title').fill('Test Resource');
@@ -256,7 +284,6 @@ test.describe('AMB Resource Creation - Step 3 (Content & Creators)', () => {
     await page.waitForTimeout(1000);
 
     // Skip step 2 (SKOS dropdowns may not have data in test environment)
-    // Just click Next - validation may allow or we test what we can
     await page.locator('button:has-text("Next")').click();
     await page.waitForTimeout(1000);
   }
@@ -305,7 +332,7 @@ test.describe('AMB Resource Creation - Step 4 (License & Publish)', () => {
   test('step 4 shows License dropdown when navigated properly', async ({
     authenticatedPage: page
   }) => {
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
 
     // Fill step 1 to enable navigation
     await page.locator('#amb-title').fill('License Test Resource');
@@ -313,7 +340,6 @@ test.describe('AMB Resource Creation - Step 4 (License & Publish)', () => {
     await page.locator('#amb-language').selectOption('en');
 
     // Try to navigate through all steps
-    // Some steps may be skipped if SKOS data isn't available
     for (let step = 1; step < 4; step++) {
       const nextButton = page.locator('button:has-text("Next")');
       if (await nextButton.isVisible()) {
@@ -329,7 +355,6 @@ test.describe('AMB Resource Creation - Step 4 (License & Publish)', () => {
     if (isStep4) {
       await expect(licenseDropdown).toBeVisible();
     } else {
-      // May be stuck on earlier step due to validation - note this in test
       console.log('Did not reach step 4 - SKOS validation may be blocking');
     }
   });
@@ -337,7 +362,7 @@ test.describe('AMB Resource Creation - Step 4 (License & Publish)', () => {
   test('step 4 shows Free Access checkbox when navigated properly', async ({
     authenticatedPage: page
   }) => {
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
 
     // Fill step 1
     await page.locator('#amb-title').fill('Free Access Test Resource');
@@ -368,12 +393,12 @@ test.describe('AMB Resource Creation - Step 4 (License & Publish)', () => {
 // ============================================================================
 
 test.describe('AMB Resource Creation - Error Handling', () => {
-  test('no critical JavaScript errors during modal interaction', async ({
+  test('no critical JavaScript errors during page interaction', async ({
     authenticatedPage: page
   }) => {
     const errorCapture = setupErrorCapture(page);
 
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
 
     // Fill step 1 form
     await page.locator('#amb-title').fill('Error Test Resource');
@@ -388,8 +413,8 @@ test.describe('AMB Resource Creation - Error Handling', () => {
     await page.locator('button:has-text("Back")').click();
     await page.waitForTimeout(500);
 
-    // Close modal
-    await page.keyboard.press('Escape');
+    // Click cancel to go back
+    await page.locator('button:has-text("Cancel")').click();
     await page.waitForTimeout(500);
 
     // Assert no critical errors

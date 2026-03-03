@@ -71,8 +71,11 @@ base.describe('NSEC Login Flow', () => {
     await loginWithNsec(page, TEST_AUTHOR.nsec);
 
     // Verify: login button is gone, profile dropdown is visible
-    await expect(page.locator('button:has-text("Login")')).not.toBeVisible({ timeout: 5000 });
-    await expect(page.locator('.dropdown .btn-circle')).toBeVisible({ timeout: 5000 });
+    // Use .first() to avoid strict mode violations from responsive navbar (desktop + mobile)
+    await expect(page.locator('button:has-text("Login")').first()).not.toBeVisible({
+      timeout: 5000
+    });
+    await expect(page.locator('.dropdown .btn-circle').first()).toBeVisible({ timeout: 5000 });
   });
 
   base('login fails with invalid nsec and shows error', async ({ page }) => {
@@ -144,14 +147,14 @@ base.describe('Logout Flow', () => {
     await loginWithNsec(page, TEST_AUTHOR.nsec);
 
     // Verify logged in
-    await expect(page.locator('.dropdown .btn-circle')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.dropdown .btn-circle').first()).toBeVisible({ timeout: 5000 });
 
     // Logout
     await logout(page);
 
     // Verify: login button is back
-    await expect(page.locator('button:has-text("Login")')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('.dropdown .btn-circle')).not.toBeVisible();
+    await expect(page.locator('button:has-text("Login")').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.dropdown .btn-circle').first()).not.toBeVisible();
   });
 
   base('logout clears account from localStorage', async ({ page }) => {
@@ -160,7 +163,7 @@ base.describe('Logout Flow', () => {
 
     // Login
     await loginWithNsec(page, TEST_AUTHOR.nsec);
-    await expect(page.locator('.dropdown .btn-circle')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.dropdown .btn-circle').first()).toBeVisible({ timeout: 5000 });
 
     // Verify account is in localStorage
     const accountsBefore = await page.evaluate(() => localStorage.getItem('accounts'));
@@ -190,15 +193,15 @@ base.describe('Account Persistence', () => {
 
     // Login
     await loginWithNsec(page, TEST_AUTHOR.nsec);
-    await expect(page.locator('.dropdown .btn-circle')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.dropdown .btn-circle').first()).toBeVisible({ timeout: 5000 });
 
     // Reload the page
     await page.reload();
     await page.waitForTimeout(3000);
 
     // Verify still logged in
-    await expect(page.locator('.dropdown .btn-circle')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('button:has-text("Login")')).not.toBeVisible();
+    await expect(page.locator('.dropdown .btn-circle').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('button:has-text("Login")').first()).not.toBeVisible();
   });
 
   base('multiple accounts persist across reload', async ({ page }) => {
@@ -207,16 +210,17 @@ base.describe('Account Persistence', () => {
 
     // Login with first account
     await loginWithNsec(page, TEST_AUTHOR.nsec);
-    await expect(page.locator('.dropdown .btn-circle')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.dropdown .btn-circle').first()).toBeVisible({ timeout: 5000 });
 
     // Add second account (open login modal again)
-    await page.locator('.dropdown .btn-circle').click();
+    await page.locator('.dropdown .btn-circle').first().click();
     await page.waitForTimeout(300);
 
     // Click "Switch Account" or similar to open login modal
     const switchButton = page
       .locator('.dropdown-content button')
-      .filter({ hasText: /switch|wechseln/i });
+      .filter({ hasText: /switch|wechseln/i })
+      .first();
     await switchButton.click();
 
     await expect(page.locator('#global-login-modal')).toBeVisible({ timeout: 5000 });
@@ -268,15 +272,16 @@ base.describe('Account Switching', () => {
 
     // Login with first account
     await loginWithNsec(page, TEST_AUTHOR.nsec);
-    await expect(page.locator('.dropdown .btn-circle')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.dropdown .btn-circle').first()).toBeVisible({ timeout: 5000 });
 
     // Open dropdown and click switch account
-    await page.locator('.dropdown .btn-circle').click();
+    await page.locator('.dropdown .btn-circle').first().click();
     await page.waitForTimeout(300);
 
     const switchButton = page
       .locator('.dropdown-content button')
-      .filter({ hasText: /switch|wechseln/i });
+      .filter({ hasText: /switch|wechseln/i })
+      .first();
     await switchButton.click();
 
     // Login modal should open
@@ -313,17 +318,18 @@ base.describe('Account Switching', () => {
 
     // Login with first account
     await loginWithNsec(page, TEST_AUTHOR.nsec);
-    await expect(page.locator('.dropdown .btn-circle')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.dropdown .btn-circle').first()).toBeVisible({ timeout: 5000 });
 
     // Get first account pubkey from active session
     const firstPubkey = await page.evaluate(() => localStorage.getItem('active'));
 
     // Add second account
-    await page.locator('.dropdown .btn-circle').click();
+    await page.locator('.dropdown .btn-circle').first().click();
     await page.waitForTimeout(300);
     const switchButton = page
       .locator('.dropdown-content button')
-      .filter({ hasText: /switch|wechseln/i });
+      .filter({ hasText: /switch|wechseln/i })
+      .first();
     await switchButton.click();
     await expect(page.locator('#global-login-modal')).toBeVisible({ timeout: 5000 });
 
@@ -350,11 +356,12 @@ base.describe('Account Switching', () => {
     }
 
     // Now switch back to first account via login modal
-    await page.locator('.dropdown .btn-circle').click();
+    await page.locator('.dropdown .btn-circle').first().click();
     await page.waitForTimeout(300);
     await page
       .locator('.dropdown-content button')
       .filter({ hasText: /switch|wechseln/i })
+      .first()
       .click();
     await expect(page.locator('#global-login-modal')).toBeVisible({ timeout: 5000 });
 
@@ -388,7 +395,7 @@ base.describe('Error Handling', () => {
 
     // Perform full login flow
     await loginWithNsec(page, TEST_AUTHOR.nsec);
-    await expect(page.locator('.dropdown .btn-circle')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.dropdown .btn-circle').first()).toBeVisible({ timeout: 5000 });
 
     errorCapture.assertNoCriticalErrors();
   });
@@ -401,11 +408,11 @@ base.describe('Error Handling', () => {
 
     // Login
     await loginWithNsec(page, TEST_AUTHOR.nsec);
-    await expect(page.locator('.dropdown .btn-circle')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.dropdown .btn-circle').first()).toBeVisible({ timeout: 5000 });
 
     // Logout
     await logout(page);
-    await expect(page.locator('button:has-text("Login")')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('button:has-text("Login")').first()).toBeVisible({ timeout: 5000 });
 
     errorCapture.assertNoCriticalErrors();
   });

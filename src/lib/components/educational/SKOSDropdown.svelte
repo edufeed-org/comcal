@@ -28,7 +28,7 @@
    * @property {string} label - The display label
    */
 
-  /** @type {{ vocabularyKey: 'learningResourceType' | 'about' | 'intendedEndUserRole', selected?: SelectedConcept[], multiple?: boolean, required?: boolean, label?: string, placeholder?: string, helpText?: string, disabled?: boolean, maxSelections?: number, onchange?: (selected: SelectedConcept[]) => void }} */
+  /** @type {{ vocabularyKey: 'learningResourceType' | 'about' | 'intendedEndUserRole', selected?: SelectedConcept[], multiple?: boolean, required?: boolean, label?: string, placeholder?: string, helpText?: string, disabled?: boolean, maxSelections?: number, compact?: boolean, onchange?: (selected: SelectedConcept[]) => void }} */
   let {
     vocabularyKey,
     selected = $bindable([]),
@@ -39,6 +39,7 @@
     helpText = '',
     disabled = false,
     maxSelections = 10,
+    compact = false,
     onchange = () => {}
   } = $props();
 
@@ -66,6 +67,9 @@
 
   // Get current locale
   const locale = $derived(getLocale());
+
+  // Panel max-height: compact mode for constrained contexts (e.g., modals)
+  const panelMaxHeight = $derived(compact ? 'max-h-[min(40vh,280px)]' : 'max-h-[min(60vh,480px)]');
 
   // Set of concept IDs that have children
   const parentIds = $derived(new Set(concepts.filter((c) => c.parentId).map((c) => c.parentId)));
@@ -363,7 +367,7 @@
     <!-- Dropdown panel -->
     {#if !isLoading && !error && isOpen}
       <div
-        class="dropdown-content z-[100] mt-1 flex max-h-[min(60vh,480px)] w-full min-w-[min(20rem,100%)] flex-col overflow-hidden rounded-lg border border-base-300 bg-base-100 shadow-lg sm:min-w-[min(24rem,100%)]"
+        class="dropdown-content z-[100] mt-1 flex {panelMaxHeight} w-full min-w-[min(20rem,100%)] flex-col overflow-hidden rounded-lg border border-base-300 bg-base-100 shadow-lg sm:min-w-[min(24rem,100%)]"
       >
         <!-- Search Input -->
         <div class="sticky top-0 z-10 border-b border-base-300 bg-base-100 p-2">

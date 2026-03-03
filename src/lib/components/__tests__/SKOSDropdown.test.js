@@ -200,6 +200,40 @@ describe('SKOSDropdown', () => {
     });
   });
 
+  describe('Compact mode', () => {
+    it('uses default max-h when compact is not set', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType' }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+      });
+
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+
+      const panel = container.querySelector('.dropdown-content');
+      expect(panel).toBeTruthy();
+      expect(panel.className).toContain('max-h-[min(60vh,480px)]');
+    });
+
+    it('uses reduced max-h when compact is true', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType', compact: true }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+      });
+
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+
+      const panel = container.querySelector('.dropdown-content');
+      expect(panel).toBeTruthy();
+      expect(panel.className).toContain('max-h-[min(40vh,280px)]');
+    });
+  });
+
   describe('Collapsible hierarchy', () => {
     it('shows expand buttons for parent concepts in hierarchical vocabulary', async () => {
       // Use a large hierarchical vocabulary (>30) to trigger auto-collapse

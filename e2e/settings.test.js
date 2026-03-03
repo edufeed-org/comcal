@@ -58,7 +58,7 @@ baseTest.describe('Settings page - Unauthenticated', () => {
 
         const htmlElement = page.locator('html');
         const theme = await htmlElement.getAttribute('data-theme');
-        expect(theme).toMatch(/light|stil/);
+        expect(theme).toMatch(/light|stil|rpi$/);
       }
     });
 

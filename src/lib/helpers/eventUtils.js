@@ -1,4 +1,5 @@
 import { getCalendarTitle, getCalendarEventImage } from 'applesauce-common/helpers';
+import { parseCalendarTimestamp } from '$lib/helpers/calendar.js';
 
 /**
  * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
@@ -22,20 +23,12 @@ export function getCalendarEventMetadata(event) {
   const getTagValue = (/** @type {string} */ tagName) => tagMap.get(tagName)?.[0];
   const getTagValues = (/** @type {string} */ tagName) => tagMap.get(tagName) || [];
 
-  // Convert timestamp strings to numbers with validation
+  // Parse time values per NIP-52: date strings for kind 31922, Unix timestamps for kind 31923
   const startValue = getTagValue('start');
   const endValue = getTagValue('end');
 
-  const start = startValue ? parseInt(startValue, 10) : 0;
-  const end = endValue ? parseInt(endValue, 10) : 0;
-
-  // Validate timestamps
-  if (startValue && isNaN(start)) {
-    console.warn('Invalid start timestamp:', startValue, 'for event:', event.id, event);
-  }
-  if (endValue && isNaN(end)) {
-    console.warn('Invalid end timestamp:', endValue, 'for event:', event.id);
-  }
+  const start = parseCalendarTimestamp(startValue, event.kind);
+  const end = parseCalendarTimestamp(endValue, event.kind);
 
   // Parse participants from p tags according to NIP-52
   // Format: ["p", "<pubkey>", "<optional relay>", "<optional role>"]

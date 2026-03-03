@@ -9,7 +9,8 @@ import { manager } from '$lib/stores/accounts.svelte';
 import {
   validateEventForm,
   convertFormDataToEvent,
-  createEventTargetingTags
+  createEventTargetingTags,
+  buildCalendarEventTags
 } from '../helpers/calendar.js';
 import { calendarStore } from './calendar-events.svelte.js';
 import { getCalendarEventMetadata } from '../helpers/eventUtils.js';
@@ -64,67 +65,13 @@ export function createCalendarActions(_communityPubkey) {
         // Create the calendar event using EventFactory
         const eventFactory = new EventFactory();
 
-        // Build event template with tags
-        const tags = [];
-
-        // Add d-tag for addressable/replaceable event
-        tags.push(['d', dTag]);
-
-        // Add h-tag if event is targeted to a community (Communikey spec)
-        if (targetCommunityPubkey) {
-          tags.push(['h', targetCommunityPubkey]);
-        }
-
-        // Add calendar-specific tags
-        tags.push(['title', eventData.title]);
-        if (eventData.start) {
-          // eventData.start is already a UNIX timestamp (number) from convertFormDataToEvent
-          tags.push(['start', eventData.start.toString()]);
-        }
-
-        if (eventData.end) {
-          // eventData.end is already a UNIX timestamp (number) from convertFormDataToEvent
-          tags.push(['end', eventData.end.toString()]);
-        }
-
-        // Add timezone tags for time-based events
-        if (eventData.kind === 31923) {
-          if (eventData.startTimezone) {
-            tags.push(['start_tz', eventData.startTimezone]);
-          }
-          if (eventData.endTimezone) {
-            tags.push(['end_tz', eventData.endTimezone]);
-          }
-        }
-
-        // Add optional properties
-        if (eventData.image) {
-          tags.push(['image', eventData.image]);
-        }
-
-        // Add location
-        if (eventData.location) {
-          tags.push(['location', eventData.location]);
-        }
-
-        // Add hashtags
-        if (eventData.hashtags) {
-          eventData.hashtags.forEach((hashtag) => {
-            if (hashtag) tags.push(['t', hashtag]);
-          });
-        }
-
-        // Add references (web links, documents, etc.)
-        if (eventData.references) {
-          eventData.references.forEach((reference) => {
-            if (reference) tags.push(['r', reference]);
-          });
-        }
-
-        // Add geohash if present
-        if (eventData.geohash) {
-          tags.push(['g', eventData.geohash]);
-        }
+        // Build NIP-52 compliant tags
+        const tags = buildCalendarEventTags(
+          formData,
+          eventData,
+          dTag,
+          targetCommunityPubkey || undefined
+        );
 
         // Build and sign the calendar event
         const eventTemplate = await eventFactory.build({
@@ -201,65 +148,8 @@ export function createCalendarActions(_communityPubkey) {
         // Create the calendar event using EventFactory with the SAME d-tag
         const eventFactory = new EventFactory();
 
-        // Build event template with tags
-        const tags = [];
-
-        // CRITICAL: Use the original d-tag for addressable event replacement
-        tags.push(['d', dTag]);
-
-        // Preserve h-tag if event was originally targeted to a community (Communikey spec)
-        if (hTag) {
-          tags.push(['h', hTag]);
-        }
-
-        // Add calendar-specific tags
-        tags.push(['title', eventData.title]);
-        if (eventData.start) {
-          tags.push(['start', eventData.start.toString()]);
-        }
-
-        if (eventData.end) {
-          tags.push(['end', eventData.end.toString()]);
-        }
-
-        // Add timezone tags for time-based events
-        if (eventData.kind === 31923) {
-          if (eventData.startTimezone) {
-            tags.push(['start_tz', eventData.startTimezone]);
-          }
-          if (eventData.endTimezone) {
-            tags.push(['end_tz', eventData.endTimezone]);
-          }
-        }
-
-        // Add optional properties
-        if (eventData.image) {
-          tags.push(['image', eventData.image]);
-        }
-
-        // Add location
-        if (eventData.location) {
-          tags.push(['location', eventData.location]);
-        }
-
-        // Add hashtags
-        if (eventData.hashtags) {
-          eventData.hashtags.forEach((hashtag) => {
-            if (hashtag) tags.push(['t', hashtag]);
-          });
-        }
-
-        // Add references (web links, documents, etc.)
-        if (eventData.references) {
-          eventData.references.forEach((reference) => {
-            if (reference) tags.push(['r', reference]);
-          });
-        }
-
-        // Add geohash if present
-        if (eventData.geohash) {
-          tags.push(['g', eventData.geohash]);
-        }
+        // Build NIP-52 compliant tags (reuses original d-tag for replacement)
+        const tags = buildCalendarEventTags(formData, eventData, dTag, hTag);
 
         // Build and sign the updated calendar event
         const eventTemplate = await eventFactory.build({

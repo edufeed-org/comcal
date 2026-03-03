@@ -14,7 +14,7 @@
 import {
   test,
   expect,
-  openAMBCreationModal,
+  navigateToAMBCreation,
   setupSKOSMocks,
   clearSKOSCache,
   completeAMBStep1,
@@ -43,8 +43,8 @@ test.describe('AMB Resource Creation - Full Flow', () => {
     await page.goto('/');
     await clearSKOSCache(page);
 
-    // Open the AMB creation modal
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    // Navigate to the AMB creation page
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
 
     // Step 1: Basic Info
     await completeAMBStep1(page, {
@@ -74,7 +74,7 @@ test.describe('AMB Resource Creation - Full Flow', () => {
     await page.goto('/');
     await clearSKOSCache(page);
 
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
     await completeAMBStep1(page, { title: uniqueTitle, description: 'Relay verification test' });
     await completeAMBStep2(page);
     await completeAMBStep3(page);
@@ -83,27 +83,30 @@ test.describe('AMB Resource Creation - Full Flow', () => {
     // Wait for navigation to confirm publish succeeded
     await expect(page).toHaveURL(/\/naddr1/, { timeout: 20000 });
 
-    // Verify the event appears on amb-relay
+    // Wait for publish status toast to confirm relay delivery
+    await expect(page.getByText(/Published to \d+ relay/)).toBeVisible({ timeout: 15000 });
+
+    // Verify the event appears on amb-relay (allow time for Typesense indexing)
     const event = await verifyAMBResourceOnRelay(
       {
         author: TEST_AUTHOR.pubkey,
         title: uniqueTitle
       },
-      15000
+      20000
     );
 
     expect(event).toBeDefined();
     expect(event.kind).toBe(30142);
 
-    // Verify required tags exist
+    // Verify required tags exist (tags use colon namespace: learningResourceType:id)
     const nameTag = event.tags.find((t) => t[0] === 'name');
     expect(nameTag?.[1]).toBe(uniqueTitle);
 
-    const resourceTypeTag = event.tags.find((t) => t[0] === 'learningResourceType.id');
+    const resourceTypeTag = event.tags.find((t) => t[0] === 'learningResourceType:id');
     expect(resourceTypeTag).toBeDefined();
     expect(resourceTypeTag?.[1]).toContain('w3id.org/kim/hcrt');
 
-    const subjectTag = event.tags.find((t) => t[0] === 'about.id');
+    const subjectTag = event.tags.find((t) => t[0] === 'about:id');
     expect(subjectTag).toBeDefined();
   });
 
@@ -114,7 +117,7 @@ test.describe('AMB Resource Creation - Full Flow', () => {
     await page.goto('/');
     await clearSKOSCache(page);
 
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
     await completeAMBStep1(page, {
       title: uniqueTitle,
       description: description,
@@ -126,16 +129,19 @@ test.describe('AMB Resource Creation - Full Flow', () => {
 
     await expect(page).toHaveURL(/\/naddr1/, { timeout: 20000 });
 
+    // Wait for publish status toast to confirm relay delivery
+    await expect(page.getByText(/Published to \d+ relay/)).toBeVisible({ timeout: 15000 });
+
     const event = await verifyAMBResourceOnRelay(
       { author: TEST_AUTHOR.pubkey, title: uniqueTitle },
-      15000
+      20000
     );
 
     // Verify all expected tags
     expect(event.tags.find((t) => t[0] === 'name')?.[1]).toBe(uniqueTitle);
     expect(event.tags.find((t) => t[0] === 'description')?.[1]).toBe(description);
     expect(event.tags.find((t) => t[0] === 'inLanguage')?.[1]).toBe('en');
-    expect(event.tags.find((t) => t[0] === 'license.id')).toBeDefined();
+    expect(event.tags.find((t) => t[0] === 'license:id')).toBeDefined();
 
     // Verify content field matches description
     expect(event.content).toBe(description);
@@ -155,7 +161,7 @@ test.describe('AMB Resource Creation - SKOS Dropdowns', () => {
     await page.goto('/');
     await clearSKOSCache(page);
 
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
     await completeAMBStep1(page);
 
     // Wait for step 2 and SKOS data to load
@@ -176,7 +182,7 @@ test.describe('AMB Resource Creation - SKOS Dropdowns', () => {
     await page.goto('/');
     await clearSKOSCache(page);
 
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
     await completeAMBStep1(page);
 
     // Wait for step 2
@@ -200,28 +206,34 @@ test.describe('AMB Resource Creation - SKOS Dropdowns', () => {
     await page.goto('/');
     await clearSKOSCache(page);
 
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
     await completeAMBStep1(page);
 
     await expect(page.locator('text=Resource Type').first()).toBeVisible({ timeout: 10000 });
 
+    // Scope to the form-control that contains "Resource Type" label
+    const formField = page.locator('.form-control').filter({ hasText: 'Resource Type' }).first();
+    const trigger = formField.locator('button.select-trigger');
+
     // Open dropdown and select Text
-    const dropdown = page.locator('.dropdown').filter({ hasText: 'Resource Type' }).first();
-    await dropdown.locator('button').first().click();
+    await trigger.click();
     await page.waitForTimeout(300);
-    await page.locator('.dropdown-content button:has-text("Text")').first().click();
+    await formField.locator('.dropdown-content button:has-text("Text")').first().click();
 
-    // Should show badge
-    await expect(dropdown.locator('.badge:has-text("Text")')).toBeVisible();
+    // Should show selected item (badge with remove button)
+    await expect(formField.getByRole('button', { name: 'Remove Text' })).toBeVisible();
 
-    // Select another option (Video)
-    await dropdown.locator('button').first().click();
-    await page.waitForTimeout(300);
-    await page.locator('.dropdown-content button:has-text("Video")').first().click();
+    // Select another option (Video) - dropdown may still be open from multi-select
+    const isOpen = await formField.locator('.dropdown-content').isVisible();
+    if (!isOpen) {
+      await trigger.click();
+      await page.waitForTimeout(300);
+    }
+    await formField.locator('.dropdown-content button:has-text("Video")').first().click();
 
-    // Should show both badges
-    await expect(dropdown.locator('.badge:has-text("Text")')).toBeVisible();
-    await expect(dropdown.locator('.badge:has-text("Video")')).toBeVisible();
+    // Should show both selected items
+    await expect(formField.getByRole('button', { name: 'Remove Text' })).toBeVisible();
+    await expect(formField.getByRole('button', { name: 'Remove Video' })).toBeVisible();
   });
 });
 
@@ -238,7 +250,7 @@ test.describe('AMB Resource Creation - File Upload', () => {
     await page.goto('/');
     await clearSKOSCache(page);
 
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
     await completeAMBStep1(page);
     await completeAMBStep2(page);
 
@@ -269,7 +281,7 @@ test.describe('AMB Resource Creation - File Upload', () => {
     await page.goto('/');
     await clearSKOSCache(page);
 
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
     await completeAMBStep1(page);
     await completeAMBStep2(page);
 
@@ -290,19 +302,17 @@ test.describe('AMB Resource Creation - File Upload', () => {
       timeout: 30000
     });
 
-    // Verify remove button is present
-    const fileEntry = page
-      .locator('.blossom-uploader')
-      .locator('text=my-resource.txt')
-      .locator('..');
-    await expect(fileEntry.locator('button').first()).toBeVisible();
+    // Verify remove button is present for the uploaded file
+    await expect(
+      page.locator('.blossom-uploader').getByRole('button', { name: 'Remove file' })
+    ).toBeVisible();
   });
 
   test('can remove uploaded file', async ({ authenticatedPage: page }) => {
     await page.goto('/');
     await clearSKOSCache(page);
 
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
     await completeAMBStep1(page);
     await completeAMBStep2(page);
 
@@ -323,13 +333,8 @@ test.describe('AMB Resource Creation - File Upload', () => {
       timeout: 30000
     });
 
-    // Find and click the remove button for this file
-    await page
-      .locator('.blossom-uploader')
-      .locator('li')
-      .filter({ hasText: 'to-be-removed.pdf' })
-      .locator('button')
-      .click();
+    // Click the remove button for the uploaded file
+    await page.locator('.blossom-uploader').getByRole('button', { name: 'Remove file' }).click();
 
     // File should no longer be visible
     await expect(page.locator('.blossom-uploader').getByText('to-be-removed.pdf')).not.toBeVisible({
@@ -345,7 +350,7 @@ test.describe('AMB Resource Creation - File Upload', () => {
     await page.goto('/');
     await clearSKOSCache(page);
 
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
     await completeAMBStep1(page, { title: uniqueTitle, description: 'Test with file upload' });
     await completeAMBStep2(page);
 
@@ -372,14 +377,17 @@ test.describe('AMB Resource Creation - File Upload', () => {
 
     await expect(page).toHaveURL(/\/naddr1/, { timeout: 20000 });
 
-    // Verify the event has encoding tags
+    // Wait for publish status toast to confirm relay delivery
+    await expect(page.getByText(/Published to \d+ relay/)).toBeVisible({ timeout: 15000 });
+
+    // Verify the event has encoding tags (allow time for Typesense indexing)
     const event = await verifyAMBResourceOnRelay(
       { author: TEST_AUTHOR.pubkey, title: uniqueTitle },
-      15000
+      20000
     );
 
-    // Check for encoding tag (file URL from Blossom)
-    const encodingTag = event.tags.find((t) => t[0] === 'encoding.contentUrl');
+    // Check for encoding tag (file URL from Blossom, tags use colon namespace)
+    const encodingTag = event.tags.find((t) => t[0] === 'encoding:contentUrl');
     expect(encodingTag).toBeDefined();
     expect(encodingTag?.[1]).toContain('http'); // Blossom URL
   });
@@ -398,7 +406,7 @@ test.describe('AMB Resource Creation - Keywords and URLs', () => {
     await page.goto('/');
     await clearSKOSCache(page);
 
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
     await completeAMBStep1(page);
 
     // Wait for step 2
@@ -427,7 +435,7 @@ test.describe('AMB Resource Creation - Keywords and URLs', () => {
     await page.goto('/');
     await clearSKOSCache(page);
 
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
     await completeAMBStep1(page);
     await completeAMBStep2(page);
 
@@ -467,7 +475,7 @@ test.describe('AMB Resource Creation - Error Handling', () => {
     await page.goto('/');
     await clearSKOSCache(page);
 
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
     await completeAMBStep1(page, { title: `Error Check ${Date.now()}` });
     await completeAMBStep2(page);
     await completeAMBStep3(page);
@@ -482,11 +490,10 @@ test.describe('AMB Resource Creation - Error Handling', () => {
     await page.goto('/');
     await clearSKOSCache(page);
 
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
     await completeAMBStep1(page);
 
     // On step 2, try to proceed without selecting SKOS values
-    // Wait for SKOS dropdowns to load
     await expect(page.locator('text=Resource Type').first()).toBeVisible({ timeout: 10000 });
 
     // Click Next without selecting anything
@@ -515,7 +522,7 @@ test.describe('AMB Resource Creation - Navigation', () => {
     await page.goto('/');
     await clearSKOSCache(page);
 
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
     await completeAMBStep1(page, { title: uniqueTitle, description: 'Tab verification test' });
     await completeAMBStep2(page);
     await completeAMBStep3(page);
@@ -523,12 +530,18 @@ test.describe('AMB Resource Creation - Navigation', () => {
 
     await expect(page).toHaveURL(/\/naddr1/, { timeout: 20000 });
 
-    // Navigate back to community Learning tab
+    // Wait for publish status toast to confirm relay delivery
+    await expect(page.getByText(/Published to \d+ relay/)).toBeVisible({ timeout: 15000 });
+
+    // Wait for AMB relay Typesense indexing before navigating to community page.
+    // The relay uses Typesense for search indexing which has a processing delay.
+    await verifyAMBResourceOnRelay({ author: TEST_AUTHOR.pubkey, title: uniqueTitle }, 20000);
+
+    // Navigate to community Learning tab
     await page.goto(`/c/${TEST_COMMUNITY.npub}`);
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(3000);
 
     await page.locator('nav.menu button', { hasText: 'Learning' }).click();
-    await page.waitForTimeout(3000);
 
     // The newly created resource should appear in the list
     await expect(page.locator(`text=${uniqueTitle}`).first()).toBeVisible({ timeout: 15000 });
@@ -538,7 +551,7 @@ test.describe('AMB Resource Creation - Navigation', () => {
     await page.goto('/');
     await clearSKOSCache(page);
 
-    await openAMBCreationModal(page, TEST_COMMUNITY.npub);
+    await navigateToAMBCreation(page, TEST_COMMUNITY.npub);
 
     const testTitle = 'Preserved Title Test';
     await page.locator('#amb-title').fill(testTitle);
