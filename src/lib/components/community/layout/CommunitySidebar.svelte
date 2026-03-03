@@ -80,7 +80,7 @@
     <!-- Discover Communities Button -->
     <div class="tooltip tooltip-right" data-tip={m.community_layout_sidebar_discover_communities()}>
       <a
-        href={resolve('/discover')}
+        href={resolve('/discover?type=communities')}
         class="btn btn-circle h-10 w-10 btn-ghost btn-sm"
         aria-label={m.community_layout_sidebar_discover_communities()}
       >
@@ -151,7 +151,7 @@
     {#if joinedCommunities.length === 0}
       <div class="py-8 text-center text-base-content/60">
         <p class="mb-3 text-sm">{m.community_layout_sidebar_no_communities()}</p>
-        <a href={resolve('/discover')} class="btn btn-sm btn-primary">
+        <a href={resolve('/discover?type=communities')} class="btn btn-sm btn-primary">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             class="h-4 w-4"
@@ -174,7 +174,7 @@
 
   <!-- Action Buttons -->
   <div class="space-y-2 border-t border-base-300 p-4">
-    <a href={resolve('/discover')} class="btn w-full gap-2 btn-outline">
+    <a href={resolve('/discover?type=communities')} class="btn w-full gap-2 btn-outline">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         class="h-4 w-4"
