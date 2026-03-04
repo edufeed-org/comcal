@@ -2,8 +2,10 @@
   import CalendarView from '$lib/components/calendar/CalendarView.svelte';
   import ArticleView from '$lib/components/article/ArticleView.svelte';
   import AMBResourceView from '$lib/components/educational/AMBResourceView.svelte';
+  import KanbanBoardView from '$lib/components/kanban/KanbanBoardView.svelte';
   import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
   import { formatAMBResource } from '$lib/helpers/educational';
+  import { getTagValue } from 'applesauce-core/helpers';
 
   /** @type {{ data: any }} */
   let { data } = $props();
@@ -38,6 +40,14 @@
       };
     }
 
+    // Kanban board (kind 30301)
+    if (data.kind === 30301) {
+      return {
+        type: 'kanban',
+        event: data.event
+      };
+    }
+
     // Unsupported kind
     return {
       type: 'unsupported',
@@ -54,6 +64,12 @@
       return `${titleTag?.[1] || 'Article'} - Communikey`;
     } else if (displayData?.type === 'amb') {
       return `${displayData.resource?.name || 'Educational Resource'} - Communikey`;
+    } else if (displayData?.type === 'kanban') {
+      const boardTitle =
+        getTagValue(displayData.event, 'title') ||
+        getTagValue(displayData.event, 'name') ||
+        'Kanban Board';
+      return `${boardTitle} - Communikey`;
     }
     return 'Content - Communikey';
   });
@@ -78,6 +94,9 @@
   {:else if displayData?.type === 'amb'}
     <!-- AMB Resource Display -->
     <AMBResourceView event={displayData.event} resource={displayData.resource} />
+  {:else if displayData?.type === 'kanban'}
+    <!-- Kanban Board Preview -->
+    <KanbanBoardView event={displayData.event} />
   {:else if displayData?.type === 'unsupported'}
     <!-- Unsupported Content Type -->
     <div class="alert alert-warning">

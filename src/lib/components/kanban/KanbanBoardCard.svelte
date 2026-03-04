@@ -1,0 +1,169 @@
+<!--
+  KanbanBoardCard Component
+  Displays kanban board (kind 30301) preview in card or list format.
+  Links to external kanban editor for full interaction.
+-->
+
+<script>
+  import { getDisplayName, getProfilePicture, getTagValue } from 'applesauce-core/helpers';
+  import { formatCalendarDate } from '$lib/helpers/calendar.js';
+  import ReactionBar from '../reactions/ReactionBar.svelte';
+  import EventDebugPanel from '../shared/EventDebugPanel.svelte';
+  import { KanbanIcon } from '$lib/components/icons';
+  import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
+  import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
+  import * as m from '$lib/paraglide/messages';
+
+  /**
+   * @typedef {Object} Props
+   * @property {any} board - Board event (kind 30301)
+   * @property {any} [authorProfile] - Author's profile
+   * @property {boolean} [compact=false] - Compact display mode
+   * @property {'card'|'list'} [variant='card'] - Display variant
+   */
+
+  /** @type {Props} */
+  let { board, authorProfile = null, compact = false, variant = 'card' } = $props();
+
+  const isList = $derived(variant === 'list');
+
+  const title = $derived(
+    getTagValue(board, 'title') || getTagValue(board, 'name') || 'Untitled Board'
+  );
+  const description = $derived(getTagValue(board, 'description') || '');
+
+  // Extract column names from 'col' tags
+  const columns = $derived.by(() => {
+    return (
+      board.tags
+        ?.filter((/** @type {any} */ t) => t[0] === 'col')
+        .map((/** @type {any} */ t) => ({ id: t[1], name: t[2] || t[1] })) || []
+    );
+  });
+
+  const publishedAt = $derived(new Date(board.created_at * 1000));
+
+  const authorName = $derived(getDisplayName(authorProfile, board.pubkey.slice(0, 8) + '...'));
+  const authorAvatar = $derived(
+    getProfilePicture(authorProfile) || `https://robohash.org/${board.pubkey}`
+  );
+
+  // Generate naddr for the board
+  const boardNaddr = $derived.by(() => {
+    return encodeEventToNaddr(board) || null;
+  });
+
+  // Truncated description for display
+  const truncatedDescription = $derived.by(() => {
+    if (!description) return '';
+    return description.length > 200 ? description.slice(0, 200) + '...' : description;
+  });
+
+  // Max columns to show in preview
+  const MAX_PREVIEW_COLUMNS = 5;
+  const visibleColumns = $derived(columns.slice(0, MAX_PREVIEW_COLUMNS));
+  const extraColumnCount = $derived(Math.max(0, columns.length - MAX_PREVIEW_COLUMNS));
+</script>
+
+{#if isList}
+  <!-- List variant: horizontal row -->
+  <button
+    type="button"
+    class="kanban-card-list focus:ring-opacity-50 flex w-full items-center gap-3 rounded-lg border border-base-300 bg-base-100 p-3 text-left transition-shadow hover:border-primary hover:shadow-sm focus:ring-2 focus:ring-primary focus:outline-none"
+    onclick={() => boardNaddr && goto(resolve('/' + boardNaddr))}
+  >
+    <div class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded bg-base-200">
+      <KanbanIcon class_="w-8 h-8 text-base-content/30" />
+    </div>
+    <div class="min-w-0 flex-1">
+      <div class="truncate font-semibold text-base-content">{title}</div>
+      <div class="truncate text-sm text-base-content/60">
+        {authorName} · {formatCalendarDate(publishedAt, 'short')}
+        {#if columns.length > 0}
+          · {m.kanban_board_columns({ count: columns.length })}
+        {/if}
+      </div>
+      {#if truncatedDescription}
+        <div class="truncate text-sm text-base-content/50">{truncatedDescription}</div>
+      {/if}
+    </div>
+  </button>
+{:else}
+  <!-- Card variant: vertical layout -->
+  <div
+    class="kanban-card rounded-lg border border-base-300 bg-base-100 shadow-sm {compact
+      ? 'p-3'
+      : 'p-4'}"
+  >
+    <!-- Author Header -->
+    <div class="mb-3 flex items-center gap-3">
+      <div class="avatar">
+        <div class="h-10 w-10 rounded-full">
+          <img src={authorAvatar} alt={authorName} />
+        </div>
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="truncate font-medium text-base-content">{authorName}</div>
+        <div class="text-sm text-base-content/60">
+          {formatCalendarDate(publishedAt, 'short')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Board Content -->
+    <div class="space-y-2">
+      <!-- Title -->
+      <h2 class="line-clamp-2 text-xl font-bold text-base-content {compact ? 'text-lg' : ''}">
+        {title}
+      </h2>
+
+      <!-- Description -->
+      {#if truncatedDescription && !compact}
+        <p class="line-clamp-3 text-sm text-base-content/70">
+          {truncatedDescription}
+        </p>
+      {/if}
+
+      <!-- Column Preview -->
+      {#if columns.length > 0 && !compact}
+        <div class="flex flex-wrap gap-1.5">
+          {#each visibleColumns as col (col.id)}
+            <span class="badge badge-outline badge-sm">{col.name}</span>
+          {/each}
+          {#if extraColumnCount > 0}
+            <span class="badge badge-ghost badge-sm">+{extraColumnCount}</span>
+          {/if}
+        </div>
+      {/if}
+
+      <!-- Open Board Button -->
+      {#if boardNaddr}
+        <div class="pt-2">
+          <button class="btn btn-sm btn-primary" onclick={() => goto(resolve('/' + boardNaddr))}>
+            {m.kanban_board_open()}
+          </button>
+        </div>
+      {/if}
+
+      <!-- Reactions -->
+      {#if !compact}
+        <div class="pt-2">
+          <ReactionBar event={board} />
+        </div>
+      {/if}
+
+      <!-- Debug Panel -->
+      {#if !compact}
+        <EventDebugPanel event={board} />
+      {/if}
+    </div>
+  </div>
+{/if}
+
+<style>
+  .kanban-card {
+    display: flex;
+    flex-direction: column;
+  }
+</style>
