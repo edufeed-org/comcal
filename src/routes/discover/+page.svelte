@@ -34,6 +34,7 @@
   import CommunityFilterDropdown from '$lib/components/feed/CommunityFilterDropdown.svelte';
   import RelayFilterDropdown from '$lib/components/feed/RelayFilterDropdown.svelte';
   import { getAppRelaysForCategory } from '$lib/services/app-relay-service.svelte.js';
+  import { getCuratedAuthors } from '$lib/services/curated-authors-service.svelte.js';
   import { getSeenRelays } from 'applesauce-core/helpers/relays';
   import { normalizeURL } from 'applesauce-core/helpers';
   import CommunikeyCard from '$lib/components/CommunikeyCard.svelte';
@@ -50,7 +51,10 @@
   import { updateQueryParams, parseFeedFilters } from '$lib/helpers/urlParams.js';
   import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
   import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte.js';
-  import { useAllCommunities } from '$lib/stores/all-communities.svelte.js';
+  import {
+    useAllCommunities,
+    useAllCommunitiesLoaded
+  } from '$lib/stores/all-communities.svelte.js';
   import { manager } from '$lib/stores/accounts.svelte';
   import { modalStore } from '$lib/stores/modal.svelte.js';
   import {
@@ -230,8 +234,10 @@
   // Community hooks
   const getJoinedCommunities = useJoinedCommunitiesList();
   const getAllCommunities = useAllCommunities();
+  const getCommunitiesLoaded = useAllCommunitiesLoaded();
   const joinedCommunities = $derived(getJoinedCommunities());
   const allCommunities = $derived(getAllCommunities());
+  const communitiesLoaded = $derived(getCommunitiesLoaded());
 
   // Communities state for the Communities tab - derived from allCommunities
   const communities = $derived(allCommunities || []);
@@ -435,17 +441,19 @@
   $effect(() => {
     /** @type {import('rxjs').Subscription[]} */
     const supplementalSubs = [];
+    const curatedAuthorsList = getCuratedAuthors();
 
     const currentEducational = getEducationalRelays();
     const newEducational = currentEducational.filter((r) => !initialEducationalRelays.has(r));
     if (newEducational.length > 0) {
       newEducational.forEach((r) => initialEducationalRelays.add(r));
-      const loader = createTimelineLoader(
-        timedPool,
-        newEducational,
-        { kinds: [30142] },
-        { eventStore, limit: BATCH_SIZE }
-      );
+      /** @type {any} */
+      const eduFilter = { kinds: [30142] };
+      if (curatedAuthorsList) eduFilter.authors = curatedAuthorsList;
+      const loader = createTimelineLoader(timedPool, newEducational, eduFilter, {
+        eventStore,
+        limit: BATCH_SIZE
+      });
       supplementalSubs.push(loader().subscribe());
     }
 
@@ -453,12 +461,13 @@
     const newArticle = currentArticle.filter((r) => !initialArticleRelays.has(r));
     if (newArticle.length > 0) {
       newArticle.forEach((r) => initialArticleRelays.add(r));
-      const loader = createTimelineLoader(
-        timedPool,
-        newArticle,
-        { kinds: [30023] },
-        { eventStore, limit: BATCH_SIZE }
-      );
+      /** @type {any} */
+      const artFilter = { kinds: [30023] };
+      if (curatedAuthorsList) artFilter.authors = curatedAuthorsList;
+      const loader = createTimelineLoader(timedPool, newArticle, artFilter, {
+        eventStore,
+        limit: BATCH_SIZE
+      });
       supplementalSubs.push(loader().subscribe());
     }
 
@@ -466,12 +475,10 @@
     const newCalendar = currentCalendar.filter((r) => !initialCalendarRelays.has(r));
     if (newCalendar.length > 0) {
       newCalendar.forEach((r) => initialCalendarRelays.add(r));
-      const loader = createTimelineLoader(
-        timedPool,
-        newCalendar,
-        { kinds: [31922, 31923], limit: 40 },
-        { eventStore }
-      );
+      /** @type {any} */
+      const calFilter = { kinds: [31922, 31923], limit: 40 };
+      if (curatedAuthorsList) calFilter.authors = curatedAuthorsList;
+      const loader = createTimelineLoader(timedPool, newCalendar, calFilter, { eventStore });
       supplementalSubs.push(loader().subscribe());
     }
 
@@ -479,6 +486,7 @@
     const newCommunikey = currentCommunikey.filter((r) => !initialCommunikeyRelays.has(r));
     if (newCommunikey.length > 0) {
       newCommunikey.forEach((r) => initialCommunikeyRelays.add(r));
+      // Targeted publications (kind 30222) are social actions — not filtered by curated mode
       const loader = createTimelineLoader(
         timedPool,
         newCommunikey,
@@ -862,8 +870,10 @@
             /** @type {Set<string>} */
             const batchEventIds = new Set(); // eslint-disable-line svelte/prefer-svelte-reactivity
 
-            /** @type {import('nostr-tools').Filter} */
+            /** @type {any} */
             const paginationFilter = { kinds: [30142] };
+            const curatedAuthorsList = getCuratedAuthors();
+            if (curatedAuthorsList) paginationFilter.authors = curatedAuthorsList;
 
             // Use this relay's specific oldest timestamp (if we've seen events from it)
             // Subtract 1 to exclude events AT that timestamp (already fetched in previous batch)
@@ -1454,7 +1464,7 @@
   <div class="container mx-auto px-4 py-8">
     {#if contentType === 'communities'}
       <!-- Communities Grid -->
-      {#if communities.length === 0}
+      {#if communities.length === 0 && !communitiesLoaded}
         <div class="flex justify-center py-12">
           <div class="text-center">
             <div class="loading loading-lg loading-spinner text-primary"></div>
