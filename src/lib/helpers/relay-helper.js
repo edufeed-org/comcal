@@ -85,3 +85,19 @@ export function getAllLookupRelays() {
     ...getFallbackRelays()
   ];
 }
+
+/**
+ * Get relays optimized for profile (kind 0) lookups.
+ * Always includes indexer relays and relayListLookupRelays (even in gated mode)
+ * since these provide identity resolution, not content.
+ * @returns {string[]}
+ */
+export function getProfileLookupRelays() {
+  const relays = [
+    ...(runtimeConfig.indexerRelays || []),
+    ...(runtimeConfig.relayListLookupRelays || []),
+    ...getAppRelaysForCategory('communikey'),
+    ...getFallbackRelays()
+  ];
+  return [...new Set(relays)];
+}

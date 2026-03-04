@@ -10,6 +10,8 @@
  * @see https://dini-ag-kim.github.io/amb/latest/ - AMB Specification
  */
 
+import { extractLabelFromUri } from './skosLoader.js';
+
 /**
  * Converts flattened Nostr tags (from kind 30142 event) back to nested AMB metadata structure
  *
@@ -370,6 +372,7 @@ export function getPrefLabelWithFallback(tags, prefix, userLang = 'en') {
  * @param {Array<Array<string>>} tags - Array of Nostr tags
  * @param {string} prefix - The tag prefix (e.g., 'about', 'learningResourceType')
  * @param {string} [userLang='en'] - User's preferred language code
+ * @param {import('$lib/helpers/educational/skosLoader.js').SKOSConcept[] | null} [concepts=null] - Optional SKOS concepts for URI resolution
  * @returns {Array<{id: string, label: string}>} Array of objects with id and language-aware label
  *
  * @example
@@ -379,7 +382,7 @@ export function getPrefLabelWithFallback(tags, prefix, userLang = 'en') {
  * getLabelsWithFallback(tags, 'about', 'de')
  * // Returns [{id: "http://example.org/math", label: "Mathematik"}, {id: "http://example.org/physics", label: "Physik"}]
  */
-export function getLabelsWithFallback(tags, prefix, userLang = 'en') {
+export function getLabelsWithFallback(tags, prefix, userLang = 'en', concepts = null) {
   const idTagName = `${prefix}:id`;
   const userLangTagName = `${prefix}:prefLabel:${userLang}`;
   const enTagName = `${prefix}:prefLabel:en`;
@@ -402,9 +405,21 @@ export function getLabelsWithFallback(tags, prefix, userLang = 'en') {
       label = enLabels[index];
     }
 
-    // Final fallback to ID
+    // Fallback to SKOS concept lookup
+    if (!label && concepts) {
+      const concept = concepts.find((c) => c.id === id);
+      if (concept) {
+        label =
+          concept.labels[userLang] ||
+          concept.labels.de ||
+          concept.labels.en ||
+          Object.values(concept.labels)[0];
+      }
+    }
+
+    // Fallback to extracting readable label from URI
     if (!label) {
-      label = id;
+      label = extractLabelFromUri(id);
     }
 
     return { id, label };

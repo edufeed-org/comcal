@@ -29,8 +29,8 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 # Copy package files and lockfile
 COPY package.json pnpm-lock.yaml ./
 
-# Install production dependencies only
-RUN pnpm install --frozen-lockfile --prod
+# Install production dependencies only (--ignore-scripts skips husky prepare hook)
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # Copy built application from builder
 COPY --from=builder /app/build ./build

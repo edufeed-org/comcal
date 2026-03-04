@@ -35,8 +35,10 @@ baseTest.describe('Chat Posting - Unauthenticated', () => {
   baseTest('chat input is hidden for unauthenticated users', async ({ page }) => {
     await navigateToChatTab(page);
 
-    // Login prompt should be visible instead of input
-    await expect(page.getByText(/login|anmelden/i)).toBeVisible({ timeout: 5000 });
+    // Login prompt should be visible instead of input (use .first() for responsive layout)
+    await expect(page.getByText(/sign in to participate|anmelden/i).first()).toBeVisible({
+      timeout: 5000
+    });
 
     // Chat input should NOT be visible
     const input = page.locator('input[placeholder*="message"], textarea');

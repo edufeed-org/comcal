@@ -320,8 +320,7 @@
     dateRangeLoaderSub?.unsubscribe();
     const loader = createDateRangeCalendarLoader({
       startAfter: range.start,
-      startBefore: range.end,
-      endAfter: range.start // Include events that are still ongoing
+      startBefore: range.end
     });
     dateRangeLoaderSub = loader().subscribe({
       error: (err) => console.error('🔍 Discover: Date range loader error:', err)
@@ -406,8 +405,7 @@
   // Uses createDateRangeCalendarLoader with full NIP-52 filter support
   const initialCalendarLoader = createDateRangeCalendarLoader({
     startAfter: eventsDateRangeStart,
-    startBefore: eventsDateRangeEnd,
-    endAfter: eventsDateRangeStart // Include events that are still ongoing
+    startBefore: eventsDateRangeEnd
   });
   const initialCalendarSub = initialCalendarLoader().subscribe({
     complete: () => {

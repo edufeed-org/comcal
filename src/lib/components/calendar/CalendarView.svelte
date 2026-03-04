@@ -219,8 +219,7 @@
       const loader = createDateRangeCalendarLoader(
         {
           startAfter: start,
-          startBefore: end,
-          endAfter: start // Include events still ongoing
+          startBefore: end
         },
         { authors }
       );

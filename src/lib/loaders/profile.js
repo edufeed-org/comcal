@@ -3,17 +3,9 @@
  */
 import { createAddressLoader, createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { runtimeConfig } from '$lib/stores/config.svelte.js';
+import { getProfileLookupRelays } from '$lib/helpers/relay-helper.js';
 import { getProfileContent } from 'applesauce-core/helpers';
 import { take, map } from 'rxjs';
-
-/**
- * Get profile lookup relays
- * @returns {string[]}
- */
-function getProfileRelays() {
-  return [...(runtimeConfig.relayListLookupRelays || []), ...(runtimeConfig.fallbackRelays || [])];
-}
 
 // Profile loader with purplepag.es relay for enhanced profile discovery
 export const profileLoader = createAddressLoader(pool, {
@@ -28,7 +20,7 @@ export const profileLoader = createAddressLoader(pool, {
  * @returns {import('rxjs').Observable<any>} Observable that emits the profile content
  */
 export function loadUserProfile(kind, pubkey) {
-  return profileLoader({ kind, pubkey, relays: getProfileRelays() }).pipe(
+  return profileLoader({ kind, pubkey, relays: getProfileLookupRelays() }).pipe(
     // Take only the first (most recent) profile
     take(1),
     map((event) => getProfileContent(event))
@@ -44,7 +36,7 @@ export function loadUserProfile(kind, pubkey) {
 export function kind1Loader(pubkey, limit) {
   return createTimelineLoader(
     pool,
-    getProfileRelays(),
+    getProfileLookupRelays(),
     {
       kinds: [1],
       authors: [pubkey],

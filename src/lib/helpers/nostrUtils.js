@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { getSeenRelays } from 'applesauce-core/helpers';
 import { getCalendarEventStart } from 'applesauce-common/helpers';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte.js';
+import { parseCalendarTimestamp } from '$lib/helpers/calendar.js';
 
 /**
  * Parse a Nostr 'a' tag value into an AddressPointer
@@ -295,8 +296,9 @@ export const fetchCalendarEvents = async (calendarEvent) => {
         return null; // Skip deleted events
       }
 
-      const startTime = parseInt(
-        event.tags.find((/** @type {string[]} */ t) => t[0] === 'start')?.[1] || '0'
+      const startTime = parseCalendarTimestamp(
+        event.tags.find((/** @type {string[]} */ t) => t[0] === 'start')?.[1],
+        event.kind
       );
 
       return { event, startTime };

@@ -53,10 +53,22 @@ const BASE = NOW - 30 * 24 * 3600; // 30 days ago
 const DAY_SECONDS = 24 * 60 * 60;
 
 /**
+ * Format a Date as ISO 8601 date string (YYYY-MM-DD) for NIP-52 kind 31922
+ * @param {Date} date
+ * @returns {string}
+ */
+function formatISODate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
  * Get the start of the current month as a Unix timestamp (seconds)
  * @returns {number}
  */
-function getStartOfCurrentMonth() {
+function _getStartOfCurrentMonth() {
   const now = new Date();
   return Math.floor(new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000);
 }
@@ -74,7 +86,7 @@ function getStartOfNextMonth() {
  * Get the start of previous month as a Unix timestamp (seconds)
  * @returns {number}
  */
-function getStartOfPreviousMonth() {
+function _getStartOfPreviousMonth() {
   const now = new Date();
   return Math.floor(new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime() / 1000);
 }
@@ -203,18 +215,19 @@ export function generateTestEvents() {
   }
 
   // 25 kind 31922 date-based calendar events
+  // NIP-52: kind 31922 uses ISO 8601 date strings (YYYY-MM-DD) for start/end
   // Track first event for comments/reactions
   let firstCalendarEvent = null;
   for (let i = 0; i < 25; i++) {
     const a = contentAuthors[i % AUTHOR_COUNT];
-    const startTs = NOW + (i + 1) * 86400; // future dates
+    const startDate = new Date((NOW + (i + 1) * 86400) * 1000); // future dates
     const event = make(
       a,
       31922,
       [
         ['d', `date-event-${i}`],
         ['title', `Date Event: ${subjects[i % subjects.length]} Workshop #${i}`],
-        ['start', String(startTs)],
+        ['start', formatISODate(startDate)],
         ['t', 'workshop']
       ],
       `Workshop about ${subjects[i % subjects.length]}`,
@@ -248,13 +261,20 @@ export function generateTestEvents() {
 
   // === Date Range Test Events ===
   // These events have specific dates for testing date range filtering
+  // Kind 31922 (date-based) uses ISO 8601 date strings per NIP-52
+  // Kind 31923 (time-based) uses Unix timestamps per NIP-52
 
-  const currentMonthStart = getStartOfCurrentMonth();
-  const nextMonthStart = getStartOfNextMonth();
-  const previousMonthStart = getStartOfPreviousMonth();
+  const now = new Date();
   const currentMonthEnd = getEndOfCurrentMonth();
+  const nextMonthStart = getStartOfNextMonth();
+
+  // Date helpers for kind 31922 (date-based) events
+  const previousMonth10th = new Date(now.getFullYear(), now.getMonth() - 1, 10);
+  const currentMonth15th = new Date(now.getFullYear(), now.getMonth(), 15);
+  const nextMonth6th = new Date(now.getFullYear(), now.getMonth() + 1, 6);
 
   // Event in the previous month (should NOT appear in current month view)
+  // Kind 31922: start tag uses ISO 8601 date string per NIP-52
   events.push(
     make(
       contentAuthors[0],
@@ -262,7 +282,7 @@ export function generateTestEvents() {
       [
         ['d', 'date-range-past-month'],
         ['title', 'Past Month Event: History Seminar'],
-        ['start', String(previousMonthStart + 10 * DAY_SECONDS)], // 10th of previous month
+        ['start', formatISODate(previousMonth10th)], // e.g. "2026-02-10"
         ['t', 'daterange-test'],
         ['t', 'past-month']
       ],
@@ -272,6 +292,7 @@ export function generateTestEvents() {
   );
 
   // Event in the current month (should appear in current month view)
+  // Kind 31922: start tag uses ISO 8601 date string per NIP-52
   events.push(
     make(
       contentAuthors[1],
@@ -279,7 +300,7 @@ export function generateTestEvents() {
       [
         ['d', 'date-range-current-month'],
         ['title', 'Current Month Event: Science Fair'],
-        ['start', String(currentMonthStart + 15 * DAY_SECONDS)], // 15th of current month
+        ['start', formatISODate(currentMonth15th)], // e.g. "2026-03-15"
         ['t', 'daterange-test'],
         ['t', 'current-month']
       ],
@@ -289,6 +310,7 @@ export function generateTestEvents() {
   );
 
   // Event in the next month (should NOT appear in current month view, but appear after navigation)
+  // Kind 31922: start tag uses ISO 8601 date string per NIP-52
   events.push(
     make(
       contentAuthors[2],
@@ -296,7 +318,7 @@ export function generateTestEvents() {
       [
         ['d', 'date-range-next-month'],
         ['title', 'Next Month Event: Art Exhibition'],
-        ['start', String(nextMonthStart + 5 * DAY_SECONDS)], // 5th of next month
+        ['start', formatISODate(nextMonth6th)], // e.g. "2026-04-06"
         ['t', 'daterange-test'],
         ['t', 'next-month']
       ],
@@ -306,6 +328,7 @@ export function generateTestEvents() {
   );
 
   // Multi-day event spanning from current month to next month
+  // Kind 31923 (time-based): uses Unix timestamps per NIP-52
   // Starts 2 days before month end, ends 2 days into next month
   events.push(
     make(

@@ -22,10 +22,10 @@ test.describe('Calendar date range filtering', () => {
       await page.waitForTimeout(2000); // Extra time for events to render
 
       // Current month event should be visible (or spanning event as fallback)
-      // The spanning event starts 2 days before month end and may appear
+      // Use .first() because both events may be visible simultaneously
       const currentMonthEvent = page.getByText(DATE_RANGE_TEST_EVENTS.currentMonth.title);
       const spanningEvent = page.getByText(DATE_RANGE_TEST_EVENTS.spanning.title);
-      await expect(currentMonthEvent.or(spanningEvent)).toBeVisible({ timeout: 15_000 });
+      await expect(currentMonthEvent.or(spanningEvent).first()).toBeVisible({ timeout: 15_000 });
     });
 
     test('navigating to next month loads new events', async ({ page }) => {
@@ -41,10 +41,10 @@ test.describe('Calendar date range filtering', () => {
       await page.waitForTimeout(3000);
 
       // Next month event or spanning event should be visible
-      // The spanning event extends 2 days into next month
+      // Use .first() because both events may be visible simultaneously
       const nextMonthEvent = page.getByText(DATE_RANGE_TEST_EVENTS.nextMonth.title);
       const spanningEvent = page.getByText(DATE_RANGE_TEST_EVENTS.spanning.title);
-      await expect(nextMonthEvent.or(spanningEvent)).toBeVisible({ timeout: 15_000 });
+      await expect(nextMonthEvent.or(spanningEvent).first()).toBeVisible({ timeout: 15_000 });
     });
 
     test('navigating to previous month loads past events', async ({ page }) => {
@@ -89,8 +89,10 @@ test.describe('Calendar date range filtering', () => {
         await weekButton.click();
         await page.waitForTimeout(2000);
 
-        // Week view should render something
-        await expect(page.locator('.calendar-grid, .calendar-event-bar').first()).toBeVisible({
+        // Week view should render the grid with 7 day columns and event cards/bars
+        await expect(
+          page.locator('.calendar-event-bar, .calendar-event-card, .grid-cols-7').first()
+        ).toBeVisible({
           timeout: 5000
         });
       }
@@ -108,8 +110,10 @@ test.describe('Calendar date range filtering', () => {
         await dayButton.click();
         await page.waitForTimeout(2000);
 
-        // Day view should show events for a single day
-        await expect(page.locator('.calendar-grid, .calendar-event-bar').first()).toBeVisible({
+        // Day view should render with single column grid and event cards/bars
+        await expect(
+          page.locator('.calendar-event-bar, .calendar-event-card, .grid-cols-1').first()
+        ).toBeVisible({
           timeout: 5000
         });
       }
@@ -138,7 +142,9 @@ test.describe('Calendar date range filtering', () => {
           // Events should still be visible (current month or spanning event)
           const currentMonthEvent = page.getByText(DATE_RANGE_TEST_EVENTS.currentMonth.title);
           const spanningEvent = page.getByText(DATE_RANGE_TEST_EVENTS.spanning.title);
-          await expect(currentMonthEvent.or(spanningEvent)).toBeVisible({ timeout: 15_000 });
+          await expect(currentMonthEvent.or(spanningEvent).first()).toBeVisible({
+            timeout: 15_000
+          });
         }
       }
     });

@@ -6,7 +6,6 @@
   import CalendarEventDetailsModal from './calendar/CalendarEventDetailsModal.svelte';
   import CalendarCreationModal from './calendar/CalendarCreationModal.svelte';
   import CalendarEventModal from './calendar/CalendarEventModal.svelte';
-  import AMBUploadModal from './educational/AMBUploadModal.svelte';
   import CreateCommunityModal from './CreateCommunityModal.svelte';
   import EditCommunityModal from './EditCommunityModal.svelte';
   import WebcalQRCodeModal from './calendar/WebcalQRCodeModal.svelte';
@@ -176,6 +175,4 @@
   <CalendarCreationModal />
 {:else if modal.activeModal === 'calendarEvent'}
   <CalendarEventModal />
-{:else if modal.activeModal === 'ambUpload'}
-  <AMBUploadModal />
 {/if}

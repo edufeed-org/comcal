@@ -8,7 +8,7 @@ import { createContactListLoader } from '$lib/loaders/contact-list-loader.js';
 import { ContactsModel } from '$lib/models/contacts-model.js';
 import { getWriteRelays } from '$lib/services/relay-service.svelte.js';
 import { profileLoader } from '$lib/loaders/profile.js';
-import { runtimeConfig } from './config.svelte.js';
+import { getProfileLookupRelays } from '$lib/helpers/relay-helper.js';
 
 /**
  * @typedef {import('$lib/models/contacts-model.js').EnrichedContact} EnrichedContact
@@ -74,14 +74,14 @@ export const contactsStore = {
                 .filter((/** @type {string[]} */ t) => t[0] === 'p')
                 .map((/** @type {string[]} */ t) => t[1]);
 
-              // Load profiles using configured indexer relays
-              const indexerRelays = runtimeConfig.indexerRelays;
-              if (indexerRelays.length > 0) {
+              // Load profiles using profile lookup relays
+              const relays = getProfileLookupRelays();
+              if (relays.length > 0) {
                 pubkeys.forEach((pubkey) => {
                   const profileSub = profileLoader({
                     kind: 0,
                     pubkey,
-                    relays: indexerRelays
+                    relays
                   }).subscribe();
                   activeSubscriptions.push(profileSub);
                 });

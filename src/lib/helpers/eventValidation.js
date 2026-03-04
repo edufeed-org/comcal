@@ -8,6 +8,8 @@
  * - Invalid events are logged with warnings for debugging
  */
 
+import { parseCalendarTimestamp } from '$lib/helpers/calendar.js';
+
 /**
  * Get a single tag value from event
  * @param {any} event - Nostr event
@@ -66,6 +68,18 @@ function isValidTimestamp(value) {
 }
 
 /**
+ * Validate ISO 8601 date string (YYYY-MM-DD) for NIP-52 kind 31922
+ * @param {string | undefined} value - Value to validate
+ * @returns {boolean} True if valid date string
+ */
+function isValidDateString(value) {
+  if (!value || typeof value !== 'string') return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(value + 'T00:00:00Z');
+  return !isNaN(date.getTime());
+}
+
+/**
  * Validate IANA timezone identifier
  * @param {string | undefined} value - Timezone value to validate
  * @returns {boolean} True if valid timezone
@@ -107,24 +121,31 @@ function validateKind31922(event) {
   // }
 
   const start = getTagValue(event, 'start');
-  if (!isValidTimestamp(start)) {
-    // console.warn(`📅 Validation: Event ${eventId} has invalid 'start' timestamp:`, start);
+  // Kind 31922 uses ISO 8601 date strings (YYYY-MM-DD) per NIP-52
+  const isDateBased = event.kind === 31922;
+  if (isDateBased) {
+    if (!isValidDateString(start) && !isValidTimestamp(start)) {
+      return false;
+    }
+  } else if (!isValidTimestamp(start)) {
     return false;
   }
 
   // Validate optional fields if present (reject if malformed)
   const end = getTagValue(event, 'end');
   if (end !== undefined) {
-    if (!isValidTimestamp(end)) {
-      // console.warn(`📅 Validation: Event ${eventId} has invalid 'end' timestamp:`, end);
+    if (isDateBased) {
+      if (!isValidDateString(end) && !isValidTimestamp(end)) {
+        return false;
+      }
+    } else if (!isValidTimestamp(end)) {
       return false;
     }
-    // End should be >= start
+    // End should be >= start (compare as parsed timestamps)
     if (start) {
-      const startNum = parseInt(start, 10);
-      const endNum = parseInt(end, 10);
+      const startNum = parseCalendarTimestamp(start, event.kind);
+      const endNum = parseCalendarTimestamp(end, event.kind);
       if (endNum < startNum) {
-        // console.warn(`📅 Validation: Event ${eventId} has 'end' before 'start'`);
         return false;
       }
     }

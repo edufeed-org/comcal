@@ -10,6 +10,33 @@ import { runtimeConfig } from '$lib/stores/config.svelte.js';
  * @typedef {import('../types/calendar.js').EventFormData} EventFormData
  */
 
+/** ISO 8601 date pattern for NIP-52 kind 31922 (date-based) events */
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Parse a NIP-52 calendar event time value to a Unix timestamp (seconds).
+ * Handles both formats per NIP-52 spec:
+ * - Kind 31922 (date-based): ISO 8601 date string "YYYY-MM-DD" → midnight UTC
+ * - Kind 31923 (time-based): Unix timestamp string "1704067200"
+ *
+ * @param {string | undefined} value - The tag value to parse
+ * @param {number} [eventKind] - Optional event kind for format hints
+ * @returns {number} Unix timestamp in seconds, or 0 if invalid
+ */
+export function parseCalendarTimestamp(value, _eventKind) {
+  if (!value) return 0;
+
+  // Date-based format: "YYYY-MM-DD" → midnight UTC
+  if (ISO_DATE_PATTERN.test(value)) {
+    const date = new Date(value + 'T00:00:00Z');
+    return isNaN(date.getTime()) ? 0 : Math.floor(date.getTime() / 1000);
+  }
+
+  // Time-based format: Unix timestamp string
+  const num = parseInt(value, 10);
+  return isNaN(num) ? 0 : num;
+}
+
 /**
  * Format a date for calendar display using configured locale
  * @param {Date} date - Date to format
@@ -157,8 +184,8 @@ export function groupEventsByDate(events) {
 
     // Validate that start is a valid number
     const startTimestamp =
-      typeof event.start === 'number' ? event.start : parseInt(event.start, 10);
-    if (isNaN(startTimestamp)) {
+      typeof event.start === 'number' ? event.start : parseCalendarTimestamp(String(event.start));
+    if (!startTimestamp) {
       console.warn(
         '📅 groupEventsByDate: Invalid event start timestamp:',
         event.start,
@@ -680,6 +707,97 @@ export async function fetchCommunityCalendarEvents(communityPubkey, relays = [])
 }
 
 /**
+ * Build NIP-52 compliant tags for a calendar event.
+ * Pure function — no signing, no publishing, no stores.
+ *
+ * @param {EventFormData} formData - Raw form data (startDate as "YYYY-MM-DD")
+ * @param {Partial<CalendarEvent>} eventData - Converted event data from convertFormDataToEvent
+ * @param {string} dTag - The d-tag identifier
+ * @param {string} [hTag] - Optional community h-tag
+ * @returns {string[][]} Array of NIP-52 compliant tags
+ */
+export function buildCalendarEventTags(formData, eventData, dTag, hTag) {
+  /** @type {string[][]} */
+  const tags = [];
+
+  // d-tag (addressable/replaceable event identifier)
+  tags.push(['d', dTag]);
+
+  // h-tag for community targeting (Communikey spec)
+  if (hTag) {
+    tags.push(['h', hTag]);
+  }
+
+  // Title
+  tags.push(['title', eventData.title]);
+
+  // Start/end tags — format depends on event kind
+  if (eventData.kind === 31922) {
+    // Kind 31922 (date-based): NIP-52 requires ISO 8601 date strings
+    tags.push(['start', formData.startDate]);
+    if (formData.endDate) {
+      tags.push(['end', formData.endDate]);
+    }
+  } else {
+    // Kind 31923 (time-based): Unix timestamp strings
+    if (eventData.start) {
+      tags.push(['start', eventData.start.toString()]);
+    }
+    if (eventData.end) {
+      tags.push(['end', eventData.end.toString()]);
+    }
+  }
+
+  // Timezone tags — only for kind 31923, using NIP-52 compliant names
+  if (eventData.kind === 31923) {
+    if (eventData.startTimezone) {
+      tags.push(['start_tzid', eventData.startTimezone]);
+    }
+    if (eventData.endTimezone) {
+      tags.push(['end_tzid', eventData.endTimezone]);
+    }
+  }
+
+  // D tags (day-granularity) — only for kind 31923
+  if (eventData.kind === 31923 && eventData.start) {
+    const startDay = Math.floor(eventData.start / 86400);
+    const endDay = eventData.end ? Math.floor(eventData.end / 86400) : startDay;
+    for (let day = startDay; day <= endDay; day++) {
+      tags.push(['D', day.toString()]);
+    }
+  }
+
+  // Optional properties
+  if (eventData.image) {
+    tags.push(['image', eventData.image]);
+  }
+  if (eventData.location) {
+    tags.push(['location', eventData.location]);
+  }
+
+  // Hashtags
+  if (eventData.hashtags) {
+    eventData.hashtags.forEach((hashtag) => {
+      if (hashtag) tags.push(['t', hashtag]);
+    });
+  }
+
+  // References
+  if (eventData.references) {
+    eventData.references.forEach((reference) => {
+      if (reference) tags.push(['r', reference]);
+    });
+  }
+
+  // Geohash
+  if (eventData.geohash) {
+    tags.push(['g', eventData.geohash]);
+  }
+
+  return tags;
+}
+
+/**
  * Padding in days to add before/after the view range to catch multi-day events
  * that span view boundaries
  * @type {number}
@@ -699,16 +817,16 @@ export const VIEW_RANGE_PADDING_DAYS = 7;
 export function isRawEventInDateRange(event, rangeStart, rangeEnd) {
   if (!event || !event.tags) return false;
 
-  // Extract start timestamp from tags
+  // Extract start timestamp from tags (handles both date strings and Unix timestamps)
   const startTag = event.tags.find((/** @type {string[]} */ tag) => tag[0] === 'start');
   if (!startTag || !startTag[1]) return false;
 
-  const eventStart = parseInt(startTag[1], 10);
-  if (isNaN(eventStart)) return false;
+  const eventStart = parseCalendarTimestamp(startTag[1], event.kind);
+  if (!eventStart) return false;
 
   // Extract end timestamp from tags (optional)
   const endTag = event.tags.find((/** @type {string[]} */ tag) => tag[0] === 'end');
-  const eventEnd = endTag && endTag[1] ? parseInt(endTag[1], 10) : eventStart;
+  const eventEnd = endTag && endTag[1] ? parseCalendarTimestamp(endTag[1], event.kind) : eventStart;
 
   // Check for overlap: eventStart < rangeEnd AND eventEnd >= rangeStart
   return eventStart < rangeEnd && eventEnd >= rangeStart;
@@ -725,7 +843,7 @@ export function isRawEventInDateRange(event, rangeStart, rangeEnd) {
 export function isEventStartAfter(event, timestamp) {
   if (!event || !event.tags) return false;
   const startTag = event.tags.find((/** @type {string[]} */ tag) => tag[0] === 'start');
-  const eventStart = startTag ? parseInt(startTag[1], 10) : 0;
+  const eventStart = startTag ? parseCalendarTimestamp(startTag[1], event.kind) : 0;
   return eventStart > timestamp;
 }
 
@@ -737,7 +855,7 @@ export function isEventStartAfter(event, timestamp) {
 export function getEventStartTimestamp(event) {
   if (!event || !event.tags) return 0;
   const startTag = event.tags.find((/** @type {string[]} */ tag) => tag[0] === 'start');
-  return startTag ? parseInt(startTag[1], 10) : 0;
+  return startTag ? parseCalendarTimestamp(startTag[1], event.kind) : 0;
 }
 
 /**
@@ -748,7 +866,7 @@ export function getEventStartTimestamp(event) {
 export function getEventEndTimestamp(event) {
   if (!event || !event.tags) return 0;
   const endTag = event.tags.find((/** @type {string[]} */ tag) => tag[0] === 'end');
-  return endTag ? parseInt(endTag[1], 10) : 0;
+  return endTag ? parseCalendarTimestamp(endTag[1], event.kind) : 0;
 }
 
 /**

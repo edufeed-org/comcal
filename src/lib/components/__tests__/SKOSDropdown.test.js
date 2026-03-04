@@ -1,13 +1,13 @@
 /**
  * SKOSDropdown Component Tests
  *
- * Tests the SKOS vocabulary dropdown trigger styling to ensure
- * it visually matches native select elements.
+ * Tests trigger styling, ARIA attributes, collapsible hierarchy,
+ * keyboard navigation, and search highlighting.
  *
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi } from 'vitest';
-import { render } from '@testing-library/svelte';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
 import SKOSDropdown from '../educational/SKOSDropdown.svelte';
 
 // Mock paraglide runtime
@@ -15,31 +15,526 @@ vi.mock('$lib/paraglide/runtime.js', () => ({
   getLocale: () => 'en'
 }));
 
-// Mock SKOS loader
-vi.mock('$lib/helpers/educational/skosLoader.js', () => ({
-  fetchVocabulary: vi
-    .fn()
-    .mockResolvedValue([{ id: 'https://example.com/text', prefLabel: { en: 'Text' }, level: 0 }]),
-  getConceptLabel: (concept, locale) => concept.prefLabel?.[locale] || concept.id,
-  sortConceptsByLabel: (concepts) => concepts,
-  filterConcepts: (concepts) => concepts
+// Mock paraglide messages
+vi.mock('$lib/paraglide/messages', () => ({
+  skos_dropdown_select: () => 'Select...',
+  skos_dropdown_search: () => 'Search...',
+  skos_dropdown_no_results: () => 'No results found',
+  skos_dropdown_expand: () => 'Expand',
+  skos_dropdown_collapse: () => 'Collapse'
 }));
 
+/** Flat vocabulary (like learningResourceType) */
+const flatConcepts = [
+  { id: 'https://example.com/text', prefLabel: { en: 'Text' }, level: 0 },
+  { id: 'https://example.com/video', prefLabel: { en: 'Video' }, level: 0 },
+  { id: 'https://example.com/image', prefLabel: { en: 'Image' }, level: 0 }
+];
+
+// Keep a reference to the mock so we can change its behavior per test
+const fetchVocabularyMock = vi.fn().mockResolvedValue(flatConcepts);
+
+vi.mock('$lib/helpers/educational/skosLoader.js', () => ({
+  fetchVocabulary: (...args) => fetchVocabularyMock(...args),
+  getConceptLabel: (concept, locale) => concept.prefLabel?.[locale] || concept.id,
+  sortConceptsByLabel: (concepts) => concepts,
+  filterConcepts: (concepts, searchTerm, locale) => {
+    if (!searchTerm?.trim()) return concepts;
+    const term = searchTerm.toLowerCase().trim();
+    return concepts.filter((c) => {
+      const label = c.prefLabel?.[locale] || c.id;
+      return label.toLowerCase().includes(term);
+    });
+  }
+}));
+
+beforeEach(() => {
+  cleanup();
+  fetchVocabularyMock.mockReset();
+  fetchVocabularyMock.mockResolvedValue(flatConcepts);
+  // jsdom doesn't implement scrollIntoView
+  Element.prototype.scrollIntoView = vi.fn();
+});
+
 describe('SKOSDropdown', () => {
-  it('renders trigger button with select-trigger class for consistent styling', () => {
-    const { container } = render(SKOSDropdown, {
-      props: {
-        vocabularyKey: 'learningResourceType',
-        label: 'Resource Type',
-        placeholder: 'Select type...'
-      }
+  describe('Trigger styling', () => {
+    it('renders trigger button with select-trigger class for consistent styling', () => {
+      const { container } = render(SKOSDropdown, {
+        props: {
+          vocabularyKey: 'learningResourceType',
+          label: 'Resource Type',
+          placeholder: 'Select type...'
+        }
+      });
+
+      const trigger = container.querySelector('button.select-trigger');
+      expect(trigger).toBeTruthy();
+      expect(trigger.classList.contains('select')).toBe(true);
+      expect(trigger.classList.contains('select-bordered')).toBe(true);
+      expect(trigger.classList.contains('select-trigger')).toBe(true);
     });
 
-    const trigger = container.querySelector('button.select-trigger');
-    expect(trigger).toBeTruthy();
-    // Should use select + select-bordered + select-trigger to match native selects
-    expect(trigger.classList.contains('select')).toBe(true);
-    expect(trigger.classList.contains('select-bordered')).toBe(true);
-    expect(trigger.classList.contains('select-trigger')).toBe(true);
+    it('shows placeholder when nothing is selected', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: {
+          vocabularyKey: 'learningResourceType',
+          placeholder: 'Pick one...'
+        }
+      });
+
+      await waitFor(() => {
+        const trigger = container.querySelector('button.select-trigger');
+        expect(trigger.textContent).toContain('Pick one...');
+      });
+    });
+
+    it('shows loading state initially', () => {
+      // Never resolve so it stays loading
+      fetchVocabularyMock.mockReturnValue(new Promise(() => {}));
+
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType' }
+      });
+
+      const spinner = container.querySelector('.loading-spinner');
+      expect(spinner).toBeTruthy();
+    });
+  });
+
+  describe('ARIA attributes', () => {
+    it('trigger has combobox role and aria attributes', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType' }
+      });
+
+      await waitFor(() => {
+        const trigger = container.querySelector('[role="combobox"]');
+        expect(trigger).toBeTruthy();
+        expect(trigger.getAttribute('aria-haspopup')).toBe('listbox');
+        expect(trigger.getAttribute('aria-expanded')).toBe('false');
+        expect(trigger.getAttribute('aria-controls')).toBe('skos-listbox-learningResourceType');
+      });
+    });
+
+    it('sets aria-expanded to true when opened', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType' }
+      });
+
+      await waitFor(() => {
+        const trigger = container.querySelector('[role="combobox"]');
+        expect(trigger).toBeTruthy();
+      });
+
+      const trigger = container.querySelector('[role="combobox"]');
+      await fireEvent.click(trigger);
+
+      expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('renders listbox with correct id when open', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType' }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+      });
+
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+
+      const listbox = container.querySelector('[role="listbox"]');
+      expect(listbox).toBeTruthy();
+      expect(listbox.getAttribute('id')).toBe('skos-listbox-learningResourceType');
+    });
+
+    it('options have role="option" and aria-selected', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType' }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+      });
+
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+
+      const options = container.querySelectorAll('[role="option"]');
+      expect(options.length).toBe(3); // Text, Video, Image
+      options.forEach((opt) => {
+        expect(opt.getAttribute('aria-selected')).toBe('false');
+      });
+    });
+
+    it('listbox has aria-multiselectable when multiple', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType', multiple: true }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+      });
+
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+
+      const listbox = container.querySelector('[role="listbox"]');
+      expect(listbox.getAttribute('aria-multiselectable')).toBe('true');
+    });
+  });
+
+  describe('Dropdown panel sizing', () => {
+    it('uses w-full to constrain panel within parent container', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType' }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+      });
+
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+
+      const panel = container.querySelector('.dropdown-content');
+      expect(panel).toBeTruthy();
+      expect(panel.classList.contains('w-full')).toBe(true);
+    });
+  });
+
+  describe('Compact mode', () => {
+    it('uses default max-h when compact is not set', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType' }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+      });
+
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+
+      const panel = container.querySelector('.dropdown-content');
+      expect(panel).toBeTruthy();
+      expect(panel.className).toContain('max-h-[min(60vh,480px)]');
+    });
+
+    it('uses reduced max-h when compact is true', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType', compact: true }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+      });
+
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+
+      const panel = container.querySelector('.dropdown-content');
+      expect(panel).toBeTruthy();
+      expect(panel.className).toContain('max-h-[min(40vh,280px)]');
+    });
+  });
+
+  describe('Collapsible hierarchy', () => {
+    it('shows expand buttons for parent concepts in hierarchical vocabulary', async () => {
+      // Use a large hierarchical vocabulary (>30) to trigger auto-collapse
+      const largeConcepts = [];
+      for (let i = 0; i < 10; i++) {
+        largeConcepts.push({
+          id: `https://example.com/cat${i}`,
+          prefLabel: { en: `Category ${i}` },
+          level: 0
+        });
+        for (let j = 0; j < 3; j++) {
+          largeConcepts.push({
+            id: `https://example.com/cat${i}/sub${j}`,
+            prefLabel: { en: `Sub ${i}-${j}` },
+            level: 1,
+            parentId: `https://example.com/cat${i}`
+          });
+        }
+      }
+      fetchVocabularyMock.mockResolvedValue(largeConcepts);
+
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'about' }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+      });
+
+      // Wait for the vocabulary to load and collapse effect to run
+      await waitFor(() => {
+        const trigger = container.querySelector('[role="combobox"]');
+        expect(trigger.textContent).not.toContain('Loading');
+      });
+
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+
+      // Should show expand buttons for parent categories
+      const expandBtns = container.querySelectorAll('[aria-label="Expand"]');
+      expect(expandBtns.length).toBeGreaterThan(0);
+    });
+
+    it('does not show expand buttons for flat vocabularies', async () => {
+      fetchVocabularyMock.mockResolvedValue(flatConcepts);
+
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType' }
+      });
+
+      await waitFor(() => {
+        const trigger = container.querySelector('[role="combobox"]');
+        expect(trigger).toBeTruthy();
+        expect(trigger.textContent).not.toContain('Loading');
+      });
+
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+
+      // Flat concepts have no parentId, so no concept should have children
+      const options = container.querySelectorAll('[role="option"]');
+      expect(options.length).toBe(3);
+
+      // No expand/collapse toggles should exist inside the listbox
+      const listbox = container.querySelector('[role="listbox"]');
+      const expandBtns = listbox.querySelectorAll('[aria-label="Expand"]');
+      const collapseBtns = listbox.querySelectorAll('[aria-label="Collapse"]');
+      expect(expandBtns.length + collapseBtns.length).toBe(0);
+    });
+  });
+
+  describe('Keyboard navigation', () => {
+    it('opens dropdown on Enter key', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType' }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+      });
+
+      const wrapper = container.querySelector('.dropdown');
+      await fireEvent.keyDown(wrapper, { key: 'Enter' });
+
+      const listbox = container.querySelector('[role="listbox"]');
+      expect(listbox).toBeTruthy();
+    });
+
+    it('closes dropdown on Escape key', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType' }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+      });
+
+      // Open
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+      expect(container.querySelector('[role="listbox"]')).toBeTruthy();
+
+      // Escape
+      const wrapper = container.querySelector('.dropdown');
+      await fireEvent.keyDown(wrapper, { key: 'Escape' });
+
+      expect(container.querySelector('[role="listbox"]')).toBeFalsy();
+    });
+
+    it('moves active index with ArrowDown', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType' }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+      });
+
+      // Open
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+
+      const wrapper = container.querySelector('.dropdown');
+
+      // ArrowDown twice (from -1 to 0, then to 1)
+      await fireEvent.keyDown(wrapper, { key: 'ArrowDown' });
+      await fireEvent.keyDown(wrapper, { key: 'ArrowDown' });
+
+      // Second option should have the active outline class
+      const options = container.querySelectorAll('[data-option-index]');
+      expect(options[1].className).toContain('outline-primary');
+    });
+
+    it('selects item with Enter on active index', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType' }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+      });
+
+      // Open
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+
+      const wrapper = container.querySelector('.dropdown');
+
+      // ArrowDown to first option
+      await fireEvent.keyDown(wrapper, { key: 'ArrowDown' });
+      // Select it
+      await fireEvent.keyDown(wrapper, { key: 'Enter' });
+
+      // First option should now be selected (aria-selected="true")
+      const options = container.querySelectorAll('[role="option"]');
+      expect(options[0].getAttribute('aria-selected')).toBe('true');
+    });
+
+    it('jumps to first option with Home key', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType' }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+      });
+
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+
+      const wrapper = container.querySelector('.dropdown');
+
+      // Navigate to last with End, then back to first with Home
+      await fireEvent.keyDown(wrapper, { key: 'End' });
+      const options = container.querySelectorAll('[data-option-index]');
+      expect(options[options.length - 1].className).toContain('outline-primary');
+
+      await fireEvent.keyDown(wrapper, { key: 'Home' });
+      expect(options[0].className).toContain('outline-primary');
+    });
+  });
+
+  describe('Search and highlighting', () => {
+    it('shows search input when dropdown is open', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType' }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+      });
+
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+
+      const searchInput = container.querySelector('input[type="text"]');
+      expect(searchInput).toBeTruthy();
+      expect(searchInput.getAttribute('aria-label')).toBe('Search...');
+    });
+
+    it('filters options when search term is entered', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType' }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+      });
+
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+
+      // Type search term
+      const searchInput = container.querySelector('input[type="text"]');
+      await fireEvent.input(searchInput, { target: { value: 'vid' } });
+
+      await waitFor(() => {
+        const options = container.querySelectorAll('[role="option"]');
+        expect(options.length).toBe(1);
+        expect(options[0].textContent).toContain('Video');
+      });
+    });
+
+    it('shows "No results found" when search has no matches', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType' }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+      });
+
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+
+      const searchInput = container.querySelector('input[type="text"]');
+      await fireEvent.input(searchInput, { target: { value: 'zzzzz' } });
+
+      await waitFor(() => {
+        expect(container.textContent).toContain('No results found');
+      });
+    });
+
+    it('renders mark elements for search highlighting', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: { vocabularyKey: 'learningResourceType' }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+      });
+
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+
+      const searchInput = container.querySelector('input[type="text"]');
+      await fireEvent.input(searchInput, { target: { value: 'tex' } });
+
+      await waitFor(() => {
+        const marks = container.querySelectorAll('mark');
+        expect(marks.length).toBeGreaterThan(0);
+        expect(marks[0].textContent).toBe('Tex');
+      });
+    });
+  });
+
+  describe('Selection', () => {
+    it('shows selected item as badge in trigger', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: {
+          vocabularyKey: 'learningResourceType',
+          selected: [{ id: 'https://example.com/text', label: 'Text' }]
+        }
+      });
+
+      await waitFor(() => {
+        const trigger = container.querySelector('[role="combobox"]');
+        expect(trigger).toBeTruthy();
+        expect(trigger.textContent).toContain('Text');
+      });
+
+      const badge = container.querySelector('.badge-primary');
+      expect(badge).toBeTruthy();
+      expect(badge.textContent).toContain('Text');
+    });
+
+    it('shows selection count footer when items selected', async () => {
+      const { container } = render(SKOSDropdown, {
+        props: {
+          vocabularyKey: 'learningResourceType',
+          selected: [{ id: 'https://example.com/text', label: 'Text' }]
+        }
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('[role="combobox"]')).toBeTruthy();
+        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+      });
+
+      await fireEvent.click(container.querySelector('[role="combobox"]'));
+
+      expect(container.textContent).toContain('1 selected');
+    });
   });
 });

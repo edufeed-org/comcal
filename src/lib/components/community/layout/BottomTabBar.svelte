@@ -69,6 +69,15 @@
           });
         }
       }
+
+      // Always include Learning tab even if community doesn't define kind 30142
+      if (!types.some((t) => t.id === 'learning')) {
+        types.push({
+          id: 'learning',
+          label: m.community_layout_bottom_tab_bar_learning(),
+          icon: BookIcon
+        });
+      }
     } else {
       // Default content types when no community
       types.push(
