@@ -2,20 +2,12 @@
   import { ProfileModel } from 'applesauce-core/models';
   import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
   import { profileLoader } from '$lib/loaders/profile.js';
-  import { runtimeConfig } from '$lib/stores/config.svelte.js';
+  import { getProfileLookupRelays } from '$lib/helpers/relay-helper.js';
   import { formatCalendarDate } from '$lib/helpers/calendar.js';
   import NotesTimeline from '$lib/components/notes/NotesTimeline.svelte';
   import { useActiveUser } from '$lib/stores/accounts.svelte.js';
   import { modalStore } from '$lib/stores/modal.svelte.js';
   import * as m from '$lib/paraglide/messages';
-
-  /**
-   * Get profile lookup relays from app config
-   * @returns {string[]}
-   */
-  function getProfileRelays() {
-    return runtimeConfig.fallbackRelays || [];
-  }
 
   /** @type {import('./$types').PageProps} */
   let { data } = $props();
@@ -52,7 +44,7 @@
     const loaderSub = profileLoader({
       kind: 0,
       pubkey: data.pubkey,
-      relays: getProfileRelays()
+      relays: getProfileLookupRelays()
     }).subscribe((event) => {
       // Store the raw event for developer section
       if (event) {

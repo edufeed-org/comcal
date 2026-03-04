@@ -10,7 +10,7 @@
 /* eslint-disable svelte/prefer-svelte-reactivity -- Map used intentionally to avoid infinite loops */
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { addressLoader } from '$lib/loaders/base.js';
-import { getAllLookupRelays } from '$lib/helpers/relay-helper.js';
+import { getProfileLookupRelays } from '$lib/helpers/relay-helper.js';
 
 /**
  * Hook: Subscribe to profiles for a reactive collection of pubkeys.
@@ -31,7 +31,7 @@ export function useProfileMap(getPubkeys) {
   // Subscribe to new pubkeys as they appear
   $effect(() => {
     const pubkeys = [...getPubkeys()];
-    const relays = getAllLookupRelays();
+    const relays = getProfileLookupRelays();
 
     for (const pubkey of pubkeys) {
       if (subscriptions.has(pubkey)) continue;
