@@ -18,6 +18,7 @@ import {
 } from '$lib/loaders/calendar.js';
 import { userDeletionLoader, addressLoader } from '$lib/loaders/base.js';
 import { runtimeConfig } from '$lib/stores/config.svelte.js';
+import { getCuratedAuthors } from '$lib/services/curated-authors-service.svelte.js';
 import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
 import { parseCalendarFilters } from '$lib/helpers/urlParams.js';
 import { SvelteMap, SvelteSet } from 'svelte/reactivity';
@@ -172,7 +173,10 @@ export function useCalendarEventLoader(options) {
       relaySubscription = cleanupSubscription(relaySubscription);
       startBackgroundLoader();
 
+      /** @type {any} */
       const filter = { kinds: [31922, 31923], limit: 50 };
+      const curatedAuthorsList = getCuratedAuthors();
+      if (curatedAuthorsList) filter.authors = curatedAuthorsList;
 
       subscription = eventStore.model(TimelineModel, filter).subscribe((timeline) => {
         const timestamp = Date.now();

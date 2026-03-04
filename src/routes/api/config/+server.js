@@ -87,12 +87,17 @@ export function GET() {
     communikeyRelays: parseArray(env.COMMUNIKEY_RELAYS),
     ambRelays: parseArray(env.AMB_RELAYS),
     longformContentRelays: parseArray(env.LONGFORM_CONTENT_RELAY),
+    kanbanRelays: parseArray(env.KANBAN_RELAYS),
 
     // Gated mode configuration
     gatedMode: {
       default: parseBool(env.GATED_MODE_DEFAULT, false),
       force: parseBool(env.GATED_MODE_FORCE, false)
     },
+
+    // Curated mode: restrict primary content to pubkeys from these follow sets
+    curatedPubkeysSets: parseArray(env.CURATED_PUBKEYS_SETS),
+    curatedPubkeys: parseArray(env.CURATED_PUBKEYS),
 
     // NIP-65 relay list discovery
     relayListLookupRelays: parseArray(env.RELAY_LIST_LOOKUP_RELAYS),

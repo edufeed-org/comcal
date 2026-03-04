@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { articleTimelineLoader } from '$lib/loaders/articles.js';
   import { ambTimelineLoader } from '$lib/loaders/amb.js';
+  import { kanbanTimelineLoader } from '$lib/loaders/kanban.js';
   import { feedTargetedPublicationsLoader } from '$lib/loaders/targeted-publications.js';
   import {
     createDateRangeCalendarLoader,
@@ -21,7 +22,8 @@
     getEducationalRelays,
     getArticleRelays,
     getCalendarRelays,
-    getCommunikeyRelays
+    getCommunikeyRelays,
+    getKanbanRelays
   } from '$lib/helpers/relay-helper.js';
   import { TimelineModel } from 'applesauce-core/models';
   import { AMBResourceModel, CalendarEventRangeModel } from '$lib/models';
@@ -31,6 +33,7 @@
   import ArticleCard from '$lib/components/article/ArticleCard.svelte';
   import AMBResourceCard from '$lib/components/educational/AMBResourceCard.svelte';
   import CalendarEventCard from '$lib/components/calendar/CalendarEventCard.svelte';
+  import KanbanBoardCard from '$lib/components/kanban/KanbanBoardCard.svelte';
   import CommunityFilterDropdown from '$lib/components/feed/CommunityFilterDropdown.svelte';
   import RelayFilterDropdown from '$lib/components/feed/RelayFilterDropdown.svelte';
   import { getAppRelaysForCategory } from '$lib/services/app-relay-service.svelte.js';
@@ -74,6 +77,7 @@
   let ambResources = $state.raw(/** @type {any[]} */ ([]));
   let calendarEvents = $state.raw(/** @type {any[]} */ ([]));
   let targetedPubs = $state.raw(/** @type {any[]} */ ([]));
+  let kanbanBoards = $state.raw(/** @type {any[]} */ ([]));
 
   // Trigger counter to force profile hook re-evaluation when $state.raw() arrays are updated
   let profileTrigger = $state(0);
@@ -85,7 +89,8 @@
     return [
       ...articles.map((a) => a.pubkey),
       ...ambResources.map((r) => r.pubkey),
-      ...calendarEvents.map((e) => e.pubkey)
+      ...calendarEvents.map((e) => e.pubkey),
+      ...kanbanBoards.map((b) => b.pubkey)
     ].filter(Boolean);
   });
   let authorProfiles = $derived(getAuthorProfiles());
@@ -96,6 +101,7 @@
   let isLoadingMore = $state(false);
   let hasMoreArticles = $state(true);
   let hasMoreCalendarEvents = $state(true);
+  let hasMoreKanban = $state(true);
 
   // Track per-relay exhaustion for educational content pagination.
   // Only stop pagination when ALL educational relays have been exhausted.
@@ -144,7 +150,7 @@
   let searchInputRef = $state(/** @type {HTMLInputElement | null} */ (null));
 
   // Valid content types
-  const VALID_CONTENT_TYPES = ['all', 'events', 'learning', 'articles', 'communities'];
+  const VALID_CONTENT_TYPES = ['all', 'events', 'learning', 'articles', 'boards', 'communities'];
 
   // Initialize from URL params
   const initialFilters = parseFeedFilters($page.url.searchParams);
@@ -175,7 +181,9 @@
         ? 'educational'
         : contentType === 'articles'
           ? 'longform'
-          : null
+          : contentType === 'boards'
+            ? 'kanban'
+            : null
   );
   const availableRelays = $derived(
     tabRelayCategory ? getAppRelaysForCategory(tabRelayCategory) : []
@@ -379,6 +387,7 @@
   // Step 1: Create stateful loaders
   const articleLoader = articleTimelineLoader(BATCH_SIZE);
   const ambLoader = ambTimelineLoader(BATCH_SIZE);
+  const kanbanLoader = kanbanTimelineLoader(BATCH_SIZE);
   // Calendar events use date range loader (not stateful pagination)
   const targetedPubsLoader = feedTargetedPublicationsLoader(200);
 
@@ -399,6 +408,16 @@
     },
     error: (/** @type {any} */ error) => {
       console.error('🔍 Discover: AMB loader error:', error);
+      isLoading = false;
+    }
+  });
+
+  const initialKanbanSub = kanbanLoader().subscribe({
+    complete: () => {
+      isLoading = false;
+    },
+    error: (/** @type {any} */ error) => {
+      console.error('🔍 Discover: Kanban loader error:', error);
       isLoading = false;
     }
   });
@@ -437,6 +456,7 @@
   const initialArticleRelays = new SvelteSet(getArticleRelays());
   const initialCalendarRelays = new SvelteSet(getCalendarRelays());
   const initialCommunikeyRelays = new SvelteSet(getCommunikeyRelays());
+  const initialKanbanRelays = new SvelteSet(getKanbanRelays());
 
   $effect(() => {
     /** @type {import('rxjs').Subscription[]} */
@@ -490,9 +510,23 @@
       const loader = createTimelineLoader(
         timedPool,
         newCommunikey,
-        { kinds: [30222], '#k': ['30023', '30142', '31922', '31923'] },
+        { kinds: [30222], '#k': ['30023', '30142', '31922', '31923', '30301'] },
         { eventStore, limit: 200 }
       );
+      supplementalSubs.push(loader().subscribe());
+    }
+
+    const currentKanban = getKanbanRelays();
+    const newKanban = currentKanban.filter((r) => !initialKanbanRelays.has(r));
+    if (newKanban.length > 0) {
+      newKanban.forEach((r) => initialKanbanRelays.add(r));
+      /** @type {any} */
+      const kanFilter = { kinds: [30301] };
+      if (curatedAuthorsList) kanFilter.authors = curatedAuthorsList;
+      const loader = createTimelineLoader(timedPool, newKanban, kanFilter, {
+        eventStore,
+        limit: BATCH_SIZE
+      });
       supplementalSubs.push(loader().subscribe());
     }
 
@@ -503,7 +537,7 @@
 
   // Subscribe to targeted publications model (debounced via RxJS)
   const targetedPubsModelSub = eventStore
-    .model(TimelineModel, { kinds: [30222], '#k': ['30023', '30142', '31922', '31923'] })
+    .model(TimelineModel, { kinds: [30222], '#k': ['30023', '30142', '31922', '31923', '30301'] })
     .pipe(debounceTime(100))
     .subscribe((pubs) => {
       targetedPubs = pubs || [];
@@ -517,6 +551,21 @@
       articles = timeline || [];
       isLoading = false;
       profileTrigger++; // Trigger profile loading for new articles
+    });
+
+  // Subscribe to kanban boards (debounced via RxJS)
+  // Filter out boards with pub=private (only show published/unset)
+  const kanbanModelSub = eventStore
+    .model(TimelineModel, { kinds: [30301] })
+    .pipe(debounceTime(100))
+    .subscribe((timeline) => {
+      kanbanBoards =
+        (timeline || []).filter((/** @type {any} */ b) => {
+          const pub = getTagValue(b, 'pub');
+          return !pub || pub !== 'private';
+        }) || [];
+      isLoading = false;
+      profileTrigger++; // Trigger profile loading for new boards
     });
 
   // Subscribe to AMB resources (debounced via RxJS)
@@ -741,8 +790,10 @@
       (contentType === 'events' && hasMoreCalendarEvents) ||
       (contentType === 'articles' && hasMoreArticles) ||
       (contentType === 'learning' && hasMoreAMB) ||
+      (contentType === 'boards' && hasMoreKanban) ||
       (contentType === 'communities' && hasMoreCommunities) ||
-      (contentType === 'all' && (hasMoreArticles || hasMoreAMB || hasMoreCalendarEvents));
+      (contentType === 'all' &&
+        (hasMoreArticles || hasMoreAMB || hasMoreCalendarEvents || hasMoreKanban));
 
     if (isLoadingMore || !hasMore) {
       return;
@@ -937,6 +988,28 @@
       }
     }
 
+    if (contentType === 'boards' || contentType === 'all') {
+      if (hasMoreKanban) {
+        pendingLoaders++;
+        let count = 0;
+        kanbanLoader()
+          .pipe(takeUntil(timer(BATCH_TIMEOUT)))
+          .subscribe({
+            next: () => {
+              count++;
+            },
+            complete: () => {
+              if (count === 0) hasMoreKanban = false;
+              onLoaderDone();
+            },
+            error: (/** @type {any} */ error) => {
+              console.error('🔍 Discover: Kanban pagination error:', error);
+              onLoaderDone();
+            }
+          });
+      }
+    }
+
     if (pendingLoaders === 0) {
       isLoadingMore = false;
     }
@@ -978,6 +1051,7 @@
       initialArticleSub.unsubscribe();
       initialAmbSub.unsubscribe();
       initialCalendarSub.unsubscribe();
+      initialKanbanSub.unsubscribe();
       initialTargetedPubsSub.unsubscribe();
 
       // Unsubscribe date range loader subscription
@@ -985,6 +1059,7 @@
 
       // Unsubscribe model subscriptions
       articleModelSub.unsubscribe();
+      kanbanModelSub.unsubscribe();
       ambModelSub.unsubscribe();
       calendarModelSub.unsubscribe();
       targetedPubsModelSub.unsubscribe();
@@ -1005,9 +1080,16 @@
     } else if (contentType === 'articles') {
       hasContent = articles.length > 0;
       hasMore = hasMoreArticles;
+    } else if (contentType === 'boards') {
+      hasContent = kanbanBoards.length > 0;
+      hasMore = hasMoreKanban;
     } else if (contentType === 'all') {
-      hasContent = articles.length > 0 || ambResources.length > 0 || calendarEvents.length > 0;
-      hasMore = hasMoreArticles || hasMoreAMB || hasMoreCalendarEvents;
+      hasContent =
+        articles.length > 0 ||
+        ambResources.length > 0 ||
+        calendarEvents.length > 0 ||
+        kanbanBoards.length > 0;
+      hasMore = hasMoreArticles || hasMoreAMB || hasMoreCalendarEvents || hasMoreKanban;
     }
 
     if (!hasContent || !hasMore || isLoading) {
@@ -1099,6 +1181,15 @@
         name.includes(query) ||
         displayName.includes(query)
       );
+    } else if (item.type === 'board') {
+      const title = getTagValue(item.data, 'title')?.toLowerCase() || '';
+      const description = getTagValue(item.data, 'description')?.toLowerCase() || '';
+      return (
+        title.includes(query) ||
+        description.includes(query) ||
+        name.includes(query) ||
+        displayName.includes(query)
+      );
     }
     return false;
   }
@@ -1122,6 +1213,12 @@
     } else if (item.type === 'event') {
       const eventTags = item.data.hashtags?.map((/** @type {string} */ t) => t.toLowerCase()) || [];
       return tags.some((tag) => eventTags.includes(tag.toLowerCase()));
+    } else if (item.type === 'board') {
+      const boardTags =
+        item.data.tags
+          ?.filter((/** @type {any} */ t) => t[0] === 't')
+          .map((/** @type {any} */ t) => t[1].toLowerCase()) || [];
+      return tags.some((tag) => boardTags.includes(tag.toLowerCase()));
     }
     return false;
   }
@@ -1136,6 +1233,8 @@
       return getArticlePublished(item.data) || 0;
     } else if (item.type === 'amb') {
       return item.data.publishedDate || 0;
+    } else if (item.type === 'board') {
+      return item.data.created_at || 0;
     } else {
       return item.data.start || 0;
     }
@@ -1165,6 +1264,10 @@
 
     if (contentType === 'articles' || contentType === 'all') {
       items = [...items, ...articles.map((a) => ({ type: 'article', data: a }))];
+    }
+
+    if (contentType === 'boards' || contentType === 'all') {
+      items = [...items, ...kanbanBoards.map((b) => ({ type: 'board', data: b }))];
     }
 
     return items;
@@ -1305,6 +1408,13 @@
           onclick={() => handleContentTypeChange('articles')}
         >
           {m.discover_tab_articles()}
+        </button>
+        <button
+          class="tab {contentType === 'boards' ? 'tab-active' : ''}"
+          data-testid="tab-boards"
+          onclick={() => handleContentTypeChange('boards')}
+        >
+          {m.discover_tab_boards()}
         </button>
         <button
           class="tab {contentType === 'communities' ? 'tab-active' : ''}"
@@ -1453,7 +1563,7 @@
     {#if contentType !== 'communities' && displayedContent.length > 0}
       <div class="text-center text-sm text-base-content/70">
         {m.discover_results_count({ count: displayedContent.length })}
-        {#if hasMoreArticles || hasMoreAMB}
+        {#if hasMoreArticles || hasMoreAMB || hasMoreKanban}
           <span class="ml-2 text-primary">• {m.discover_scroll_for_more()}</span>
         {/if}
       </div>
@@ -1569,7 +1679,7 @@
       <!-- Empty State -->
       <div class="flex justify-center py-12">
         <div class="text-center">
-          {#if articles.length === 0 && ambResources.length === 0 && calendarEvents.length === 0}
+          {#if articles.length === 0 && ambResources.length === 0 && calendarEvents.length === 0 && kanbanBoards.length === 0}
             <p class="text-xl text-base-content/70">{m.discover_no_content()}</p>
             <p class="mt-2 text-base-content/50">{m.discover_no_content_subtitle()}</p>
           {:else}
@@ -1602,6 +1712,12 @@
                   onEventClick={handleEventClick}
                   variant="list"
                 />
+              {:else if item.type === 'board'}
+                <KanbanBoardCard
+                  board={item.data}
+                  authorProfile={authorProfiles.get(item.data.pubkey)}
+                  variant="list"
+                />
               {/if}
             {:else}
               <ContentCardSkeleton variant="list" />
@@ -1619,7 +1735,7 @@
               <p class="mt-4 text-base-content/70">{m.discover_loading_more()}</p>
             </div>
           </div>
-        {:else if (contentType === 'events' && !hasMoreCalendarEvents) || (contentType === 'learning' && !hasMoreAMB && !isLearningSearchActive) || (contentType === 'articles' && !hasMoreArticles) || (contentType === 'all' && !hasMoreArticles && !hasMoreAMB && !hasMoreCalendarEvents)}
+        {:else if (contentType === 'events' && !hasMoreCalendarEvents) || (contentType === 'learning' && !hasMoreAMB && !isLearningSearchActive) || (contentType === 'articles' && !hasMoreArticles) || (contentType === 'boards' && !hasMoreKanban) || (contentType === 'all' && !hasMoreArticles && !hasMoreAMB && !hasMoreCalendarEvents && !hasMoreKanban)}
           <div class="flex justify-center">
             <p class="text-base-content/50">{m.discover_no_more_content()}</p>
           </div>

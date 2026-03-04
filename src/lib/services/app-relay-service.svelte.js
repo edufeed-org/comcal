@@ -27,6 +27,10 @@ export const CATEGORIES = {
   longform: {
     kinds: [30023],
     label: 'Articles & Long-form Content'
+  },
+  kanban: {
+    kinds: [30301, 30302, 8571],
+    label: 'Kanban Boards'
   }
 };
 
@@ -99,6 +103,8 @@ export function getDefaultRelaysForCategory(category) {
       return runtimeConfig.appRelays?.educational || [];
     case 'longform':
       return runtimeConfig.appRelays?.longform || [];
+    case 'kanban':
+      return runtimeConfig.appRelays?.kanban || [];
     default:
       return [];
   }
@@ -139,6 +145,7 @@ export function kindToAppRelayCategory(kind) {
   if ([10222, 30222, 30382].includes(kind)) return 'communikey';
   if ([30142].includes(kind)) return 'educational';
   if ([30023].includes(kind)) return 'longform';
+  if ([30301, 30302, 8571].includes(kind)) return 'kanban';
   return null;
 }
 

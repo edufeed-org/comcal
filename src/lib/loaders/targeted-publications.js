@@ -82,7 +82,7 @@ export function feedTargetedPublicationsLoader(limit = 200) {
     getTargetedPublicationRelays(),
     {
       kinds: [30222],
-      '#k': ['30023', '30142', '31922', '31923'] // Articles, AMB resources, and calendar events
+      '#k': ['30023', '30142', '31922', '31923', '30301'] // Articles, AMB resources, calendar events, and kanban boards
     },
     { eventStore, limit }
   );

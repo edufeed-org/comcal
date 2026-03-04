@@ -72,6 +72,18 @@ export function getArticleRelays() {
 }
 
 /**
+ * Get kanban board relays with optional fallback
+ * @returns {string[]}
+ */
+export function getKanbanRelays() {
+  const appRelays = getAppRelaysForCategory('kanban');
+  if (appRelays.length === 0) {
+    return getFallbackRelays();
+  }
+  return [...appRelays, ...getFallbackRelays()];
+}
+
+/**
  * Get all lookup relays for EventStore
  * Combines all app relays + conditional fallback
  * @returns {string[]}
@@ -82,6 +94,7 @@ export function getAllLookupRelays() {
     ...getAppRelaysForCategory('communikey'),
     ...getAppRelaysForCategory('educational'),
     ...getAppRelaysForCategory('longform'),
+    ...getAppRelaysForCategory('kanban'),
     ...getFallbackRelays()
   ];
 }

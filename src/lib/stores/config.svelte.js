@@ -26,13 +26,18 @@ const defaultConfig = {
     calendar: [], // kinds 31922-31925
     communikey: [], // kinds 10222, 30222, 30382
     educational: [], // kind 30142
-    longform: [] // kind 30023
+    longform: [], // kind 30023
+    kanban: [] // kinds 30301, 30302, 8571
   },
   // Gated mode: when enabled, fetch only from app relays (exclude fallback relays)
   gatedMode: {
     default: false, // Default state for new users
     force: false // When true, users cannot disable gated mode
   },
+  // Curated mode: naddr identifiers pointing to kind 30000 follow sets
+  curatedPubkeysSets: [],
+  // Curated mode: direct hex/npub pubkeys (unioned with follow set pubkeys)
+  curatedPubkeys: [],
   // Default Blossom servers for new users
   defaultBlossomServers: [],
   calendar: {
@@ -176,12 +181,15 @@ export function initializeConfig(runtimeConfig) {
       calendar: runtimeConfig.calendarRelays || defaultConfig.appRelays.calendar,
       communikey: runtimeConfig.communikeyRelays || defaultConfig.appRelays.communikey,
       educational: runtimeConfig.ambRelays || defaultConfig.appRelays.educational,
-      longform: runtimeConfig.longformContentRelays || defaultConfig.appRelays.longform
+      longform: runtimeConfig.longformContentRelays || defaultConfig.appRelays.longform,
+      kanban: runtimeConfig.kanbanRelays || defaultConfig.appRelays.kanban
     },
     gatedMode: {
       default: runtimeConfig.gatedMode?.default ?? defaultConfig.gatedMode.default,
       force: runtimeConfig.gatedMode?.force ?? defaultConfig.gatedMode.force
     },
+    curatedPubkeysSets: runtimeConfig.curatedPubkeysSets || defaultConfig.curatedPubkeysSets,
+    curatedPubkeys: runtimeConfig.curatedPubkeys || defaultConfig.curatedPubkeys,
     defaultBlossomServers:
       runtimeConfig.defaultBlossomServers || defaultConfig.defaultBlossomServers,
     calendar: {
@@ -313,6 +321,12 @@ export const runtimeConfig = {
   },
   get gatedMode() {
     return config.gatedMode;
+  },
+  get curatedPubkeysSets() {
+    return config.curatedPubkeysSets;
+  },
+  get curatedPubkeys() {
+    return config.curatedPubkeys;
   },
   get favicon() {
     return config.favicon;

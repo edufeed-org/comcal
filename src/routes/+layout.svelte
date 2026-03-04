@@ -45,6 +45,17 @@
       );
     }
   });
+
+  // Initialize curated authors after config is loaded (fire-and-forget)
+  $effect(() => {
+    if (browser && configInitialized) {
+      import('$lib/services/curated-authors-service.svelte.js').then(
+        ({ initializeCuratedAuthors }) => {
+          initializeCuratedAuthors();
+        }
+      );
+    }
+  });
 </script>
 
 <svelte:head>

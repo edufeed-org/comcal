@@ -5,18 +5,17 @@ import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { getCommunikeyRelays } from '$lib/helpers/relay-helper.js';
 import { timedPool } from './base.js';
+import { getCuratedAuthors } from '$lib/services/curated-authors-service.svelte.js';
 
 // Communities list loader (kind 10222)
 // Lazy factory to ensure relays are read from runtime config at call time, not module load time
-export const communikeyTimelineLoader = () =>
-  createTimelineLoader(
-    timedPool,
-    getCommunikeyRelays(),
-    {
-      kinds: [10222]
-    },
-    { eventStore }
-  );
+export const communikeyTimelineLoader = () => {
+  /** @type {import('nostr-tools').Filter} */
+  const filter = { kinds: [10222] };
+  const authors = getCuratedAuthors();
+  if (authors) filter.authors = authors;
+  return createTimelineLoader(timedPool, getCommunikeyRelays(), filter, { eventStore });
+};
 
 // Membership tracking loader factory for community relationships (kind 30382)
 // Takes an author pubkey and returns a loader that fetches only that author's relationships

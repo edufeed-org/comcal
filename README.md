@@ -277,6 +277,11 @@ The `.env.example` file contains all available configuration options. Key catego
 - `GATED_MODE_DEFAULT`: Default state for gated mode (true/false). When enabled, app fetches only from app-specific relays
 - `GATED_MODE_FORCE`: When true, users cannot disable gated mode - useful for institutional deployments
 
+**Curated Mode**
+
+- `CURATED_PUBKEYS_SETS`: Comma-separated NIP-19 naddr identifiers pointing to kind 30000 follow sets. When set, only content from pubkeys in these follow sets is shown for primary content (calendar events, AMB resources, articles, community definitions). Social content (reactions, comments, chat, targeted publications) is not filtered. Leave empty to disable.
+- `CURATED_PUBKEYS`: Comma-separated hex pubkeys or npub-encoded pubkeys for direct curated author filtering. These are unioned with pubkeys from `CURATED_PUBKEYS_SETS`. If either has entries, curated mode is active. Simpler than follow sets for small deployments.
+
 **Calendar Settings**
 
 - `CALENDAR_WEEK_START_DAY`: Week start day (0=Sunday, 1=Monday)

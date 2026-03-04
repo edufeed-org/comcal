@@ -11,6 +11,7 @@ import { SvelteSet } from 'svelte/reactivity';
 import { onlyEvents } from 'applesauce-relay/operators';
 import { mapEventsToStore } from 'applesauce-core/observable';
 import { addressLoader, timedPool } from './base.js';
+import { getCuratedAuthors } from '$lib/services/curated-authors-service.svelte.js';
 
 /**
  * Get combined relays for AMB resource loading (educational app relays + fallback)
@@ -28,7 +29,11 @@ function getAMBRelays() {
  * @returns {Function} Stateful timeline loader function (call with no args, returns Observable)
  */
 export function ambTimelineLoader(limit = 20) {
-  return createTimelineLoader(timedPool, getAMBRelays(), { kinds: [30142] }, { eventStore, limit });
+  /** @type {import('nostr-tools').Filter} */
+  const filter = { kinds: [30142] };
+  const authors = getCuratedAuthors();
+  if (authors) filter.authors = authors;
+  return createTimelineLoader(timedPool, getAMBRelays(), filter, { eventStore, limit });
 }
 
 /**
@@ -70,12 +75,14 @@ export function useAMBCommunityLoader(communityPubkey) {
   console.log('📚 AMBLoader: Starting community loader for', communityPubkey.slice(0, 8));
 
   // 1. Load direct community resources (kind 30142 with h-tag) from network
-  const directResourcesLoader = createTimelineLoader(
-    timedPool,
-    getAMBRelays(),
-    { kinds: [30142], '#h': [communityPubkey] },
-    { eventStore, limit: 50 }
-  );
+  /** @type {any} */
+  const directFilter = { kinds: [30142], '#h': [communityPubkey] };
+  const curatedAuthorsList = getCuratedAuthors();
+  if (curatedAuthorsList) directFilter.authors = curatedAuthorsList;
+  const directResourcesLoader = createTimelineLoader(timedPool, getAMBRelays(), directFilter, {
+    eventStore,
+    limit: 50
+  });
   const directResourcesSub = directResourcesLoader().subscribe();
   subscriptions.set('directResources', directResourcesSub);
 

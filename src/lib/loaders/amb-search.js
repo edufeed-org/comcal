@@ -11,6 +11,7 @@ import { tap } from 'rxjs/operators';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { getEducationalRelays } from '$lib/helpers/relay-helper.js';
 import { buildSearchQuery, hasActiveFilters } from '$lib/helpers/educational/searchQueryBuilder.js';
+import { getCuratedAuthors } from '$lib/services/curated-authors-service.svelte.js';
 
 /**
  * @typedef {import('$lib/helpers/educational/searchQueryBuilder.js').SearchFilters} SearchFilters
@@ -44,11 +45,14 @@ export function ambSearchLoader(filters, limit = 50) {
   }
 
   const relays = getEducationalRelays();
+  /** @type {any} */
   const filter = {
     kinds: [30142],
     search: searchQuery,
     limit
   };
+  const authors = getCuratedAuthors();
+  if (authors) filter.authors = authors;
 
   // Use pool.request() directly to preserve the search field
   // createTimelineLoader strips unknown filter fields during pagination
