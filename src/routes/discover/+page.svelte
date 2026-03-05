@@ -1374,6 +1374,16 @@
       <p class="text-center text-lg text-base-content/70">
         {m.discover_content_subtitle()}
       </p>
+      <p class="mt-3 text-center text-sm text-base-content/50">
+        <a
+          href="https://onboarding.edufeed.org"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="underline underline-offset-2 transition-colors hover:text-base-content/70"
+        >
+          {m.discover_onboarding_cta()} ↗
+        </a>
+      </p>
     </div>
   </div>
 
