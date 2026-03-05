@@ -39,10 +39,14 @@ vi.mock('$lib/helpers/calendar.js', () => ({
 }));
 vi.mock('$lib/helpers/educational/ambTransform.js', () => ({
   getLabelsWithFallback: (tags, field) => {
-    if (field === 'learningResourceType') return [{ label: 'Text' }];
-    if (field === 'about') return [{ label: 'Mathematics' }];
-    if (field === 'educationalLevel') return [{ label: 'Higher Education' }];
+    if (field === 'learningResourceType') return [{ id: 'hcrt/text', label: 'Text' }];
+    if (field === 'about') return [{ id: 'math', label: 'Mathematik', fallbackLang: 'de' }];
+    if (field === 'educationalLevel') return [{ id: 'higher', label: 'Higher Education' }];
     return [];
+  },
+  getLanguageDisplayName: (code) => {
+    const names = { de: 'German', en: 'English', fr: 'French' };
+    return names[code] || code;
   }
 }));
 vi.mock('$lib/stores/config.svelte.js', () => ({

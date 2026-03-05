@@ -14,7 +14,10 @@
   import EventTags from '../calendar/EventTags.svelte';
   import EventDebugPanel from '../shared/EventDebugPanel.svelte';
   import { getLocale } from '$lib/paraglide/runtime.js';
-  import { getLabelsWithFallback } from '$lib/helpers/educational/ambTransform.js';
+  import {
+    getLabelsWithFallback,
+    getLanguageDisplayName
+  } from '$lib/helpers/educational/ambTransform.js';
   import { getCachedConcepts, ensureVocabularyLoaded } from '$lib/stores/skos-cache.svelte.js';
   import { runtimeConfig } from '$lib/stores/config.svelte.js';
   import * as m from '$lib/paraglide/messages.js';
@@ -156,7 +159,12 @@
         <span class="truncate font-semibold text-base-content">{resource.name}</span>
         {#if localizedLearningResourceTypes.length > 0}
           <span class="badge flex-shrink-0 badge-xs badge-primary"
-            >{localizedLearningResourceTypes[0].label}</span
+            >{localizedLearningResourceTypes[0]
+              .label}{#if localizedLearningResourceTypes[0].fallbackLang}
+              ({getLanguageDisplayName(
+                localizedLearningResourceTypes[0].fallbackLang,
+                getLocale()
+              )}){/if}</span
           >
         {/if}
       </div>
@@ -191,7 +199,8 @@
         <div class="mt-1 hidden flex-wrap gap-1 sm:flex">
           {#each localizedSubjects.slice(0, 3) as subject (subject.id)}
             <span class="rounded bg-base-200 px-1.5 py-0.5 text-xs text-base-content/60"
-              >{subject.label}</span
+              >{subject.label}{#if subject.fallbackLang}
+                ({getLanguageDisplayName(subject.fallbackLang, getLocale())}){/if}</span
             >
           {/each}
           {#if localizedSubjects.length > 3}
@@ -233,7 +242,12 @@
       <!-- Resource Type Badge -->
       {#if localizedLearningResourceTypes.length > 0}
         <div class="badge badge-sm badge-primary">
-          {localizedLearningResourceTypes[0].label}
+          {localizedLearningResourceTypes[0]
+            .label}{#if localizedLearningResourceTypes[0].fallbackLang}
+            ({getLanguageDisplayName(
+              localizedLearningResourceTypes[0].fallbackLang,
+              getLocale()
+            )}){/if}
         </div>
       {/if}
     </div>
@@ -314,7 +328,8 @@
         <div class="flex flex-wrap gap-1">
           {#each localizedSubjects.slice(0, 3) as subject (subject.id)}
             <span class="rounded bg-base-200 px-2 py-1 text-xs text-base-content/60">
-              {subject.label}
+              {subject.label}{#if subject.fallbackLang}
+                ({getLanguageDisplayName(subject.fallbackLang, getLocale())}){/if}
             </span>
           {/each}
           {#if localizedSubjects.length > 3}

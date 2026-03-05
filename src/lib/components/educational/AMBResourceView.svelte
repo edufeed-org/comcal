@@ -18,7 +18,10 @@
   import EventTags from '../calendar/EventTags.svelte';
   import CommunityShare from '../shared/CommunityShare.svelte';
   import { getLocale } from '$lib/paraglide/runtime.js';
-  import { getLabelsWithFallback } from '$lib/helpers/educational/ambTransform.js';
+  import {
+    getLabelsWithFallback,
+    getLanguageDisplayName
+  } from '$lib/helpers/educational/ambTransform.js';
   import { getCachedConcepts, ensureVocabularyLoaded } from '$lib/stores/skos-cache.svelte.js';
   import { buildAMBJsonLd } from '$lib/helpers/educational/ambJsonLd.js';
   import { page } from '$app/stores';
@@ -239,7 +242,12 @@
     {#if localizedLearningResourceTypes.length > 0}
       <div class="mb-4 flex flex-wrap gap-2">
         {#each localizedLearningResourceTypes.slice(0, 2) as type (type.id)}
-          <span class="badge badge-lg badge-primary">{type.label}</span>
+          <span class="badge badge-lg badge-primary"
+            >{type.label}{#if type.fallbackLang}
+              <span class="ml-1 text-xs opacity-60"
+                >({getLanguageDisplayName(type.fallbackLang, getLocale())})</span
+              >{/if}</span
+          >
         {/each}
       </div>
     {/if}
@@ -428,7 +436,12 @@
             </h3>
             <div class="flex flex-wrap gap-2">
               {#each localizedEducationalLevels as level (level.id)}
-                <span class="badge badge-secondary">{level.label}</span>
+                <span class="badge badge-secondary"
+                  >{level.label}{#if level.fallbackLang}
+                    <span class="ml-1 text-xs opacity-60"
+                      >({getLanguageDisplayName(level.fallbackLang, getLocale())})</span
+                    >{/if}</span
+                >
               {/each}
             </div>
           </div>
@@ -442,7 +455,12 @@
             </h3>
             <div class="flex flex-wrap gap-2">
               {#each localizedSubjects as subject (subject.id)}
-                <span class="badge badge-outline">{subject.label}</span>
+                <span class="badge badge-outline"
+                  >{subject.label}{#if subject.fallbackLang}
+                    <span class="ml-1 text-xs opacity-60"
+                      >({getLanguageDisplayName(subject.fallbackLang, getLocale())})</span
+                    >{/if}</span
+                >
               {/each}
             </div>
           </div>

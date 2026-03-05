@@ -55,7 +55,11 @@ vi.mock('$lib/helpers/calendar.js', () => ({
   formatCalendarDate: () => 'Jan 15'
 }));
 vi.mock('$lib/helpers/educational/ambTransform.js', () => ({
-  getLabelsWithFallback: () => []
+  getLabelsWithFallback: () => [],
+  getLanguageDisplayName: (/** @type {string} */ code) => {
+    const names = { de: 'German', en: 'English', fr: 'French' };
+    return names[code] || code;
+  }
 }));
 vi.mock('$lib/stores/skos-cache.svelte.js', () => ({
   getCachedConcepts: () => [],

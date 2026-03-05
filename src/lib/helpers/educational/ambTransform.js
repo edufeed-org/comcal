@@ -366,26 +366,45 @@ export function getPrefLabelWithFallback(tags, prefix, userLang = 'en') {
 }
 
 /**
+ * Returns a human-readable language name for a language code using Intl.DisplayNames.
+ *
+ * @param {string} langCode - ISO 639-1 language code (e.g., 'de', 'en')
+ * @param {string} [displayLocale='en'] - Locale for the display name (e.g., 'en' → "German", 'de' → "Deutsch")
+ * @returns {string} Human-readable language name, or the code itself on failure
+ */
+export function getLanguageDisplayName(langCode, displayLocale = 'en') {
+  try {
+    const names = new Intl.DisplayNames([displayLocale], { type: 'language' });
+    return names.of(langCode) || langCode;
+  } catch {
+    return langCode;
+  }
+}
+
+/**
  * Gets all prefLabel values for a given prefix, grouped by index position.
  * This is useful for properties that can have multiple instances (like multiple subjects).
+ *
+ * When a label is resolved from a language other than the user's preferred language,
+ * the returned object includes a `fallbackLang` property indicating the source language.
  *
  * @param {Array<Array<string>>} tags - Array of Nostr tags
  * @param {string} prefix - The tag prefix (e.g., 'about', 'learningResourceType')
  * @param {string} [userLang='en'] - User's preferred language code
  * @param {import('$lib/helpers/educational/skosLoader.js').SKOSConcept[] | null} [concepts=null] - Optional SKOS concepts for URI resolution
- * @returns {Array<{id: string, label: string}>} Array of objects with id and language-aware label
+ * @returns {Array<{id: string, label: string, fallbackLang?: string}>} Array of objects with id, language-aware label, and optional fallback language indicator
  *
  * @example
- * // Tags with multiple subjects:
- * // ["about:id", "http://example.org/math"], ["about:prefLabel:de", "Mathematik"],
- * // ["about:id", "http://example.org/physics"], ["about:prefLabel:de", "Physik"]
- * getLabelsWithFallback(tags, 'about', 'de')
- * // Returns [{id: "http://example.org/math", label: "Mathematik"}, {id: "http://example.org/physics", label: "Physik"}]
+ * // Tags with only German labels, userLang='en':
+ * // ["about:id", "http://example.org/math"], ["about:prefLabel:de", "Mathematik"]
+ * getLabelsWithFallback(tags, 'about', 'en')
+ * // Returns [{id: "...", label: "Mathematik", fallbackLang: "de"}]
  */
 export function getLabelsWithFallback(tags, prefix, userLang = 'en', concepts = null) {
   const idTagName = `${prefix}:id`;
   const userLangTagName = `${prefix}:prefLabel:${userLang}`;
   const enTagName = `${prefix}:prefLabel:en`;
+  const prefLabelPrefix = `${prefix}:prefLabel:`;
 
   // Get all IDs
   const ids = getTagValues(tags, idTagName);
@@ -396,32 +415,74 @@ export function getLabelsWithFallback(tags, prefix, userLang = 'en', concepts = 
   // Get all English labels as fallback
   const enLabels = userLang !== 'en' ? getTagValues(tags, enTagName) : [];
 
+  // Discover all other available languages from tags
+  /** @type {Record<string, string[]>} */
+  const otherLangLabels = {};
+  const seenLangs = new Set();
+  for (const tag of tags) {
+    if (tag[0].startsWith(prefLabelPrefix)) {
+      const lang = tag[0].slice(prefLabelPrefix.length);
+      if (lang !== userLang && lang !== 'en' && !seenLangs.has(lang)) {
+        seenLangs.add(lang);
+        otherLangLabels[lang] = getTagValues(tags, `${prefix}:prefLabel:${lang}`);
+      }
+    }
+  }
+
   return ids.map((id, index) => {
     // Try user's language first
     let label = userLangLabels[index];
+    /** @type {string | undefined} */
+    let fallbackLang;
 
     // Fallback to English
     if (!label && userLang !== 'en') {
       label = enLabels[index];
+      if (label) fallbackLang = 'en';
+    }
+
+    // Fallback to any other available language from tags
+    if (!label) {
+      for (const [lang, labels] of Object.entries(otherLangLabels)) {
+        if (labels[index]) {
+          label = labels[index];
+          fallbackLang = lang;
+          break;
+        }
+      }
     }
 
     // Fallback to SKOS concept lookup
     if (!label && concepts) {
       const concept = concepts.find((c) => c.id === id);
       if (concept) {
-        label =
-          concept.labels[userLang] ||
-          concept.labels.de ||
-          concept.labels.en ||
-          Object.values(concept.labels)[0];
+        if (concept.labels[userLang]) {
+          label = concept.labels[userLang];
+        } else if (concept.labels.en) {
+          label = concept.labels.en;
+          fallbackLang = 'en';
+        } else if (concept.labels.de) {
+          label = concept.labels.de;
+          fallbackLang = 'de';
+        } else {
+          const firstLang = Object.keys(concept.labels)[0];
+          if (firstLang) {
+            label = concept.labels[firstLang];
+            fallbackLang = firstLang;
+          }
+        }
       }
     }
 
-    // Fallback to extracting readable label from URI
+    // Fallback to extracting readable label from URI (no meaningful language)
     if (!label) {
       label = extractLabelFromUri(id);
+      fallbackLang = undefined;
     }
 
-    return { id, label };
+    /** @type {{id: string, label: string, fallbackLang?: string}} */
+    const result = { id, label };
+    if (fallbackLang) result.fallbackLang = fallbackLang;
+    return result;
   });
 }
