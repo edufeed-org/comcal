@@ -5,7 +5,6 @@
 -->
 
 <script>
-  import { SvelteSet, SvelteMap } from 'svelte/reactivity';
   import { useJoinedCommunitiesList } from '../../stores/joined-communities-list.svelte.js';
   import { useUserProfile } from '../../stores/user-profile.svelte.js';
   import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
@@ -41,8 +40,8 @@
 
   // State management
   let selectedCommunityIds = $state(/** @type {string[]} */ ([]));
-  // eslint-disable-next-line svelte/no-unnecessary-state-wrap -- needed because variable is reassigned
-  let communitiesWithShares = $state(new SvelteSet());
+  /** @type {Set<string>} */
+  let communitiesWithShares = $state.raw(new Set());
   let isCheckingShares = $state(false);
   let isProcessingShares = $state(false);
   let shareError = $state('');
@@ -51,7 +50,6 @@
     successful: /** @type {string[]} */ ([]),
     failed: /** @type {string[]} */ ([])
   });
-  let loadedShares = new SvelteMap();
 
   /**
    * Get community name for logging purposes
@@ -70,17 +68,14 @@
    */
   $effect(() => {
     if (!activeUser || !event || !joinedCommunities.length) {
-      communitiesWithShares = new SvelteSet();
+      communitiesWithShares = new Set();
       isCheckingShares = false;
       return;
     }
 
     isCheckingShares = true;
-    loadedShares.clear();
-    const shares = new SvelteSet();
 
     // Create loader to FETCH user's targeted publications from relays
-    // This is critical - without this, we only read from local cache which may be empty
     const loader = createTimelineLoader(
       pool,
       runtimeConfig.fallbackRelays || [],
@@ -93,64 +88,48 @@
 
     // Start fetching from relays
     const loaderSub = loader().subscribe({
-      // next: (event) => {
-      // 	// Loader populates eventStore automatically
-      // 	console.log('🔗 CommunityShare: Loader fetched share events from relays', event);
-      // },
       error: (err) => console.warn('🔗 CommunityShare: Loader error:', err)
     });
 
-    // Subscribe to EventStore for reactive updates (reads from cache populated by loader)
-    // Using TimelineModel for proper reactivity when new events are added to EventStore
+    // Subscribe to EventStore for reactive updates
+    // Recompute full shares set on each emission (TimelineModel emits the complete list)
     const modelSub = eventStore
       .model(TimelineModel, {
         kinds: [30222],
         authors: [activeUser.pubkey]
       })
       .subscribe((shareEvents) => {
-        let hasNew = false;
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- assigned to $state.raw, not reactive
+        const shares = new Set();
         for (const shareEvent of shareEvents || []) {
-          if (!loadedShares.has(shareEvent.id)) {
-            loadedShares.set(shareEvent.id, shareEvent);
-            hasNew = true;
+          // Check if this share references our event
+          const aTag = shareEvent.tags.find((t) => t[0] === 'a');
+          const eTag = shareEvent.tags.find((t) => t[0] === 'e');
 
-            // Check if this share references our event
-            const aTag = shareEvent.tags.find((t) => t[0] === 'a');
-            const eTag = shareEvent.tags.find((t) => t[0] === 'e');
+          if (aTag) {
+            const eventPointer = getAddressPointerForEvent(event);
+            const sharePointer = parseAddressPointerFromATag(aTag);
 
-            if (aTag) {
-              // Try addressable reference match
-              // Using local parseAddressPointerFromATag to correctly handle d-tags with colons (like URLs)
-              const eventPointer = getAddressPointerForEvent(event);
-              const sharePointer = parseAddressPointerFromATag(aTag);
+            if (!sharePointer) continue;
 
-              if (!sharePointer) continue;
+            const idMatch = eventPointer.identifier === sharePointer.identifier;
+            const kindMatch = eventPointer.kind === sharePointer.kind;
+            const pubkeyMatch = eventPointer.pubkey === sharePointer.pubkey;
 
-              const idMatch = eventPointer.identifier === sharePointer.identifier;
-              const kindMatch = eventPointer.kind === sharePointer.kind;
-              const pubkeyMatch = eventPointer.pubkey === sharePointer.pubkey;
-
-              if (idMatch && kindMatch && pubkeyMatch) {
-                const pTag = shareEvent.tags.find((t) => t[0] === 'p');
-                if (pTag?.[1]) {
-                  shares.add(pTag[1]);
-                }
-              }
-            } else if (eTag && eTag[1] === event.id) {
-              // Fallback to event ID match
+            if (idMatch && kindMatch && pubkeyMatch) {
               const pTag = shareEvent.tags.find((t) => t[0] === 'p');
               if (pTag?.[1]) {
                 shares.add(pTag[1]);
-                console.log(
-                  `✅ CommunityShare: Found existing share (by event ID) for community ${pTag[1].slice(0, 8)}`
-                );
               }
+            }
+          } else if (eTag && eTag[1] === event.id) {
+            const pTag = shareEvent.tags.find((t) => t[0] === 'p');
+            if (pTag?.[1]) {
+              shares.add(pTag[1]);
             }
           }
         }
-        if (hasNew) {
-          communitiesWithShares = new SvelteSet(shares);
-        }
+        communitiesWithShares = shares;
         isCheckingShares = false;
       });
 

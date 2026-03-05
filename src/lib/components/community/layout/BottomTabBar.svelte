@@ -5,7 +5,8 @@
     CalendarIcon,
     BellIcon,
     SettingsIcon,
-    BookIcon
+    BookIcon,
+    KanbanIcon
   } from '$lib/components/icons';
   import {
     getCommunityAvailableContentTypes,
@@ -27,6 +28,7 @@
     chat: ChatIcon,
     calendar: CalendarIcon,
     learning: BookIcon,
+    boards: KanbanIcon,
     activity: BellIcon,
     settings: SettingsIcon
   };
@@ -78,12 +80,22 @@
           icon: BookIcon
         });
       }
+
+      // Always include Boards tab even if community doesn't define kind 30301
+      if (!types.some((t) => t.id === 'boards')) {
+        types.push({
+          id: 'boards',
+          label: m.community_layout_bottom_tab_bar_boards(),
+          icon: KanbanIcon
+        });
+      }
     } else {
       // Default content types when no community
       types.push(
         { id: 'chat', label: m.community_layout_bottom_tab_bar_chat(), icon: ChatIcon },
         { id: 'calendar', label: m.community_layout_bottom_tab_bar_calendar(), icon: CalendarIcon },
-        { id: 'learning', label: m.community_layout_bottom_tab_bar_learning(), icon: BookIcon }
+        { id: 'learning', label: m.community_layout_bottom_tab_bar_learning(), icon: BookIcon },
+        { id: 'boards', label: m.community_layout_bottom_tab_bar_boards(), icon: KanbanIcon }
       );
     }
 

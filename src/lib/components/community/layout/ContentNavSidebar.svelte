@@ -5,7 +5,8 @@
     CalendarIcon,
     BellIcon,
     SettingsIcon,
-    BookIcon
+    BookIcon,
+    KanbanIcon
   } from '$lib/components/icons';
   import * as m from '$lib/paraglide/messages';
 
@@ -20,6 +21,7 @@
     { id: 'chat', label: m.community_layout_bottom_tab_bar_chat(), icon: ChatIcon },
     { id: 'calendar', label: m.community_layout_bottom_tab_bar_calendar(), icon: CalendarIcon },
     { id: 'learning', label: m.community_layout_bottom_tab_bar_learning(), icon: BookIcon },
+    { id: 'boards', label: m.community_layout_bottom_tab_bar_boards(), icon: KanbanIcon },
     { id: 'activity', label: m.community_layout_bottom_tab_bar_activity(), icon: BellIcon },
     { id: 'settings', label: m.community_layout_bottom_tab_bar_settings(), icon: SettingsIcon }
   ];

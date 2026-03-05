@@ -7,6 +7,7 @@
   import Chat from '../views/Chat.svelte';
   import CalendarView from '$lib/components/calendar/CalendarView.svelte';
   import LearningView from '../views/LearningView.svelte';
+  import BoardsView from '../views/BoardsView.svelte';
   import HomeView from '../views/HomeView.svelte';
   import ActivityView from '../views/ActivityView.svelte';
   import SettingsView from '../views/SettingsView.svelte';
@@ -133,6 +134,8 @@
         />
       {:else if selectedContentType === 'learning'}
         <LearningView communityPubkey={selectedCommunityId} {communityProfile} />
+      {:else if selectedContentType === 'boards'}
+        <BoardsView communityPubkey={selectedCommunityId} {communityProfile} />
       {:else if selectedContentType === 'activity'}
         <ActivityView
           communityId={selectedCommunityId}

@@ -63,6 +63,14 @@ export const CONTENT_TYPE_CONFIG = {
     component: 'CalendarView',
     description: 'Calendar event RSVPs (NIP-52)'
   },
+  30301: {
+    kind: 30301,
+    name: 'Boards',
+    icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
+    supported: true,
+    component: 'BoardsView',
+    description: 'Kanban boards for project management'
+  },
   1: {
     kind: 1,
     name: 'Posts',
@@ -216,6 +224,7 @@ export function kindToContentType(kind) {
   const mapping = {
     9: 'chat',
     30142: 'learning',
+    30301: 'boards',
     31923: 'calendar',
     31922: 'calendar',
     31924: 'calendar',

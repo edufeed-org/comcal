@@ -1,5 +1,4 @@
 <script>
-  import { SvelteSet, SvelteMap } from 'svelte/reactivity';
   import { useJoinedCommunitiesList } from '../../stores/joined-communities-list.svelte.js';
   import { useUserProfile } from '../../stores/user-profile.svelte.js';
   import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
@@ -31,8 +30,8 @@
 
   // State management
   let selectedCommunityIds = $state(/** @type {string[]} */ ([]));
-  // eslint-disable-next-line svelte/no-unnecessary-state-wrap -- needed because variable is reassigned
-  let communitiesWithShares = $state(new SvelteSet());
+  /** @type {Set<string>} */
+  let communitiesWithShares = $state.raw(new Set());
   let isCheckingShares = $state(false);
   let isProcessingCommunityShares = $state(false);
   let communityShareError = $state('');
@@ -41,25 +40,16 @@
     successful: /** @type {string[]} */ ([]),
     failed: /** @type {string[]} */ ([])
   });
-  let loadedShares = new SvelteMap();
 
   /**
-   * Get community name from profile
+   * Get community name for logging purposes
+   * Note: We use truncated pubkey here instead of profile lookup because
+   * useUserProfile() uses $effect internally which cannot be called from async handlers
    * @param {string} communityPubkey
-   * @returns {Promise<string>}
+   * @returns {string}
    */
-  async function getCommunityName(communityPubkey) {
-    try {
-      const getProfile = useUserProfile(communityPubkey);
-      const profile = await getProfile();
-      return profile?.name || profile?.display_name || communityPubkey.slice(0, 8);
-    } catch (error) {
-      console.warn(
-        `🌐 CommunityCalendarShare: Failed to get community name for ${communityPubkey}:`,
-        error
-      );
-      return communityPubkey.slice(0, 8);
-    }
+  function getCommunityName(communityPubkey) {
+    return communityPubkey.slice(0, 8) + '...';
   }
 
   /**
@@ -68,63 +58,46 @@
    */
   $effect(() => {
     if (!activeUser || !event || !joinedCommunities.length) {
-      communitiesWithShares = new SvelteSet();
+      communitiesWithShares = new Set();
       isCheckingShares = false;
       return;
     }
 
     isCheckingShares = true;
-    loadedShares.clear();
-    const shares = new SvelteSet();
-
-    console.log('🌐 CommunityCalendarShare: Checking for existing shares');
 
     // Subscribe to all share events for this user
+    // Recompute full shares set on each emission
     const modelSub = eventStore
       .timeline({
         kinds: [30222],
         authors: [activeUser.pubkey]
       })
       .subscribe((shareEvents) => {
-        let hasNew = false;
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- assigned to $state.raw, not reactive
+        const shares = new Set();
         for (const shareEvent of shareEvents || []) {
-          if (!loadedShares.has(shareEvent.id)) {
-            loadedShares.set(shareEvent.id, shareEvent);
-            hasNew = true;
+          // Check if this share references our event
+          const aTag = shareEvent.tags.find((t) => t[0] === 'a');
+          if (aTag) {
+            const eventPointer = getAddressPointerForEvent(event.originalEvent);
+            const sharePointer = parseAddressPointerFromATag(aTag);
 
-            // Check if this share references our event
-            const aTag = shareEvent.tags.find((t) => t[0] === 'a');
-            if (aTag) {
-              // Using local parseAddressPointerFromATag to correctly handle d-tags with colons (like URLs)
-              const eventPointer = getAddressPointerForEvent(event.originalEvent);
-              const sharePointer = parseAddressPointerFromATag(aTag);
+            if (!sharePointer) continue;
 
-              if (!sharePointer) continue;
+            const idMatch = eventPointer.identifier === sharePointer.identifier;
+            const kindMatch = eventPointer.kind === sharePointer.kind;
+            const pubkeyMatch = eventPointer.pubkey === sharePointer.pubkey;
 
-              const idMatch = eventPointer.identifier === sharePointer.identifier;
-              const kindMatch = eventPointer.kind === sharePointer.kind;
-              const pubkeyMatch = eventPointer.pubkey === sharePointer.pubkey;
-
-              if (idMatch && kindMatch && pubkeyMatch) {
-                // Find which community this share is for
-                const pTag = shareEvent.tags.find((t) => t[0] === 'p');
-                if (pTag?.[1]) {
-                  shares.add(pTag[1]);
-                  console.log(
-                    `✅ CommunityCalendarShare: Found existing share for community ${pTag[1].slice(0, 8)}`
-                  );
-                }
+            if (idMatch && kindMatch && pubkeyMatch) {
+              const pTag = shareEvent.tags.find((t) => t[0] === 'p');
+              if (pTag?.[1]) {
+                shares.add(pTag[1]);
               }
             }
           }
         }
-        if (hasNew) {
-          communitiesWithShares = new Set(shares);
-        }
+        communitiesWithShares = shares;
         isCheckingShares = false;
-        console.log(
-          `🌐 CommunityCalendarShare: Check complete - found ${shares.size} existing shares`
-        );
       });
 
     return () => {
@@ -346,7 +319,7 @@
       // Process each selected community
       for (const communityPubkey of selectedCommunityIds) {
         const isAlreadyShared = communitiesWithShares.has(communityPubkey);
-        const communityName = await getCommunityName(communityPubkey);
+        const communityName = getCommunityName(communityPubkey);
 
         try {
           let success = false;

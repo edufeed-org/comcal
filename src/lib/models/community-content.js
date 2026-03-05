@@ -1,0 +1,88 @@
+/**
+ * Generic Community Content Model Factory
+ *
+ * Creates models that combine direct community content (h-tagged events) with
+ * content referenced by targeted publications (kind 30222).
+ *
+ * This model ONLY reads from EventStore — it does NOT fetch data.
+ * The loader must populate EventStore with the relevant events.
+ */
+import { combineLatest } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { TimelineModel } from 'applesauce-core/models';
+import { getTagValue } from 'applesauce-core/helpers';
+
+/**
+ * Create a community content model for specific event kinds.
+ *
+ * @param {number[]} contentKinds - Event kinds for this content type
+ * @param {Object} [options]
+ * @param {(event: any) => any} [options.transform] - Optional transform per event
+ * @returns {(communityPubkey: string) => (eventStore: any) => import('rxjs').Observable<any[]>}
+ */
+export function createCommunityContentModel(contentKinds, options = {}) {
+  const kTagStrings = contentKinds.map(String);
+  const { transform } = options;
+
+  return function (communityPubkey) {
+    return (eventStore) => {
+      // Stream 1: Direct community content (h-tag)
+      const direct$ = eventStore.model(TimelineModel, {
+        kinds: contentKinds,
+        '#h': [communityPubkey],
+        limit: 100
+      });
+
+      // Stream 2: Targeted publications referencing this content type
+      const shares$ = eventStore.model(TimelineModel, {
+        kinds: [30222],
+        '#p': [communityPubkey],
+        '#k': kTagStrings,
+        limit: 100
+      });
+
+      // Stream 3: All events of this kind (for resolving references)
+      const all$ = eventStore.model(TimelineModel, {
+        kinds: contentKinds,
+        limit: 500
+      });
+
+      return combineLatest([direct$, shares$, all$]).pipe(
+        map(([directEvents, shareEvents, allEvents]) => {
+          // Build lookup map by ID and address
+          const lookup = new Map();
+          for (const event of allEvents) {
+            lookup.set(event.id, event);
+            const dTag = getTagValue(event, 'd');
+            if (dTag) {
+              lookup.set(`${event.kind}:${event.pubkey}:${dTag}`, event);
+            }
+          }
+
+          const resultMap = new Map();
+          const fmt = transform || ((e) => e);
+
+          // Add direct events first (priority)
+          for (const event of directEvents) {
+            resultMap.set(event.id, fmt(event));
+          }
+
+          // Resolve targeted publication references
+          for (const share of shareEvents) {
+            const eTag = getTagValue(share, 'e');
+            const aTag = getTagValue(share, 'a');
+            const resolved = (eTag && lookup.get(eTag)) || (aTag && lookup.get(aTag));
+            if (resolved && !resultMap.has(resolved.id)) {
+              resultMap.set(resolved.id, fmt(resolved));
+            }
+          }
+
+          return Array.from(resultMap.values());
+        })
+      );
+    };
+  };
+}
+
+/** Community board model for kind 30301 kanban boards */
+export const CommunityBoardModel = createCommunityContentModel([30301]);
