@@ -479,14 +479,16 @@
       <h2 class="mb-3 text-xl font-bold text-base-content">{m.amb_resource_license()}</h2>
       <div class="flex items-center gap-4">
         <span class="badge badge-lg badge-info">{resource.license.label}</span>
+        <!-- eslint-disable svelte/no-navigation-without-resolve -- external: license URL -->
         <a
-          href={resolve(resource.license.id)}
+          href={resource.license.id}
           target="_blank"
           rel="noopener noreferrer"
           class="link text-sm link-primary"
         >
           {m.amb_resource_view_license()}
         </a>
+        <!-- eslint-enable svelte/no-navigation-without-resolve -->
       </div>
     </div>
   {/if}
@@ -606,8 +608,9 @@
                 {file.mimeType} • {formatFileSize(file.size)}
               </div>
             </div>
+            <!-- eslint-disable svelte/no-navigation-without-resolve -- external: uploaded file URLs -->
             <a
-              href={resolve(file.url)}
+              href={file.url}
               target="_blank"
               rel="noopener noreferrer"
               class="btn btn-ghost btn-sm"
@@ -634,7 +637,7 @@
               </svg>
               View
             </a>
-            <a href={resolve(file.url)} download class="btn btn-ghost btn-sm">
+            <a href={file.url} download class="btn btn-ghost btn-sm">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 class="h-4 w-4"
@@ -651,6 +654,7 @@
               </svg>
               Download
             </a>
+            <!-- eslint-enable svelte/no-navigation-without-resolve -->
           </div>
         {/each}
       </div>
@@ -680,14 +684,16 @@
                 d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
               />
             </svg>
+            <!-- eslint-disable svelte/no-navigation-without-resolve -- external: reference URL -->
             <a
-              href={resolve(url)}
+              href={url}
               target="_blank"
               rel="noopener noreferrer"
               class="flex-1 link truncate link-primary"
             >
               {url}
             </a>
+            <!-- eslint-enable svelte/no-navigation-without-resolve -->
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="h-4 w-4 flex-shrink-0 text-base-content/40"
