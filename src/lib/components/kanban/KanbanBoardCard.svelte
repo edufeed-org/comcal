@@ -64,6 +64,18 @@
   const MAX_PREVIEW_COLUMNS = 5;
   const visibleColumns = $derived(columns.slice(0, MAX_PREVIEW_COLUMNS));
   const extraColumnCount = $derived(Math.max(0, columns.length - MAX_PREVIEW_COLUMNS));
+
+  function navigateToDetail() {
+    if (boardNaddr) goto(resolve('/' + boardNaddr));
+  }
+
+  /** @param {KeyboardEvent} e */
+  function handleKeydown(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      navigateToDetail();
+    }
+  }
 </script>
 
 {#if isList}
@@ -106,9 +118,13 @@
 {:else}
   <!-- Card variant: vertical layout -->
   <div
-    class="kanban-card rounded-lg border border-base-300 bg-base-100 shadow-sm {compact
+    class="kanban-card focus:ring-opacity-50 cursor-pointer rounded-lg border border-base-300 bg-base-100 shadow-sm transition-shadow hover:border-primary hover:shadow-md focus:ring-2 focus:ring-primary focus:outline-none {compact
       ? 'p-3'
       : 'p-4'}"
+    role="button"
+    tabindex="0"
+    onclick={navigateToDetail}
+    onkeydown={handleKeydown}
   >
     <!-- Author Header -->
     <div class="mb-3 flex items-center gap-3">
@@ -151,25 +167,18 @@
         </div>
       {/if}
 
-      <!-- Open Board Button -->
-      {#if boardNaddr}
-        <div class="pt-2">
-          <button class="btn btn-sm btn-primary" onclick={() => goto(resolve('/' + boardNaddr))}>
-            {m.kanban_board_open()}
-          </button>
-        </div>
-      {/if}
-
       <!-- Reactions -->
       {#if !compact}
-        <div class="pt-2">
+        <div class="pt-2" onclick={(e) => e.stopPropagation()}>
           <ReactionBar event={board} />
         </div>
       {/if}
 
       <!-- Debug Panel -->
       {#if !compact}
-        <EventDebugPanel event={board} />
+        <div onclick={(e) => e.stopPropagation()}>
+          <EventDebugPanel event={board} />
+        </div>
       {/if}
     </div>
   </div>
