@@ -9,12 +9,17 @@
 
 {#if variant === 'list'}
   <!-- List variant skeleton -->
-  <div class="flex items-center gap-3 rounded-lg border border-base-300 p-3">
-    <div class="h-16 w-16 shrink-0 skeleton rounded"></div>
+  <div class="flex items-start gap-3 rounded-lg border border-base-300 p-3">
+    <div class="h-16 w-16 shrink-0 skeleton rounded sm:h-20 sm:w-20"></div>
     <div class="flex min-w-0 flex-1 flex-col gap-2">
       <div class="h-4 w-3/4 skeleton"></div>
       <div class="h-3 w-1/2 skeleton"></div>
-      <div class="h-3 w-2/3 skeleton"></div>
+      <div class="hidden h-3 w-2/3 skeleton sm:block"></div>
+      <div class="flex gap-1.5">
+        <div class="h-4 w-14 skeleton rounded-full"></div>
+        <div class="h-4 w-10 skeleton rounded-full"></div>
+        <div class="hidden h-4 w-16 skeleton rounded-full sm:block"></div>
+      </div>
     </div>
   </div>
 {:else}

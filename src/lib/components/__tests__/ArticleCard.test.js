@@ -142,15 +142,15 @@ describe('ArticleCard', () => {
       expect(reactionBar).toBeFalsy();
     });
 
-    it('does not show tags', () => {
+    it('shows hashtag badges inline', () => {
       const { container } = render(ArticleCard, {
         props: { article: mockArticle, authorProfile: mockAuthorProfile, variant: 'list' }
       });
 
-      // In list mode, EventTags should not render
+      // List mode shows inline hashtag badges (not EventTags component)
       const listItem = container.querySelector('.article-card-list');
       const tagElements = listItem?.querySelectorAll('.badge');
-      expect(tagElements?.length || 0).toBe(0);
+      expect(tagElements?.length).toBe(2); // 'svelte' and 'nostr'
     });
 
     it('does not show Read Article button', () => {

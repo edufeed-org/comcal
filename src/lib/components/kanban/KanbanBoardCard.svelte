@@ -70,10 +70,12 @@
   <!-- List variant: horizontal row -->
   <button
     type="button"
-    class="kanban-card-list focus:ring-opacity-50 flex w-full items-center gap-3 rounded-lg border border-base-300 bg-base-100 p-3 text-left transition-shadow hover:border-primary hover:shadow-sm focus:ring-2 focus:ring-primary focus:outline-none"
+    class="kanban-card-list focus:ring-opacity-50 flex w-full items-start gap-3 rounded-lg border border-base-300 bg-base-100 p-3 text-left transition-shadow hover:border-primary hover:shadow-sm focus:ring-2 focus:ring-primary focus:outline-none"
     onclick={() => boardNaddr && goto(resolve('/' + boardNaddr))}
   >
-    <div class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded bg-base-200">
+    <div
+      class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded bg-base-200 sm:h-20 sm:w-20"
+    >
       <KanbanIcon class_="w-8 h-8 text-base-content/30" />
     </div>
     <div class="min-w-0 flex-1">
@@ -85,7 +87,19 @@
         {/if}
       </div>
       {#if truncatedDescription}
-        <div class="truncate text-sm text-base-content/50">{truncatedDescription}</div>
+        <div class="hidden text-sm text-base-content/50 sm:line-clamp-2 sm:block">
+          {truncatedDescription}
+        </div>
+      {/if}
+      {#if columns.length > 0}
+        <div class="mt-1 flex flex-wrap gap-1">
+          {#each columns.slice(0, 3) as col (col.id)}
+            <span class="badge badge-outline badge-xs">{col.name}</span>
+          {/each}
+          {#if columns.length > 3}
+            <span class="badge badge-ghost badge-xs">+{columns.length - 3}</span>
+          {/if}
+        </div>
       {/if}
     </div>
   </button>

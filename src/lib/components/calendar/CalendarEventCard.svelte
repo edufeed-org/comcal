@@ -65,7 +65,7 @@
 {#if isList}
   <!-- List variant: horizontal row -->
   <div
-    class="calendar-event-card-list focus:ring-opacity-50 flex cursor-pointer items-center gap-3 rounded-lg border border-base-300 bg-base-100 p-3 transition-shadow hover:border-primary hover:shadow-sm focus:ring-2 focus:ring-primary focus:outline-none {isAllDay
+    class="calendar-event-card-list focus:ring-opacity-50 flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 bg-base-100 p-3 transition-shadow hover:border-primary hover:shadow-sm focus:ring-2 focus:ring-primary focus:outline-none {isAllDay
       ? 'border-l-4 border-l-info'
       : ''} {isMultiDay ? 'border-l-4 border-l-secondary' : ''}"
     role="button"
@@ -74,7 +74,9 @@
     onkeydown={handleKeydown}
     data-testid="calendar-event-card"
   >
-    <div class="list-thumbnail h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-base-200">
+    <div
+      class="list-thumbnail h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-base-200 sm:h-20 sm:w-20"
+    >
       {#if event.image}
         <ImageWithFallback
           src={event.image}

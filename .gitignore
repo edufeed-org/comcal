@@ -24,6 +24,9 @@ vite.config.ts.timestamp-*
 
 # Cline
 memory-bank
+
+# Claude Code
+memory/
 .clineignore
 .clinerules
 

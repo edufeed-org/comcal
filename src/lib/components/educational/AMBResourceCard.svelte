@@ -129,13 +129,15 @@
 {#if isList}
   <!-- List variant: horizontal row -->
   <div
-    class="amb-card-list focus:ring-opacity-50 flex cursor-pointer items-center gap-3 rounded-lg border border-base-300 bg-base-100 p-3 transition-shadow hover:border-secondary hover:shadow-sm focus:ring-2 focus:ring-secondary focus:outline-none"
+    class="amb-card-list focus:ring-opacity-50 flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 bg-base-100 p-3 transition-shadow hover:border-secondary hover:shadow-sm focus:ring-2 focus:ring-secondary focus:outline-none"
     role="button"
     tabindex="0"
     onclick={navigateToDetail}
     onkeydown={handleKeydown}
   >
-    <div class="list-thumbnail h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-base-200">
+    <div
+      class="list-thumbnail h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-base-200 sm:h-20 sm:w-20"
+    >
       {#if resource.image}
         <ImageWithFallback
           src={resource.image}
@@ -165,7 +167,39 @@
         {/if}
       </div>
       {#if resource.description}
-        <div class="truncate text-sm text-base-content/50">{resource.description}</div>
+        <div class="hidden text-sm text-base-content/50 sm:line-clamp-2 sm:block">
+          {resource.description}
+        </div>
+      {/if}
+      <!-- Metadata badges -->
+      {#if localizedEducationalLevels.length > 0 || resource.isFree || resource.languages.length > 0}
+        <div class="mt-1 flex flex-wrap gap-1">
+          {#if localizedEducationalLevels.length > 0}
+            <span class="badge badge-xs badge-secondary">{localizedEducationalLevels[0].label}</span
+            >
+          {/if}
+          {#if resource.isFree}
+            <span class="badge badge-xs badge-success">{m.amb_resource_free()}</span>
+          {/if}
+          {#each resource.languages.slice(0, 2) as lang (lang)}
+            <span class="badge badge-ghost badge-xs">{lang.toUpperCase()}</span>
+          {/each}
+        </div>
+      {/if}
+      <!-- Subject tags (desktop only) -->
+      {#if localizedSubjects.length > 0}
+        <div class="mt-1 hidden flex-wrap gap-1 sm:flex">
+          {#each localizedSubjects.slice(0, 3) as subject (subject.id)}
+            <span class="rounded bg-base-200 px-1.5 py-0.5 text-xs text-base-content/60"
+              >{subject.label}</span
+            >
+          {/each}
+          {#if localizedSubjects.length > 3}
+            <span class="rounded bg-base-200 px-1.5 py-0.5 text-xs text-base-content/60"
+              >+{localizedSubjects.length - 3}</span
+            >
+          {/if}
+        </div>
       {/if}
     </div>
   </div>

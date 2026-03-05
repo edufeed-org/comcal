@@ -100,13 +100,15 @@
 {#if isList}
   <!-- List variant: horizontal row -->
   <div
-    class="article-card-list focus:ring-opacity-50 flex cursor-pointer items-center gap-3 rounded-lg border border-base-300 bg-base-100 p-3 transition-shadow hover:border-primary hover:shadow-sm focus:ring-2 focus:ring-primary focus:outline-none"
+    class="article-card-list focus:ring-opacity-50 flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 bg-base-100 p-3 transition-shadow hover:border-primary hover:shadow-sm focus:ring-2 focus:ring-primary focus:outline-none"
     role="button"
     tabindex="0"
     onclick={handleClick}
     onkeydown={handleKeydown}
   >
-    <div class="list-thumbnail h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-base-200">
+    <div
+      class="list-thumbnail h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-base-200 sm:h-20 sm:w-20"
+    >
       {#if image}
         <ImageWithFallback
           src={image}
@@ -126,7 +128,17 @@
         {authorName} · {formatCalendarDate(publishedAt, 'short')}
       </div>
       {#if summary}
-        <div class="truncate text-sm text-base-content/50">{summary}</div>
+        <div class="hidden text-sm text-base-content/50 sm:line-clamp-2 sm:block">{summary}</div>
+      {/if}
+      {#if hashtags.length > 0}
+        <div class="mt-1 flex flex-wrap gap-1">
+          {#each hashtags.slice(0, 4) as tag (tag)}
+            <span class="badge badge-outline badge-xs">#{tag}</span>
+          {/each}
+          {#if hashtags.length > 4}
+            <span class="badge badge-ghost badge-xs">+{hashtags.length - 4}</span>
+          {/if}
+        </div>
       {/if}
     </div>
   </div>

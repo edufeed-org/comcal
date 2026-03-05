@@ -1689,38 +1689,38 @@
         </div>
       </div>
     {:else}
-      <!-- Content List with lazy rendering -->
-      <div class="flex flex-col gap-3" data-testid="content-list">
+      <!-- Content Grid with lazy rendering -->
+      <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" data-testid="content-list">
         {#each displayedContent as item (item.data.id)}
-          <div use:observeCard={item.data.id} class="min-h-[80px]" data-testid="content-card">
+          <div use:observeCard={item.data.id} class="min-h-[200px]" data-testid="content-card">
             {#if visibleItemIds.has(item.data.id)}
               {#if item.type === 'article'}
                 <ArticleCard
                   article={item.data}
                   authorProfile={authorProfiles.get(item.data.pubkey)}
-                  variant="list"
+                  variant="card"
                 />
               {:else if item.type === 'amb'}
                 <AMBResourceCard
                   resource={item.data}
                   authorProfile={authorProfiles.get(item.data.pubkey)}
-                  variant="list"
+                  variant="card"
                 />
               {:else if item.type === 'event'}
                 <CalendarEventCard
                   event={item.data}
                   onEventClick={handleEventClick}
-                  variant="list"
+                  variant="card"
                 />
               {:else if item.type === 'board'}
                 <KanbanBoardCard
                   board={item.data}
                   authorProfile={authorProfiles.get(item.data.pubkey)}
-                  variant="list"
+                  variant="card"
                 />
               {/if}
             {:else}
-              <ContentCardSkeleton variant="list" />
+              <ContentCardSkeleton variant="card" />
             {/if}
           </div>
         {/each}
