@@ -12,15 +12,11 @@
 
   let { children, data } = $props();
 
-  // Initialize runtime config synchronously on app load.
-  // Use $effect.pre to run before child components mount while staying reactive.
-  let configInitialized = false;
-  $effect.pre(() => {
-    if (!configInitialized && data.config) {
-      initializeConfig(data.config);
-      configInitialized = true;
-    }
-  });
+  // Initialize runtime config synchronously before any child components render.
+  // The initialized guard inside initializeConfig() prevents double-initialization.
+  if (data.config) {
+    initializeConfig(data.config);
+  }
 
   // Re-initialize app settings after config is loaded
   $effect(() => {
@@ -46,12 +42,12 @@
     }
   });
 
-  // Initialize curated authors after config is loaded (fire-and-forget)
+  // Initialize curated authors for all categories after config is loaded (fire-and-forget)
   $effect(() => {
-    if (browser && configInitialized) {
+    if (browser) {
       import('$lib/services/curated-authors-service.svelte.js').then(
-        ({ initializeCuratedAuthors }) => {
-          initializeCuratedAuthors();
+        ({ initializeAllCuratedAuthors }) => {
+          initializeAllCuratedAuthors();
         }
       );
     }

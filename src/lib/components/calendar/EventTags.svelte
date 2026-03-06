@@ -23,13 +23,16 @@
     targetRoute = '/calendar'
   } = $props();
 
+  // Deduplicate tags to avoid keyed each block errors
+  let uniqueTags = $derived([...new Set(tags)]);
+
   // Determine which tags to display
   let displayTags = $derived(
-    maxDisplay && tags.length > maxDisplay ? tags.slice(0, maxDisplay) : tags
+    maxDisplay && uniqueTags.length > maxDisplay ? uniqueTags.slice(0, maxDisplay) : uniqueTags
   );
 
   let remainingCount = $derived(
-    maxDisplay && tags.length > maxDisplay ? tags.length - maxDisplay : 0
+    maxDisplay && uniqueTags.length > maxDisplay ? uniqueTags.length - maxDisplay : 0
   );
 
   /**
