@@ -8,6 +8,7 @@
   import ProfileAvatar from './shared/ProfileAvatar.svelte';
   import LanguageSwitcher from './LanguageSwitcher.svelte';
   import { runtimeConfig } from '$lib/stores/config.svelte.js';
+  import { prefetchCalendarData } from '$lib/loaders/calendar.js';
 
   // Use the modal store for opening modals
   const modal = modalStore;
@@ -122,7 +123,7 @@
       <SearchIcon class_="w-5 h-5" />
       {m.navbar_discover()}
     </a>
-    <a href={resolve('/calendar')} class="btn btn-ghost">
+    <a href={resolve('/calendar')} class="btn btn-ghost" onmouseenter={prefetchCalendarData}>
       <CalendarIcon class_="w-5 h-5" />
       {m.navbar_calendar()}
     </a>
@@ -176,7 +177,7 @@
           </a>
         </li>
         <li>
-          <a href={resolve('/calendar')} onclick={closeDropdown}>
+          <a href={resolve('/calendar')} onclick={closeDropdown} onfocus={prefetchCalendarData}>
             <CalendarIcon class_="w-5 h-5" />
             {m.navbar_calendar()}
           </a>

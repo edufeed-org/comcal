@@ -14,11 +14,29 @@ import {
   getEventStartTimestamp,
   getEventEndTimestamp
 } from '$lib/helpers/calendar.js';
-import { partitionRelaysByNip52Support } from '$lib/services/relay-capabilities.js';
+import {
+  partitionRelaysByNip52Support,
+  preWarmRelayCapabilitiesCache
+} from '$lib/services/relay-capabilities.js';
 import {
   getCuratedAuthors,
   applyCuratedFilter
 } from '$lib/services/curated-authors-service.svelte.js';
+
+let _prefetched = false;
+
+/**
+ * Prefetch calendar data into EventStore. Safe to call multiple times — only runs once.
+ * Warms relay NIP-52 capabilities cache and starts background timeline loader.
+ */
+export function prefetchCalendarData() {
+  if (_prefetched) return;
+  const relays = getCalendarRelays();
+  if (relays.length === 0) return;
+  _prefetched = true;
+  preWarmRelayCapabilitiesCache(relays);
+  calendarTimelineLoader()().subscribe();
+}
 
 // Global calendar events (kinds 31922, 31923)
 // Lazy factory to ensure relays are read from runtime config at call time, not module load time
