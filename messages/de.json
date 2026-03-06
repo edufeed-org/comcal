@@ -382,6 +382,7 @@
   "events_list_global_empty_title": "Keine Kalenderereignisse gefunden",
   "events_list_global_empty_description": "Keine Kalenderereignisse von verbundenen Relays gefunden.",
   "events_list_loading": "Kalenderereignisse werden geladen...",
+  "events_list_show_more": "{remaining} weitere anzeigen",
   "calendar_management_page_title": "Kalender verwalten - Communikey",
   "calendar_management_page_description": "Verwalten Sie Ihre persönlichen Kalender auf Nostr",
   "calendar_management_header_title": "Kalender verwalten",

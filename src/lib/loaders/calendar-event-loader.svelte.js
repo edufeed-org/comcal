@@ -11,7 +11,6 @@ import { mapEventsToStore, mapEventsToTimeline } from 'applesauce-core/observabl
 import { map } from 'rxjs';
 import { getTagValue } from 'applesauce-core/helpers';
 import { getCalendarEventMetadata, parseAddressReference } from '$lib/helpers/eventUtils';
-import { getCalendarEventTitle } from 'applesauce-common/helpers';
 import { calendarTimelineLoader } from '$lib/loaders/calendar.js';
 import { communityTargetedPublicationsLoader } from '$lib/loaders/targeted-publications.js';
 import { userDeletionLoader, addressLoader } from '$lib/loaders/base.js';
@@ -19,7 +18,6 @@ import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { applyCuratedFilter } from '$lib/services/curated-authors-service.svelte.js';
 import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
 import { parseCalendarFilters } from '$lib/helpers/urlParams.js';
-import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { CommunityCalendarEventModel } from '$lib/models';
 
 /**
@@ -47,15 +45,24 @@ import { CommunityCalendarEventModel } from '$lib/models';
  */
 export function useCalendarEventLoader(options) {
   // Subscription management
-  let subscription = $state();
-  let relaySubscription = $state();
-  let backgroundLoaderSubscription = $state();
-  let targetedPublicationSubscription = $state();
-  let deletionSubscriptions = $state.raw(/** @type {SvelteMap<string, any>} */ (new SvelteMap()));
+  /** @type {import('rxjs').Subscription | undefined} */
+  let subscription;
+  /** @type {import('rxjs').Subscription | undefined} */
+  let relaySubscription;
+  /** @type {import('rxjs').Subscription | undefined} */
+  let backgroundLoaderSubscription;
+  /** @type {import('rxjs').Subscription | undefined} */
+  let targetedPublicationSubscription;
+  /** @type {Map<string, any>} */
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- internal bookkeeping, not reactive state
+  let deletionSubscriptions = new Map();
 
   // Internal state
-  const eventMap = new SvelteMap();
-  const resolutionErrors = $state.raw(/** @type {string[]} */ ([]));
+  /** @type {Map<string, any>} */
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- internal bookkeeping, not reactive state
+  const eventMap = new Map();
+  /** @type {string[]} */
+  const resolutionErrors = [];
 
   /**
    * Clean up a specific subscription
@@ -65,7 +72,7 @@ export function useCalendarEventLoader(options) {
     if (sub) {
       sub.unsubscribe();
     }
-    return null;
+    return undefined;
   }
 
   /**
@@ -120,7 +127,6 @@ export function useCalendarEventLoader(options) {
    */
   function startBackgroundLoader() {
     if (!backgroundLoaderSubscription) {
-      console.log('📅 EventLoader: Starting background loader');
       backgroundLoaderSubscription = calendarTimelineLoader()().subscribe();
     }
   }
@@ -130,7 +136,6 @@ export function useCalendarEventLoader(options) {
    */
   function stopBackgroundLoader() {
     if (backgroundLoaderSubscription) {
-      console.log('📅 EventLoader: Stopping background loader');
       backgroundLoaderSubscription = cleanupSubscription(backgroundLoaderSubscription);
     }
   }
@@ -144,17 +149,11 @@ export function useCalendarEventLoader(options) {
     const selectedRelays = relays || [];
     const selectedAuthors = authors || [];
 
-    console.log('📅 EventLoader: Loading global events', {
-      relays: selectedRelays.length,
-      authors: selectedAuthors.length
-    });
-
     options.onLoadingChange(true);
     eventMap.clear();
 
     // If relay filtering OR author filtering is active, use pool.subscription
     if (selectedRelays.length > 0 || selectedAuthors.length > 0) {
-      console.log('📅 EventLoader: Using filtered relay subscription');
       // Stop other subscriptions
       relaySubscription = cleanupSubscription(relaySubscription);
       stopBackgroundLoader();
@@ -167,33 +166,15 @@ export function useCalendarEventLoader(options) {
       loadByRelays(relaysToUse, selectedAuthors);
     } else {
       // Default behavior: use EventStore model
-      console.log('📅 EventLoader: Using default EventStore');
       relaySubscription = cleanupSubscription(relaySubscription);
       startBackgroundLoader();
 
       const filter = applyCuratedFilter({ kinds: [31922, 31923], limit: 50 });
 
       subscription = eventStore.model(TimelineModel, filter).subscribe((timeline) => {
-        const timestamp = Date.now();
-        console.log(
-          '📊 MODEL EMISSION (global) at',
-          timestamp,
-          '- Timeline has',
-          timeline.length,
-          'events'
-        );
-        console.log('📊 Event IDs in timeline:', timeline.map((e) => e.id).join(', '));
-
-        // Log event details for debugging
-        timeline.forEach((e) => {
-          console.log(
-            `📊   Event ${e.id}: kind=${e.kind}, pubkey=${e.pubkey.substring(0, 8)}..., dTag=${e.tags?.find((/** @type {any[]} */ t) => t[0] === 'd')?.[1]}`
-          );
-        });
-
         // Start deletion loaders for all visible event authors (parallel pattern)
-        const authorPubkeys = [...new SvelteSet(timeline.map((e) => e.pubkey))];
-        console.log('📊 Starting deletion loaders for', authorPubkeys.length, 'unique authors');
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- ephemeral dedup, not reactive state
+        const authorPubkeys = [...new Set(timeline.map((e) => e.pubkey))];
         startDeletionLoaders(authorPubkeys);
 
         const mapped = timeline.map(getCalendarEventMetadata);
@@ -214,15 +195,9 @@ export function useCalendarEventLoader(options) {
     }
 
     if (!calendar.eventReferences || calendar.eventReferences.length === 0) {
-      console.log('📅 EventLoader: No event references found for calendar:', calendar.title);
       options.onEventsUpdate([]);
       return;
     }
-
-    console.log(
-      '📅 EventLoader: Loading calendar-specific events:',
-      calendar.eventReferences.length
-    );
 
     options.onLoadingChange(true);
     eventMap.clear();
@@ -232,47 +207,33 @@ export function useCalendarEventLoader(options) {
     stopBackgroundLoader();
 
     // Collect all author pubkeys from calendar references for parallel deletion loading
-    const authorPubkeys = new SvelteSet();
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- ephemeral dedup, not reactive state
+    const authorPubkeys = new Set();
 
-    calendar.eventReferences.forEach(
-      (/** @type {string} */ addressRef, /** @type {number} */ index) => {
-        const parsed = parseAddressReference(addressRef);
+    calendar.eventReferences.forEach((/** @type {string} */ addressRef) => {
+      const parsed = parseAddressReference(addressRef);
 
-        if (!parsed) {
-          console.warn('📅 EventLoader: Invalid address reference:', addressRef);
-          return;
-        }
-
-        console.log(
-          `📅 EventLoader: Loading event ${index + 1}/${calendar.eventReferences.length}:`,
-          parsed
-        );
-
-        // Collect author pubkey for deletion loader
-        authorPubkeys.add(parsed.pubkey);
-
-        addressLoader({
-          kind: parsed.kind,
-          pubkey: parsed.pubkey,
-          identifier: parsed.dTag
-        }).subscribe((/** @type {any} */ event) => {
-          console.log(
-            `📅 EventLoader: Successfully loaded event:`,
-            event.id,
-            getCalendarEventTitle(event)
-          );
-          const calendarEvent = getCalendarEventMetadata(event);
-
-          if (!eventMap.has(calendarEvent.id)) {
-            eventMap.set(calendarEvent.id, calendarEvent);
-            options.onEventsUpdate(Array.from(eventMap.values()));
-            console.log(`📅 EventLoader: Added unique event, total: ${eventMap.size}`);
-          } else {
-            console.log(`📅 EventLoader: Skipped duplicate event:`, calendarEvent.id);
-          }
-        });
+      if (!parsed) {
+        console.warn('📅 EventLoader: Invalid address reference:', addressRef);
+        return;
       }
-    );
+
+      // Collect author pubkey for deletion loader
+      authorPubkeys.add(parsed.pubkey);
+
+      addressLoader({
+        kind: parsed.kind,
+        pubkey: parsed.pubkey,
+        identifier: parsed.dTag
+      }).subscribe((/** @type {any} */ event) => {
+        const calendarEvent = getCalendarEventMetadata(event);
+
+        if (!eventMap.has(calendarEvent.id)) {
+          eventMap.set(calendarEvent.id, calendarEvent);
+          options.onEventsUpdate(Array.from(eventMap.values()));
+        }
+      });
+    });
 
     // Start deletion loaders for all authors at once (parallel pattern)
     if (authorPubkeys.size > 0) {
@@ -288,10 +249,6 @@ export function useCalendarEventLoader(options) {
   function loadByAuthor(pubkey, relays) {
     const selectedRelays = relays || [];
 
-    console.log('📅 EventLoader: Loading events by author:', pubkey, {
-      relays: selectedRelays.length
-    });
-
     options.onLoadingChange(true);
     eventMap.clear();
 
@@ -300,7 +257,6 @@ export function useCalendarEventLoader(options) {
 
     if (selectedRelays.length > 0) {
       // Use specific relays
-      console.log('📅 EventLoader: Loading author events from selected relays:', selectedRelays);
       relaySubscription = cleanupSubscription(relaySubscription);
 
       relaySubscription = pool
@@ -317,11 +273,6 @@ export function useCalendarEventLoader(options) {
         )
         .subscribe({
           next: (timeline) => {
-            console.log(
-              '📅 EventLoader: Received timeline with',
-              timeline.length,
-              'events by author'
-            );
             const mapped = timeline.map(getCalendarEventMetadata);
             options.onEventsUpdate(mapped);
             options.onLoadingChange(false);
@@ -334,29 +285,11 @@ export function useCalendarEventLoader(options) {
         });
     } else {
       // Use EventStore
-      console.log('📅 EventLoader: Loading author events from EventStore');
       relaySubscription = cleanupSubscription(relaySubscription);
 
       const filter = { kinds: [31922, 31923], authors: [pubkey], limit: 50 };
 
       subscription = eventStore.model(TimelineModel, filter).subscribe((timeline) => {
-        const timestamp = Date.now();
-        console.log(
-          '📊 MODEL EMISSION (by author) at',
-          timestamp,
-          '- Timeline has',
-          timeline.length,
-          'events'
-        );
-        console.log('📊 Event IDs in timeline:', timeline.map((e) => e.id).join(', '));
-
-        // Log event details for debugging
-        timeline.forEach((e) => {
-          console.log(
-            `📊   Event ${e.id}: kind=${e.kind}, pubkey=${e.pubkey.substring(0, 8)}..., dTag=${e.tags?.find((/** @type {any[]} */ t) => t[0] === 'd')?.[1]}`
-          );
-        });
-
         const mapped = timeline.map(getCalendarEventMetadata);
         options.onEventsUpdate(mapped);
         options.onLoadingChange(false);
@@ -408,7 +341,8 @@ export function useCalendarEventLoader(options) {
         })
         .subscribe((shareEvents) => {
           // Extract unique event IDs and addressable references
-          const eventIds = new SvelteSet();
+          // eslint-disable-next-line svelte/prefer-svelte-reactivity -- ephemeral dedup, not reactive state
+          const eventIds = new Set();
           /** @type {Array<{kind: number, pubkey: string, dTag: string}>} */
           const addressableRefs = [];
 
@@ -455,7 +389,8 @@ export function useCalendarEventLoader(options) {
       subscription = eventStore.model(CommunityCalendarEventModel, communityPubkey).subscribe({
         next: (events) => {
           // Start deletion loaders for all unique authors (parallel pattern)
-          const authorPubkeys = [...new SvelteSet(events.map((e) => e.originalEvent.pubkey))];
+          // eslint-disable-next-line svelte/prefer-svelte-reactivity -- ephemeral dedup, not reactive state
+          const authorPubkeys = [...new Set(events.map((e) => e.originalEvent.pubkey))];
           startDeletionLoaders(authorPubkeys);
 
           options.onEventsUpdate(events);
@@ -480,11 +415,6 @@ export function useCalendarEventLoader(options) {
    * @param {string[]} [authors] - Optional author pubkeys to filter by
    */
   function loadByRelays(relays, authors) {
-    console.log('📅 EventLoader: Loading from specific relays', {
-      relays: relays.length,
-      authors: authors?.length || 0
-    });
-
     options.onLoadingChange(true);
     eventMap.clear();
 
@@ -499,7 +429,6 @@ export function useCalendarEventLoader(options) {
 
     if (authors && authors.length > 0) {
       filter.authors = authors;
-      console.log(`📅 EventLoader: Filtering by ${authors.length} authors from follow lists`);
     }
 
     relaySubscription = pool
@@ -512,26 +441,9 @@ export function useCalendarEventLoader(options) {
       )
       .subscribe({
         next: (timeline) => {
-          const timestamp = Date.now();
-          console.log(
-            '📊 RELAY SUBSCRIPTION EMISSION (by relays) at',
-            timestamp,
-            '- Timeline has',
-            timeline.length,
-            'events'
-          );
-          console.log('📊 Event IDs in timeline:', timeline.map((e) => e.id).join(', '));
-
-          // Log event details for debugging
-          timeline.forEach((e) => {
-            console.log(
-              `📊   Event ${e.id}: kind=${e.kind}, pubkey=${e.pubkey.substring(0, 8)}..., dTag=${e.tags?.find((/** @type {any[]} */ t) => t[0] === 'd')?.[1]}`
-            );
-          });
-
           // Start deletion loaders for all visible event authors (parallel pattern)
-          const authorPubkeys = [...new SvelteSet(timeline.map((e) => e.pubkey))];
-          console.log('📊 Starting deletion loaders for', authorPubkeys.length, 'unique authors');
+          // eslint-disable-next-line svelte/prefer-svelte-reactivity -- ephemeral dedup, not reactive state
+          const authorPubkeys = [...new Set(timeline.map((e) => e.pubkey))];
           startDeletionLoaders(authorPubkeys);
 
           const mapped = timeline.map(getCalendarEventMetadata);
@@ -616,15 +528,11 @@ export function createUrlSyncHandler(onPresentationViewModeChange, onViewModeCha
   return (navigation) => {
     // Guard against null navigation.to
     if (!navigation.to) {
-      console.warn('📅 URLSync: Navigation.to is null, skipping sync');
       return;
     }
 
-    console.log('📅 URLSync: Navigation completed to:', navigation.to.url.href);
-
     // Parse filters from the new URL
     const urlFilters = /** @type {any} */ (parseCalendarFilters(navigation.to.url.searchParams));
-    console.log('📅 URLSync: Parsed filters:', urlFilters);
 
     // Sync filters to store
     syncFiltersToStore(urlFilters);
@@ -640,10 +548,8 @@ export function createUrlSyncHandler(onPresentationViewModeChange, onViewModeCha
 
     // Validate period value - calendar view doesn't support 'all'
     if (presentationView === 'calendar' && period === 'all') {
-      console.log('📅 URLSync: Calendar view does not support "all" period, switching to "month"');
       period = 'month';
     } else if (!['month', 'week', 'day', 'all'].includes(period)) {
-      console.log('📅 URLSync: Invalid period value, defaulting to "month"');
       period = 'month';
     }
 
@@ -661,7 +567,6 @@ export function createUrlSyncHandler(onPresentationViewModeChange, onViewModeCha
  */
 export function syncInitialUrlState(searchParams, onPresentationViewModeChange, onViewModeChange) {
   const urlFilters = /** @type {any} */ (parseCalendarFilters(searchParams));
-  console.log('📅 URLSync: Initial mount, parsed filters:', urlFilters);
 
   // Sync filters to store
   syncFiltersToStore(urlFilters);
@@ -677,12 +582,8 @@ export function syncInitialUrlState(searchParams, onPresentationViewModeChange, 
 
   // Validate period value
   if (presentationView === 'calendar' && period === 'all') {
-    console.log(
-      '📅 URLSync: Initial - Calendar view does not support "all" period, switching to "month"'
-    );
     period = 'month';
   } else if (!['month', 'week', 'day', 'all'].includes(period)) {
-    console.log('📅 URLSync: Initial - Invalid period value, defaulting to "month"');
     period = 'month';
   }
 

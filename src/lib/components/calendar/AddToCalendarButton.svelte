@@ -11,7 +11,8 @@
   let { calendarId = null, calendarTitle = null } = $props();
 
   let selectedCalendar = $state(calendarStore.selectedCalendar);
-  let calendarSubscription = $state();
+  /** @type {import('rxjs').Subscription | undefined} */
+  let calendarSubscription;
 
   onMount(() => {
     calendarSubscription = calendarStore.selectedCalendar$.subscribe((cal) => {

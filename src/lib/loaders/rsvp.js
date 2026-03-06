@@ -3,16 +3,9 @@
  * Loads RSVP events (kind 31925) for a specific calendar event
  */
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
-import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { runtimeConfig } from '$lib/stores/config.svelte.js';
-
-/**
- * Get calendar relays from app config
- * @returns {string[]}
- */
-function getCalendarRelays() {
-  return [...(runtimeConfig.appRelays?.calendar || []), ...(runtimeConfig.fallbackRelays || [])];
-}
+import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
+import { timedPool } from '$lib/loaders/base.js';
+import { getCalendarRelays } from '$lib/helpers/relay-helper.js';
 
 /**
  * Factory: Create a timeline loader for calendar event RSVPs
@@ -35,7 +28,7 @@ export const calendarEventRsvpLoader = (calendarEvent) => {
   const eventCoordinate = `${calendarEvent.kind}:${calendarEvent.pubkey}:${dTag}`;
 
   return createTimelineLoader(
-    pool,
+    timedPool,
     getCalendarRelays(),
     {
       kinds: [31925], // NIP-52 Calendar Event RSVP kind

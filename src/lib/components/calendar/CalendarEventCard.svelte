@@ -25,10 +25,10 @@
 
   const isList = $derived(variant === 'list');
 
-  // Load RSVPs for this event
-  const rsvpData = $derived(
-    event.originalEvent ? useCalendarEventRsvps(event.originalEvent) : { rsvps: [], loading: false }
-  );
+  // Load RSVPs for this event (called at component init, not inside $derived)
+  const rsvpData = event.originalEvent
+    ? useCalendarEventRsvps(event.originalEvent)
+    : { rsvps: [], loading: false };
 
   // Get current user pubkey
   const userPubkey = $derived(manager.active?.pubkey || null);

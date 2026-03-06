@@ -25,8 +25,8 @@
   let totalCount = $derived(countComments(commentTree));
   // Map to track loaded comments and prevent duplicates
   let loadedComments = new Map();
-  /** @type {any} */
-  let loaderSubscription = $state(null);
+  /** @type {import('rxjs').Subscription | undefined} */
+  let loaderSubscription;
   // Map to track model subscriptions for each comment (commentId -> subscription)
   let modelSubscriptions = new Map();
 
@@ -139,10 +139,7 @@
 
     return () => {
       clearTimeout(loadingTimeout);
-      if (loaderSubscription) {
-        loaderSubscription.unsubscribe();
-        loaderSubscription = null;
-      }
+      loaderSubscription?.unsubscribe();
       // Unsubscribe from all comment model subscriptions
       modelSubscriptions.forEach((sub) => sub.unsubscribe());
       modelSubscriptions.clear();

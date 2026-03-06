@@ -23,9 +23,11 @@ export function useCalendarEventRsvps(calendarEvent) {
   let rsvps = $state([]);
   let loading = $state(true);
 
-  // Subscriptions
-  let loaderSubscription = $state();
-  let modelSubscription = $state();
+  // Subscriptions (plain let - not reactive to avoid infinite loops)
+  /** @type {import('rxjs').Subscription | undefined} */
+  let loaderSubscription;
+  /** @type {import('rxjs').Subscription | undefined} */
+  let modelSubscription;
 
   // Load RSVPs when component mounts
   $effect(() => {

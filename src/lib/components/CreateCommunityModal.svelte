@@ -25,13 +25,13 @@
   let useCurrentKeypair = $state(false);
 
   // Dynamic step count based on choice (after keypair selection)
-  let totalSteps = $derived(() => {
+  let totalSteps = $derived.by(() => {
     if (currentStep === 0) return 0; // No stepper during selection
     return useCurrentKeypair ? 2 : 4; // Current: 2 steps, New: 4 steps
   });
 
   // Current step display (adjusted for stepper)
-  let displayStep = $derived(() => {
+  let displayStep = $derived.by(() => {
     if (currentStep === 0) return 0;
     return useCurrentKeypair ? currentStep : currentStep - 1; // New keypair starts from step 1 after profile
   });
@@ -557,7 +557,7 @@
       {#if currentStep > 0}
         <ul class="steps w-full">
           {#each getStepLabels() as label, index (index)}
-            <li class="step {displayStep() > index ? 'step-primary' : ''}">{label}</li>
+            <li class="step {displayStep > index ? 'step-primary' : ''}">{label}</li>
           {/each}
         </ul>
       {/if}
@@ -1370,7 +1370,7 @@
           </form>
 
           {#if currentStep > 0}
-            {#if currentStep < totalSteps()}
+            {#if currentStep < totalSteps}
               <button class="btn btn-primary" onclick={nextStep}>
                 {m.create_community_modal_button_next()}
                 <ChevronRightIcon />

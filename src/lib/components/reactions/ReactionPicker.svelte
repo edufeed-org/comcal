@@ -15,7 +15,7 @@
   let searchQuery = $state('');
 
   // Common emoji categories with translated names
-  const emojiCategories = $derived(() => [
+  const emojiCategories = $derived.by(() => [
     {
       name: m.reactions_category_smileys(),
       emojis: [
@@ -651,11 +651,11 @@
   ]);
 
   // Filter emojis based on search
-  const filteredCategories = $derived(() => {
-    if (!searchQuery.trim()) return emojiCategories();
+  const filteredCategories = $derived.by(() => {
+    if (!searchQuery.trim()) return emojiCategories;
 
     const query = searchQuery.toLowerCase();
-    return emojiCategories()
+    return emojiCategories
       .map((category) => ({
         ...category,
         emojis: category.emojis.filter((/** @type {string} */ emoji) => {
@@ -735,7 +735,7 @@
 
     <!-- Emoji grid -->
     <div class="flex-1 overflow-y-auto p-4">
-      {#each filteredCategories() as category (category.name)}
+      {#each filteredCategories as category (category.name)}
         <div class="mb-6">
           <h4 class="mb-2 text-sm font-medium text-gray-400">{category.name}</h4>
           <div class="grid grid-cols-8 gap-2">

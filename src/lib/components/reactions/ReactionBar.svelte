@@ -17,12 +17,12 @@
   /** @type {any} */
   let { event, relays } = $props();
 
-  /** @type {any} */
-  let loaderSubscription = $state(null);
-  /** @type {any} */
-  let modelSubscription = $state(null);
-  /** @type {any} */
-  let removeSubscription = $state(null);
+  /** @type {import('rxjs').Subscription | undefined} */
+  let loaderSubscription;
+  /** @type {import('rxjs').Subscription | undefined} */
+  let modelSubscription;
+  /** @type {import('rxjs').Subscription | undefined} */
+  let removeSubscription;
   /** @type {any[]} */
   let reactions = $state([]);
   // Map to track loaded reactions and prevent duplicates
@@ -98,31 +98,16 @@
     });
 
     return () => {
-      if (loaderSubscription) {
-        loaderSubscription.unsubscribe();
-        loaderSubscription = null;
-      }
-      if (modelSubscription) {
-        modelSubscription.unsubscribe();
-        modelSubscription = null;
-      }
-      if (removeSubscription) {
-        removeSubscription.unsubscribe();
-        removeSubscription = null;
-      }
+      loaderSubscription?.unsubscribe();
+      modelSubscription?.unsubscribe();
+      removeSubscription?.unsubscribe();
     };
   });
 
   onDestroy(() => {
-    if (loaderSubscription) {
-      loaderSubscription.unsubscribe();
-    }
-    if (modelSubscription) {
-      modelSubscription.unsubscribe();
-    }
-    if (removeSubscription) {
-      removeSubscription.unsubscribe();
-    }
+    loaderSubscription?.unsubscribe();
+    modelSubscription?.unsubscribe();
+    removeSubscription?.unsubscribe();
   });
 </script>
 

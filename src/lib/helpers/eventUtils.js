@@ -1,9 +1,23 @@
 import { getCalendarTitle, getCalendarEventImage } from 'applesauce-common/helpers';
 import { parseCalendarTimestamp } from '$lib/helpers/calendar.js';
+import { validateCalendarEvent } from '$lib/helpers/eventValidation.js';
 
 /**
  * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
  */
+
+/**
+ * Validate, transform, and sort raw calendar events.
+ * Shared pipeline for calendar models.
+ * @param {any[]} rawEvents
+ * @returns {CalendarEvent[]}
+ */
+export function validateAndTransformCalendarEvents(rawEvents) {
+  return rawEvents
+    .filter((event) => validateCalendarEvent(event))
+    .map((event) => getCalendarEventMetadata(event))
+    .sort((a, b) => (a.start || 0) - (b.start || 0));
+}
 
 /**
  * Convert raw event to CalendarEvent format

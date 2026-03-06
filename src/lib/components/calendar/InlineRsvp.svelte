@@ -36,10 +36,10 @@
   let error = $state('');
 
   // RSVP data management
-  /** @type {any} */
-  let loaderSubscription = $state(null);
-  /** @type {any} */
-  let modelSubscription = $state(null);
+  /** @type {import('rxjs').Subscription | undefined} */
+  let loaderSubscription;
+  /** @type {import('rxjs').Subscription | undefined} */
+  let modelSubscription;
   /** @type {any[]} */
   let rsvps = $state([]);
 
@@ -99,14 +99,8 @@
 
     // Cleanup subscriptions
     return () => {
-      if (loaderSubscription) {
-        loaderSubscription.unsubscribe();
-        loaderSubscription = null;
-      }
-      if (modelSubscription) {
-        modelSubscription.unsubscribe();
-        modelSubscription = null;
-      }
+      loaderSubscription?.unsubscribe();
+      modelSubscription?.unsubscribe();
     };
   });
 

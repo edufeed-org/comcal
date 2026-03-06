@@ -509,9 +509,3 @@
     </div>
   {/if}
 </div>
-
-<style>
-  .community-share.compact {
-    /* Compact mode adjustments can be added here if needed */
-  }
-</style>

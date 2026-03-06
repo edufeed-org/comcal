@@ -1,6 +1,7 @@
 <!--
   SimpleCalendarEventsList Component
   Simple list view of calendar events that accepts events as props
+  Paginates display with Show More buttons to avoid rendering hundreds of cards
 -->
 
 <script>
@@ -17,6 +18,8 @@
    * @typedef {import('$lib/types/calendar.js').CalendarViewMode} CalendarViewMode
    */
 
+  const PAGE_SIZE = 20;
+
   // Props
   let {
     events = /** @type {CalendarEvent[]} */ ([]),
@@ -26,8 +29,20 @@
     error = /** @type {string | null} */ (null)
   } = $props();
 
+  // Display limits for pagination
+  let upcomingDisplayLimit = $state(PAGE_SIZE);
+  let pastDisplayLimit = $state(PAGE_SIZE);
+
   // Filter events based on current view mode and date using shared helper
   let filteredEvents = $derived.by(() => filterEventsByViewMode(events, viewMode, currentDate));
+
+  // Reset display limits when filtered events change (view/date navigation)
+  $effect(() => {
+    // Track filteredEvents reference to detect changes
+    const _ = filteredEvents;
+    upcomingDisplayLimit = PAGE_SIZE;
+    pastDisplayLimit = PAGE_SIZE;
+  });
 
   // Current timestamp for comparison
   let now = $derived(Date.now());
@@ -46,6 +61,13 @@
     // Sort in reverse chronological order (most recent first)
     return past.reverse();
   });
+
+  // Paginated slices
+  let displayedUpcoming = $derived(upcomingEvents.slice(0, upcomingDisplayLimit));
+  let displayedPast = $derived(pastEvents.slice(0, pastDisplayLimit));
+
+  let hasMoreUpcoming = $derived(upcomingEvents.length > upcomingDisplayLimit);
+  let hasMorePast = $derived(pastEvents.length > pastDisplayLimit);
 
   /**
    * Handle event click
@@ -112,10 +134,21 @@
 
     {#if upcomingEvents.length > 0}
       <div class="flex max-w-full flex-col gap-4 overflow-hidden">
-        {#each upcomingEvents as event (event.id)}
+        {#each displayedUpcoming as event (event.id)}
           <CalendarEventCard {event} compact={false} onEventClick={handleEventClick} />
         {/each}
       </div>
+      {#if hasMoreUpcoming}
+        <div class="text-center">
+          <button
+            type="button"
+            class="btn btn-outline btn-sm btn-primary"
+            onclick={() => (upcomingDisplayLimit += PAGE_SIZE)}
+          >
+            {m.events_list_show_more({ remaining: upcomingEvents.length - upcomingDisplayLimit })}
+          </button>
+        </div>
+      {/if}
     {:else if !loading}
       <!-- Empty State for Upcoming Events -->
       <div class="py-8 text-center">
@@ -151,10 +184,21 @@
 
     {#if pastEvents.length > 0}
       <div class="flex max-w-full flex-col gap-4 overflow-hidden">
-        {#each pastEvents as event (event.id)}
+        {#each displayedPast as event (event.id)}
           <CalendarEventCard {event} compact={false} onEventClick={handleEventClick} />
         {/each}
       </div>
+      {#if hasMorePast}
+        <div class="text-center">
+          <button
+            type="button"
+            class="btn btn-outline btn-sm btn-primary"
+            onclick={() => (pastDisplayLimit += PAGE_SIZE)}
+          >
+            {m.events_list_show_more({ remaining: pastEvents.length - pastDisplayLimit })}
+          </button>
+        </div>
+      {/if}
     {:else if !loading}
       <!-- Empty State for Past Events -->
       <div class="py-8 text-center">

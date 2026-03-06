@@ -169,14 +169,23 @@
 
       <!-- Reactions -->
       {#if !compact}
-        <div class="pt-2" onclick={(e) => e.stopPropagation()}>
+        <div
+          class="pt-2"
+          role="presentation"
+          onclick={(e) => e.stopPropagation()}
+          onkeydown={(e) => e.stopPropagation()}
+        >
           <ReactionBar event={board} />
         </div>
       {/if}
 
       <!-- Debug Panel -->
       {#if !compact}
-        <div onclick={(e) => e.stopPropagation()}>
+        <div
+          role="presentation"
+          onclick={(e) => e.stopPropagation()}
+          onkeydown={(e) => e.stopPropagation()}
+        >
           <EventDebugPanel event={board} />
         </div>
       {/if}

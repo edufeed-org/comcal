@@ -425,6 +425,7 @@
   "events_list_global_empty_title": "No calendar events found",
   "events_list_global_empty_description": "No calendar events found from connected relays.",
   "events_list_loading": "Loading calendar events...",
+  "events_list_show_more": "Show {remaining} more",
   "calendar_management_page_title": "Manage Calendars - Communikey",
   "calendar_management_page_description": "Manage your personal calendars on Nostr",
   "calendar_management_header_title": "Manage Calendars",

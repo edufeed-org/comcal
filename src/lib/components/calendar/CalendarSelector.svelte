@@ -21,7 +21,7 @@
   } = $props();
 
   // Get calendars that already contain this event
-  let calendarsContainingEvent = $derived(() => {
+  let calendarsContainingEvent = $derived.by(() => {
     if (!event || !event.kind || !event.pubkey || !event.dTag) {
       return new Set();
     }
@@ -50,7 +50,7 @@
    */
   function selectAllCalendars() {
     const availableCalendars = calendars
-      .filter((calendar) => !calendarsContainingEvent().has(calendar.id))
+      .filter((calendar) => !calendarsContainingEvent.has(calendar.id))
       .map((calendar) => calendar.id);
     selectedCalendarIds = availableCalendars;
   }
@@ -93,7 +93,7 @@
   <!-- Calendar Checkboxes -->
   <div class="max-h-40 overflow-y-auto rounded-lg border border-base-300 p-3">
     {#each calendars as calendar (calendar.id)}
-      {@const isAlreadyInCalendar = event ? calendarsContainingEvent().has(calendar.id) : false}
+      {@const isAlreadyInCalendar = event ? calendarsContainingEvent.has(calendar.id) : false}
       {@const isSelected = selectedCalendarIds.includes(calendar.id)}
       <label class="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-base-200">
         <input

@@ -143,7 +143,7 @@
   let isLearningSearchActive = $state(false);
   let learningSearchResults = $state(/** @type {import('nostr-tools').Event[]} */ ([]));
   /** @type {import('rxjs').Subscription | null} */
-  let currentSearchSubscription = $state(null);
+  let currentSearchSubscription = null;
 
   // Get current locale (kept for future i18n features)
   const _locale = $derived(getLocale());
@@ -344,7 +344,7 @@
       startBefore: range.end
     });
     dateRangeLoaderSub = loader().subscribe({
-      error: (err) => console.error('🔍 Discover: Date range loader error:', err)
+      error: (/** @type {any} */ err) => console.error('🔍 Discover: Date range loader error:', err)
     });
   }
 
@@ -1085,7 +1085,7 @@
       articleModelSub.unsubscribe();
       kanbanModelSub.unsubscribe();
       ambModelSub.unsubscribe();
-      calendarModelSub.unsubscribe();
+      calendarModelSub?.unsubscribe();
       targetedPubsModelSub.unsubscribe();
     };
   });

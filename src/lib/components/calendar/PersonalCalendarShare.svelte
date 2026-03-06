@@ -11,7 +11,7 @@
 -->
 
 <script>
-  import { SvelteMap } from 'svelte/reactivity';
+  /* eslint-disable svelte/prefer-svelte-reactivity -- Map used intentionally to avoid infinite loops */
   import { resolve } from '$app/paths';
   import { PlusIcon, CheckIcon, AlertIcon } from '../icons';
   import { userCalendarLoader } from '$lib/loaders/calendar.js';
@@ -46,7 +46,7 @@
   let calendars = $state(/** @type {Calendar[]} */ ([]));
   let loading = $state(false);
   let _error = $state(/** @type {string | null} */ (null));
-  let loadedCalendars = new SvelteMap();
+  let loadedCalendars = new Map();
 
   // Load calendars using proper loader/model pattern
   $effect(() => {
@@ -138,10 +138,7 @@
    * @returns {string | null}
    */
   function getEventReference(evt) {
-    console.log('📅 PersonalCalendarShare: Checking event reference for:', evt?.title || 'Unknown');
-
     if (!evt || !evt.kind || !evt.pubkey) {
-      console.warn('📅 PersonalCalendarShare: Missing required event properties (kind or pubkey)');
       return null;
     }
 
@@ -152,54 +149,34 @@
     if (!dTag && evt.originalEvent?.tags) {
       const dTagArray = evt.originalEvent.tags.find((/** @type {string[]} */ t) => t[0] === 'd');
       dTag = dTagArray?.[1];
-      console.log('📅 PersonalCalendarShare: Extracted dTag from originalEvent:', dTag);
     }
 
     // If still no dTag, generate one from event ID
     if (!dTag && evt.id) {
       dTag = `event-${evt.id.slice(0, 8)}`;
-      console.log('📅 PersonalCalendarShare: Generated dTag from event ID:', dTag);
     }
 
     if (!dTag) {
-      console.warn('📅 PersonalCalendarShare: Unable to determine dTag for event');
       return null;
     }
 
-    const reference = `${evt.kind}:${evt.pubkey}:${dTag}`;
-    console.log('📅 PersonalCalendarShare: Event reference:', reference);
-    return reference;
+    return `${evt.kind}:${evt.pubkey}:${dTag}`;
   }
 
   /**
    * Check which calendars already contain this event
    * Returns a Set of calendar IDs
    */
-  let calendarsContainingEvent = $derived(() => {
-    if (!calendars.length || !event) {
-      console.log('📅 PersonalCalendarShare: No calendars or event');
-      return new Set();
-    }
+  let calendarsContainingEvent = $derived.by(() => {
+    if (!calendars.length || !event) return new Set();
 
     const eventRef = getEventReference(event);
-    if (!eventRef) {
-      console.log('📅 PersonalCalendarShare: No event reference available');
-      return new Set();
-    }
+    if (!eventRef) return new Set();
 
     const containingCalendars = calendars
-      .filter((calendar) => {
-        const contains = calendar.eventReferences.includes(eventRef);
-        if (contains) {
-          console.log(`📅 PersonalCalendarShare: Calendar "${calendar.title}" contains event`);
-        }
-        return contains;
-      })
+      .filter((calendar) => calendar.eventReferences.includes(eventRef))
       .map((calendar) => calendar.id);
 
-    console.log(
-      `📅 PersonalCalendarShare: Found ${containingCalendars.length} calendars containing event`
-    );
     return new Set(containingCalendars);
   });
 
@@ -213,7 +190,6 @@
     } else {
       selectedCalendarIds = [...selectedCalendarIds, calendarId];
     }
-    console.log('📅 PersonalCalendarShare: Selected calendars:', selectedCalendarIds);
   }
 
   /**
@@ -221,10 +197,9 @@
    */
   function selectAllCalendars() {
     const availableCalendars = calendars
-      .filter((calendar) => !calendarsContainingEvent().has(calendar.id))
+      .filter((calendar) => !calendarsContainingEvent.has(calendar.id))
       .map((calendar) => calendar.id);
     selectedCalendarIds = availableCalendars;
-    console.log('📅 PersonalCalendarShare: Selected all available calendars:', availableCalendars);
   }
 
   /**
@@ -232,7 +207,6 @@
    */
   function deselectAllCalendars() {
     selectedCalendarIds = [];
-    console.log('📅 PersonalCalendarShare: Deselected all calendars');
   }
 
   /**
@@ -252,7 +226,6 @@
       // Check if event is already in the calendar
       const eventReference = `${event.kind}:${event.pubkey}:${event.dTag}`;
       if (calendar.eventReferences.includes(eventReference)) {
-        console.log('📅 PersonalCalendarShare: Event already in calendar');
         return true;
       }
 
@@ -285,19 +258,13 @@
       const publishResult = await publishEvent(signedEvent, []);
 
       if (publishResult.success) {
-        // Add to event store for local caching
         eventStore.add(signedEvent);
-
-        console.log(
-          '📅 PersonalCalendarShare: Successfully added event to calendar:',
-          calendar.title
-        );
         return true;
       } else {
         throw new Error('Failed to publish calendar update to any relay');
       }
-    } catch (error) {
-      console.error('Error adding event to calendar:', error);
+    } catch (err) {
+      console.error('Error adding event to calendar:', err);
       return false;
     }
   }
@@ -319,7 +286,6 @@
       // Check if event is in the calendar
       const eventReference = `${event.kind}:${event.pubkey}:${event.dTag}`;
       if (!calendar.eventReferences.includes(eventReference)) {
-        console.log('📅 PersonalCalendarShare: Event not in calendar');
         return true;
       }
 
@@ -354,19 +320,13 @@
       const publishResult = await publishEvent(signedEvent, []);
 
       if (publishResult.success) {
-        // Add to event store for local caching
         eventStore.add(signedEvent);
-
-        console.log(
-          '📅 PersonalCalendarShare: Successfully removed event from calendar:',
-          calendar.title
-        );
         return true;
       } else {
         throw new Error('Failed to publish calendar update to any relay');
       }
-    } catch (error) {
-      console.error('Error removing event from calendar:', error);
+    } catch (err) {
+      console.error('Error removing event from calendar:', err);
       return false;
     }
   }
@@ -376,17 +336,12 @@
    */
   async function handleApplyCalendarChanges() {
     if (selectedCalendarIds.length === 0 || !activeUser || !event) {
-      console.log('📅 PersonalCalendarShare: Nothing to apply');
       return;
     }
 
     isProcessingChanges = true;
     calendarChangesError = '';
     calendarChangesSuccess = false;
-
-    console.log(
-      `📅 PersonalCalendarShare: Applying changes to ${selectedCalendarIds.length} calendars`
-    );
 
     try {
       // Ensure event has a dTag
@@ -404,21 +359,14 @@
         dTag: dTag
       };
 
-      console.log('📅 PersonalCalendarShare: Event prepared with dTag:', dTag);
-
       // Process each selected calendar
       const results = await Promise.allSettled(
         selectedCalendarIds.map(async (calendarId) => {
-          const isAlreadyInCalendar = calendarsContainingEvent().has(calendarId);
-          const calendar = calendars.find((c) => c.id === calendarId);
+          const isAlreadyInCalendar = calendarsContainingEvent.has(calendarId);
 
           if (isAlreadyInCalendar) {
-            console.log(
-              `📅 PersonalCalendarShare: Removing event from calendar "${calendar?.title}"`
-            );
             return await removeEventFromCalendar(calendarId, eventWithDTag);
           } else {
-            console.log(`📅 PersonalCalendarShare: Adding event to calendar "${calendar?.title}"`);
             return await addEventToCalendar(calendarId, eventWithDTag);
           }
         })
@@ -429,21 +377,16 @@
         (result) => result.status === 'fulfilled' && result.value === true
       ).length;
 
-      console.log(
-        `📅 PersonalCalendarShare: ${successful}/${results.length} operations successful`
-      );
-
       if (successful > 0) {
         calendarChangesSuccess = true;
-        selectedCalendarIds = []; // Reset selection
-        console.log('📅 PersonalCalendarShare: Calendar changes applied successfully');
+        selectedCalendarIds = [];
       } else {
         calendarChangesError = 'Failed to apply changes to any calendar';
       }
-    } catch (error) {
-      console.error('📅 PersonalCalendarShare: Error applying changes:', error);
+    } catch (err) {
+      console.error('PersonalCalendarShare: Error applying changes:', err);
       calendarChangesError =
-        error instanceof Error ? error.message : 'Failed to apply calendar changes';
+        err instanceof Error ? err.message : 'Failed to apply calendar changes';
     } finally {
       isProcessingChanges = false;
     }
@@ -485,7 +428,7 @@
     {:else if calendars.length > 0}
       <div class="max-h-40 overflow-y-auto rounded-lg border border-base-300 p-3">
         {#each calendars as calendar (calendar.id)}
-          {@const isAlreadyInCalendar = calendarsContainingEvent().has(calendar.id)}
+          {@const isAlreadyInCalendar = calendarsContainingEvent.has(calendar.id)}
           {@const isSelected = selectedCalendarIds.includes(calendar.id)}
           <label class="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-base-200">
             <input
@@ -560,9 +503,3 @@
     </div>
   {/if}
 </div>
-
-<style>
-  .personal-calendar-share.compact {
-    /* Compact mode adjustments can be added here if needed */
-  }
-</style>

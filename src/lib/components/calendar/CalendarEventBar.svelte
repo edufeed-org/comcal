@@ -19,7 +19,7 @@
 
   // Generate color for this event's author
   // Use event color override if available
-  let colorValues = $derived(() => {
+  let colorValues = $derived.by(() => {
     if (event.color) {
       // If custom color is provided, we'll use it as-is
       // Return null to signal we should use the override
@@ -30,11 +30,11 @@
 
   // Generate style string for background and text color
   // Text color is always black for better readability
-  let inlineStyle = $derived(() => {
+  let inlineStyle = $derived.by(() => {
     if (event.color) {
       return `background-color: ${event.color}; color: #000000`;
     }
-    const colors = colorValues();
+    const colors = colorValues;
     if (!colors) return 'color: #000000';
     return `background-color: hsl(${colors.hue}, ${colors.saturation}%, ${colors.lightness}%); color: #000000`;
   });
@@ -60,7 +60,7 @@
 
 <div
   class="calendar-event-bar cursor-pointer truncate rounded px-2 py-0.5 text-xs transition-opacity hover:opacity-80"
-  style={inlineStyle()}
+  style={inlineStyle}
   role="button"
   tabindex="0"
   onclick={handleClick}

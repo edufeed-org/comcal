@@ -15,8 +15,8 @@
  * @returns {import('applesauce-core').Model<Array<import('$lib/types/calendar.js').CalendarEvent>>}
  */
 import { TimelineModel } from 'applesauce-core/models';
-import { map } from 'rxjs/operators';
-import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
+import { map, debounceTime } from 'rxjs/operators';
+import { validateAndTransformCalendarEvents } from '$lib/helpers/eventUtils';
 import { eventOverlapsDateRange } from '$lib/helpers/calendar.js';
 
 /**
@@ -40,22 +40,14 @@ export function CalendarEventRangeModel(rangeStart, rangeEnd, authors = []) {
 
     // Use TimelineModel which handles deletion filtering automatically
     return eventStore.model(TimelineModel, filter).pipe(
-      // Transform raw Nostr events to CalendarEvent objects, filter by date range, and sort
-      map((events) => {
-        const calendarEvents = events.map((/** @type {any} */ event) =>
-          getCalendarEventMetadata(event)
-        );
-
-        // Filter to only events that overlap with the date range
-        const filteredEvents = calendarEvents.filter((/** @type {any} */ e) =>
+      // Batch rapid emissions to avoid redundant validate+transform+sort pipelines
+      debounceTime(100),
+      // Validate, transform, sort, then filter by date range
+      map((events) =>
+        validateAndTransformCalendarEvents(events).filter((e) =>
           eventOverlapsDateRange(e, rangeStart, rangeEnd)
-        );
-
-        // Sort by start time ascending (soonest first)
-        return filteredEvents.sort(
-          (/** @type {any} */ a, /** @type {any} */ b) => (a.start || 0) - (b.start || 0)
-        );
-      })
+        )
+      )
     );
   };
 }

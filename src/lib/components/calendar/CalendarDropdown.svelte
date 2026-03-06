@@ -63,7 +63,8 @@
   let isOnGlobalRoute = $derived($page.url.pathname === '/calendar');
 
   // subs
-  let calendarSubscription = $state();
+  /** @type {import('rxjs').Subscription | undefined} */
+  let calendarSubscription;
 
   let displayName = $derived.by(() => {
     // If viewing a specific calendar (via currentCalendar prop), show its name

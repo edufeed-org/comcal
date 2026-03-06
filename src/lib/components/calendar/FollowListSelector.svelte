@@ -21,7 +21,8 @@
   let loadErrorNip02 = $state(/** @type {string | null} */ (null));
   let loadErrorNip51 = $state(/** @type {string | null} */ (null));
   let activeUser = $state(manager.active);
-  let userSubscription = $state();
+  /** @type {import('rxjs').Subscription | undefined} */
+  let userSubscription;
 
   // Get reactive reference to follow lists from store
   let followLists = $derived(calendarFilters.followLists);

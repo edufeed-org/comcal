@@ -4,7 +4,6 @@
   Shows badge information and provides admin contact links.
 -->
 <script>
-  import { SvelteSet } from 'svelte/reactivity';
   import { resolve } from '$app/paths';
   import { eventStore, pool } from '$lib/stores/nostr-infrastructure.svelte';
   import { BadgeModel } from '$lib/models/badge-model.js';
@@ -32,10 +31,11 @@
   let badgeIdentifier = $derived(badgeAddress?.split(':')[2] || '');
 
   // Get community admins (pubkeys with admin role or just the community owner)
-  let admins = $derived(() => {
+  let admins = $derived.by(() => {
     if (!communityEvent) return [];
 
-    const adminPubkeys = new SvelteSet();
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local to $derived, not reactive state
+    const adminPubkeys = new Set();
 
     // Community owner is always an admin
     if (communityEvent.pubkey) {
@@ -160,13 +160,13 @@
     </div>
 
     <!-- Admin contacts -->
-    {#if admins().length > 0}
+    {#if admins.length > 0}
       <div class="border-t border-warning-content/20 pt-3">
         <p class="mb-2 text-xs text-warning-content/70">
           {m.badge_required_contact_admin()}
         </p>
         <div class="flex flex-wrap gap-2">
-          {#each admins() as adminPubkey (adminPubkey)}
+          {#each admins as adminPubkey (adminPubkey)}
             <a
               href={resolve(`/p/${adminPubkey}`)}
               class="btn border-warning-content/30 text-warning-content btn-outline btn-sm hover:bg-warning-content/10"

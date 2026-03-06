@@ -27,7 +27,7 @@
   let pickerEndDate = $state('');
 
   // Format date range for display (e.g., "Feb 2026 - May 2026")
-  const displayRange = $derived(() => {
+  const displayRange = $derived.by(() => {
     const startDate = new Date(start * 1000);
     const endDate = new Date(end * 1000);
 
@@ -38,7 +38,7 @@
   });
 
   // Check if current range is "today" (within tolerance)
-  const isAtToday = $derived(() => {
+  const isAtToday = $derived.by(() => {
     const now = Math.floor(Date.now() / 1000);
     // Consider "at today" if start is within 1 day of now
     return Math.abs(start - now) < 24 * 60 * 60;
@@ -129,7 +129,7 @@
     data-testid="date-range-display"
   >
     <CalendarIcon class_="w-4 h-4" />
-    <span class="whitespace-nowrap">{displayRange()}</span>
+    <span class="whitespace-nowrap">{displayRange}</span>
   </button>
 
   <!-- Next button -->
@@ -146,7 +146,7 @@
   </button>
 
   <!-- Today button (only show if not already at today) -->
-  {#if !isAtToday()}
+  {#if !isAtToday}
     <button
       type="button"
       class="btn btn-outline btn-sm"

@@ -20,8 +20,8 @@
  * @returns {import('applesauce-core').Model<Array<import('$lib/types/calendar.js').CalendarEvent>>} Model that emits array of calendar events
  */
 import { TimelineModel } from 'applesauce-core/models';
-import { map } from 'rxjs/operators';
-import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
+import { map, debounceTime } from 'rxjs/operators';
+import { validateAndTransformCalendarEvents } from '$lib/helpers/eventUtils';
 
 /**
  * @param {string[]} [authors]
@@ -46,16 +46,10 @@ export function GlobalCalendarEventModel(authors = []) {
     // 2. Re-emit when new deletion events are added
     // 3. Maintain proper reactivity
     return eventStore.model(TimelineModel, filter).pipe(
-      // Transform raw Nostr events to CalendarEvent objects and sort by start time
-      map((events) => {
-        const calendarEvents = events.map((/** @type {any} */ event) =>
-          getCalendarEventMetadata(event)
-        );
-        // Sort by start time ascending (soonest first)
-        return calendarEvents.sort(
-          (/** @type {any} */ a, /** @type {any} */ b) => (a.start || 0) - (b.start || 0)
-        );
-      })
+      // Batch rapid emissions to avoid redundant validate+transform+sort pipelines
+      debounceTime(100),
+      // Validate, transform, and sort by start time
+      map((events) => validateAndTransformCalendarEvents(events))
     );
   };
 }

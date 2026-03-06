@@ -10,7 +10,7 @@
   const communities = $derived(getAllCommunities());
 
   let showAll = $state(false);
-  /** @type {number | null} */
+  /** @type {ReturnType<typeof setInterval> | null} */
   let autoScrollInterval = $state(null);
   let isHovered = $state(false);
   /** @type {any} */
@@ -42,7 +42,7 @@
   });
 
   // Group communities into slides
-  const slides = $derived(() => {
+  const slides = $derived.by(() => {
     if (communities.length === 0) return [];
 
     const result = [];
@@ -68,7 +68,7 @@
 
   // Auto-scroll functionality
   $effect(() => {
-    if (!isHovered && !showAll && emblaApi && slides().length > 1) {
+    if (!isHovered && !showAll && emblaApi && slides.length > 1) {
       autoScrollInterval = setInterval(() => {
         if (emblaApi) {
           emblaApi.scrollNext();
@@ -165,10 +165,10 @@
             options: { loop: true, align: 'start' },
             plugins: []
           }}
-          onemblaInit={(e) => handleEmblaInit(e.detail)}
+          onemblaInit={(/** @type {CustomEvent} */ e) => handleEmblaInit(e.detail)}
         >
           <div class="flex">
-            {#each slides() as slide, index (index)}
+            {#each slides as slide, index (index)}
               <div class="min-w-0 flex-[0_0_100%]">
                 <!-- Grid of community cards -->
                 <div class="grid w-full grid-cols-1 gap-4 p-4 md:grid-cols-2 lg:grid-cols-3">
@@ -182,7 +182,7 @@
         </div>
 
         <!-- Navigation buttons -->
-        {#if slides().length > 1}
+        {#if slides.length > 1}
           <div
             class="pointer-events-none absolute top-1/2 right-5 left-5 flex -translate-y-1/2 transform justify-between"
           >
@@ -204,9 +204,9 @@
         {/if}
 
         <!-- Dot indicators -->
-        {#if slides().length > 1}
+        {#if slides.length > 1}
           <div class="mt-8 flex justify-center gap-3">
-            {#each slides() as _, index (index)}
+            {#each slides as _, index (index)}
               <button
                 onclick={() => scrollTo(index)}
                 class="group flex items-center justify-center rounded-full p-2 transition-all duration-300 hover:bg-base-200"

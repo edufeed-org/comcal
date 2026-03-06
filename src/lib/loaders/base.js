@@ -30,7 +30,7 @@ import { getAllLookupRelays } from '$lib/helpers/relay-helper.js';
  * clears before pagination is triggered (typically 2-3s after page load).
  * Most relays respond within 1 second; the timeout only affects hanging relays.
  * @param {string[]} relays
- * @param {import('nostr-tools').Filter} filters
+ * @param {import('nostr-tools').Filter[]} filters
  * @returns {import('rxjs').Observable<any>}
  */
 export const timedPool = (relays, filters) => pool.request(relays, filters, { timeout: 3000 });
