@@ -3,7 +3,7 @@
 This document tracks what E2E tests exist, what features they cover, and identifies gaps for future testing.
 
 **Last updated:** 2026-02-20
-**Total tests:** 260
+**Total tests:** 261
 
 ## Quick Summary
 
@@ -31,7 +31,7 @@ This document tracks what E2E tests exist, what features they cover, and identif
 | `signup.test.js`                    | 15    | No   | 4-step signup wizard, key generation               |
 | `settings.test.js`                  | 20    | Both | Theme, relays, relay editing, gated/debug          |
 | `settings-blossom.test.js`          | 6     | Yes  | Blossom server management                          |
-| `mobile-navigation.test.js`         | 7     | No   | Mobile hamburger menu, responsive layout           |
+| `mobile-navigation.test.js`         | 8     | No   | Mobile hamburger menu, responsive layout           |
 
 ## Detailed Coverage
 
@@ -948,7 +948,7 @@ This file completes the full AMB creation flow that `amb-creation.test.js` canno
 
 ---
 
-### mobile-navigation.test.js (7 tests)
+### mobile-navigation.test.js (8 tests)
 
 **Route:** `/` (homepage), `/discover`
 **Auth required:** No
@@ -965,11 +965,12 @@ This file completes the full AMB creation flow that `amb-creation.test.js` canno
 | no horizontal overflow on mobile                       | Document width <= viewport width               |
 | no critical JavaScript errors on mobile                | No JS errors during hamburger interaction      |
 
-#### Desktop Viewport - 1280x720 (1 test)
+#### Desktop Viewport - 1280x720 (2 tests)
 
-| Test                                              | What it verifies                      |
-| ------------------------------------------------- | ------------------------------------- |
-| desktop nav links visible and hamburger is hidden | Desktop nav visible, hamburger hidden |
+| Test                                                        | What it verifies                      |
+| ----------------------------------------------------------- | ------------------------------------- |
+| navbar logo src matches configured APP_LOGO from API config | Logo img src matches /api/config      |
+| desktop nav links visible and hamburger is hidden           | Desktop nav visible, hamburger hidden |
 
 **Components exercised:** Navbar (mobile hamburger dropdown, desktop nav)
 

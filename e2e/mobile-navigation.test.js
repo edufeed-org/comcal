@@ -102,6 +102,18 @@ test.describe('Mobile navigation', () => {
   test.describe('desktop viewport (1280x720)', () => {
     test.use({ viewport: { width: 1280, height: 720 } });
 
+    test('navbar logo src matches configured APP_LOGO from API config', async ({ page }) => {
+      await page.goto('/');
+      await page.waitForTimeout(2000);
+
+      // Fetch the expected logo URL from the config API
+      const config = await page.evaluate(() => fetch('/api/config').then((r) => r.json()));
+
+      // Verify the logo img src matches the configured value
+      const logoImg = page.locator('img[alt="App Logo"]');
+      await expect(logoImg).toHaveAttribute('src', config.appLogo);
+    });
+
     test('desktop nav links are visible and hamburger is hidden', async ({ page }) => {
       await page.goto('/');
       await page.waitForTimeout(2000);

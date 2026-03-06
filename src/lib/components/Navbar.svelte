@@ -104,7 +104,7 @@
   <div class="flex-1">
     <div class="avatar">
       <div class="mask w-10 mask-hexagon-2">
-        <img src={`${runtimeConfig.appLogo}`} alt="App Logo" />
+        <img src={runtimeConfig.appLogo} alt="App Logo" />
       </div>
     </div>
     <a href={resolve('/')} class="btn text-xl btn-ghost"
