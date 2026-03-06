@@ -1,47 +1,79 @@
 /**
  * Curated Authors Service
  *
- * Restricts primary content (calendar events, AMB resources, articles, community definitions)
- * to specific authors defined in NIP-51 follow sets (kind 30000).
+ * Restricts primary content (calendar events, AMB resources, articles, community definitions,
+ * kanban boards) to specific authors, with per-content-type granularity.
  *
- * Configured via:
- * - CURATED_PUBKEYS_SETS: comma-separated naddr identifiers for kind 30000 follow sets
- * - CURATED_PUBKEYS: comma-separated hex pubkeys or npub-encoded pubkeys (direct)
+ * Configured via per-category env vars with global fallback:
+ * - CURATED_PUBKEYS_SETS / CURATED_PUBKEYS: global defaults
+ * - CURATED_PUBKEYS_SETS_CALENDAR / CURATED_PUBKEYS_CALENDAR: category override (replaces global)
+ * - Same pattern for COMMUNIKEY, EDUCATIONAL, LONGFORM, KANBAN
  *
- * Both sources are unioned together. If either has entries, curated mode is active.
- * When not configured, all functions return null (feature inactive, no filtering applied).
+ * If a category has its own env vars, they completely replace the global config for that category.
+ * Both sets and direct pubkeys are unioned per category.
+ * When not configured for a category, functions return null (no filtering applied).
  */
 import { nip19 } from 'nostr-tools';
 import { pool } from '$lib/stores/nostr-infrastructure.svelte';
 import { runtimeConfig } from '$lib/stores/config.svelte.js';
+import { kindToAppRelayCategory } from '$lib/services/app-relay-service.svelte.js';
 import { getAllLookupRelays } from '$lib/helpers/relay-helper.js';
 import { lastValueFrom, toArray } from 'rxjs';
 
+/** @typedef {'calendar' | 'communikey' | 'educational' | 'longform' | 'kanban'} CuratedCategory */
+
+const ALL_CATEGORIES = /** @type {const} */ ([
+  'calendar',
+  'communikey',
+  'educational',
+  'longform',
+  'kanban'
+]);
+
 /**
- * Reactive cache of curated author pubkeys.
- * null = feature not configured/active (no filtering)
- * string[] = list of allowed pubkeys (filtering active)
- * @type {string[] | null}
+ * Per-category cache of curated author pubkeys.
+ * null = not configured (no filtering), string[] = allowed pubkeys
+ * @type {Map<string, string[] | null>}
  */
-let curatedAuthors = $state(null);
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- module-level cache, not reactive state
+const curatedAuthorsCache = new Map();
 
-/** Whether direct pubkeys have been lazily parsed from config */
-let directPubkeysInitialized = false;
+/** Categories whose direct pubkeys have been lazily parsed */
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- module-level cache, not reactive state
+const directPubkeysInitialized = new Set();
+
+/** Categories whose follow sets have been fully initialized */
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- module-level cache, not reactive state
+const followSetsInitialized = new Set();
 
 /**
- * Parse direct pubkeys from config on first access (lazy, synchronous).
- * Eliminates timing race — works regardless of when callers run.
+ * Get the curated mode config for a category from runtime config.
+ * @param {string} category
+ * @returns {{ sets: string[], direct: string[] }}
  */
-function ensureDirectPubkeysInitialized() {
-  if (directPubkeysInitialized) return;
-  directPubkeysInitialized = true;
+function getCategoryConfig(category) {
+  const cfg = /** @type {Record<string, {sets: string[], direct: string[]}>} */ (
+    runtimeConfig.curatedMode
+  )?.[category];
+  return {
+    sets: Array.isArray(cfg?.sets) ? cfg.sets : [],
+    direct: Array.isArray(cfg?.direct) ? cfg.direct : []
+  };
+}
 
-  const entries = runtimeConfig.curatedPubkeys;
-  if (Array.isArray(entries) && entries.length > 0) {
-    const parsed = parseDirectPubkeys(entries);
-    if (parsed.length > 0 && curatedAuthors === null) {
-      curatedAuthors = parsed;
-      console.log('Curated authors: Loaded', parsed.length, 'direct pubkeys');
+/**
+ * Parse direct pubkeys from config on first access for a category (lazy, synchronous).
+ * @param {string} category
+ */
+function ensureDirectPubkeysInitialized(category) {
+  if (directPubkeysInitialized.has(category)) return;
+  directPubkeysInitialized.add(category);
+
+  const { direct } = getCategoryConfig(category);
+  if (direct.length > 0) {
+    const parsed = parseDirectPubkeys(direct);
+    if (parsed.length > 0 && !curatedAuthorsCache.has(category)) {
+      curatedAuthorsCache.set(category, parsed);
     }
   }
 }
@@ -82,46 +114,75 @@ export function parseDirectPubkeys(entries) {
 }
 
 /**
- * Check if curated mode is configured (either env var has entries)
+ * Check if curated mode is configured for a category (either source has entries)
+ * @param {string} category
  * @returns {boolean}
  */
-export function isCuratedModeConfigured() {
-  /** @type {string[]} */
-  const sets = runtimeConfig.curatedPubkeysSets;
-  /** @type {string[]} */
-  const direct = runtimeConfig.curatedPubkeys;
-  return (Array.isArray(sets) && sets.length > 0) || (Array.isArray(direct) && direct.length > 0);
+export function isCuratedModeConfigured(category) {
+  const { sets, direct } = getCategoryConfig(category);
+  return sets.length > 0 || direct.length > 0;
 }
 
 /**
- * Check if curated mode is active (configured AND loaded with >0 pubkeys)
+ * Check if curated mode is active for a category (configured AND loaded with >0 pubkeys)
+ * @param {string} category
  * @returns {boolean}
  */
-export function isCuratedModeActive() {
-  return curatedAuthors !== null && curatedAuthors.length > 0;
+export function isCuratedModeActive(category) {
+  const authors = curatedAuthorsCache.get(category);
+  return authors !== undefined && authors !== null && authors.length > 0;
 }
 
 /**
- * Get the curated author pubkeys for use in relay filters.
- * Returns null when curated mode is not configured (no filtering should be applied).
+ * Get the curated author pubkeys for a specific category.
+ * Returns null when curated mode is not configured for the category (no filtering).
  * Returns string[] when active (add as `authors` filter).
+ * @param {string} category
  * @returns {string[] | null}
  */
-export function getCuratedAuthors() {
-  ensureDirectPubkeysInitialized();
-  return curatedAuthors;
+export function getCuratedAuthors(category) {
+  ensureDirectPubkeysInitialized(category);
+  return curatedAuthorsCache.get(category) ?? null;
 }
 
 /**
- * Check if a pubkey is in the curated authors list.
- * Returns true if curated mode is not active (all authors allowed).
+ * Apply curated author filtering to a Nostr filter object.
+ * Derives the category automatically from filter.kinds using kindToAppRelayCategory().
+ * Returns a new filter with `authors` set if curated mode is active for the category.
+ *
+ * Does NOT override explicit author filtering (when filter.authors already has entries).
+ *
+ * @param {import('nostr-tools').Filter} filter
+ * @returns {import('nostr-tools').Filter}
+ */
+export function applyCuratedFilter(filter) {
+  // Don't override explicit author filtering
+  if (filter.authors && filter.authors.length > 0) return filter;
+
+  const kind = filter.kinds?.[0];
+  if (kind === undefined) return filter;
+
+  const category = kindToAppRelayCategory(kind);
+  if (!category) return filter;
+
+  const authors = getCuratedAuthors(category);
+  if (!authors) return filter;
+
+  return { ...filter, authors };
+}
+
+/**
+ * Check if a pubkey is in the curated authors list for a category.
+ * Returns true if curated mode is not active for the category (all authors allowed).
+ * @param {string} category
  * @param {string} pubkey
  * @returns {boolean}
  */
-export function isAllowedAuthor(pubkey) {
-  ensureDirectPubkeysInitialized();
-  if (curatedAuthors === null) return true;
-  return curatedAuthors.includes(pubkey);
+export function isAllowedAuthor(category, pubkey) {
+  ensureDirectPubkeysInitialized(category);
+  const authors = curatedAuthorsCache.get(category);
+  if (!authors) return true;
+  return authors.includes(pubkey);
 }
 
 /**
@@ -178,31 +239,31 @@ export function extractPubkeysFromFollowSets(events) {
 }
 
 /**
- * Initialize the curated authors cache from direct pubkeys and/or follow sets.
- * Direct pubkeys are available immediately; follow sets require async network fetch.
- * Call this after runtime config is loaded.
+ * Initialize curated authors for a specific category.
+ * Parses direct pubkeys and fetches follow sets from network.
  * Safe to call multiple times — subsequent calls are no-ops.
+ * @param {string} category
  */
-export async function initializeCuratedAuthors() {
-  if (!isCuratedModeConfigured()) return;
+export async function initializeCuratedAuthors(category) {
+  if (followSetsInitialized.has(category)) return;
+  if (!isCuratedModeConfigured(category)) return;
 
-  // Step 1: Ensure direct pubkeys are parsed (may already be done by lazy init)
-  ensureDirectPubkeysInitialized();
-  const directPubkeys = curatedAuthors ? [...curatedAuthors] : [];
+  followSetsInitialized.add(category);
 
-  // Step 2: Fetch follow sets (async, may expand the list)
-  /** @type {string[]} */
-  const naddrs = runtimeConfig.curatedPubkeysSets;
-  const pointers = Array.isArray(naddrs) ? decodeNaddrs(naddrs) : [];
+  // Step 1: Ensure direct pubkeys are parsed
+  ensureDirectPubkeysInitialized(category);
+  const directPubkeys = curatedAuthorsCache.get(category) ?? [];
+
+  // Step 2: Fetch follow sets
+  const { sets } = getCategoryConfig(category);
+  const pointers = decodeNaddrs(sets);
 
   if (pointers.length === 0) {
     if (directPubkeys.length === 0) {
-      console.warn('Curated authors: No valid entries found in either source');
+      console.warn(`Curated authors [${category}]: No valid entries found`);
     }
     return;
   }
-
-  console.log('Curated authors: Fetching', pointers.length, 'follow sets');
 
   try {
     const fallbackRelays = getAllLookupRelays();
@@ -223,7 +284,11 @@ export async function initializeCuratedAuthors() {
         );
         allEvents.push(...events);
       } catch (err) {
-        console.warn('Curated authors: Failed to fetch follow set for', pointer.identifier, err);
+        console.warn(
+          `Curated authors [${category}]: Failed to fetch follow set for`,
+          pointer.identifier,
+          err
+        );
       }
     }
 
@@ -235,20 +300,35 @@ export async function initializeCuratedAuthors() {
     );
 
     if (allPubkeys.length > 0) {
-      curatedAuthors = allPubkeys;
-      console.log('Curated authors: Loaded', allPubkeys.length, 'allowed pubkeys (total)');
+      curatedAuthorsCache.set(category, allPubkeys);
     } else {
-      console.warn('Curated authors: No pubkeys found from any source, curated mode inactive');
+      console.warn(`Curated authors [${category}]: No pubkeys found, curated mode inactive`);
     }
   } catch (err) {
-    console.error('Curated authors: Initialization failed', err);
+    console.error(`Curated authors [${category}]: Initialization failed`, err);
   }
 }
 
 /**
- * Reset curated authors state (for testing)
+ * Initialize curated authors for all categories in parallel.
+ * Call this after runtime config is loaded.
  */
-export function _resetForTesting() {
-  curatedAuthors = null;
-  directPubkeysInitialized = false;
+export async function initializeAllCuratedAuthors() {
+  await Promise.all(ALL_CATEGORIES.map((cat) => initializeCuratedAuthors(cat)));
+}
+
+/**
+ * Reset curated authors state (for testing).
+ * @param {string} [category] - If provided, reset only that category. Otherwise reset all.
+ */
+export function _resetForTesting(category) {
+  if (category) {
+    curatedAuthorsCache.delete(category);
+    directPubkeysInitialized.delete(category);
+    followSetsInitialized.delete(category);
+  } else {
+    curatedAuthorsCache.clear();
+    directPubkeysInitialized.clear();
+    followSetsInitialized.clear();
+  }
 }

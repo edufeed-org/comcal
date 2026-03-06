@@ -5,7 +5,7 @@ import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { getKanbanRelays } from '$lib/helpers/relay-helper.js';
 import { timedPool } from './base.js';
-import { getCuratedAuthors } from '$lib/services/curated-authors-service.svelte.js';
+import { applyCuratedFilter } from '$lib/services/curated-authors-service.svelte.js';
 
 /**
  * Factory: Create a stateful timeline loader for kind 30301 kanban boards with automatic pagination
@@ -13,9 +13,6 @@ import { getCuratedAuthors } from '$lib/services/curated-authors-service.svelte.
  * @returns {Function} Stateful timeline loader function (call with no args, returns Observable)
  */
 export function kanbanTimelineLoader(limit = 20) {
-  /** @type {import('nostr-tools').Filter} */
-  const filter = { kinds: [30301] };
-  const authors = getCuratedAuthors();
-  if (authors) filter.authors = authors;
+  const filter = applyCuratedFilter({ kinds: [30301] });
   return createTimelineLoader(timedPool, getKanbanRelays(), filter, { eventStore, limit });
 }

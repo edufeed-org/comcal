@@ -1,11 +1,13 @@
 /**
  * Curated Authors Service Tests
  *
- * Tests the core logic of the curated authors service:
+ * Tests the core logic of the per-category curated authors service:
  * - naddr decoding
  * - direct pubkey parsing (hex + npub)
  * - p-tag extraction from follow sets
- * - getCuratedAuthors() behavior when configured vs not
+ * - getCuratedAuthors(category) behavior when configured vs not
+ * - applyCuratedFilter() auto-category-detection utility
+ * - per-category isolation
  *
  * @vitest-environment node
  */
@@ -25,13 +27,29 @@ vi.mock('$lib/stores/nostr-infrastructure.svelte', () => ({
 
 vi.mock('$lib/stores/config.svelte.js', () => ({
   runtimeConfig: {
-    curatedPubkeysSets: [],
-    curatedPubkeys: []
+    curatedMode: {
+      calendar: { sets: [], direct: [] },
+      communikey: { sets: [], direct: [] },
+      educational: { sets: [], direct: [] },
+      longform: { sets: [], direct: [] },
+      kanban: { sets: [], direct: [] }
+    }
   }
 }));
 
 vi.mock('$lib/helpers/relay-helper.js', () => ({
   getAllLookupRelays: vi.fn(() => ['wss://relay.example.com'])
+}));
+
+vi.mock('$lib/services/app-relay-service.svelte.js', () => ({
+  kindToAppRelayCategory: vi.fn((kind) => {
+    if ([31922, 31923, 31924, 31925].includes(kind)) return 'calendar';
+    if ([10222, 30222, 30382].includes(kind)) return 'communikey';
+    if ([30142].includes(kind)) return 'educational';
+    if ([30023].includes(kind)) return 'longform';
+    if ([30301, 30302, 8571].includes(kind)) return 'kanban';
+    return null;
+  })
 }));
 
 describe('curated-authors-service', () => {
@@ -291,88 +309,411 @@ describe('curated-authors-service', () => {
   });
 
   describe('isCuratedModeConfigured', () => {
-    it('should return false when both sources are empty', async () => {
+    it('should return false when both sources are empty for category', async () => {
       vi.resetModules();
       vi.doMock('$lib/stores/config.svelte.js', () => ({
-        runtimeConfig: { curatedPubkeysSets: [], curatedPubkeys: [] }
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
       }));
       const service = await import('../services/curated-authors-service.svelte.js');
-      expect(service.isCuratedModeConfigured()).toBe(false);
+      expect(service.isCuratedModeConfigured('calendar')).toBe(false);
     });
 
-    it('should return true when curatedPubkeysSets has entries', async () => {
+    it('should return true when sets has entries for category', async () => {
       vi.resetModules();
       vi.doMock('$lib/stores/config.svelte.js', () => ({
-        runtimeConfig: { curatedPubkeysSets: ['naddr1...'], curatedPubkeys: [] }
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: ['naddr1...'], direct: [] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
       }));
       const service = await import('../services/curated-authors-service.svelte.js');
-      expect(service.isCuratedModeConfigured()).toBe(true);
+      expect(service.isCuratedModeConfigured('calendar')).toBe(true);
     });
 
-    it('should return true when curatedPubkeys has entries', async () => {
+    it('should return true when direct has entries for category', async () => {
       vi.resetModules();
       vi.doMock('$lib/stores/config.svelte.js', () => ({
-        runtimeConfig: { curatedPubkeysSets: [], curatedPubkeys: ['a'.repeat(64)] }
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: ['a'.repeat(64)] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
       }));
       const service = await import('../services/curated-authors-service.svelte.js');
-      expect(service.isCuratedModeConfigured()).toBe(true);
+      expect(service.isCuratedModeConfigured('calendar')).toBe(true);
     });
 
-    it('should return true when both sources have entries', async () => {
+    it('should return true when both sources have entries for category', async () => {
       vi.resetModules();
       vi.doMock('$lib/stores/config.svelte.js', () => ({
-        runtimeConfig: { curatedPubkeysSets: ['naddr1...'], curatedPubkeys: ['a'.repeat(64)] }
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: ['naddr1...'], direct: ['a'.repeat(64)] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
       }));
       const service = await import('../services/curated-authors-service.svelte.js');
-      expect(service.isCuratedModeConfigured()).toBe(true);
+      expect(service.isCuratedModeConfigured('calendar')).toBe(true);
     });
   });
 
   describe('getCuratedAuthors', () => {
-    it('should return null when not initialized and no config', async () => {
+    it('should return null when not configured for category', async () => {
       vi.resetModules();
       vi.doMock('$lib/stores/config.svelte.js', () => ({
-        runtimeConfig: { curatedPubkeysSets: [], curatedPubkeys: [] }
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
       }));
       const service = await import('../services/curated-authors-service.svelte.js');
-      expect(service.getCuratedAuthors()).toBeNull();
+      expect(service.getCuratedAuthors('calendar')).toBeNull();
     });
 
-    it('should lazily parse direct pubkeys on first access without initializeCuratedAuthors', async () => {
+    it('should lazily parse direct pubkeys on first access for a category', async () => {
       vi.resetModules();
       const hexPubkey = 'a'.repeat(64);
       vi.doMock('$lib/stores/config.svelte.js', () => ({
-        runtimeConfig: { curatedPubkeysSets: [], curatedPubkeys: [hexPubkey] }
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [hexPubkey] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
       }));
       const service = await import('../services/curated-authors-service.svelte.js');
 
-      // getCuratedAuthors triggers lazy init — no need to call initializeCuratedAuthors
-      const result = service.getCuratedAuthors();
+      const result = service.getCuratedAuthors('calendar');
       expect(result).toEqual([hexPubkey]);
     });
   });
 
   describe('isAllowedAuthor', () => {
-    it('should return true when curated mode is not active', async () => {
+    it('should return true when curated mode is not active for category', async () => {
       vi.resetModules();
       vi.doMock('$lib/stores/config.svelte.js', () => ({
-        runtimeConfig: { curatedPubkeysSets: [], curatedPubkeys: [] }
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
       }));
       const service = await import('../services/curated-authors-service.svelte.js');
-      expect(service.isAllowedAuthor('any-pubkey')).toBe(true);
+      expect(service.isAllowedAuthor('calendar', 'any-pubkey')).toBe(true);
     });
 
-    it('should lazily filter authors even before initializeCuratedAuthors', async () => {
+    it('should filter authors per category', async () => {
       vi.resetModules();
       const hexPubkey = 'b'.repeat(64);
       vi.doMock('$lib/stores/config.svelte.js', () => ({
-        runtimeConfig: { curatedPubkeysSets: [], curatedPubkeys: [hexPubkey] }
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [hexPubkey] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
       }));
       const service = await import('../services/curated-authors-service.svelte.js');
 
-      // isAllowedAuthor triggers lazy init
-      expect(service.isAllowedAuthor(hexPubkey)).toBe(true);
-      expect(service.isAllowedAuthor('c'.repeat(64))).toBe(false);
+      expect(service.isAllowedAuthor('calendar', hexPubkey)).toBe(true);
+      expect(service.isAllowedAuthor('calendar', 'c'.repeat(64))).toBe(false);
+    });
+  });
+
+  describe('per-category isolation', () => {
+    it('should not leak authors between categories', async () => {
+      vi.resetModules();
+      const calendarPubkey = 'a'.repeat(64);
+      const educationalPubkey = 'b'.repeat(64);
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [calendarPubkey] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [educationalPubkey] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      // Calendar should have its own pubkey
+      expect(service.getCuratedAuthors('calendar')).toEqual([calendarPubkey]);
+      // Educational should have its own pubkey
+      expect(service.getCuratedAuthors('educational')).toEqual([educationalPubkey]);
+      // Communikey should have no filtering
+      expect(service.getCuratedAuthors('communikey')).toBeNull();
+      // Longform should have no filtering
+      expect(service.getCuratedAuthors('longform')).toBeNull();
+    });
+
+    it('should allow different pubkeys per category', async () => {
+      vi.resetModules();
+      const calendarPubkey = 'a'.repeat(64);
+      const educationalPubkey = 'b'.repeat(64);
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [calendarPubkey] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [educationalPubkey] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      // Calendar pubkey is NOT allowed in educational
+      expect(service.isAllowedAuthor('educational', calendarPubkey)).toBe(false);
+      // Educational pubkey is NOT allowed in calendar
+      expect(service.isAllowedAuthor('calendar', educationalPubkey)).toBe(false);
+      // Unconfigured categories allow everyone
+      expect(service.isAllowedAuthor('communikey', calendarPubkey)).toBe(true);
+    });
+  });
+
+  describe('applyCuratedFilter', () => {
+    it('should add authors when curated mode is active for the kind category', async () => {
+      vi.resetModules();
+      const hexPubkey = 'a'.repeat(64);
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [hexPubkey] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      const result = service.applyCuratedFilter({ kinds: [30142] });
+      expect(result.authors).toEqual([hexPubkey]);
+    });
+
+    it('should not modify filter when no kinds provided', async () => {
+      vi.resetModules();
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: ['a'.repeat(64)] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      const filter = { limit: 50 };
+      const result = service.applyCuratedFilter(filter);
+      expect(result).toBe(filter); // Same reference, unmodified
+    });
+
+    it('should not modify filter for unmapped kind', async () => {
+      vi.resetModules();
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: ['a'.repeat(64)] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      const filter = { kinds: [99999] };
+      const result = service.applyCuratedFilter(filter);
+      expect(result).toBe(filter);
+    });
+
+    it('should not override explicit authors filter', async () => {
+      vi.resetModules();
+      const hexPubkey = 'a'.repeat(64);
+      const explicitAuthor = 'b'.repeat(64);
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [hexPubkey] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      const filter = { kinds: [31922], authors: [explicitAuthor] };
+      const result = service.applyCuratedFilter(filter);
+      expect(result).toBe(filter); // Same reference, unmodified
+      expect(result.authors).toEqual([explicitAuthor]);
+    });
+
+    it('should fall through when authors is empty array (no UI filter)', async () => {
+      vi.resetModules();
+      const hexPubkey = 'a'.repeat(64);
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [hexPubkey] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      // Empty authors array means "no UI filter selected" — should apply curated
+      const filter = { kinds: [31922], authors: [] };
+      const result = service.applyCuratedFilter(filter);
+      expect(result.authors).toEqual([hexPubkey]);
+    });
+
+    it('should not modify filter when category has no curated config', async () => {
+      vi.resetModules();
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      const filter = { kinds: [30142] };
+      const result = service.applyCuratedFilter(filter);
+      expect(result).toBe(filter);
+    });
+
+    it('should preserve other filter fields when adding authors', async () => {
+      vi.resetModules();
+      const hexPubkey = 'a'.repeat(64);
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [hexPubkey] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      const result = service.applyCuratedFilter({ kinds: [30142], search: 'test', limit: 50 });
+      expect(result.authors).toEqual([hexPubkey]);
+      expect(result.search).toBe('test');
+      expect(result.limit).toBe(50);
+      expect(result.kinds).toEqual([30142]);
+    });
+  });
+
+  describe('_resetForTesting', () => {
+    it('should reset a specific category', async () => {
+      vi.resetModules();
+      const hexPubkey = 'a'.repeat(64);
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [hexPubkey] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [hexPubkey] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      // Initialize both
+      expect(service.getCuratedAuthors('calendar')).toEqual([hexPubkey]);
+      expect(service.getCuratedAuthors('educational')).toEqual([hexPubkey]);
+
+      // Reset only calendar
+      service._resetForTesting('calendar');
+      // Calendar re-initializes from config on next access
+      expect(service.getCuratedAuthors('calendar')).toEqual([hexPubkey]);
+      // Educational should still work
+      expect(service.getCuratedAuthors('educational')).toEqual([hexPubkey]);
+    });
+
+    it('should reset all categories when no argument', async () => {
+      vi.resetModules();
+      const hexPubkey = 'a'.repeat(64);
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [hexPubkey] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [hexPubkey] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      // Initialize both
+      service.getCuratedAuthors('calendar');
+      service.getCuratedAuthors('educational');
+
+      // Reset all
+      service._resetForTesting();
+      // Both should re-initialize from config
+      expect(service.getCuratedAuthors('calendar')).toEqual([hexPubkey]);
+      expect(service.getCuratedAuthors('educational')).toEqual([hexPubkey]);
     });
   });
 });

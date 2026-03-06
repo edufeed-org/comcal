@@ -61,4 +61,4 @@
   });
 </script>
 
-<img src={currentSrc} {alt} {loading} class={className} onerror={handleError} />
+<img src={currentSrc} {alt} {loading} decoding="async" class={className} onerror={handleError} />

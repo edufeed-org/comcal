@@ -34,10 +34,14 @@ const defaultConfig = {
     default: false, // Default state for new users
     force: false // When true, users cannot disable gated mode
   },
-  // Curated mode: naddr identifiers pointing to kind 30000 follow sets
-  curatedPubkeysSets: [],
-  // Curated mode: direct hex/npub pubkeys (unioned with follow set pubkeys)
-  curatedPubkeys: [],
+  // Curated mode: per-category author filtering with global fallback
+  curatedMode: {
+    calendar: { sets: /** @type {string[]} */ ([]), direct: /** @type {string[]} */ ([]) },
+    communikey: { sets: /** @type {string[]} */ ([]), direct: /** @type {string[]} */ ([]) },
+    educational: { sets: /** @type {string[]} */ ([]), direct: /** @type {string[]} */ ([]) },
+    longform: { sets: /** @type {string[]} */ ([]), direct: /** @type {string[]} */ ([]) },
+    kanban: { sets: /** @type {string[]} */ ([]), direct: /** @type {string[]} */ ([]) }
+  },
   // Default Blossom servers for new users
   defaultBlossomServers: [],
   calendar: {
@@ -188,8 +192,13 @@ export function initializeConfig(runtimeConfig) {
       default: runtimeConfig.gatedMode?.default ?? defaultConfig.gatedMode.default,
       force: runtimeConfig.gatedMode?.force ?? defaultConfig.gatedMode.force
     },
-    curatedPubkeysSets: runtimeConfig.curatedPubkeysSets || defaultConfig.curatedPubkeysSets,
-    curatedPubkeys: runtimeConfig.curatedPubkeys || defaultConfig.curatedPubkeys,
+    curatedMode: {
+      calendar: runtimeConfig.curatedMode?.calendar || defaultConfig.curatedMode.calendar,
+      communikey: runtimeConfig.curatedMode?.communikey || defaultConfig.curatedMode.communikey,
+      educational: runtimeConfig.curatedMode?.educational || defaultConfig.curatedMode.educational,
+      longform: runtimeConfig.curatedMode?.longform || defaultConfig.curatedMode.longform,
+      kanban: runtimeConfig.curatedMode?.kanban || defaultConfig.curatedMode.kanban
+    },
     defaultBlossomServers:
       runtimeConfig.defaultBlossomServers || defaultConfig.defaultBlossomServers,
     calendar: {
@@ -322,11 +331,8 @@ export const runtimeConfig = {
   get gatedMode() {
     return config.gatedMode;
   },
-  get curatedPubkeysSets() {
-    return config.curatedPubkeysSets;
-  },
-  get curatedPubkeys() {
-    return config.curatedPubkeys;
+  get curatedMode() {
+    return config.curatedMode;
   },
   get favicon() {
     return config.favicon;

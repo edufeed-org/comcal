@@ -230,7 +230,7 @@
     <div class="mb-3 flex items-center gap-3">
       <div class="avatar">
         <div class="h-10 w-10 rounded-full">
-          <img src={authorAvatar} alt={authorName} />
+          <img src={authorAvatar} alt={authorName} loading="lazy" decoding="async" />
         </div>
       </div>
       <div class="min-w-0 flex-1">

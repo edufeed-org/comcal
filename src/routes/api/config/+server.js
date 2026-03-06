@@ -67,6 +67,33 @@ function parseTheme(value, defaultValue) {
 }
 
 /**
+ * Resolve curated mode config for a specific category.
+ * If either category-specific env var is set, use ONLY category vars (complete replacement).
+ * Otherwise fall back to global vars.
+ * @param {Record<string, string|undefined>} env
+ * @param {string} suffix - Category suffix, e.g. 'CALENDAR'
+ * @returns {{ sets: string[], direct: string[] }}
+ */
+function resolveCuratedConfig(env, suffix) {
+  const catSets = env[`CURATED_PUBKEYS_SETS_${suffix}`];
+  const catDirect = env[`CURATED_PUBKEYS_${suffix}`];
+
+  // If either category-specific var is defined (even empty), use category vars exclusively
+  if (catSets !== undefined || catDirect !== undefined) {
+    return {
+      sets: parseArray(catSets),
+      direct: parseArray(catDirect)
+    };
+  }
+
+  // Fall back to global vars
+  return {
+    sets: parseArray(env.CURATED_PUBKEYS_SETS),
+    direct: parseArray(env.CURATED_PUBKEYS)
+  };
+}
+
+/**
  * GET /api/config
  * Returns public configuration that can be safely exposed to the browser
  */
@@ -95,9 +122,14 @@ export function GET() {
       force: parseBool(env.GATED_MODE_FORCE, false)
     },
 
-    // Curated mode: restrict primary content to pubkeys from these follow sets
-    curatedPubkeysSets: parseArray(env.CURATED_PUBKEYS_SETS),
-    curatedPubkeys: parseArray(env.CURATED_PUBKEYS),
+    // Curated mode: per-category author filtering with global fallback
+    curatedMode: {
+      calendar: resolveCuratedConfig(env, 'CALENDAR'),
+      communikey: resolveCuratedConfig(env, 'COMMUNIKEY'),
+      educational: resolveCuratedConfig(env, 'EDUCATIONAL'),
+      longform: resolveCuratedConfig(env, 'LONGFORM'),
+      kanban: resolveCuratedConfig(env, 'KANBAN')
+    },
 
     // NIP-65 relay list discovery
     relayListLookupRelays: parseArray(env.RELAY_LIST_LOOKUP_RELAYS),

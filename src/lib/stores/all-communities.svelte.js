@@ -1,7 +1,7 @@
 import { communikeyTimelineLoader } from '$lib/loaders';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { TimelineModel } from 'applesauce-core/models';
-import { getCuratedAuthors } from '$lib/services/curated-authors-service.svelte.js';
+import { applyCuratedFilter } from '$lib/services/curated-authors-service.svelte.js';
 
 // Global state that persists across page navigations
 let globalCommunities = $state(/** @type {import('nostr-tools').Event[]} */ ([]));
@@ -38,10 +38,7 @@ export function useAllCommunities() {
     // Use TimelineModel for reactive data with deletion filtering.
     // Also applies curated authors as defense-in-depth: even if a non-curated
     // community event enters the store from another code path, it won't appear here.
-    /** @type {any} */
-    const filter = { kinds: [10222] };
-    const authors = getCuratedAuthors();
-    if (authors) filter.authors = authors;
+    const filter = applyCuratedFilter({ kinds: [10222] });
 
     const timelineSubscription = eventStore.model(TimelineModel, filter).subscribe({
       next: (/** @type {import('nostr-tools').Event[]} */ events) => {

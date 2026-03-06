@@ -15,15 +15,15 @@ import {
   getEventEndTimestamp
 } from '$lib/helpers/calendar.js';
 import { partitionRelaysByNip52Support } from '$lib/services/relay-capabilities.js';
-import { getCuratedAuthors } from '$lib/services/curated-authors-service.svelte.js';
+import {
+  getCuratedAuthors,
+  applyCuratedFilter
+} from '$lib/services/curated-authors-service.svelte.js';
 
 // Global calendar events (kinds 31922, 31923)
 // Lazy factory to ensure relays are read from runtime config at call time, not module load time
 export const calendarTimelineLoader = () => {
-  /** @type {import('nostr-tools').Filter} */
-  const filter = { kinds: [31922, 31923], limit: 40 };
-  const authors = getCuratedAuthors();
-  if (authors) filter.authors = authors;
+  const filter = applyCuratedFilter({ kinds: [31922, 31923], limit: 40 });
   return createTimelineLoader(timedPool, getCalendarRelays(), filter, { eventStore });
 };
 
@@ -43,7 +43,9 @@ export const createRelayFilteredCalendarLoader = (customRelays = [], additionalF
     // Apply curated authors unless caller already specified authors
     // Note: [] is truthy, so check .length to avoid bypassing curated authors when UI filter is empty
     const authors =
-      additionalFilters.authors?.length > 0 ? additionalFilters.authors : getCuratedAuthors();
+      additionalFilters.authors?.length > 0
+        ? additionalFilters.authors
+        : getCuratedAuthors('calendar');
     /** @type {import('nostr-tools').Filter} */
     const filter = { kinds: [31922, 31923], limit: 200, ...additionalFilters };
     if (authors) filter.authors = authors;
@@ -74,7 +76,8 @@ export const createRelayFilteredCalendarLoader = (customRelays = [], additionalF
 export function createDateRangeCalendarLoader(dateRange, options = {}) {
   const { startAfter, startBefore, endAfter, endBefore } = dateRange;
   // Note: [] is truthy, so check .length to avoid bypassing curated authors when UI filter is empty
-  const effectiveAuthors = options.authors?.length > 0 ? options.authors : getCuratedAuthors();
+  const effectiveAuthors =
+    options.authors?.length > 0 ? options.authors : getCuratedAuthors('calendar');
 
   return () => {
     const allRelays = getCalendarRelays();
@@ -162,7 +165,7 @@ export function createPaginatedCalendarLoader(afterStartTimestamp, options = {})
         /** @type {import('rxjs').Observable<import('nostr-tools').NostrEvent>[]} */
         const streams = [];
 
-        const curatedAuthorsList = getCuratedAuthors();
+        const curatedAuthorsList = getCuratedAuthors('calendar');
 
         // NIP-52 relays: server-side start filtering via #start_after
         if (nip52Relays.length > 0) {
@@ -237,14 +240,11 @@ export const userCalendarLoader = (userPubkey) =>
  * @returns {Function} Timeline loader function that returns an Observable
  */
 export const communityCalendarTimelineLoader = (communityPubkey) => {
-  /** @type {any} */
-  const filter = {
+  const filter = applyCuratedFilter({
     kinds: [31922, 31923],
     '#h': [communityPubkey],
     limit: 250
-  };
-  const authors = getCuratedAuthors();
-  if (authors) filter.authors = authors;
+  });
   return createTimelineLoader(timedPool, getCalendarRelays(), filter, { eventStore });
 };
 

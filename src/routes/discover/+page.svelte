@@ -37,7 +37,7 @@
   import CommunityFilterDropdown from '$lib/components/feed/CommunityFilterDropdown.svelte';
   import RelayFilterDropdown from '$lib/components/feed/RelayFilterDropdown.svelte';
   import { getAppRelaysForCategory } from '$lib/services/app-relay-service.svelte.js';
-  import { getCuratedAuthors } from '$lib/services/curated-authors-service.svelte.js';
+  import { applyCuratedFilter } from '$lib/services/curated-authors-service.svelte.js';
   import { getSeenRelays } from 'applesauce-core/helpers/relays';
   import { normalizeURL } from 'applesauce-core/helpers';
   import CommunikeyCard from '$lib/components/CommunikeyCard.svelte';
@@ -99,6 +99,8 @@
   let communityProfiles = $derived(getCommunityProfiles());
   let isLoading = $state(true);
   let isLoadingMore = $state(false);
+  const DISPLAY_BATCH = 20;
+  let displayLimit = $state(DISPLAY_BATCH);
   let hasMoreArticles = $state(true);
   let hasMoreCalendarEvents = $state(true);
   let hasMoreKanban = $state(true);
@@ -210,14 +212,16 @@
           if (entry.isIntersecting && !visibleItemIds.has(id)) {
             visibleItemIds.add(id);
             changed = true;
+          } else if (!entry.isIntersecting && visibleItemIds.has(id)) {
+            visibleItemIds.delete(id);
+            changed = true;
           }
-          // Keep items rendered once visible to avoid re-render costs
         }
         if (changed) {
           visibleItemIds = new SvelteSet(visibleItemIds);
         }
       },
-      { rootMargin: '400px' } // Pre-render items 400px before viewport
+      { rootMargin: '800px' } // Pre-render items 800px before viewport for smooth scrolling
     );
 
     return () => cardObserver?.disconnect();
@@ -273,6 +277,7 @@
 
     if (JSON.stringify(sortedUrlTags) !== JSON.stringify(sortedSelectedTags)) {
       selectedTags = urlTags;
+      displayLimit = DISPLAY_BATCH;
     }
 
     const urlCommunity = $page.url.searchParams.get('community') || null;
@@ -294,6 +299,7 @@
   function handleContentTypeChange(newType) {
     contentType = newType;
     relayFilter = null;
+    displayLimit = DISPLAY_BATCH;
 
     // Clear search when switching tabs (search is tab-specific)
     searchQuery = '';
@@ -322,6 +328,7 @@
     eventsDateRangeStart = range.start;
     eventsDateRangeEnd = range.end;
     hasMoreCalendarEvents = true; // Reset "has more" state
+    displayLimit = DISPLAY_BATCH;
 
     // Update URL params
     updateQueryParams($page.url.searchParams, {
@@ -461,15 +468,12 @@
   $effect(() => {
     /** @type {import('rxjs').Subscription[]} */
     const supplementalSubs = [];
-    const curatedAuthorsList = getCuratedAuthors();
 
     const currentEducational = getEducationalRelays();
     const newEducational = currentEducational.filter((r) => !initialEducationalRelays.has(r));
     if (newEducational.length > 0) {
       newEducational.forEach((r) => initialEducationalRelays.add(r));
-      /** @type {any} */
-      const eduFilter = { kinds: [30142] };
-      if (curatedAuthorsList) eduFilter.authors = curatedAuthorsList;
+      const eduFilter = applyCuratedFilter({ kinds: [30142] });
       const loader = createTimelineLoader(timedPool, newEducational, eduFilter, {
         eventStore,
         limit: BATCH_SIZE
@@ -481,9 +485,7 @@
     const newArticle = currentArticle.filter((r) => !initialArticleRelays.has(r));
     if (newArticle.length > 0) {
       newArticle.forEach((r) => initialArticleRelays.add(r));
-      /** @type {any} */
-      const artFilter = { kinds: [30023] };
-      if (curatedAuthorsList) artFilter.authors = curatedAuthorsList;
+      const artFilter = applyCuratedFilter({ kinds: [30023] });
       const loader = createTimelineLoader(timedPool, newArticle, artFilter, {
         eventStore,
         limit: BATCH_SIZE
@@ -495,9 +497,7 @@
     const newCalendar = currentCalendar.filter((r) => !initialCalendarRelays.has(r));
     if (newCalendar.length > 0) {
       newCalendar.forEach((r) => initialCalendarRelays.add(r));
-      /** @type {any} */
-      const calFilter = { kinds: [31922, 31923], limit: 40 };
-      if (curatedAuthorsList) calFilter.authors = curatedAuthorsList;
+      const calFilter = applyCuratedFilter({ kinds: [31922, 31923], limit: 40 });
       const loader = createTimelineLoader(timedPool, newCalendar, calFilter, { eventStore });
       supplementalSubs.push(loader().subscribe());
     }
@@ -520,9 +520,7 @@
     const newKanban = currentKanban.filter((r) => !initialKanbanRelays.has(r));
     if (newKanban.length > 0) {
       newKanban.forEach((r) => initialKanbanRelays.add(r));
-      /** @type {any} */
-      const kanFilter = { kinds: [30301] };
-      if (curatedAuthorsList) kanFilter.authors = curatedAuthorsList;
+      const kanFilter = applyCuratedFilter({ kinds: [30301] });
       const loader = createTimelineLoader(timedPool, newKanban, kanFilter, {
         eventStore,
         limit: BATCH_SIZE
@@ -783,24 +781,29 @@
   });
 
   /**
-   * Load more content
+   * Whether there are more items to show (either in display buffer or from network)
+   */
+  const hasMoreToShow = $derived.by(() => {
+    // More items already loaded but not yet displayed
+    if (displayLimit < combinedContent.length) return true;
+    // More items available from network
+    if (contentType === 'events') return hasMoreCalendarEvents;
+    if (contentType === 'articles') return hasMoreArticles;
+    if (contentType === 'learning') return hasMoreAMB;
+    if (contentType === 'boards') return hasMoreKanban;
+    if (contentType === 'communities') return hasMoreCommunities;
+    if (contentType === 'all')
+      return hasMoreArticles || hasMoreAMB || hasMoreCalendarEvents || hasMoreKanban;
+    return false;
+  });
+
+  /**
+   * Load more content - reveals buffered items first, then fetches from network
    */
   function loadMoreContent() {
-    const hasMore =
-      (contentType === 'events' && hasMoreCalendarEvents) ||
-      (contentType === 'articles' && hasMoreArticles) ||
-      (contentType === 'learning' && hasMoreAMB) ||
-      (contentType === 'boards' && hasMoreKanban) ||
-      (contentType === 'communities' && hasMoreCommunities) ||
-      (contentType === 'all' &&
-        (hasMoreArticles || hasMoreAMB || hasMoreCalendarEvents || hasMoreKanban));
+    if (isLoadingMore || !hasMoreToShow) return;
 
-    if (isLoadingMore || !hasMore) {
-      return;
-    }
-
-    isLoadingMore = true;
-
+    // Communities have their own display count logic
     if (contentType === 'communities') {
       const currentCount = displayedCommunitiesCount;
       const totalCount = filteredCommunities.length;
@@ -809,9 +812,30 @@
       } else {
         hasMoreCommunities = false;
       }
-      isLoadingMore = false;
       return;
     }
+
+    // If there are loaded items not yet displayed, reveal them first
+    if (displayLimit < combinedContent.length) {
+      displayLimit += DISPLAY_BATCH;
+
+      // Pre-fetch from network if running low on buffer
+      if (combinedContent.length - displayLimit < DISPLAY_BATCH) {
+        fetchMoreFromNetwork();
+      }
+      return;
+    }
+
+    // All loaded items shown — fetch more from network
+    fetchMoreFromNetwork();
+  }
+
+  /**
+   * Fetch more content from the network via loaders
+   */
+  function fetchMoreFromNetwork() {
+    if (isLoadingMore) return;
+    isLoadingMore = true;
 
     // Use loader next/complete callbacks to track batch completion
     let pendingLoaders = 0;
@@ -820,6 +844,8 @@
       pendingLoaders--;
       if (pendingLoaders <= 0) {
         isLoadingMore = false;
+        // Reveal newly fetched items
+        displayLimit += DISPLAY_BATCH;
         // The IntersectionObserver won't re-fire if sentinel is still in viewport.
         // Manually re-check after DOM settles.
         requestAnimationFrame(() => {
@@ -922,9 +948,7 @@
             const batchEventIds = new Set(); // eslint-disable-line svelte/prefer-svelte-reactivity
 
             /** @type {any} */
-            const paginationFilter = { kinds: [30142] };
-            const curatedAuthorsList = getCuratedAuthors();
-            if (curatedAuthorsList) paginationFilter.authors = curatedAuthorsList;
+            const paginationFilter = applyCuratedFilter({ kinds: [30142] });
 
             // Use this relay's specific oldest timestamp (if we've seen events from it)
             // Subtract 1 to exclude events AT that timestamp (already fetched in previous batch)
@@ -1068,31 +1092,7 @@
 
   // Intersection Observer for infinite scroll
   $effect(() => {
-    let hasContent = false;
-    let hasMore = false;
-
-    if (contentType === 'events') {
-      hasContent = calendarEvents.length > 0;
-      hasMore = hasMoreCalendarEvents;
-    } else if (contentType === 'learning') {
-      hasContent = ambResources.length > 0;
-      hasMore = hasMoreAMB && !isLearningSearchActive;
-    } else if (contentType === 'articles') {
-      hasContent = articles.length > 0;
-      hasMore = hasMoreArticles;
-    } else if (contentType === 'boards') {
-      hasContent = kanbanBoards.length > 0;
-      hasMore = hasMoreKanban;
-    } else if (contentType === 'all') {
-      hasContent =
-        articles.length > 0 ||
-        ambResources.length > 0 ||
-        calendarEvents.length > 0 ||
-        kanbanBoards.length > 0;
-      hasMore = hasMoreArticles || hasMoreAMB || hasMoreCalendarEvents || hasMoreKanban;
-    }
-
-    if (!hasContent || !hasMore || isLoading) {
+    if (!hasMoreToShow || isLoading || displayedContent.length === 0) {
       return;
     }
 
@@ -1321,7 +1321,7 @@
     });
   });
 
-  const displayedContent = $derived(combinedContent);
+  const displayedContent = $derived(combinedContent.slice(0, displayLimit));
 
   /**
    * Toggle tag selection
@@ -1342,6 +1342,7 @@
    */
   function handleCommunityFilterChange(newValue) {
     communityFilter = newValue;
+    displayLimit = DISPLAY_BATCH;
     updateQueryParams($page.url.searchParams, { community: newValue });
   }
 
@@ -1510,6 +1511,7 @@
             value={relayFilter}
             onchange={(v) => {
               relayFilter = v;
+              displayLimit = DISPLAY_BATCH;
             }}
             settingsCategory={tabRelayCategory}
           />
@@ -1573,7 +1575,7 @@
     {#if contentType !== 'communities' && displayedContent.length > 0}
       <div class="text-center text-sm text-base-content/70">
         {m.discover_results_count({ count: displayedContent.length })}
-        {#if hasMoreArticles || hasMoreAMB || hasMoreKanban}
+        {#if hasMoreToShow}
           <span class="ml-2 text-primary">• {m.discover_scroll_for_more()}</span>
         {/if}
       </div>
@@ -1745,7 +1747,7 @@
               <p class="mt-4 text-base-content/70">{m.discover_loading_more()}</p>
             </div>
           </div>
-        {:else if (contentType === 'events' && !hasMoreCalendarEvents) || (contentType === 'learning' && !hasMoreAMB && !isLearningSearchActive) || (contentType === 'articles' && !hasMoreArticles) || (contentType === 'boards' && !hasMoreKanban) || (contentType === 'all' && !hasMoreArticles && !hasMoreAMB && !hasMoreCalendarEvents && !hasMoreKanban)}
+        {:else if !hasMoreToShow}
           <div class="flex justify-center">
             <p class="text-base-content/50">{m.discover_no_more_content()}</p>
           </div>
