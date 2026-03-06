@@ -4,7 +4,7 @@
  */
 import { createTimelineLoader } from 'applesauce-loaders/loaders';
 import { pool, eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-import { getKanbanRelays, getCommunikeyRelays } from '$lib/helpers/relay-helper.js';
+import { getKanbanRelays } from '$lib/helpers/relay-helper.js';
 import { TimelineModel } from 'applesauce-core/models';
 import { getTagValue } from 'applesauce-core/helpers';
 import { parseAddressPointerFromATag } from '$lib/helpers/nostrUtils.js';
@@ -12,6 +12,7 @@ import { SvelteSet } from 'svelte/reactivity';
 import { onlyEvents } from 'applesauce-relay/operators';
 import { mapEventsToStore } from 'applesauce-core/observable';
 import { addressLoader, timedPool } from './base.js';
+import { communityTargetedPublicationsLoader } from './targeted-publications.js';
 
 /**
  * Hook: Load kanban boards for a specific community.
@@ -42,17 +43,10 @@ export function useKanbanCommunityLoader(communityPubkey) {
   subscriptions.set('directBoards', directLoader().subscribe());
 
   // 2. Load targeted publications (kind 30222) referencing boards
-  const shareLoader = createTimelineLoader(
-    timedPool,
-    getCommunikeyRelays(),
-    {
-      kinds: [30222],
-      '#p': [communityPubkey],
-      '#k': ['30301']
-    },
-    { eventStore, limit: 100 }
+  subscriptions.set(
+    'targetedPublications',
+    communityTargetedPublicationsLoader(communityPubkey, [30301])().subscribe()
   );
-  subscriptions.set('targetedPublications', shareLoader().subscribe());
 
   // 3. Watch targeted publications and load referenced boards on-demand
   const referencedSub = eventStore

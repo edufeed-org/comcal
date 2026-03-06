@@ -16,8 +16,7 @@ export {
   calendarLoader,
   userCalendarLoader,
   createRelayFilteredCalendarLoader,
-  communityCalendarTimelineLoader,
-  targetedPublicationTimelineLoader
+  communityCalendarTimelineLoader
 } from './calendar.js';
 
 // Community loaders
@@ -38,7 +37,7 @@ export { ambTimelineLoader } from './amb.js';
 export {
   allTargetedPublicationsLoader,
   articleTargetedPublicationsLoader,
-  ambTargetedPublicationsLoader,
+  communityTargetedPublicationsLoader,
   feedTargetedPublicationsLoader
 } from './targeted-publications.js';
 

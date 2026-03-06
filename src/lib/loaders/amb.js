@@ -12,6 +12,7 @@ import { onlyEvents } from 'applesauce-relay/operators';
 import { mapEventsToStore } from 'applesauce-core/observable';
 import { addressLoader, timedPool } from './base.js';
 import { getCuratedAuthors } from '$lib/services/curated-authors-service.svelte.js';
+import { communityTargetedPublicationsLoader } from './targeted-publications.js';
 
 /**
  * Get combined relays for AMB resource loading (educational app relays + fallback)
@@ -34,24 +35,6 @@ export function ambTimelineLoader(limit = 20) {
   const authors = getCuratedAuthors();
   if (authors) filter.authors = authors;
   return createTimelineLoader(timedPool, getAMBRelays(), filter, { eventStore, limit });
-}
-
-/**
- * Factory: Create a timeline loader for targeted publications (kind 30222) for AMB resources
- * @param {string} communityPubkey - The community's public key to filter by
- * @returns {Function} Stateful timeline loader function
- */
-export function ambTargetedPublicationTimelineLoader(communityPubkey) {
-  return createTimelineLoader(
-    timedPool,
-    getAMBRelays(),
-    {
-      kinds: [30222],
-      '#p': [communityPubkey],
-      '#k': ['30142']
-    },
-    { eventStore, limit: 100 }
-  );
 }
 
 /**
@@ -87,7 +70,9 @@ export function useAMBCommunityLoader(communityPubkey) {
   subscriptions.set('directResources', directResourcesSub);
 
   // 2. Load targeted publications (kind 30222) referencing AMB resources
-  const targetedPubSub = ambTargetedPublicationTimelineLoader(communityPubkey)().subscribe();
+  const targetedPubSub = communityTargetedPublicationsLoader(communityPubkey, [
+    30142
+  ])().subscribe();
   subscriptions.set('targetedPublications', targetedPubSub);
 
   // 3. Watch targeted publications and load referenced resources on-demand

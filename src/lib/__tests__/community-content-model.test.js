@@ -8,7 +8,13 @@
  */
 import { describe, it, expect } from 'vitest';
 import { of } from 'rxjs';
-import { createCommunityContentModel, CommunityBoardModel } from '$lib/models/community-content.js';
+import {
+  createCommunityContentModel,
+  CommunityBoardModel,
+  CommunityAMBResourceModel,
+  CommunityCalendarEventModel,
+  CommunityArticleModel
+} from '$lib/models/community-content.js';
 
 const COMMUNITY_PUBKEY = 'community123';
 
@@ -303,5 +309,196 @@ describe('CommunityBoardModel', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe(board.id);
+  });
+});
+
+describe('CommunityAMBResourceModel', () => {
+  it('returns formatted AMB resources for kind 30142', () => {
+    const resource = mockEvent({
+      kind: 30142,
+      tags: [
+        ['h', COMMUNITY_PUBKEY],
+        ['d', 'res-1'],
+        ['name', 'Test Resource']
+      ]
+    });
+
+    const store = createMockEventStore({
+      direct: [resource],
+      shares: [],
+      all: [resource]
+    });
+
+    let result;
+    CommunityAMBResourceModel(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(resource.id);
+    // formatAMBResource adds 'name' field from tags
+    expect(result[0]).toHaveProperty('name');
+  });
+
+  it('resolves shared AMB resources via targeted publications', () => {
+    const resource = mockEvent({
+      id: 'amb-shared',
+      kind: 30142,
+      pubkey: 'author1',
+      tags: [['d', 'shared-res']]
+    });
+    const share = mockEvent({
+      kind: 30222,
+      tags: [
+        ['p', COMMUNITY_PUBKEY],
+        ['a', '30142:author1:shared-res'],
+        ['k', '30142']
+      ]
+    });
+
+    const store = createMockEventStore({
+      direct: [],
+      shares: [share],
+      all: [resource]
+    });
+
+    let result;
+    CommunityAMBResourceModel(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('amb-shared');
+  });
+});
+
+describe('CommunityCalendarEventModel', () => {
+  it('returns formatted calendar events for kinds 31922 and 31923', () => {
+    const dateEvent = mockEvent({
+      kind: 31922,
+      tags: [
+        ['h', COMMUNITY_PUBKEY],
+        ['d', 'cal-1'],
+        ['title', 'All Day Event'],
+        ['start', '2025-01-15']
+      ]
+    });
+    const timeEvent = mockEvent({
+      kind: 31923,
+      tags: [
+        ['h', COMMUNITY_PUBKEY],
+        ['d', 'cal-2'],
+        ['title', 'Timed Event'],
+        ['start', '1705334400']
+      ]
+    });
+
+    const store = {
+      model: (ModelClass, filter) => {
+        if (filter.kinds?.includes(30222)) return of([]);
+        if (filter['#h']) return of([dateEvent, timeEvent]);
+        return of([dateEvent, timeEvent]);
+      }
+    };
+
+    let result;
+    CommunityCalendarEventModel(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+
+    expect(result).toHaveLength(2);
+    // getCalendarEventMetadata adds 'title' field
+    expect(result.map((r) => r.title)).toContain('All Day Event');
+    expect(result.map((r) => r.title)).toContain('Timed Event');
+  });
+
+  it('resolves shared calendar events via targeted publications', () => {
+    const calEvent = mockEvent({
+      id: 'cal-shared',
+      kind: 31923,
+      pubkey: 'author1',
+      tags: [
+        ['d', 'shared-cal'],
+        ['title', 'Shared Event'],
+        ['start', '1705334400']
+      ]
+    });
+    const share = mockEvent({
+      kind: 30222,
+      tags: [
+        ['p', COMMUNITY_PUBKEY],
+        ['e', 'cal-shared'],
+        ['k', '31923']
+      ]
+    });
+
+    const store = {
+      model: (ModelClass, filter) => {
+        if (filter.kinds?.includes(30222)) return of([share]);
+        if (filter['#h']) return of([]);
+        return of([calEvent]);
+      }
+    };
+
+    let result;
+    CommunityCalendarEventModel(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('cal-shared');
+  });
+});
+
+describe('CommunityArticleModel', () => {
+  it('returns articles for kind 30023 without transform', () => {
+    const article = mockEvent({
+      kind: 30023,
+      tags: [
+        ['h', COMMUNITY_PUBKEY],
+        ['d', 'article-1'],
+        ['title', 'My Article']
+      ],
+      content: '# Hello World'
+    });
+
+    const store = {
+      model: (ModelClass, filter) => {
+        if (filter.kinds?.includes(30222)) return of([]);
+        if (filter['#h']) return of([article]);
+        return of([article]);
+      }
+    };
+
+    let result;
+    CommunityArticleModel(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+
+    expect(result).toHaveLength(1);
+    // No transform — raw event returned
+    expect(result[0].id).toBe(article.id);
+    expect(result[0].content).toBe('# Hello World');
+  });
+
+  it('resolves shared articles via targeted publications', () => {
+    const article = mockEvent({
+      id: 'article-shared',
+      kind: 30023,
+      pubkey: 'author1',
+      tags: [['d', 'shared-art']]
+    });
+    const share = mockEvent({
+      kind: 30222,
+      tags: [
+        ['p', COMMUNITY_PUBKEY],
+        ['a', '30023:author1:shared-art'],
+        ['k', '30023']
+      ]
+    });
+
+    const store = {
+      model: (ModelClass, filter) => {
+        if (filter.kinds?.includes(30222)) return of([share]);
+        if (filter['#h']) return of([]);
+        return of([article]);
+      }
+    };
+
+    let result;
+    CommunityArticleModel(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('article-shared');
   });
 });

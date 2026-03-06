@@ -11,6 +11,8 @@ import { combineLatest } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { TimelineModel } from 'applesauce-core/models';
 import { getTagValue } from 'applesauce-core/helpers';
+import { formatAMBResource } from '$lib/helpers/educational/index.js';
+import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
 
 /**
  * Create a community content model for specific event kinds.
@@ -86,3 +88,16 @@ export function createCommunityContentModel(contentKinds, options = {}) {
 
 /** Community board model for kind 30301 kanban boards */
 export const CommunityBoardModel = createCommunityContentModel([30301]);
+
+/** Community AMB resource model for kind 30142 educational content */
+export const CommunityAMBResourceModel = createCommunityContentModel([30142], {
+  transform: formatAMBResource
+});
+
+/** Community calendar event model for kinds 31922/31923 */
+export const CommunityCalendarEventModel = createCommunityContentModel([31922, 31923], {
+  transform: getCalendarEventMetadata
+});
+
+/** Community article model for kind 30023 long-form content */
+export const CommunityArticleModel = createCommunityContentModel([30023]);

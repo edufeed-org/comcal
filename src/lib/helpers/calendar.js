@@ -516,7 +516,7 @@ export function detectCalendarIdentifierType(identifier) {
  */
 export async function fetchCommunityCalendarEvents(communityPubkey, relays = []) {
   const { eventStore } = await import('$lib/stores/nostr-infrastructure.svelte');
-  const { communityCalendarTimelineLoader, targetedPublicationTimelineLoader, addressLoader } =
+  const { communityCalendarTimelineLoader, communityTargetedPublicationsLoader, addressLoader } =
     await import('$lib/loaders');
   const { getTagValue } = await import('applesauce-core/helpers');
   const { bufferTime, mergeMap, firstValueFrom } = await import('rxjs');
@@ -562,7 +562,10 @@ export async function fetchCommunityCalendarEvents(communityPubkey, relays = [])
 
     // Fetch targeted publication events (#p tagged with #k for calendar)
     // Use bufferTime to wait for events from multiple relays (3 seconds)
-    const targetedPubTimeline$ = targetedPublicationTimelineLoader(communityPubkey)();
+    const targetedPubTimeline$ = communityTargetedPublicationsLoader(
+      communityPubkey,
+      [31922, 31923]
+    )();
     /** @type {import('nostr-tools').NostrEvent[]} */
     const targetedPubsBuffered = await firstValueFrom(
       targetedPubTimeline$.pipe(

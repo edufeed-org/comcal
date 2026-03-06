@@ -7,7 +7,7 @@
 <script>
   import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
   import { useAMBCommunityLoader } from '$lib/loaders/amb.js';
-  import { CommunityAMBResourceModel } from '$lib/models/community-amb-resource.js';
+  import { CommunityAMBResourceModel } from '$lib/models/community-content.js';
   import { useProfileMap } from '$lib/stores/profile-map.svelte.js';
   import AMBResourceCard from '$lib/components/educational/AMBResourceCard.svelte';
   import EducationalFAB from '$lib/components/educational/EducationalFAB.svelte';

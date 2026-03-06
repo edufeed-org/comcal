@@ -12,10 +12,8 @@ import { map } from 'rxjs';
 import { getTagValue } from 'applesauce-core/helpers';
 import { getCalendarEventMetadata, parseAddressReference } from '$lib/helpers/eventUtils';
 import { getCalendarEventTitle } from 'applesauce-common/helpers';
-import {
-  calendarTimelineLoader,
-  targetedPublicationTimelineLoader
-} from '$lib/loaders/calendar.js';
+import { calendarTimelineLoader } from '$lib/loaders/calendar.js';
+import { communityTargetedPublicationsLoader } from '$lib/loaders/targeted-publications.js';
 import { userDeletionLoader, addressLoader } from '$lib/loaders/base.js';
 import { runtimeConfig } from '$lib/stores/config.svelte.js';
 import { getCuratedAuthors } from '$lib/services/curated-authors-service.svelte.js';
@@ -398,8 +396,10 @@ export function useCalendarEventLoader(options) {
         .subscribe();
 
       // 2. Targeted publications (kind 30222 referencing community)
-      targetedPublicationSubscription =
-        targetedPublicationTimelineLoader(communityPubkey)().subscribe();
+      targetedPublicationSubscription = communityTargetedPublicationsLoader(
+        communityPubkey,
+        [31922, 31923]
+      )().subscribe();
 
       // 3. Watch targeted publications and load referenced calendar events on-demand
       const referencedEventsLoaderSubscription = eventStore

@@ -54,17 +54,21 @@ export function articleTargetedPublicationsLoader(limit = 100) {
 }
 
 /**
- * Create a timeline loader for AMB resource-specific targeted publications
- * @param {number} limit - Maximum number of events to load per batch
+ * Create a timeline loader for community-specific targeted publications.
+ * Always uses communikey relays since kind 30222 is a community/social event.
+ * @param {string} communityPubkey - The community's public key to filter by
+ * @param {number[]} contentKinds - Event kinds of the referenced content (e.g. [30142], [31922, 31923])
+ * @param {number} [limit=100] - Maximum number of events to load per batch
  * @returns {Function} Stateful timeline loader function
  */
-export function ambTargetedPublicationsLoader(limit = 100) {
+export function communityTargetedPublicationsLoader(communityPubkey, contentKinds, limit = 100) {
   return createTimelineLoader(
     timedPool,
     getTargetedPublicationRelays(),
     {
       kinds: [30222],
-      '#k': ['30142'] // Only AMB resource shares
+      '#p': [communityPubkey],
+      '#k': contentKinds.map(String)
     },
     { eventStore, limit }
   );

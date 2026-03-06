@@ -249,26 +249,6 @@ export const communityCalendarTimelineLoader = (communityPubkey) => {
 };
 
 /**
- * Factory: Create a timeline loader for targeted publication events
- * Targeted publications (kind 30222) are used to publish events to specific communities
- * Now supports both 'a' tag (addressable) and 'e' tag (event ID) references for backward compatibility
- * @param {string} communityPubkey - The pubkey of the community
- * @returns {Function} Timeline loader function that returns an Observable
- */
-export const targetedPublicationTimelineLoader = (communityPubkey) =>
-  createTimelineLoader(
-    timedPool,
-    getCalendarRelays(),
-    {
-      kinds: [30222], // Targeted Publication Events
-      '#p': [communityPubkey], // Community targeting
-      '#k': ['31922', '31923'], // Only calendar event kinds
-      limit: 100
-    },
-    { eventStore }
-  );
-
-/**
  * Factory: Create a loader for events referenced by a calendar
  * Uses addressLoader to fetch specific addressable events by their coordinates
  * @param {any} calendar - The raw calendar Event object (kind 31924)
