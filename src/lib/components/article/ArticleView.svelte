@@ -130,6 +130,7 @@
           src={image}
           alt={title}
           fallbackType="article"
+          size="hero"
           class="h-full w-full object-cover"
         />
       </div>

@@ -296,6 +296,7 @@
             src={event.image}
             alt={event.title}
             fallbackType="event"
+            size="banner"
             class="h-48 w-full rounded-lg object-cover"
           />
         </div>

@@ -89,6 +89,7 @@
       src={getProfilePicture(getProfile()) || `https://robohash.org/${pubkey}`}
       alt={m.communikey_card_profile_alt()}
       fallbackType="community"
+      size="avatar_lg"
       class="h-24 w-24 rounded-full object-cover ring-2 ring-base-300 transition-colors duration-300 hover:ring-primary/50"
     />
   </figure>

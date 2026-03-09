@@ -77,6 +77,15 @@
     xl: 'w-16'
   };
 
+  /** @type {Record<string, string>} */
+  const sizeToProxy = {
+    xs: 'avatar_sm',
+    sm: 'avatar_sm',
+    md: 'avatar_md',
+    lg: 'avatar_lg',
+    xl: 'avatar_lg'
+  };
+
   // Get avatar URL
   let avatarUrl = $derived(getProfilePicture(loadedProfile));
 
@@ -103,6 +112,7 @@
         src={avatarUrl}
         alt={displayName || m.profile_avatar_alt()}
         fallbackType="avatar"
+        size={sizeToProxy[size]}
         class="h-full w-full rounded-full object-cover"
       />
     {:else if showRobohashFallback}
@@ -110,6 +120,7 @@
         src={fallbackContent}
         alt={displayName || m.profile_avatar_alt()}
         fallbackType="avatar"
+        size={sizeToProxy[size]}
         class="h-full w-full rounded-full object-cover"
       />
     {:else if showInitialFallback}

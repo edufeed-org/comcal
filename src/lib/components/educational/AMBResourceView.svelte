@@ -372,6 +372,7 @@
           src={resource.image}
           alt={resource.name}
           fallbackType="article"
+          size="hero"
           class="h-full w-full object-cover"
         />
       </div>

@@ -114,6 +114,7 @@
           src={image}
           alt={title}
           fallbackType="article"
+          size="thumbnail"
           class="h-full w-full object-cover"
         />
       {:else}
@@ -176,6 +177,7 @@
             src={image}
             alt={title}
             fallbackType="article"
+            size="card"
             class="h-full w-full object-cover"
           />
         </div>

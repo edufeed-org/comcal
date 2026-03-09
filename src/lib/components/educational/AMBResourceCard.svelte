@@ -21,6 +21,7 @@
   import { runtimeConfig } from '$lib/stores/config.svelte.js';
   import * as m from '$lib/paraglide/messages.js';
   import MarkdownRenderer from '../shared/MarkdownRenderer.svelte';
+  import ImageWithFallback from '../shared/ImageWithFallback.svelte';
 
   // Trigger SKOS vocabulary loading for label resolution
   ensureVocabularyLoaded('learningResourceType');
@@ -44,14 +45,6 @@
 
   /** @type {Props} */
   let { resource, authorProfile = null, compact = false, variant = 'card' } = $props();
-
-  let imageError = $state(false);
-
-  // Reset error state when resource changes
-  $effect(() => {
-    resource; // track dependency
-    imageError = false;
-  });
 
   const isList = $derived(variant === 'list');
 
@@ -148,16 +141,13 @@
     <div
       class="list-thumbnail h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-base-200 sm:h-20 sm:w-20"
     >
-      {#if resource.image && !imageError}
-        <img
+      {#if resource.image}
+        <ImageWithFallback
           src={resource.image}
           alt={resource.name}
-          loading="lazy"
-          decoding="async"
+          fallbackType="generic"
+          size="thumbnail"
           class="h-full w-full object-cover"
-          onerror={() => {
-            imageError = true;
-          }}
         />
       {:else}
         <div class="flex h-full w-full items-center justify-center text-2xl text-base-content/30">
@@ -267,16 +257,13 @@
     {#if !compact}
       <div class="mb-3">
         <div class="aspect-[2/1] w-full overflow-hidden rounded-lg bg-base-200">
-          {#if resource.image && !imageError}
-            <img
+          {#if resource.image}
+            <ImageWithFallback
               src={resource.image}
               alt={resource.name}
-              loading="lazy"
-              decoding="async"
+              fallbackType="generic"
+              size="card"
               class="h-full w-full object-cover"
-              onerror={() => {
-                imageError = true;
-              }}
             />
           {:else}
             <div class="flex h-full w-full items-center justify-center text-5xl">📚</div>

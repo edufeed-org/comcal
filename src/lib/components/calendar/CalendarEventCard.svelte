@@ -84,6 +84,7 @@
           src={event.image}
           alt={event.title}
           fallbackType="event"
+          size="thumbnail"
           class="h-full w-full object-cover"
         />
       {:else}
@@ -139,6 +140,7 @@
               src={event.image}
               alt={event.title}
               fallbackType="event"
+              size="card"
               class="h-full w-full max-w-full rounded-lg object-cover"
             />
           </div>
