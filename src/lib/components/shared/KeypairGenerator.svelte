@@ -35,6 +35,11 @@
     }
   }
 
+  /**
+   * @param {string} content
+   * @param {string} filename
+   * @param {string} [mimeType]
+   */
   function downloadFile(content, filename, mimeType = 'text/plain') {
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);

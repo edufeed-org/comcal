@@ -21,11 +21,13 @@
    * @typedef {import('../../types/calendar.js').CalendarEvent} CalendarEvent
    */
 
+  /** @type {{ event: any, compact?: boolean, variant?: 'card' | 'list', onEventClick?: (event: any) => void }} */
   let { event, compact = false, variant = 'card', onEventClick = () => {} } = $props();
 
   const isList = $derived(variant === 'list');
 
   // Load RSVPs for this event (called at component init, not inside $derived)
+  // svelte-ignore state_referenced_locally
   const rsvpData = event.originalEvent
     ? useCalendarEventRsvps(event.originalEvent)
     : { rsvps: [], loading: false };

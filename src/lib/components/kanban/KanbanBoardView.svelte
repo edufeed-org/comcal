@@ -10,7 +10,9 @@
   import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
   import { useActiveUser } from '$lib/stores/accounts.svelte';
   import { goto } from '$app/navigation';
-  import { resolve } from '$app/paths';
+  import { resolve as _resolve } from '$app/paths';
+  /** @type {(path: string) => string} */
+  const resolve = /** @type {any} */ (_resolve);
   import ReactionBar from '../reactions/ReactionBar.svelte';
   import CommentList from '../comments/CommentList.svelte';
   import CommunityShare from '../shared/CommunityShare.svelte';
@@ -58,6 +60,7 @@
   const publishedAt = $derived(new Date(event.created_at * 1000));
 
   // Author profile
+  // svelte-ignore state_referenced_locally
   const getAuthorProfile = useUserProfile(event.pubkey);
   const authorProfile = $derived(getAuthorProfile());
   const authorName = $derived(getDisplayName(authorProfile, event.pubkey.slice(0, 8) + '...'));
@@ -173,7 +176,7 @@
       if (result.success) {
         showToast('Board deleted successfully', 'success');
         showDeleteConfirmation = false;
-        goto(resolve('/discover?type=boards'));
+        goto(/** @type {string} */ (resolve('/discover?type=boards')));
       } else {
         showToast(result.error || 'Failed to delete board', 'error');
       }
@@ -241,7 +244,7 @@
             onclick={() => (showDeleteConfirmation = true)}
             aria-label="Delete board"
           >
-            <TrashIcon class_="h-4 w-4" />
+            <TrashIcon class="h-4 w-4" />
             {m.common_delete()}
           </button>
         {/if}

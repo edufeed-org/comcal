@@ -435,6 +435,7 @@
 
   // Initial calendar load - load events within the default date range
   // Uses createDateRangeCalendarLoader with full NIP-52 filter support
+  // svelte-ignore state_referenced_locally
   const initialCalendarLoader = createDateRangeCalendarLoader({
     startAfter: eventsDateRangeStart,
     startBefore: eventsDateRangeEnd

@@ -13,7 +13,7 @@ import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
  * @param {any} commentEvent - The comment event to delete
  * @param {Object} [options] - Optional configuration
  * @param {string[]} [options.relays] - Relay hints for deletion event
- * @returns {Promise<{success: boolean, event: any, results: any}>}
+ * @returns {Promise<{success: boolean, event: any, relays: string[], successCount: number}>}
  */
 export async function deleteComment(commentEvent, options = {}) {
   const account = manager.active;

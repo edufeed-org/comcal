@@ -49,7 +49,7 @@ describe('RelayFilterDropdown', () => {
       }
     });
 
-    const select = container.querySelector('select');
+    const select = /** @type {HTMLSelectElement} */ (container.querySelector('select'));
     expect(select).toBeTruthy();
     expect(select.classList.contains('select-bordered')).toBe(true);
     // Should NOT have select-sm class
@@ -101,7 +101,7 @@ describe('RelayFilterDropdown', () => {
       }
     });
 
-    const select = container.querySelector('select');
+    const select = /** @type {HTMLSelectElement} */ (container.querySelector('select'));
     await fireEvent.change(select, { target: { value: '' } });
     expect(onchange).toHaveBeenCalledWith(null);
   });
@@ -117,7 +117,7 @@ describe('RelayFilterDropdown', () => {
       }
     });
 
-    const select = container.querySelector('select');
+    const select = /** @type {HTMLSelectElement} */ (container.querySelector('select'));
     await fireEvent.change(select, { target: { value: 'wss://nostr.land/' } });
     expect(onchange).toHaveBeenCalledWith('wss://nostr.land/');
   });

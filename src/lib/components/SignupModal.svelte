@@ -111,7 +111,7 @@
       userData.npub = nip19.npubEncode(publicKey);
 
       // Create signer for future operations (like image upload with auth)
-      _signer = new SimpleSigner(privateKey);
+      _signer = /** @type {any} */ (new SimpleSigner(privateKey));
     } catch (error) {
       console.error('Error generating keypair:', error);
       errors.keyGeneration = 'Failed to generate keys. Please try again.';
@@ -398,6 +398,7 @@
                   alt="Profile Preview"
                   class="h-full w-full object-cover"
                   onerror={(e) => {
+                    // @ts-ignore
                     e.currentTarget.style.display = 'none';
                   }}
                 />

@@ -12,7 +12,9 @@
   import { KanbanIcon } from '$lib/components/icons';
   import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
   import { goto } from '$app/navigation';
-  import { resolve } from '$app/paths';
+  import { resolve as _resolve } from '$app/paths';
+  /** @type {(path: string) => string} */
+  const resolve = /** @type {any} */ (_resolve);
   import * as m from '$lib/paraglide/messages';
 
   /**

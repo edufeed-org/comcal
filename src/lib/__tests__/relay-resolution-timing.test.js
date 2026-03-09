@@ -14,14 +14,16 @@ import { normalizeURL } from 'applesauce-core/helpers';
 
 describe('Relay resolution timing simulation', () => {
   // Simulate the app-relay-service cache and getAppRelaysForCategory behavior
+  /** @type {Map<string, string[]>} */
   let userOverrideCache;
+  /** @type {Record<string, string[]>} */
   const serverDefaults = {
     educational: ['wss://amb-relay.edufeed.org'],
     calendar: ['wss://calendar-relay.example.com'],
     longform: ['wss://longform-relay.example.com']
   };
 
-  function getAppRelaysForCategory(category) {
+  function getAppRelaysForCategory(/** @type {string} */ category) {
     const userOverride = userOverrideCache.get(category) || [];
     if (userOverride.length > 0) {
       return userOverride;
@@ -79,7 +81,7 @@ describe('Relay resolution timing simulation', () => {
 
     // Detect new relays not in the initial set
     const currentRelays = getEducationalRelays();
-    const newRelays = currentRelays.filter((r) => !initialRelays.has(r));
+    const newRelays = currentRelays.filter((/** @type {string} */ r) => !initialRelays.has(r));
 
     expect(newRelays).toEqual(['ws://localhost:3334']);
     expect(newRelays.length).toBe(1);
@@ -91,7 +93,7 @@ describe('Relay resolution timing simulation', () => {
 
     const initialRelays = new Set(getEducationalRelays());
     const currentRelays = getEducationalRelays();
-    const newRelays = currentRelays.filter((r) => !initialRelays.has(r));
+    const newRelays = currentRelays.filter((/** @type {string} */ r) => !initialRelays.has(r));
 
     expect(newRelays.length).toBe(0);
   });
@@ -150,15 +152,15 @@ describe('Supplemental relay loading pattern', () => {
 
     // First update: user adds localhost
     const update1 = ['wss://amb-relay.edufeed.org', 'ws://localhost:3334'];
-    const newRelays1 = update1.filter((r) => !queriedRelays.has(r));
+    const newRelays1 = update1.filter((/** @type {string} */ r) => !queriedRelays.has(r));
     expect(newRelays1).toEqual(['ws://localhost:3334']);
 
     // Track the new relay
-    newRelays1.forEach((r) => queriedRelays.add(r));
+    newRelays1.forEach((/** @type {string} */ r) => queriedRelays.add(r));
 
     // Second update: same relays - no new ones
     const update2 = ['wss://amb-relay.edufeed.org', 'ws://localhost:3334'];
-    const newRelays2 = update2.filter((r) => !queriedRelays.has(r));
+    const newRelays2 = update2.filter((/** @type {string} */ r) => !queriedRelays.has(r));
     expect(newRelays2.length).toBe(0);
 
     // Third update: user adds another relay
@@ -167,7 +169,7 @@ describe('Supplemental relay loading pattern', () => {
       'ws://localhost:3334',
       'wss://new-relay.example.com'
     ];
-    const newRelays3 = update3.filter((r) => !queriedRelays.has(r));
+    const newRelays3 = update3.filter((/** @type {string} */ r) => !queriedRelays.has(r));
     expect(newRelays3).toEqual(['wss://new-relay.example.com']);
   });
 });

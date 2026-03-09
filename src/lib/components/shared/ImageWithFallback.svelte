@@ -14,7 +14,13 @@
    * @property {'lazy' | 'eager'} [loading] - Loading attribute
    */
 
-  let { src, alt, fallbackType = 'generic', class: className = '', loading = 'lazy' } = $props();
+  let {
+    src,
+    alt,
+    fallbackType = 'generic',
+    class: className = '',
+    loading = /** @type {'lazy' | 'eager'} */ ('lazy')
+  } = $props();
 
   // Track current image source (primary or fallback)
   // Initialize empty - effect will set it to avoid state_referenced_locally warning

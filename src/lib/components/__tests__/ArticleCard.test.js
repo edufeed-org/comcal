@@ -29,12 +29,15 @@ vi.mock('$app/navigation', () => ({
   goto: vi.fn()
 }));
 vi.mock('applesauce-core/helpers', () => ({
-  getProfilePicture: (profile) => profile?.picture || null,
-  getDisplayName: (profile, fallback) => profile?.name || fallback
+  getProfilePicture: (/** @type {any} */ profile) => profile?.picture || null,
+  getDisplayName: (/** @type {any} */ profile, /** @type {any} */ fallback) =>
+    profile?.name || fallback
 }));
 vi.mock('applesauce-common/helpers', () => ({
-  getArticleTitle: (event) => event.tags?.find((t) => t[0] === 'title')?.[1] || 'Untitled',
-  getArticleImage: (event) => event.tags?.find((t) => t[0] === 'image')?.[1] || null
+  getArticleTitle: (/** @type {any} */ event) =>
+    event.tags?.find((/** @type {string[]} */ t) => t[0] === 'title')?.[1] || 'Untitled',
+  getArticleImage: (/** @type {any} */ event) =>
+    event.tags?.find((/** @type {string[]} */ t) => t[0] === 'image')?.[1] || null
 }));
 vi.mock('$lib/helpers/calendar.js', () => ({
   formatCalendarDate: () => 'Jan 15'
@@ -99,7 +102,7 @@ describe('ArticleCard', () => {
         props: { article: mockArticle, authorProfile: mockAuthorProfile, variant: 'list' }
       });
 
-      const listItem = container.querySelector('.article-card-list');
+      const listItem = /** @type {HTMLElement} */ (container.querySelector('.article-card-list'));
       expect(listItem).toBeTruthy();
       // Should have flex row layout
       expect(listItem.classList.contains('flex')).toBe(true);

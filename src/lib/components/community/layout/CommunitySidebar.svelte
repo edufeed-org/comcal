@@ -62,7 +62,9 @@
                     `https://robohash.org/${communityPubKey}`}
                   alt={getDisplayName(communityProfile)}
                   class="rounded-full object-cover"
-                  onerror={(e) => (e.target.src = `https://robohash.org/${communityPubKey}`)}
+                  onerror={(e) =>
+                    /** @type {HTMLImageElement} */ ((e.target).src =
+                      `https://robohash.org/${communityPubKey}`)}
                 />
               </div>
             </div>
@@ -137,7 +139,9 @@
                   `https://robohash.org/${communityPubKey}`}
                 alt={getDisplayName(communityProfile)}
                 class="rounded-full object-cover"
-                onerror={(e) => (e.target.src = `https://robohash.org/${communityPubKey}`)}
+                onerror={(e) =>
+                  /** @type {HTMLImageElement} */ ((e.target).src =
+                    `https://robohash.org/${communityPubKey}`)}
               />
             </div>
           </div>

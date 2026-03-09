@@ -5,7 +5,9 @@
 -->
 
 <script>
-  import { resolve } from '$app/paths';
+  import { resolve as _resolve } from '$app/paths';
+  /** @type {(path: string) => string} */
+  const resolve = /** @type {any} */ (_resolve);
   import { fetchEventById } from '$lib/helpers/nostrUtils.js';
   import { formatCalendarDate } from '$lib/helpers/calendar.js';
   import { CalendarIcon, ClockIcon } from '$lib/components/icons';
@@ -16,7 +18,7 @@
 
   let { identifier, decoded: _decoded, inline: _inline = false } = $props();
 
-  /** @type {import('$lib/types/calendar.js').CalendarEvent | null} */
+  /** @type {any} */
   let event = $state(null);
   let isLoading = $state(true);
   let error = $state('');

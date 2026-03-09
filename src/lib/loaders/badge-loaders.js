@@ -14,9 +14,9 @@ import { createTimelineLoader } from 'applesauce-loaders/loaders';
  * Badge definition loader - loads badges created by user (kind 30009)
  * Used to populate badge selector dropdowns in community settings
  *
- * @param {Object} pool - Nostr relay pool
+ * @param {any} pool - Nostr relay pool
  * @param {string[]} defaultRelays - Array of relay URLs
- * @param {Object} eventStore - EventStore instance
+ * @param {any} eventStore - EventStore instance
  * @param {string} authorPubkey - Author's pubkey whose badges to fetch
  * @returns {Function} Factory function that returns loader function
  */
@@ -34,9 +34,9 @@ export function createBadgeDefinitionLoader(pool, defaultRelays, eventStore, aut
  * Badge award loader - loads awards for a specific badge (kind 8)
  * Used to check if users hold a specific badge
  *
- * @param {Object} pool - Nostr relay pool
+ * @param {any} pool - Nostr relay pool
  * @param {string[]} relays - Array of relay URLs (use naddr relay hints if available)
- * @param {Object} eventStore - EventStore instance
+ * @param {any} eventStore - EventStore instance
  * @param {string} badgeAddress - Badge address in format "30009:pubkey:identifier"
  * @returns {Function} Factory function that returns loader function
  */
@@ -54,9 +54,9 @@ export function createBadgeAwardLoader(pool, relays, eventStore, badgeAddress) {
  * User's received awards loader - loads all awards for a user (kind 8)
  * Used for bulk badge access checking
  *
- * @param {Object} pool - Nostr relay pool
+ * @param {any} pool - Nostr relay pool
  * @param {string[]} defaultRelays - Array of relay URLs
- * @param {Object} eventStore - EventStore instance
+ * @param {any} eventStore - EventStore instance
  * @param {string} userPubkey - User's pubkey whose awards to fetch
  * @returns {Function} Factory function that returns loader function
  */
@@ -74,9 +74,9 @@ export function createUserAwardsLoader(pool, defaultRelays, eventStore, userPubk
  * Awards given loader - loads badge awards created by user (kind 8)
  * Used to see what badges a user has awarded to others
  *
- * @param {Object} pool - Nostr relay pool
+ * @param {any} pool - Nostr relay pool
  * @param {string[]} defaultRelays - Array of relay URLs
- * @param {Object} eventStore - EventStore instance
+ * @param {any} eventStore - EventStore instance
  * @param {string} issuerPubkey - Issuer's pubkey whose awards to fetch
  * @returns {Function} Factory function that returns loader function
  */

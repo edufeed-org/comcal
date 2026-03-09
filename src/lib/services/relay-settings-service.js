@@ -72,7 +72,9 @@ export async function saveRelayList(relays, userPubkey) {
     return signedEvent;
   } catch (error) {
     console.error('Failed to save relay list:', error);
-    throw new Error('Failed to save relay list: ' + error.message);
+    throw new Error(
+      'Failed to save relay list: ' + (error instanceof Error ? error.message : String(error))
+    );
   }
 }
 
@@ -102,15 +104,15 @@ export function validateRelayUrl(url) {
 
 /**
  * Parse a relay list event (kind 10002) into a structured format
- * @param {Object} event - The kind 10002 event
+ * @param {import('nostr-tools').NostrEvent | null | undefined} event - The kind 10002 event
  * @returns {Array<{url: string, read: boolean, write: boolean}>}
  */
 export function parseRelayListEvent(event) {
   if (!event || !event.tags) return [];
 
   return event.tags
-    .filter((tag) => tag[0] === 'r')
-    .map((tag) => {
+    .filter((/** @type {string[]} */ tag) => tag[0] === 'r')
+    .map((/** @type {string[]} */ tag) => {
       const url = tag[1];
       const marker = tag[2];
 

@@ -50,7 +50,7 @@ export const calendarTimelineLoader = () => {
  * Note: Relay resolution is deferred to loader execution time to ensure
  * user override relays (kind 30002) are included even if they load asynchronously.
  * @param {string[]} customRelays - Array of relay URLs to query. If empty, uses default relays.
- * @param {Object} additionalFilters - Additional filter parameters (e.g., authors, limit)
+ * @param {{authors?: string[], [key: string]: any}} additionalFilters - Additional filter parameters (e.g., authors, limit)
  * @returns {Function} Timeline loader function that returns an Observable
  */
 export const createRelayFilteredCalendarLoader = (customRelays = [], additionalFilters = {}) => {
@@ -61,7 +61,7 @@ export const createRelayFilteredCalendarLoader = (customRelays = [], additionalF
     // Apply curated authors unless caller already specified authors
     // Note: [] is truthy, so check .length to avoid bypassing curated authors when UI filter is empty
     const authors =
-      additionalFilters.authors?.length > 0
+      additionalFilters.authors && additionalFilters.authors.length > 0
         ? additionalFilters.authors
         : getCuratedAuthors('calendar');
     /** @type {import('nostr-tools').Filter} */
@@ -95,7 +95,7 @@ export function createDateRangeCalendarLoader(dateRange, options = {}) {
   const { startAfter, startBefore, endAfter, endBefore } = dateRange;
   // Note: [] is truthy, so check .length to avoid bypassing curated authors when UI filter is empty
   const effectiveAuthors =
-    options.authors?.length > 0 ? options.authors : getCuratedAuthors('calendar');
+    options.authors && options.authors.length > 0 ? options.authors : getCuratedAuthors('calendar');
 
   return () => {
     const allRelays = getCalendarRelays();

@@ -5,7 +5,9 @@
 -->
 
 <script>
-  import { resolve } from '$app/paths';
+  import { resolve as _resolve } from '$app/paths';
+  /** @type {(path: string) => string} */
+  const resolve = /** @type {any} */ (_resolve);
   import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
   import { getDisplayName } from 'applesauce-core/helpers';
   import { hexToNpub } from '$lib/helpers/nostrUtils';

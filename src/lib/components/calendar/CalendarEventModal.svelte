@@ -32,15 +32,19 @@
 
   // Get props from modal store
   let communityPubkey = $derived(
-    /** @type {string} */ (modalStore.modalProps?.communityPubkey) || ''
+    /** @type {string} */ (/** @type {any} */ (modalStore.modalProps)?.communityPubkey) || ''
   );
   let selectedDate = $derived(
-    /** @type {Date | null} */ (modalStore.modalProps?.selectedDate) || null
+    /** @type {Date | null} */ (/** @type {any} */ (modalStore.modalProps)?.selectedDate) || null
   );
-  let mode = $derived(/** @type {'create' | 'edit'} */ (modalStore.modalProps?.mode) || 'create');
-  let existingEvent = $derived(/** @type {any} */ (modalStore.modalProps?.existingEvent) || null);
+  let mode = $derived(
+    /** @type {'create' | 'edit'} */ (/** @type {any} */ (modalStore.modalProps)?.mode) || 'create'
+  );
+  let existingEvent = $derived(
+    /** @type {any} */ (/** @type {any} */ (modalStore.modalProps)?.existingEvent) || null
+  );
   let existingRawEvent = $derived(
-    /** @type {any} */ (modalStore.modalProps?.existingRawEvent) || null
+    /** @type {any} */ (/** @type {any} */ (modalStore.modalProps)?.existingRawEvent) || null
   );
 
   // Get calendar actions - updates when communityPubkey changes
@@ -326,16 +330,17 @@
           if (calendarManagement && selectedCalendarIds.length > 0) {
             await Promise.all(
               selectedCalendarIds.map((calendarId) =>
-                calendarManagement.addEventToCalendar(calendarId, resultEvent)
+                calendarManagement?.addEventToCalendar(calendarId, resultEvent)
               )
             );
           }
 
           // Share event with selected communities
-          if (selectedCommunityIds.length > 0) {
+          if (selectedCommunityIds.length > 0 && calendarActions) {
+            const actions = calendarActions;
             await Promise.all(
               selectedCommunityIds.map((communityPubkey) =>
-                calendarActions.createTargetedPublication(resultEvent.id, communityPubkey)
+                actions.createTargetedPublication(resultEvent.id, communityPubkey)
               )
             );
           }
@@ -348,7 +353,7 @@
           handleClose();
 
           // Navigate to the event page
-          await goto(resolve(`/calendar/event/${naddr}`));
+          await goto(/** @type {string} */ (resolve(`/calendar/event/${naddr}`)));
         }
       }
     } catch (error) {

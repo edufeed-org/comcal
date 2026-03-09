@@ -94,7 +94,7 @@
    */
   function handleLanguageChange(locale) {
     if (locale !== currentLocale) {
-      setLocale(locale);
+      setLocale(/** @type {any} */ (locale));
     }
     closeDropdown();
   }

@@ -57,6 +57,7 @@ vi.mock('$lib/helpers/calendar.js', () => ({
 vi.mock('$lib/helpers/educational/ambTransform.js', () => ({
   getLabelsWithFallback: () => [],
   getLanguageDisplayName: (/** @type {string} */ code) => {
+    /** @type {Record<string, string>} */
     const names = { de: 'German', en: 'English', fr: 'French' };
     return names[code] || code;
   }

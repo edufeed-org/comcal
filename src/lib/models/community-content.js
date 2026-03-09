@@ -49,11 +49,11 @@ export function createCommunityContentModel(contentKinds, options = {}) {
         limit: 500
       });
 
-      return combineLatest([direct$, shares$, all$]).pipe(
-        map(([directEvents, shareEvents, allEvents]) => {
+      return combineLatest(/** @type {any[]} */ ([direct$, shares$, all$])).pipe(
+        map((/** @type {any[]} */ [directEvents, shareEvents, allEvents]) => {
           // Build lookup map by ID and address
           const lookup = new Map();
-          for (const event of allEvents) {
+          for (const event of allEvents || []) {
             lookup.set(event.id, event);
             const dTag = getTagValue(event, 'd');
             if (dTag) {
@@ -70,7 +70,7 @@ export function createCommunityContentModel(contentKinds, options = {}) {
           }
 
           // Resolve targeted publication references
-          for (const share of shareEvents) {
+          for (const share of shareEvents || []) {
             const eTag = getTagValue(share, 'e');
             const aTag = getTagValue(share, 'a');
             const resolved = (eTag && lookup.get(eTag)) || (aTag && lookup.get(aTag));

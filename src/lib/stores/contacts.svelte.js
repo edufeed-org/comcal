@@ -53,7 +53,7 @@ export const contactsStore = {
       // Step 1: Start background loader to fetch kind 3 event
       const loaderFactory = createContactListLoader(pool, relays, eventStore, userPubkey);
       const loaderSubscription = loaderFactory()().subscribe({
-        error: (error) => {
+        error: (/** @type {any} */ error) => {
           console.error('Error loading contact list:', error);
         }
       });

@@ -43,7 +43,7 @@ function mockEvent(overrides = {}) {
  */
 function createMockEventStore({ direct = [], shares = [], all = [] }) {
   return {
-    model: (ModelClass, filter) => {
+    model: (/** @type {any} */ ModelClass, /** @type {any} */ filter) => {
       // Detect which stream based on filter
       if (filter.kinds?.includes(30222) || filter['#k']) {
         return of(shares);
@@ -69,14 +69,15 @@ describe('createCommunityContentModel', () => {
     });
 
     const Model = createCommunityContentModel([30142]);
-    const model$ = Model(COMMUNITY_PUBKEY)(store);
+    const model$ = Model(COMMUNITY_PUBKEY)(/** @type {any} */ (store));
 
+    /** @type {any} */
     let result;
     model$.subscribe((items) => (result = items));
 
     expect(result).toHaveLength(2);
-    expect(result.map((r) => r.id)).toContain(event1.id);
-    expect(result.map((r) => r.id)).toContain(event2.id);
+    expect(result.map((/** @type {any} */ r) => r.id)).toContain(event1.id);
+    expect(result.map((/** @type {any} */ r) => r.id)).toContain(event2.id);
   });
 
   it('resolves targeted publication references by event ID (e-tag)', () => {
@@ -97,8 +98,9 @@ describe('createCommunityContentModel', () => {
     });
 
     const Model = createCommunityContentModel([30142]);
+    /** @type {any} */
     let result;
-    Model(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+    Model(COMMUNITY_PUBKEY)(/** @type {any} */ (store)).subscribe((items) => (result = items));
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('event-abc');
@@ -127,8 +129,9 @@ describe('createCommunityContentModel', () => {
     });
 
     const Model = createCommunityContentModel([30142]);
+    /** @type {any} */
     let result;
-    Model(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+    Model(COMMUNITY_PUBKEY)(/** @type {any} */ (store)).subscribe((items) => (result = items));
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('event-xyz');
@@ -159,8 +162,9 @@ describe('createCommunityContentModel', () => {
     });
 
     const Model = createCommunityContentModel([30142]);
+    /** @type {any} */
     let result;
-    Model(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+    Model(COMMUNITY_PUBKEY)(/** @type {any} */ (store)).subscribe((items) => (result = items));
 
     // Should appear only once despite being both direct and shared
     expect(result).toHaveLength(1);
@@ -176,10 +180,11 @@ describe('createCommunityContentModel', () => {
       all: [event]
     });
 
-    const transform = (e) => ({ ...e, transformed: true });
+    const transform = (/** @type {any} */ e) => ({ ...e, transformed: true });
     const Model = createCommunityContentModel([30142], { transform });
+    /** @type {any} */
     let result;
-    Model(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+    Model(COMMUNITY_PUBKEY)(/** @type {any} */ (store)).subscribe((items) => (result = items));
 
     expect(result).toHaveLength(1);
     expect(result[0].transformed).toBe(true);
@@ -203,10 +208,11 @@ describe('createCommunityContentModel', () => {
       all: [referencedEvent]
     });
 
-    const transform = (e) => ({ ...e, transformed: true });
+    const transform = (/** @type {any} */ e) => ({ ...e, transformed: true });
     const Model = createCommunityContentModel([30142], { transform });
+    /** @type {any} */
     let result;
-    Model(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+    Model(COMMUNITY_PUBKEY)(/** @type {any} */ (store)).subscribe((items) => (result = items));
 
     expect(result).toHaveLength(1);
     expect(result[0].transformed).toBe(true);
@@ -220,8 +226,9 @@ describe('createCommunityContentModel', () => {
     });
 
     const Model = createCommunityContentModel([30142]);
+    /** @type {any} */
     let result;
-    Model(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+    Model(COMMUNITY_PUBKEY)(/** @type {any} */ (store)).subscribe((items) => (result = items));
 
     expect(result).toEqual([]);
   });
@@ -243,8 +250,9 @@ describe('createCommunityContentModel', () => {
     });
 
     const Model = createCommunityContentModel([30142]);
+    /** @type {any} */
     let result;
-    Model(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+    Model(COMMUNITY_PUBKEY)(/** @type {any} */ (store)).subscribe((items) => (result = items));
 
     expect(result).toEqual([]);
   });
@@ -268,14 +276,17 @@ describe('CommunityBoardModel', () => {
     });
 
     // Override mock store to handle kind 30301 filters correctly
-    store.model = (ModelClass, filter) => {
+    store.model = (/** @type {any} */ ModelClass, /** @type {any} */ filter) => {
       if (filter.kinds?.includes(30222)) return of([]);
       if (filter['#h']) return of([board]);
       return of([board]);
     };
 
+    /** @type {any} */
     let result;
-    CommunityBoardModel(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+    CommunityBoardModel(COMMUNITY_PUBKEY)(/** @type {any} */ (store)).subscribe(
+      (items) => (result = items)
+    );
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe(board.id);
@@ -297,15 +308,18 @@ describe('CommunityBoardModel', () => {
     });
 
     const store = {
-      model: (ModelClass, filter) => {
+      model: (/** @type {any} */ ModelClass, /** @type {any} */ filter) => {
         if (filter.kinds?.includes(30222)) return of([share]);
         if (filter['#h']) return of([]);
         return of([board]);
       }
     };
 
+    /** @type {any} */
     let result;
-    CommunityBoardModel(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+    CommunityBoardModel(COMMUNITY_PUBKEY)(/** @type {any} */ (store)).subscribe(
+      (items) => (result = items)
+    );
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe(board.id);
@@ -329,8 +343,11 @@ describe('CommunityAMBResourceModel', () => {
       all: [resource]
     });
 
+    /** @type {any} */
     let result;
-    CommunityAMBResourceModel(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+    CommunityAMBResourceModel(COMMUNITY_PUBKEY)(/** @type {any} */ (store)).subscribe(
+      (items) => (result = items)
+    );
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe(resource.id);
@@ -360,8 +377,11 @@ describe('CommunityAMBResourceModel', () => {
       all: [resource]
     });
 
+    /** @type {any} */
     let result;
-    CommunityAMBResourceModel(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+    CommunityAMBResourceModel(COMMUNITY_PUBKEY)(/** @type {any} */ (store)).subscribe(
+      (items) => (result = items)
+    );
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('amb-shared');
@@ -390,20 +410,23 @@ describe('CommunityCalendarEventModel', () => {
     });
 
     const store = {
-      model: (ModelClass, filter) => {
+      model: (/** @type {any} */ ModelClass, /** @type {any} */ filter) => {
         if (filter.kinds?.includes(30222)) return of([]);
         if (filter['#h']) return of([dateEvent, timeEvent]);
         return of([dateEvent, timeEvent]);
       }
     };
 
+    /** @type {any} */
     let result;
-    CommunityCalendarEventModel(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+    CommunityCalendarEventModel(COMMUNITY_PUBKEY)(/** @type {any} */ (store)).subscribe(
+      (items) => (result = items)
+    );
 
     expect(result).toHaveLength(2);
     // getCalendarEventMetadata adds 'title' field
-    expect(result.map((r) => r.title)).toContain('All Day Event');
-    expect(result.map((r) => r.title)).toContain('Timed Event');
+    expect(result.map((/** @type {any} */ r) => r.title)).toContain('All Day Event');
+    expect(result.map((/** @type {any} */ r) => r.title)).toContain('Timed Event');
   });
 
   it('resolves shared calendar events via targeted publications', () => {
@@ -427,15 +450,18 @@ describe('CommunityCalendarEventModel', () => {
     });
 
     const store = {
-      model: (ModelClass, filter) => {
+      model: (/** @type {any} */ ModelClass, /** @type {any} */ filter) => {
         if (filter.kinds?.includes(30222)) return of([share]);
         if (filter['#h']) return of([]);
         return of([calEvent]);
       }
     };
 
+    /** @type {any} */
     let result;
-    CommunityCalendarEventModel(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+    CommunityCalendarEventModel(COMMUNITY_PUBKEY)(/** @type {any} */ (store)).subscribe(
+      (items) => (result = items)
+    );
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('cal-shared');
@@ -455,15 +481,18 @@ describe('CommunityArticleModel', () => {
     });
 
     const store = {
-      model: (ModelClass, filter) => {
+      model: (/** @type {any} */ ModelClass, /** @type {any} */ filter) => {
         if (filter.kinds?.includes(30222)) return of([]);
         if (filter['#h']) return of([article]);
         return of([article]);
       }
     };
 
+    /** @type {any} */
     let result;
-    CommunityArticleModel(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+    CommunityArticleModel(COMMUNITY_PUBKEY)(/** @type {any} */ (store)).subscribe(
+      (items) => (result = items)
+    );
 
     expect(result).toHaveLength(1);
     // No transform — raw event returned
@@ -488,15 +517,18 @@ describe('CommunityArticleModel', () => {
     });
 
     const store = {
-      model: (ModelClass, filter) => {
+      model: (/** @type {any} */ ModelClass, /** @type {any} */ filter) => {
         if (filter.kinds?.includes(30222)) return of([share]);
         if (filter['#h']) return of([]);
         return of([article]);
       }
     };
 
+    /** @type {any} */
     let result;
-    CommunityArticleModel(COMMUNITY_PUBKEY)(store).subscribe((items) => (result = items));
+    CommunityArticleModel(COMMUNITY_PUBKEY)(/** @type {any} */ (store)).subscribe(
+      (items) => (result = items)
+    );
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('article-shared');

@@ -83,7 +83,7 @@
   let appRelaysError = $state(null);
   /** @type {string|null} */
   let appRelaysSuccess = $state(null);
-  /** @type {string|null} */
+  /** @type {string} */
   let newAppRelayUrl = $state('');
   /** @type {string|null} */
   let editingCategory = $state(null);
@@ -238,6 +238,7 @@
 
   // Create default relay list
   function createDefaultRelayList() {
+    /** @type {string[]} */
     const fallbackRelays = runtimeConfig.fallbackRelays || [];
     if (fallbackRelays.length === 0) {
       error = 'No default relays configured. Please add relays manually.';
@@ -429,7 +430,7 @@
    */
   function hasOverride(category) {
     const override = appRelayOverrides.get(category);
-    return override && override.length > 0;
+    return (override && override.length > 0) ?? false;
   }
 
   /**
@@ -475,7 +476,7 @@
       appRelayOverrides = new SvelteMap(appRelayOverrides.set(category, relays));
       updateUserOverrideCache(category, relays);
 
-      appRelaysSuccess = `${CATEGORIES[category]?.label || category} relays saved!`;
+      appRelaysSuccess = `${/** @type {any} */ (CATEGORIES)[category]?.label || category} relays saved!`;
       setTimeout(() => (appRelaysSuccess = null), 3000);
     } catch (err) {
       appRelaysError = err instanceof Error ? err.message : 'Unknown error';

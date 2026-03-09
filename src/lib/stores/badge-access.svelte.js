@@ -117,9 +117,14 @@ export function useBadgeAccess(getCommunityEvent) {
       loaderSub = loader()().subscribe();
 
       // Subscribe to model for reactive updates
+      // @ts-ignore - applesauce model type mismatch
       modelSub = eventStore.model(UserAwardsModel, userPubkey).subscribe((awards) => {
         // Build set of badge addresses the user holds
-        const awardAddresses = new SvelteSet(awards.map((a) => a.badgeAddress).filter(Boolean));
+        const awardAddresses = new SvelteSet(
+          /** @type {any[]} */ (awards)
+            .map((/** @type {any} */ a) => a.badgeAddress)
+            .filter(Boolean)
+        );
         userBadges = awardAddresses;
 
         // Parse content types from community event
@@ -190,8 +195,13 @@ export async function loadUserBadges(userPubkey) {
 
     // Give some time for events to load
     setTimeout(() => {
+      // @ts-ignore - applesauce model type mismatch
       const modelSub = eventStore.model(UserAwardsModel, userPubkey).subscribe((awards) => {
-        const badges = new SvelteSet(awards.map((a) => a.badgeAddress).filter(Boolean));
+        const badges = new SvelteSet(
+          /** @type {any[]} */ (awards)
+            .map((/** @type {any} */ a) => a.badgeAddress)
+            .filter(Boolean)
+        );
         modelSub.unsubscribe();
         loaderSub?.unsubscribe();
         resolve(badges);

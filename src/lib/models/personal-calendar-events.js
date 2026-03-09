@@ -29,8 +29,8 @@ function getCalendarAddressPointers(calendar) {
   return pointers;
 }
 
-export function PersonalCalendarEventsModel(calendar) {
-  return (eventStore) => {
+export function PersonalCalendarEventsModel(/** @type {any} */ calendar) {
+  return (/** @type {any} */ eventStore) => {
     console.log('📅 PersonalCalendarEventsModel: Creating model for calendar:', calendar.id);
 
     const pointers = getCalendarAddressPointers(calendar);
@@ -61,8 +61,8 @@ export function PersonalCalendarEventsModel(calendar) {
             console.log(`📅 PersonalCalendarEventsModel: Query ${index + 1} returned event:`, {
               id: event.id,
               kind: event.kind,
-              dTag: event.tags.find((t) => t[0] === 'd')?.[1],
-              dTagLength: event.tags.find((t) => t[0] === 'd')?.[1]?.length
+              dTag: event.tags.find((/** @type {string[]} */ t) => t[0] === 'd')?.[1],
+              dTagLength: event.tags.find((/** @type {string[]} */ t) => t[0] === 'd')?.[1]?.length
             });
           } else {
             console.log(

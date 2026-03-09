@@ -2,7 +2,6 @@
   import * as m from '$lib/paraglide/messages';
   import { useCalendarManagement } from '$lib/stores/calendar-management-store.svelte.js';
   import { manager } from '$lib/stores/accounts.svelte';
-  import CalendarCreationModal from '$lib/components/calendar/CalendarCreationModal.svelte';
   import { EventFactory } from 'applesauce-core/event-factory';
   import { publishEvent } from '$lib/services/publish-service.js';
   import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
@@ -39,15 +38,14 @@
   let isDeleting = $state(false);
   let deleteError = $state(/** @type {string | null} */ (null));
 
-  // Calendar modal state
-  let isCalendarModalOpen = $state(false);
-
   /**
    * Start editing a calendar
    * @param {string} calendarId
    */
   function startEditing(calendarId) {
-    const calendar = calendarManagement?.calendars.find((c) => c.id === calendarId);
+    const calendar = calendarManagement?.calendars.find(
+      (/** @type {any} */ c) => c.id === calendarId
+    );
     if (calendar) {
       editingCalendarId = calendarId;
       editTitle = calendar.title;
@@ -73,7 +71,9 @@
   async function updateCalendar(calendarId) {
     if (!calendarManagement || !activeUser) return;
 
-    const calendar = calendarManagement.calendars.find((c) => c.id === calendarId);
+    const calendar = calendarManagement.calendars.find(
+      (/** @type {any} */ c) => c.id === calendarId
+    );
     if (!calendar) return;
 
     isUpdating = true;
@@ -87,7 +87,7 @@
       ];
 
       // Add all existing event references as 'a' tags
-      calendar.eventReferences.forEach((ref) => {
+      calendar.eventReferences.forEach((/** @type {string} */ ref) => {
         tags.push(['a', ref]);
       });
 
@@ -149,7 +149,9 @@
   async function deleteCalendar(calendarId) {
     if (!calendarManagement || !activeUser) return;
 
-    const calendar = calendarManagement.calendars.find((c) => c.id === calendarId);
+    const calendar = calendarManagement.calendars.find(
+      (/** @type {any} */ c) => c.id === calendarId
+    );
     if (!calendar) return;
 
     isDeleting = true;
@@ -196,24 +198,7 @@
    * Handle create new calendar
    */
   function handleCreateCalendar() {
-    isCalendarModalOpen = true;
-  }
-
-  /**
-   * Handle calendar modal close
-   */
-  function handleCalendarModalClose() {
-    isCalendarModalOpen = false;
-  }
-
-  /**
-   * Handle calendar created
-   */
-  function handleCalendarCreated() {
-    // Refresh calendar list after creation
-    if (calendarManagement) {
-      calendarManagement.refresh();
-    }
+    // TODO: wire up calendar creation modal
   }
 
   /**
@@ -230,7 +215,9 @@
    * @param {string} calendarId
    */
   function viewCalendar(calendarId) {
-    const calendar = calendarManagement?.calendars.find((c) => c.id === calendarId);
+    const calendar = calendarManagement?.calendars.find(
+      (/** @type {any} */ c) => c.id === calendarId
+    );
 
     if (!calendar) {
       console.error('Calendar not found:', calendarId);
@@ -259,7 +246,7 @@
       }
 
       // Navigate to calendar-specific route
-      goto(resolve(`/calendar/${naddr}`));
+      goto(/** @type {string} */ (resolve(`/calendar/${naddr}`)));
     } catch (error) {
       console.error('Error navigating to calendar:', error);
       showToast('Failed to open calendar', 'error');
@@ -310,7 +297,9 @@
    * @param {string} calendarId
    */
   async function copyCalendarNaddr(calendarId) {
-    const calendar = calendarManagement?.calendars.find((c) => c.id === calendarId);
+    const calendar = calendarManagement?.calendars.find(
+      (/** @type {any} */ c) => c.id === calendarId
+    );
     if (!calendar) return;
 
     try {
@@ -736,12 +725,7 @@
             {/if}
           </div>
 
-          <!-- Calendar Creation Modal -->
-          <CalendarCreationModal
-            isOpen={isCalendarModalOpen}
-            onClose={handleCalendarModalClose}
-            onCalendarCreated={handleCalendarCreated}
-          />
+          <!-- Calendar Creation Modal rendered by ModalManager -->
         </div>
       {/each}
     </div>

@@ -98,7 +98,7 @@ export function getRelaysForKind(communityEvent, kind) {
   const contentType = contentTypes.find((ct) => ct.kinds.includes(kind));
 
   // Use content-specific relays if defined
-  if (contentType?.relays?.length > 0) {
+  if (contentType && contentType.relays && contentType.relays.length > 0) {
     return contentType.relays;
   }
 
@@ -124,7 +124,7 @@ export function getRelaysForContentType(communityEvent, contentTypeName) {
   );
 
   // Use content-specific relays if defined
-  if (contentType?.relays?.length > 0) {
+  if (contentType && contentType.relays && contentType.relays.length > 0) {
     return contentType.relays;
   }
 

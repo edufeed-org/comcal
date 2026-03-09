@@ -59,7 +59,7 @@ export function updateQueryParams(currentParams, updates, options = {}) {
   const pathname = window.location.pathname;
   const url = queryString ? `${pathname}?${queryString}` : pathname;
 
-  return goto(resolve(url), {
+  return goto(/** @type {any} */ (resolve)(url), {
     replaceState: options.replaceState ?? true,
     keepFocus: options.keepFocus ?? true,
     noScroll: options.noScroll ?? true
@@ -181,7 +181,7 @@ export function hasActiveFilters(searchParams) {
  * @returns {Promise<void>} - Navigation promise
  */
 export function clearAllFilters(basePath = '/calendar', options = {}) {
-  return goto(resolve(basePath), {
+  return goto(/** @type {any} */ (resolve)(basePath), {
     replaceState: options.replaceState ?? true,
     keepFocus: options.keepFocus ?? true,
     noScroll: options.noScroll ?? false // Allow scroll to top when clearing

@@ -1,7 +1,9 @@
 <script>
   let { pubkey, showJoinButton = false } = $props();
 
-  import { resolve } from '$app/paths';
+  import { resolve as _resolve } from '$app/paths';
+  /** @type {(path: string) => string} */
+  const resolve = /** @type {any} */ (_resolve);
   import * as m from '$lib/paraglide/messages';
   import { getProfilePicture } from 'applesauce-core/helpers';
   import { useCommunityMembership } from '$lib/stores/joined-communities-list.svelte.js';

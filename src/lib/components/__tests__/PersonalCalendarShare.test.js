@@ -125,13 +125,16 @@ describe('PersonalCalendarShare', () => {
     const { eventStore } = await import('$lib/stores/nostr-infrastructure.svelte');
 
     let emissionCount = 0;
-    vi.mocked(eventStore.timeline).mockImplementation(() => ({
-      subscribe: (/** @type {Function} */ cb) => {
-        emissionCount++;
-        cb(mockCalendarRawEvents);
-        return { unsubscribe: vi.fn() };
-      }
-    }));
+    vi.mocked(eventStore.timeline).mockImplementation(
+      () =>
+        /** @type {any} */ ({
+          subscribe: (/** @type {Function} */ cb) => {
+            emissionCount++;
+            cb(mockCalendarRawEvents);
+            return { unsubscribe: vi.fn() };
+          }
+        })
+    );
 
     const { container } = render(PersonalCalendarShare, {
       props: {

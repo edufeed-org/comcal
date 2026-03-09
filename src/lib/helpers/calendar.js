@@ -20,7 +20,7 @@ const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
  * - Kind 31923 (time-based): Unix timestamp string "1704067200"
  *
  * @param {string | undefined} value - The tag value to parse
- * @param {number} [eventKind] - Optional event kind for format hints
+ * @param {number} [_eventKind] - Optional event kind for format hints
  * @returns {number} Unix timestamp in seconds, or 0 if invalid
  */
 export function parseCalendarTimestamp(value, _eventKind) {
@@ -637,9 +637,10 @@ export async function fetchCommunityCalendarEvents(communityPubkey, relays = [])
 
         // If we have it in store, use it immediately
         if (existingEvent && typeof existingEvent === 'object' && 'id' in existingEvent) {
-          if (!eventIds.has(existingEvent.id)) {
-            eventIds.add(existingEvent.id);
-            allEvents.push(existingEvent);
+          const /** @type {any} */ cachedEvent = existingEvent;
+          if (!eventIds.has(cachedEvent.id)) {
+            eventIds.add(cachedEvent.id);
+            allEvents.push(cachedEvent);
           }
         } else {
           // If not in store, create a promise to load it by address
@@ -672,9 +673,10 @@ export async function fetchCommunityCalendarEvents(communityPubkey, relays = [])
                 'id' in bufferedEvents
               ) {
                 // Single event returned
-                if (!eventIds.has(bufferedEvents.id)) {
-                  eventIds.add(bufferedEvents.id);
-                  allEvents.push(bufferedEvents);
+                const /** @type {any} */ singleEvent = bufferedEvents;
+                if (!eventIds.has(singleEvent.id)) {
+                  eventIds.add(singleEvent.id);
+                  allEvents.push(singleEvent);
                 }
               }
             })
@@ -732,7 +734,7 @@ export function buildCalendarEventTags(formData, eventData, dTag, hTag) {
   }
 
   // Title
-  tags.push(['title', eventData.title]);
+  tags.push(['title', eventData.title || '']);
 
   // Start/end tags — format depends on event kind
   if (eventData.kind === 31922) {
@@ -877,7 +879,7 @@ export function getEventEndTimestamp(event) {
  * Works with CalendarEvent objects (processed events with start/end properties).
  * An event overlaps if it starts before range end AND ends after range start.
  *
- * @param {Object} event - Calendar event with start/end properties (Unix seconds)
+ * @param {{start?: number, end?: number}} event - Calendar event with start/end properties (Unix seconds)
  * @param {number} rangeStart - Range start timestamp (Unix seconds)
  * @param {number} rangeEnd - Range end timestamp (Unix seconds)
  * @returns {boolean} True if event overlaps with the date range

@@ -30,7 +30,7 @@ import {
 
 /**
  * Create calendar actions for a specific community
- * @param {string} communityPubkey - Community public key
+ * @param {string} _communityPubkey - Community public key
  * @returns {CalendarActions} Calendar actions object
  */
 export function createCalendarActions(_communityPubkey) {
@@ -39,7 +39,7 @@ export function createCalendarActions(_communityPubkey) {
      * Create a new calendar event
      * @param {EventFormData} formData - Event form data
      * @param {string} targetCommunityPubkey - Target community public key
-     * @param {Object} [communityEvent] - Optional community definition event (kind 10222) for relay routing
+     * @param {import('nostr-tools').NostrEvent | null} [communityEvent] - Optional community definition event (kind 10222) for relay routing
      * @returns {Promise<any>}
      */
     async createEvent(formData, targetCommunityPubkey, communityEvent = null) {
@@ -111,7 +111,7 @@ export function createCalendarActions(_communityPubkey) {
      * Update an existing calendar event
      * @param {EventFormData} formData - Event form data
      * @param {any} existingEvent - Existing raw Nostr event to update
-     * @param {Object} [communityEvent] - Optional community definition event (kind 10222) for relay routing
+     * @param {import('nostr-tools').NostrEvent | null} [communityEvent] - Optional community definition event (kind 10222) for relay routing
      * @returns {Promise<any>}
      */
     async updateEvent(formData, existingEvent, communityEvent = null) {
@@ -228,7 +228,7 @@ export function createCalendarActions(_communityPubkey) {
      * Create a targeted publication event to associate calendar event with community
      * @param {string} eventId - Calendar event ID
      * @param {string} targetCommunityPubkey - Target community public key
-     * @param {Object} [communityEvent] - Optional community definition event (kind 10222) for relay routing
+     * @param {import('nostr-tools').NostrEvent | null} [communityEvent] - Optional community definition event (kind 10222) for relay routing
      * @returns {Promise<void>}
      */
     async createTargetedPublication(eventId, targetCommunityPubkey, communityEvent = null) {
@@ -336,7 +336,7 @@ export function createCalendarActions(_communityPubkey) {
         // Extract event coordinates for the 'a' tag
         const eventKind = calendarEvent.kind;
         const eventPubkey = calendarEvent.pubkey;
-        const dTag = calendarEvent.tags?.find((t) => t[0] === 'd')?.[1];
+        const dTag = calendarEvent.tags?.find((/** @type {string[]} */ t) => t[0] === 'd')?.[1];
 
         if (!dTag) {
           throw new Error('Cannot RSVP: calendar event missing d-tag');
@@ -399,7 +399,7 @@ export function createCalendarActions(_communityPubkey) {
 
     /**
      * Load events for a community (delegated to calendar events store)
-     * @param {string} targetCommunityPubkey - Community public key
+     * @param {string} _targetCommunityPubkey - Community public key
      * @returns {Promise<CalendarEvent[]>}
      */
     async loadEvents(_targetCommunityPubkey) {

@@ -42,7 +42,7 @@ vi.mock('$lib/helpers/relay-helper.js', () => ({
 }));
 
 vi.mock('$lib/services/app-relay-service.svelte.js', () => ({
-  kindToAppRelayCategory: vi.fn((kind) => {
+  kindToAppRelayCategory: vi.fn((/** @type {number} */ kind) => {
     if ([31922, 31923, 31924, 31925].includes(kind)) return 'calendar';
     if ([10222, 30222, 30382].includes(kind)) return 'communikey';
     if ([30142].includes(kind)) return 'educational';
@@ -54,7 +54,9 @@ vi.mock('$lib/services/app-relay-service.svelte.js', () => ({
 
 describe('curated-authors-service', () => {
   describe('decodeNaddrs', () => {
+    /** @type {any} */
     let decodeNaddrs;
+    /** @type {any} */
     let nip19Mock;
 
     beforeEach(async () => {
@@ -156,7 +158,9 @@ describe('curated-authors-service', () => {
   });
 
   describe('parseDirectPubkeys', () => {
+    /** @type {any} */
     let parseDirectPubkeys;
+    /** @type {any} */
     let nip19Mock;
 
     beforeEach(async () => {
@@ -241,6 +245,7 @@ describe('curated-authors-service', () => {
   });
 
   describe('extractPubkeysFromFollowSets', () => {
+    /** @type {any} */
     let extractPubkeysFromFollowSets;
 
     beforeEach(async () => {
@@ -611,7 +616,7 @@ describe('curated-authors-service', () => {
       const service = await import('../services/curated-authors-service.svelte.js');
 
       // Empty authors array means "no UI filter selected" — should apply curated
-      const filter = { kinds: [31922], authors: [] };
+      const filter = { kinds: [31922], authors: /** @type {string[]} */ ([]) };
       const result = service.applyCuratedFilter(filter);
       expect(result.authors).toEqual([hexPubkey]);
     });
@@ -654,7 +659,7 @@ describe('curated-authors-service', () => {
 
       const result = service.applyCuratedFilter({ kinds: [30142], search: 'test', limit: 50 });
       expect(result.authors).toEqual([hexPubkey]);
-      expect(result.search).toBe('test');
+      expect(/** @type {any} */ (result).search).toBe('test');
       expect(result.limit).toBe(50);
       expect(result.kinds).toEqual([30142]);
     });

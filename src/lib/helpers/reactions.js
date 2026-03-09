@@ -95,7 +95,7 @@ export async function createReaction(targetEvent, content, options = {}) {
  * @param {string} content - The reaction content (emoji, +, -, etc.)
  * @param {Object} [options] - Publishing options
  * @param {string[]} [options.relays] - Custom relay list
- * @returns {Promise<{success: boolean, event: any, results: any}>}
+ * @returns {Promise<{success: boolean, event: any, relays: string[], successCount: number}>}
  */
 export async function publishReaction(targetEvent, content, options = {}) {
   try {
@@ -129,7 +129,7 @@ export async function publishReaction(targetEvent, content, options = {}) {
  * @param {any} reactionEvent - The reaction event to delete
  * @param {Object} [options] - Publishing options
  * @param {string[]} [options.relays] - Custom relay list
- * @returns {Promise<{success: boolean, event: any, results: any}>}
+ * @returns {Promise<{success: boolean, event: any, relays: string[], successCount: number}>}
  */
 export async function deleteReaction(reactionEvent, options = {}) {
   const account = manager.active;

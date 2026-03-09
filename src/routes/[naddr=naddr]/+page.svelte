@@ -63,7 +63,7 @@
       const titleTag = data.event?.tags?.find((/** @type {any} */ t) => t[0] === 'title');
       return `${titleTag?.[1] || 'Article'} - Communikey`;
     } else if (displayData?.type === 'amb') {
-      return `${displayData.resource?.name || 'Educational Resource'} - Communikey`;
+      return `${/** @type {any} */ (displayData.resource)?.name || 'Educational Resource'} - Communikey`;
     } else if (displayData?.type === 'kanban') {
       const boardTitle =
         getTagValue(displayData.event, 'title') ||

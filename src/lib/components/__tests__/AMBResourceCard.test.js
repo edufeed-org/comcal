@@ -31,20 +31,22 @@ vi.mock('$app/navigation', () => ({
   goto: vi.fn()
 }));
 vi.mock('applesauce-core/helpers', () => ({
-  getProfilePicture: (profile) => profile?.picture || null,
-  getDisplayName: (profile, fallback) => profile?.name || fallback
+  getProfilePicture: (/** @type {any} */ profile) => profile?.picture || null,
+  getDisplayName: (/** @type {any} */ profile, /** @type {any} */ fallback) =>
+    profile?.name || fallback
 }));
 vi.mock('$lib/helpers/calendar.js', () => ({
   formatCalendarDate: () => 'Jan 15'
 }));
 vi.mock('$lib/helpers/educational/ambTransform.js', () => ({
-  getLabelsWithFallback: (tags, field) => {
+  getLabelsWithFallback: (/** @type {any} */ tags, /** @type {any} */ field) => {
     if (field === 'learningResourceType') return [{ id: 'hcrt/text', label: 'Text' }];
     if (field === 'about') return [{ id: 'math', label: 'Mathematik', fallbackLang: 'de' }];
     if (field === 'educationalLevel') return [{ id: 'higher', label: 'Higher Education' }];
     return [];
   },
-  getLanguageDisplayName: (code) => {
+  getLanguageDisplayName: (/** @type {string} */ code) => {
+    /** @type {Record<string, string>} */
     const names = { de: 'German', en: 'English', fr: 'French' };
     return names[code] || code;
   }
@@ -127,7 +129,7 @@ describe('AMBResourceCard', () => {
         props: { resource: mockResource, authorProfile: mockAuthorProfile, variant: 'list' }
       });
 
-      const listItem = container.querySelector('.amb-card-list');
+      const listItem = /** @type {HTMLElement} */ (container.querySelector('.amb-card-list'));
       expect(listItem).toBeTruthy();
       expect(listItem.classList.contains('flex')).toBe(true);
     });

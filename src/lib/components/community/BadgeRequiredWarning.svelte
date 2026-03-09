@@ -15,7 +15,7 @@
   /**
    * @typedef {Object} Props
    * @property {string} badgeAddress - Badge address in format "30009:pubkey:identifier"
-   * @property {Object} [communityEvent] - Community definition event (kind 10222)
+   * @property {any} [communityEvent] - Community definition event (kind 10222)
    * @property {string} [contentTypeName] - Human-readable content type name
    */
 
@@ -69,8 +69,11 @@
       const loaderSub = loader()().subscribe();
 
       // Subscribe to model
+      // @ts-ignore - BadgeModel signature differs from standard model
       const modelSub = eventStore.model(BadgeModel, issuerPubkey).subscribe((badges) => {
-        const badge = badges.find((b) => b.identifier === badgeIdentifier);
+        const badge = /** @type {any[]} */ (badges).find(
+          (/** @type {any} */ b) => b.identifier === badgeIdentifier
+        );
         if (badge) {
           badgeInfo = badge;
           isLoading = false;

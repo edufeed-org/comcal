@@ -4,6 +4,7 @@
 -->
 
 <script>
+  // @ts-ignore - SvelteMap/SvelteSet are valid reactive collections
   import { SvelteMap, SvelteSet } from 'svelte/reactivity';
   import { page } from '$app/stores';
   import { calendarFilters } from '$lib/stores/calendar-filters.svelte.js';
@@ -151,7 +152,7 @@
         <p class="text-xs text-base-content/60">
           {selectedTags.length === 1
             ? m.tag_selector_showing_events_single()
-            : m.tag_selector_showing_events_multiple()}
+            : m.tag_selector_showing_events_multiple({ count: selectedTags.length })}
         </p>
       </div>
     {:else}

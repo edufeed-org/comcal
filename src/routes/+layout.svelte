@@ -14,6 +14,7 @@
 
   // Initialize runtime config synchronously before any child components render.
   // The initialized guard inside initializeConfig() prevents double-initialization.
+  // svelte-ignore state_referenced_locally
   if (data.config) {
     initializeConfig(data.config);
   }

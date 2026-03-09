@@ -48,7 +48,7 @@ export function ContactsModel(userPubkey) {
         }
 
         // Create profile model subscriptions for each contact
-        const profileObservables = pubkeys.map((pubkey) => {
+        const profileObservables = pubkeys.map((/** @type {string} */ pubkey) => {
           return eventStore.model(ProfileModel, pubkey).pipe(
             map(
               (profile) =>

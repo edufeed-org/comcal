@@ -171,12 +171,15 @@ describe('CommunityShare', () => {
     const { eventStore } = await import('$lib/stores/nostr-infrastructure.svelte');
 
     // Make model emit share events synchronously (simulates cached data)
-    vi.mocked(eventStore.model).mockImplementation(() => ({
-      subscribe: (/** @type {Function} */ cb) => {
-        cb([mockShareEvent]);
-        return { unsubscribe: vi.fn() };
-      }
-    }));
+    vi.mocked(eventStore.model).mockImplementation(
+      () =>
+        /** @type {any} */ ({
+          subscribe: (/** @type {Function} */ cb) => {
+            cb([mockShareEvent]);
+            return { unsubscribe: vi.fn() };
+          }
+        })
+    );
 
     const { container } = render(CommunityShare, {
       props: {
@@ -198,14 +201,17 @@ describe('CommunityShare', () => {
     const { eventStore } = await import('$lib/stores/nostr-infrastructure.svelte');
 
     let emissionCount = 0;
-    vi.mocked(eventStore.model).mockImplementation(() => ({
-      subscribe: (/** @type {Function} */ cb) => {
-        emissionCount++;
-        // Emit synchronously with share events (this triggered the bug)
-        cb([mockShareEvent]);
-        return { unsubscribe: vi.fn() };
-      }
-    }));
+    vi.mocked(eventStore.model).mockImplementation(
+      () =>
+        /** @type {any} */ ({
+          subscribe: (/** @type {Function} */ cb) => {
+            emissionCount++;
+            // Emit synchronously with share events (this triggered the bug)
+            cb([mockShareEvent]);
+            return { unsubscribe: vi.fn() };
+          }
+        })
+    );
 
     const { container } = render(CommunityShare, {
       props: {

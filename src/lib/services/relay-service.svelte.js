@@ -66,12 +66,14 @@ export async function fetchRelayList(pubkey) {
     }, 3000); // 3 second timeout
 
     // Subscribe to model for parsed relay list
+    // @ts-ignore - applesauce model type mismatch
     subscription = eventStore.model(RelayListModel, pubkey).subscribe((relayList) => {
       if (relayList && !resolved) {
         resolved = true;
         clearTimeout(timeout);
         cleanup();
 
+        /** @type {any} */
         const cacheEntry = {
           ...relayList,
           fetchedAt: Date.now()

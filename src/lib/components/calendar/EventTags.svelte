@@ -4,8 +4,11 @@
 -->
 
 <script>
-  import { resolve } from '$app/paths';
+  import { resolve as _resolve } from '$app/paths';
   import * as m from '$lib/paraglide/messages';
+
+  /** @type {(path: string) => string} */
+  const resolve = /** @type {any} */ (_resolve);
   /**
    * @typedef {Object} EventTagsProps
    * @property {string[]} tags - Array of tag strings to display

@@ -14,7 +14,7 @@ import { getRelaySetDTag, parseRelaySetEvent } from '$lib/services/app-relay-ser
 export function AppRelaySetModel(pubkey, category) {
   const dTag = getRelaySetDTag(category);
 
-  return (eventStore) =>
+  return (/** @type {any} */ eventStore) =>
     eventStore.replaceable(30002, pubkey, dTag).pipe(
       map((event) => {
         const relays = parseRelaySetEvent(event);

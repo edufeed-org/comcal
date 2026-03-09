@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock dependencies before importing the module under test
 vi.mock('applesauce-loaders/loaders', async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = /** @type {Record<string, any>} */ (await importOriginal());
   return {
     ...actual,
     createTimelineLoader: vi.fn(() => vi.fn()),

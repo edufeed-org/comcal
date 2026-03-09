@@ -10,7 +10,7 @@
   import * as m from '$lib/paraglide/messages';
 
   // Props
-  let { onApplyFilters = () => {} } = $props();
+  let { onApplyFilters = /** @type {(relays: string[]) => void} */ (() => {}) } = $props();
 
   // Local state
   let isExpanded = $state(false);
@@ -19,6 +19,7 @@
   let customRelays = $state(/** @type {string[]} */ ([]));
 
   // Get default relays from config
+  /** @type {string[]} */
   const defaultRelays = [
     ...(runtimeConfig.appRelays?.calendar || []),
     ...(runtimeConfig.fallbackRelays || [])

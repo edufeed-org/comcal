@@ -280,7 +280,7 @@ export async function initializeCuratedAuthors(category) {
 
       try {
         const events = await lastValueFrom(
-          pool.request(relays, filter, { timeout: 5000 }).pipe(toArray())
+          pool.request(relays, filter, /** @type {any} */ ({ timeout: 5000 })).pipe(toArray())
         );
         allEvents.push(...events);
       } catch (err) {

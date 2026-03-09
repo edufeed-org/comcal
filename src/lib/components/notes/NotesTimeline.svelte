@@ -6,6 +6,7 @@
 
   let { pubkey, profileEvent = null } = $props();
 
+  /** @type {any[]} */
   let notes = $state([]);
   let loading = $state(false);
 
@@ -38,7 +39,7 @@
     loading = true;
     console.log('loading more');
     const since = notes.length ? notes[notes.length - 1].created_at : Math.floor(Date.now() / 1000);
-    timelineLoader(since).subscribe({
+    timelineLoader?.(since).subscribe({
       complete: () => {
         loading = false;
       }

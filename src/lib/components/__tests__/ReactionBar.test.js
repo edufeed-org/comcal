@@ -97,14 +97,17 @@ describe('ReactionBar', () => {
     const { eventStore } = await import('$lib/stores/nostr-infrastructure.svelte');
 
     let emissionCount = 0;
-    vi.mocked(eventStore.reactions).mockImplementation(() => ({
-      subscribe: (/** @type {Function} */ cb) => {
-        emissionCount++;
-        // Emit synchronously with reaction events (triggered the bug)
-        cb(mockReactionEvents);
-        return { unsubscribe: vi.fn() };
-      }
-    }));
+    vi.mocked(eventStore.reactions).mockImplementation(
+      () =>
+        /** @type {any} */ ({
+          subscribe: (/** @type {Function} */ cb) => {
+            emissionCount++;
+            // Emit synchronously with reaction events (triggered the bug)
+            cb(mockReactionEvents);
+            return { unsubscribe: vi.fn() };
+          }
+        })
+    );
 
     const { container } = render(ReactionBar, {
       props: {

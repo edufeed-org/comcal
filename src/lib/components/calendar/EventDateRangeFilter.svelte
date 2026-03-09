@@ -97,7 +97,7 @@
     closeDatePicker();
   }
 
-  function handleKeydown(e) {
+  function handleKeydown(/** @type {KeyboardEvent} */ e) {
     if (e.key === 'Escape') {
       closeDatePicker();
     }

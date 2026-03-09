@@ -6,8 +6,11 @@
   import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
   import * as m from '$lib/paraglide/messages';
 
+  /** @type {any[]} */
   let accounts = [];
+  /** @type {any} */
   let activeAccount = null;
+  /** @type {Record<string, string>} */
   let names = {}; // per-account editable name
 
   const manualSave = new Subject();
@@ -74,7 +77,7 @@
     const acct = manager.getAccount(accountId);
     if (!acct) return;
     manager.setAccountMetadata(acct, { name: names[accountId] || '' });
-    manualSave.next();
+    manualSave.next(undefined);
   }
 
   /**

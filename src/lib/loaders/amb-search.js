@@ -53,7 +53,7 @@ export function ambSearchLoader(filters, limit = 50) {
 
   // Use pool.request() directly to preserve the search field
   // createTimelineLoader strips unknown filter fields during pagination
-  return pool.request(relays, filter, { timeout: 5000 }).pipe(
+  return pool.request(relays, filter, /** @type {any} */ ({ timeout: 5000 })).pipe(
     tap((event) => eventStore.add(event)) // Add to eventStore for caching
   );
 }

@@ -11,7 +11,7 @@
 
   // Local state
   let searchQuery = $state('');
-  let debounceTimer = $state(/** @type {number | null} */ (null));
+  let debounceTimer = $state(/** @type {ReturnType<typeof setTimeout> | null} */ (null));
 
   /**
    * Handle input changes with debouncing

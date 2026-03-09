@@ -31,12 +31,12 @@
     viewMode,
     presentationViewMode = 'calendar',
     communityMode = false,
-    onPrevious,
-    onNext,
-    onToday,
+    onPrevious = /** @type {() => void} */ (() => {}),
+    onNext = /** @type {() => void} */ (() => {}),
+    onToday = /** @type {() => void} */ (() => {}),
     onViewModeChange: _onViewModeChange,
     onPresentationViewModeChange: _onPresentationViewModeChange = () => {},
-    onFilterButtonClick = () => {}
+    onFilterButtonClick = /** @type {(e?: any) => void} */ (() => {})
   } = $props();
 
   // Format current date for display based on view mode

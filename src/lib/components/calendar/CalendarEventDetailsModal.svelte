@@ -7,7 +7,9 @@
   import { SvelteDate } from 'svelte/reactivity';
   import * as m from '$lib/paraglide/messages';
   import { goto } from '$app/navigation';
-  import { resolve } from '$app/paths';
+  import { resolve as _resolve } from '$app/paths';
+  /** @type {(path: string) => string} */
+  const resolve = /** @type {any} */ (_resolve);
   import { formatCalendarDate } from '../../helpers/calendar.js';
   import { modalStore } from '../../stores/modal.svelte.js';
   import { manager } from '$lib/stores/accounts.svelte';

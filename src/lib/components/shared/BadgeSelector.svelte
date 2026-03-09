@@ -47,8 +47,9 @@
       loaderSub = loader()().subscribe();
 
       // Subscribe to model (reactive updates from EventStore)
+      // @ts-ignore - BadgeModel signature differs from standard model
       modelSub = eventStore.model(BadgeModel, authorPubkey).subscribe((loadedBadges) => {
-        badges = loadedBadges;
+        badges = /** @type {any[]} */ (loadedBadges);
         isLoading = false;
       });
     });

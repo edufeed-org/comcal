@@ -45,7 +45,7 @@
       if (result.success) {
         showToast('Left community', 'success');
         // Redirect to discover page after leaving
-        await goto(resolve('/discover'));
+        await goto(/** @type {string} */ (resolve('/discover')));
       } else {
         showToast(result.error || 'Failed to leave community', 'error');
       }
@@ -86,7 +86,9 @@
                     <img
                       src={getProfilePicture(profileEvent) || `https://robohash.org/${communityId}`}
                       alt={getDisplayName(profileEvent)}
-                      onerror={(e) => (e.target.src = `https://robohash.org/${communityId}`)}
+                      onerror={(e) =>
+                        /** @type {HTMLImageElement} */ ((e.target).src =
+                          `https://robohash.org/${communityId}`)}
                     />
                   </div>
                 </div>

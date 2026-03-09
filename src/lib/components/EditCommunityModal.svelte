@@ -11,7 +11,7 @@
   let { modalId } = $props();
 
   // Get community event from modal props
-  let communityEvent = $derived(modalStore.modalProps?.communityEvent);
+  let communityEvent = $derived(/** @type {any} */ (modalStore.modalProps)?.communityEvent);
 
   /**
    * @typedef {Object} ContentTypeConfig
@@ -57,6 +57,7 @@
   let isInitialized = $state(false);
 
   // Kind to content type key mapping
+  /** @type {Record<number, string>} */
   const kindToKey = {
     31922: 'calendar',
     31923: 'calendar',

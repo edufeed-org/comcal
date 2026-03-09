@@ -82,7 +82,7 @@
             const eventPointer = getAddressPointerForEvent(event.originalEvent);
             const sharePointer = parseAddressPointerFromATag(aTag);
 
-            if (!sharePointer) continue;
+            if (!sharePointer || !eventPointer) continue;
 
             const idMatch = eventPointer.identifier === sharePointer.identifier;
             const kindMatch = eventPointer.kind === sharePointer.kind;

@@ -53,7 +53,11 @@ describe('buildCalendarEventTags', () => {
         endTimezone: 'Europe/Berlin'
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
 
       expect(findTagValue(tags, 'start_tzid')).toBe('Europe/Berlin');
       expect(findTagValue(tags, 'end_tzid')).toBe('Europe/Berlin');
@@ -78,7 +82,11 @@ describe('buildCalendarEventTags', () => {
         end: 1718460000
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
 
       expect(findTags(tags, 'start_tzid')).toHaveLength(0);
       expect(findTags(tags, 'end_tzid')).toHaveLength(0);
@@ -101,7 +109,11 @@ describe('buildCalendarEventTags', () => {
         startTimezone: 'Europe/Berlin' // should be ignored
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
 
       expect(findTags(tags, 'start_tzid')).toHaveLength(0);
       expect(findTags(tags, 'end_tzid')).toHaveLength(0);
@@ -129,7 +141,11 @@ describe('buildCalendarEventTags', () => {
         end: 1718460000 // same day
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
       const dTags = findTags(tags, 'D');
 
       expect(dTags).toHaveLength(1);
@@ -159,7 +175,11 @@ describe('buildCalendarEventTags', () => {
         end: endTs
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
       const dTags = findTags(tags, 'D');
 
       const expectedDays = endDay - startDay + 1;
@@ -185,7 +205,11 @@ describe('buildCalendarEventTags', () => {
         end: 1718496000
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
       const dTags = findTags(tags, 'D');
 
       expect(dTags).toHaveLength(0);
@@ -204,7 +228,11 @@ describe('buildCalendarEventTags', () => {
         start: 1718452800
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
       const dTags = findTags(tags, 'D');
 
       expect(dTags).toHaveLength(1);
@@ -225,7 +253,11 @@ describe('buildCalendarEventTags', () => {
         start: 1718409600
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
 
       expect(findTagValue(tags, 'start')).toBe('2024-06-15');
     });
@@ -244,7 +276,11 @@ describe('buildCalendarEventTags', () => {
         end: 1718496000
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
 
       expect(findTagValue(tags, 'start')).toBe('2024-06-15');
       expect(findTagValue(tags, 'end')).toBe('2024-06-16');
@@ -263,7 +299,11 @@ describe('buildCalendarEventTags', () => {
         start: 1718452800
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
 
       expect(findTagValue(tags, 'start')).toBe('1718452800');
     });
@@ -284,7 +324,11 @@ describe('buildCalendarEventTags', () => {
         end: 1718460000
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
 
       expect(findTagValue(tags, 'start')).toBe('1718452800');
       expect(findTagValue(tags, 'end')).toBe('1718460000');
@@ -302,7 +346,11 @@ describe('buildCalendarEventTags', () => {
         start: 1718409600
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
 
       expect(findTags(tags, 'end')).toHaveLength(0);
     });
@@ -321,7 +369,11 @@ describe('buildCalendarEventTags', () => {
         start: 1718409600
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'my-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'my-d-tag'
+      );
 
       expect(findTagValue(tags, 'd')).toBe('my-d-tag');
     });
@@ -338,7 +390,12 @@ describe('buildCalendarEventTags', () => {
         start: 1718409600
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'my-d-tag', 'community-pubkey');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'my-d-tag',
+        'community-pubkey'
+      );
 
       expect(findTagValue(tags, 'h')).toBe('community-pubkey');
     });
@@ -355,7 +412,11 @@ describe('buildCalendarEventTags', () => {
         start: 1718409600
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'my-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'my-d-tag'
+      );
 
       expect(findTags(tags, 'h')).toHaveLength(0);
     });
@@ -372,7 +433,11 @@ describe('buildCalendarEventTags', () => {
         start: 1718409600
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
 
       expect(findTagValue(tags, 'title')).toBe('My Event Title');
     });
@@ -390,7 +455,11 @@ describe('buildCalendarEventTags', () => {
         location: 'Berlin, Germany'
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
 
       expect(findTagValue(tags, 'location')).toBe('Berlin, Germany');
     });
@@ -408,7 +477,11 @@ describe('buildCalendarEventTags', () => {
         image: 'https://example.com/image.jpg'
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
 
       expect(findTagValue(tags, 'image')).toBe('https://example.com/image.jpg');
     });
@@ -426,7 +499,11 @@ describe('buildCalendarEventTags', () => {
         hashtags: ['nostr', 'calendar']
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
       const tTags = findTags(tags, 't');
 
       expect(tTags).toHaveLength(2);
@@ -447,7 +524,11 @@ describe('buildCalendarEventTags', () => {
         references: ['https://example.com', 'https://nostr.com']
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
       const rTags = findTags(tags, 'r');
 
       expect(rTags).toHaveLength(2);
@@ -468,7 +549,11 @@ describe('buildCalendarEventTags', () => {
         geohash: 'u33dc'
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
 
       expect(findTagValue(tags, 'g')).toBe('u33dc');
     });
@@ -487,7 +572,11 @@ describe('buildCalendarEventTags', () => {
         references: ['https://example.com', '', null]
       };
 
-      const tags = buildCalendarEventTags(formData, eventData, 'test-d-tag');
+      const tags = buildCalendarEventTags(
+        /** @type {any} */ (formData),
+        /** @type {any} */ (eventData),
+        'test-d-tag'
+      );
       const tTags = findTags(tags, 't');
       const rTags = findTags(tags, 'r');
 

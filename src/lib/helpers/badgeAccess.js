@@ -33,8 +33,11 @@ export async function userHoldsBadge(badgeAddress, userPubkey, timeoutMs = 5000)
 
   try {
     // Wait for model to emit (with timeout)
+    /** @type {import('rxjs').Observable<any[]>} */
+    // @ts-ignore - applesauce model type mismatch
+    const awards$ = eventStore.model(UserAwardsModel, userPubkey);
     const awards = await firstValueFrom(
-      eventStore.model(UserAwardsModel, userPubkey).pipe(
+      awards$.pipe(
         filter((a) => a.length >= 0),
         take(1),
         timeout(timeoutMs)
@@ -42,7 +45,7 @@ export async function userHoldsBadge(badgeAddress, userPubkey, timeoutMs = 5000)
     );
 
     loaderSub.unsubscribe();
-    return awards.some((award) => award.badgeAddress === badgeAddress);
+    return awards.some((/** @type {any} */ award) => award.badgeAddress === badgeAddress);
   } catch {
     loaderSub.unsubscribe();
     return false;
@@ -112,8 +115,11 @@ export async function getUserBadges(userPubkey, timeoutMs = 5000) {
   const loaderSub = loader()().subscribe();
 
   try {
+    /** @type {import('rxjs').Observable<any[]>} */
+    // @ts-ignore - applesauce model type mismatch
+    const awards$ = eventStore.model(UserAwardsModel, userPubkey);
     const awards = await firstValueFrom(
-      eventStore.model(UserAwardsModel, userPubkey).pipe(
+      awards$.pipe(
         filter((a) => a.length >= 0),
         take(1),
         timeout(timeoutMs)
@@ -121,7 +127,7 @@ export async function getUserBadges(userPubkey, timeoutMs = 5000) {
     );
 
     loaderSub.unsubscribe();
-    return new Set(awards.map((award) => award.badgeAddress).filter(Boolean));
+    return new Set(awards.map((/** @type {any} */ award) => award.badgeAddress).filter(Boolean));
   } catch {
     loaderSub.unsubscribe();
     return new Set();
@@ -153,8 +159,8 @@ export async function checkMultipleContentAccess(contentTypes, userPubkey) {
  * Filter community events to only show legitimate ones (from users with required badges)
  * Uses batch approach for efficiency - fetches badges for all authors at once
  *
- * @param {Object[]} events - Array of Nostr events to filter
- * @param {Object} communityEvent - The kind 10222 community definition event
+ * @param {import('nostr-tools').NostrEvent[]} events - Array of Nostr events to filter
+ * @param {import('nostr-tools').NostrEvent} communityEvent - The kind 10222 community definition event
  * @returns {Promise<Object[]>} Filtered array of legitimate events
  */
 export async function filterLegitimateEvents(events, communityEvent) {

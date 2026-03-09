@@ -1,7 +1,9 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { resolve } from '$app/paths';
+  import { resolve as _resolve } from '$app/paths';
+  /** @type {(path: string) => string} */
+  const resolve = /** @type {any} */ (_resolve);
   import { page } from '$app/stores';
   import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
   import { calendarLoader } from '$lib/loaders/calendar.js';
@@ -198,7 +200,7 @@
               class:active={!selectedCalendarId && isOnGlobalRoute}
               onclick={() => {
                 handleCalendarSelect('');
-                goto(resolve('/calendar'));
+                goto(/** @type {string} */ (resolve('/calendar')));
               }}
             >
               <GlobeIcon class_="h-4 w-4 text-primary flex-shrink-0" />
@@ -265,7 +267,9 @@
                       onclick={(e) => {
                         e.preventDefault();
                         if (communityNpub) {
-                          goto(resolve(`/c/${communityNpub}?view=calendar`));
+                          goto(
+                            /** @type {string} */ (resolve(`/c/${communityNpub}?view=calendar`))
+                          );
                         }
                       }}
                     >
@@ -305,7 +309,11 @@
                     onclick={(e) => {
                       e.preventDefault();
                       handleCalendarSelect(calendar.id);
-                      goto(resolve(`/calendar/${encodeEventToNaddr(calendar.originalEvent)}`));
+                      goto(
+                        /** @type {string} */ (
+                          resolve(`/calendar/${encodeEventToNaddr(calendar.originalEvent)}`)
+                        )
+                      );
                     }}
                   >
                     <CalendarIcon class_="h-4 w-4 text-primary flex-shrink-0" />

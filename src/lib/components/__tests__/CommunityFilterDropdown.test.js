@@ -51,7 +51,7 @@ describe('CommunityFilterDropdown', () => {
       }
     });
 
-    const select = container.querySelector('select');
+    const select = /** @type {HTMLSelectElement} */ (container.querySelector('select'));
     expect(select).toBeTruthy();
     expect(select.classList.contains('select-bordered')).toBe(true);
     // Should NOT have select-sm class (consistent sizing)
@@ -100,7 +100,9 @@ describe('CommunityFilterDropdown', () => {
 
     const groups = container.querySelectorAll('optgroup');
     expect(groups.length).toBeGreaterThanOrEqual(1);
-    const joinedGroup = Array.from(groups).find((g) => g.label === 'Joined');
+    const joinedGroup = /** @type {HTMLOptGroupElement} */ (
+      Array.from(groups).find((g) => /** @type {HTMLOptGroupElement} */ (g).label === 'Joined')
+    );
     expect(joinedGroup).toBeTruthy();
     expect(joinedGroup.querySelectorAll('option').length).toBe(2);
   });
@@ -116,7 +118,9 @@ describe('CommunityFilterDropdown', () => {
     });
 
     const groups = container.querySelectorAll('optgroup');
-    const discoverGroup = Array.from(groups).find((g) => g.label === 'Discover');
+    const discoverGroup = /** @type {HTMLOptGroupElement} */ (
+      Array.from(groups).find((g) => /** @type {HTMLOptGroupElement} */ (g).label === 'Discover')
+    );
     expect(discoverGroup).toBeTruthy();
     expect(discoverGroup.querySelectorAll('option').length).toBe(1);
   });
@@ -132,7 +136,7 @@ describe('CommunityFilterDropdown', () => {
       }
     });
 
-    const select = container.querySelector('select');
+    const select = /** @type {HTMLSelectElement} */ (container.querySelector('select'));
     await fireEvent.change(select, { target: { value: '' } });
     expect(onchange).toHaveBeenCalledWith(null);
   });
@@ -148,7 +152,7 @@ describe('CommunityFilterDropdown', () => {
       }
     });
 
-    const select = container.querySelector('select');
+    const select = /** @type {HTMLSelectElement} */ (container.querySelector('select'));
     await fireEvent.change(select, { target: { value: 'joined' } });
     expect(onchange).toHaveBeenCalledWith('joined');
   });
@@ -164,7 +168,7 @@ describe('CommunityFilterDropdown', () => {
       }
     });
 
-    const select = container.querySelector('select');
+    const select = /** @type {HTMLSelectElement} */ (container.querySelector('select'));
     await fireEvent.change(select, { target: { value: 'aaa111' } });
     expect(onchange).toHaveBeenCalledWith('aaa111');
   });
@@ -180,7 +184,7 @@ describe('CommunityFilterDropdown', () => {
       }
     });
 
-    const select = container.querySelector('select');
+    const select = /** @type {HTMLSelectElement} */ (container.querySelector('select'));
     expect(select.disabled).toBe(true);
   });
 });

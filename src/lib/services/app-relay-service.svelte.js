@@ -151,14 +151,14 @@ export function kindToAppRelayCategory(kind) {
 
 /**
  * Parse relay URLs from a kind 30002 event
- * @param {Object|null} event - Kind 30002 event
+ * @param {import('nostr-tools').NostrEvent | null | undefined} event - Kind 30002 event
  * @returns {string[]} Array of relay URLs
  */
 export function parseRelaySetEvent(event) {
   if (!event?.tags) return [];
 
   return event.tags
-    .filter((t) => t[0] === 'relay')
-    .map((t) => t[1])
+    .filter((/** @type {string[]} */ t) => t[0] === 'relay')
+    .map((/** @type {string[]} */ t) => t[1])
     .filter(Boolean);
 }

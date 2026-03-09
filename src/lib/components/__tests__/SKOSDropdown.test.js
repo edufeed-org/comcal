@@ -35,13 +35,18 @@ const flatConcepts = [
 const fetchVocabularyMock = vi.fn().mockResolvedValue(flatConcepts);
 
 vi.mock('$lib/helpers/educational/skosLoader.js', () => ({
-  fetchVocabulary: (...args) => fetchVocabularyMock(...args),
-  getConceptLabel: (concept, locale) => concept.prefLabel?.[locale] || concept.id,
-  sortConceptsByLabel: (concepts) => concepts,
-  filterConcepts: (concepts, searchTerm, locale) => {
+  fetchVocabulary: (/** @type {any[]} */ ...args) => fetchVocabularyMock(...args),
+  getConceptLabel: (/** @type {any} */ concept, /** @type {any} */ locale) =>
+    concept.prefLabel?.[locale] || concept.id,
+  sortConceptsByLabel: (/** @type {any} */ concepts) => concepts,
+  filterConcepts: (
+    /** @type {any[]} */ concepts,
+    /** @type {any} */ searchTerm,
+    /** @type {any} */ locale
+  ) => {
     if (!searchTerm?.trim()) return concepts;
     const term = searchTerm.toLowerCase().trim();
-    return concepts.filter((c) => {
+    return concepts.filter((/** @type {any} */ c) => {
       const label = c.prefLabel?.[locale] || c.id;
       return label.toLowerCase().includes(term);
     });
@@ -67,7 +72,7 @@ describe('SKOSDropdown', () => {
         }
       });
 
-      const trigger = container.querySelector('button.select-trigger');
+      const trigger = /** @type {HTMLElement} */ (container.querySelector('button.select-trigger'));
       expect(trigger).toBeTruthy();
       expect(trigger.classList.contains('select')).toBe(true);
       expect(trigger.classList.contains('select-bordered')).toBe(true);
@@ -83,7 +88,9 @@ describe('SKOSDropdown', () => {
       });
 
       await waitFor(() => {
-        const trigger = container.querySelector('button.select-trigger');
+        const trigger = /** @type {HTMLElement} */ (
+          container.querySelector('button.select-trigger')
+        );
         expect(trigger.textContent).toContain('Pick one...');
       });
     });
@@ -108,7 +115,7 @@ describe('SKOSDropdown', () => {
       });
 
       await waitFor(() => {
-        const trigger = container.querySelector('[role="combobox"]');
+        const trigger = /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'));
         expect(trigger).toBeTruthy();
         expect(trigger.getAttribute('aria-haspopup')).toBe('listbox');
         expect(trigger.getAttribute('aria-expanded')).toBe('false');
@@ -126,7 +133,7 @@ describe('SKOSDropdown', () => {
         expect(trigger).toBeTruthy();
       });
 
-      const trigger = container.querySelector('[role="combobox"]');
+      const trigger = /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'));
       await fireEvent.click(trigger);
 
       expect(trigger.getAttribute('aria-expanded')).toBe('true');
@@ -141,9 +148,11 @@ describe('SKOSDropdown', () => {
         expect(container.querySelector('[role="combobox"]')).toBeTruthy();
       });
 
-      await fireEvent.click(container.querySelector('[role="combobox"]'));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'))
+      );
 
-      const listbox = container.querySelector('[role="listbox"]');
+      const listbox = /** @type {HTMLElement} */ (container.querySelector('[role="listbox"]'));
       expect(listbox).toBeTruthy();
       expect(listbox.getAttribute('id')).toBe('skos-listbox-learningResourceType');
     });
@@ -157,7 +166,9 @@ describe('SKOSDropdown', () => {
         expect(container.querySelector('[role="combobox"]')).toBeTruthy();
       });
 
-      await fireEvent.click(container.querySelector('[role="combobox"]'));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'))
+      );
 
       const options = container.querySelectorAll('[role="option"]');
       expect(options.length).toBe(3); // Text, Video, Image
@@ -175,9 +186,11 @@ describe('SKOSDropdown', () => {
         expect(container.querySelector('[role="combobox"]')).toBeTruthy();
       });
 
-      await fireEvent.click(container.querySelector('[role="combobox"]'));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'))
+      );
 
-      const listbox = container.querySelector('[role="listbox"]');
+      const listbox = /** @type {HTMLElement} */ (container.querySelector('[role="listbox"]'));
       expect(listbox.getAttribute('aria-multiselectable')).toBe('true');
     });
   });
@@ -192,9 +205,11 @@ describe('SKOSDropdown', () => {
         expect(container.querySelector('[role="combobox"]')).toBeTruthy();
       });
 
-      await fireEvent.click(container.querySelector('[role="combobox"]'));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'))
+      );
 
-      const panel = container.querySelector('.dropdown-content');
+      const panel = /** @type {HTMLElement} */ (container.querySelector('.dropdown-content'));
       expect(panel).toBeTruthy();
       expect(panel.classList.contains('w-full')).toBe(true);
     });
@@ -210,9 +225,11 @@ describe('SKOSDropdown', () => {
         expect(container.querySelector('[role="combobox"]')).toBeTruthy();
       });
 
-      await fireEvent.click(container.querySelector('[role="combobox"]'));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'))
+      );
 
-      const panel = container.querySelector('.dropdown-content');
+      const panel = /** @type {HTMLElement} */ (container.querySelector('.dropdown-content'));
       expect(panel).toBeTruthy();
       expect(panel.className).toContain('max-h-[min(60vh,480px)]');
     });
@@ -226,9 +243,11 @@ describe('SKOSDropdown', () => {
         expect(container.querySelector('[role="combobox"]')).toBeTruthy();
       });
 
-      await fireEvent.click(container.querySelector('[role="combobox"]'));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'))
+      );
 
-      const panel = container.querySelector('.dropdown-content');
+      const panel = /** @type {HTMLElement} */ (container.querySelector('.dropdown-content'));
       expect(panel).toBeTruthy();
       expect(panel.className).toContain('max-h-[min(40vh,280px)]');
     });
@@ -265,11 +284,13 @@ describe('SKOSDropdown', () => {
 
       // Wait for the vocabulary to load and collapse effect to run
       await waitFor(() => {
-        const trigger = container.querySelector('[role="combobox"]');
+        const trigger = /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'));
         expect(trigger.textContent).not.toContain('Loading');
       });
 
-      await fireEvent.click(container.querySelector('[role="combobox"]'));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'))
+      );
 
       // Should show expand buttons for parent categories
       const expandBtns = container.querySelectorAll('[aria-label="Expand"]');
@@ -284,19 +305,21 @@ describe('SKOSDropdown', () => {
       });
 
       await waitFor(() => {
-        const trigger = container.querySelector('[role="combobox"]');
+        const trigger = /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'));
         expect(trigger).toBeTruthy();
         expect(trigger.textContent).not.toContain('Loading');
       });
 
-      await fireEvent.click(container.querySelector('[role="combobox"]'));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'))
+      );
 
       // Flat concepts have no parentId, so no concept should have children
       const options = container.querySelectorAll('[role="option"]');
       expect(options.length).toBe(3);
 
       // No expand/collapse toggles should exist inside the listbox
-      const listbox = container.querySelector('[role="listbox"]');
+      const listbox = /** @type {HTMLElement} */ (container.querySelector('[role="listbox"]'));
       const expandBtns = listbox.querySelectorAll('[aria-label="Expand"]');
       const collapseBtns = listbox.querySelectorAll('[aria-label="Collapse"]');
       expect(expandBtns.length + collapseBtns.length).toBe(0);
@@ -311,10 +334,12 @@ describe('SKOSDropdown', () => {
 
       await waitFor(() => {
         expect(container.querySelector('[role="combobox"]')).toBeTruthy();
-        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+        expect(
+          /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]')).textContent
+        ).not.toContain('Loading');
       });
 
-      const wrapper = container.querySelector('.dropdown');
+      const wrapper = /** @type {HTMLElement} */ (container.querySelector('.dropdown'));
       await fireEvent.keyDown(wrapper, { key: 'Enter' });
 
       const listbox = container.querySelector('[role="listbox"]');
@@ -328,15 +353,19 @@ describe('SKOSDropdown', () => {
 
       await waitFor(() => {
         expect(container.querySelector('[role="combobox"]')).toBeTruthy();
-        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+        expect(
+          /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]')).textContent
+        ).not.toContain('Loading');
       });
 
       // Open
-      await fireEvent.click(container.querySelector('[role="combobox"]'));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'))
+      );
       expect(container.querySelector('[role="listbox"]')).toBeTruthy();
 
       // Escape
-      const wrapper = container.querySelector('.dropdown');
+      const wrapper = /** @type {HTMLElement} */ (container.querySelector('.dropdown'));
       await fireEvent.keyDown(wrapper, { key: 'Escape' });
 
       expect(container.querySelector('[role="listbox"]')).toBeFalsy();
@@ -349,13 +378,17 @@ describe('SKOSDropdown', () => {
 
       await waitFor(() => {
         expect(container.querySelector('[role="combobox"]')).toBeTruthy();
-        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+        expect(
+          /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]')).textContent
+        ).not.toContain('Loading');
       });
 
       // Open
-      await fireEvent.click(container.querySelector('[role="combobox"]'));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'))
+      );
 
-      const wrapper = container.querySelector('.dropdown');
+      const wrapper = /** @type {HTMLElement} */ (container.querySelector('.dropdown'));
 
       // ArrowDown twice (from -1 to 0, then to 1)
       await fireEvent.keyDown(wrapper, { key: 'ArrowDown' });
@@ -373,13 +406,17 @@ describe('SKOSDropdown', () => {
 
       await waitFor(() => {
         expect(container.querySelector('[role="combobox"]')).toBeTruthy();
-        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+        expect(
+          /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]')).textContent
+        ).not.toContain('Loading');
       });
 
       // Open
-      await fireEvent.click(container.querySelector('[role="combobox"]'));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'))
+      );
 
-      const wrapper = container.querySelector('.dropdown');
+      const wrapper = /** @type {HTMLElement} */ (container.querySelector('.dropdown'));
 
       // ArrowDown to first option
       await fireEvent.keyDown(wrapper, { key: 'ArrowDown' });
@@ -398,12 +435,16 @@ describe('SKOSDropdown', () => {
 
       await waitFor(() => {
         expect(container.querySelector('[role="combobox"]')).toBeTruthy();
-        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+        expect(
+          /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]')).textContent
+        ).not.toContain('Loading');
       });
 
-      await fireEvent.click(container.querySelector('[role="combobox"]'));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'))
+      );
 
-      const wrapper = container.querySelector('.dropdown');
+      const wrapper = /** @type {HTMLElement} */ (container.querySelector('.dropdown'));
 
       // Navigate to last with End, then back to first with Home
       await fireEvent.keyDown(wrapper, { key: 'End' });
@@ -423,12 +464,18 @@ describe('SKOSDropdown', () => {
 
       await waitFor(() => {
         expect(container.querySelector('[role="combobox"]')).toBeTruthy();
-        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+        expect(
+          /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]')).textContent
+        ).not.toContain('Loading');
       });
 
-      await fireEvent.click(container.querySelector('[role="combobox"]'));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'))
+      );
 
-      const searchInput = container.querySelector('input[type="text"]');
+      const searchInput = /** @type {HTMLElement} */ (
+        container.querySelector('input[type="text"]')
+      );
       expect(searchInput).toBeTruthy();
       expect(searchInput.getAttribute('aria-label')).toBe('Search...');
     });
@@ -440,13 +487,19 @@ describe('SKOSDropdown', () => {
 
       await waitFor(() => {
         expect(container.querySelector('[role="combobox"]')).toBeTruthy();
-        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+        expect(
+          /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]')).textContent
+        ).not.toContain('Loading');
       });
 
-      await fireEvent.click(container.querySelector('[role="combobox"]'));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'))
+      );
 
       // Type search term
-      const searchInput = container.querySelector('input[type="text"]');
+      const searchInput = /** @type {HTMLElement} */ (
+        container.querySelector('input[type="text"]')
+      );
       await fireEvent.input(searchInput, { target: { value: 'vid' } });
 
       await waitFor(() => {
@@ -463,12 +516,18 @@ describe('SKOSDropdown', () => {
 
       await waitFor(() => {
         expect(container.querySelector('[role="combobox"]')).toBeTruthy();
-        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+        expect(
+          /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]')).textContent
+        ).not.toContain('Loading');
       });
 
-      await fireEvent.click(container.querySelector('[role="combobox"]'));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'))
+      );
 
-      const searchInput = container.querySelector('input[type="text"]');
+      const searchInput = /** @type {HTMLElement} */ (
+        container.querySelector('input[type="text"]')
+      );
       await fireEvent.input(searchInput, { target: { value: 'zzzzz' } });
 
       await waitFor(() => {
@@ -483,12 +542,18 @@ describe('SKOSDropdown', () => {
 
       await waitFor(() => {
         expect(container.querySelector('[role="combobox"]')).toBeTruthy();
-        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+        expect(
+          /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]')).textContent
+        ).not.toContain('Loading');
       });
 
-      await fireEvent.click(container.querySelector('[role="combobox"]'));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'))
+      );
 
-      const searchInput = container.querySelector('input[type="text"]');
+      const searchInput = /** @type {HTMLElement} */ (
+        container.querySelector('input[type="text"]')
+      );
       await fireEvent.input(searchInput, { target: { value: 'tex' } });
 
       await waitFor(() => {
@@ -509,12 +574,12 @@ describe('SKOSDropdown', () => {
       });
 
       await waitFor(() => {
-        const trigger = container.querySelector('[role="combobox"]');
+        const trigger = /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'));
         expect(trigger).toBeTruthy();
         expect(trigger.textContent).toContain('Text');
       });
 
-      const badge = container.querySelector('.badge-primary');
+      const badge = /** @type {HTMLElement} */ (container.querySelector('.badge-primary'));
       expect(badge).toBeTruthy();
       expect(badge.textContent).toContain('Text');
     });
@@ -529,10 +594,14 @@ describe('SKOSDropdown', () => {
 
       await waitFor(() => {
         expect(container.querySelector('[role="combobox"]')).toBeTruthy();
-        expect(container.querySelector('[role="combobox"]').textContent).not.toContain('Loading');
+        expect(
+          /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]')).textContent
+        ).not.toContain('Loading');
       });
 
-      await fireEvent.click(container.querySelector('[role="combobox"]'));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (container.querySelector('[role="combobox"]'))
+      );
 
       expect(container.textContent).toContain('1 selected');
     });

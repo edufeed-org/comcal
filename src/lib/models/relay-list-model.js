@@ -6,9 +6,9 @@ import { map } from 'rxjs/operators';
  * @returns {Function} Model function that takes eventStore
  */
 export function RelayListModel(pubkey) {
-  return (eventStore) =>
+  return (/** @type {any} */ eventStore) =>
     eventStore.replaceable(10002, pubkey).pipe(
-      map((event) => {
+      map((/** @type {any} */ event) => {
         if (!event) return null;
 
         /** @type {string[]} */
@@ -17,8 +17,8 @@ export function RelayListModel(pubkey) {
         const readRelays = [];
 
         event.tags
-          .filter((t) => t[0] === 'r')
-          .forEach((tag) => {
+          .filter((/** @type {string[]} */ t) => t[0] === 'r')
+          .forEach((/** @type {string[]} */ tag) => {
             const relay = tag[1];
             const marker = tag[2];
 

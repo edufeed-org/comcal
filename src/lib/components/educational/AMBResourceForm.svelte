@@ -6,7 +6,9 @@
 
 <script>
   import { goto } from '$app/navigation';
-  import { resolve } from '$app/paths';
+  import { resolve as _resolve } from '$app/paths';
+  /** @type {(path: string) => string} */
+  const resolve = /** @type {any} */ (_resolve);
   import { getLocale } from '$lib/paraglide/runtime.js';
   import { manager } from '$lib/stores/accounts.svelte';
   import { ChevronLeftIcon, ChevronRightIcon, CheckIcon, CloseIcon } from '$lib/components/icons';
@@ -18,9 +20,9 @@
   import { fetchProfileData } from '$lib/helpers/profile.js';
 
   /**
-   * @typedef {import('./SKOSDropdown.svelte').SelectedConcept} SelectedConcept
-   * @typedef {import('./BlossomUploader.svelte').UploadedFile} UploadedFile
-   * @typedef {import('./CreatorInput.svelte').Creator} Creator
+   * @typedef {{ id: string, label: string }} SelectedConcept
+   * @typedef {{ url: string, name: string, type: string, size: number, sha256: string }} UploadedFile
+   * @typedef {{ name: string, type: 'Person' | 'Organization', pubkey?: string }} Creator
    */
 
   /**
@@ -187,12 +189,13 @@
     const creatorNames = getAMBCreatorNames(editEvent);
 
     // Combine pubkey-based creators with name-only creators
+    /** @type {Creator[]} */
     const editCreators = [];
 
     // Add pubkey-based creators
     for (const pubkey of creatorPubkeys) {
       try {
-        const profile = await fetchProfileData(pubkey);
+        const profile = /** @type {any} */ (await fetchProfileData(pubkey));
         editCreators.push({
           name: profile.name || '',
           type: 'Person',
@@ -243,13 +246,15 @@
                 }
               ]
             : [],
-      encodings: getAMBEncodings(editEvent).map((enc) => ({
-        url: enc.url,
-        name: enc.name,
-        type: enc.mimeType,
-        size: enc.size,
-        sha256: enc.sha256
-      })),
+      encodings: /** @type {any} */ (
+        getAMBEncodings(editEvent).map((enc) => ({
+          url: enc.url,
+          name: enc.name,
+          type: enc.mimeType,
+          size: enc.size,
+          sha256: enc.sha256
+        }))
+      ),
       externalUrls: getAMBExternalUrls(editEvent),
       license: getAMBLicense(editEvent)?.id || 'https://creativecommons.org/licenses/by/4.0/',
       isAccessibleForFree: isAMBFree(editEvent)
@@ -370,9 +375,9 @@
 
       let result;
       if (isEditMode && editEvent) {
-        result = await actions.updateResource(resourceData, editEvent);
+        result = await actions.updateResource(/** @type {any} */ (resourceData), editEvent);
       } else {
-        result = await actions.createResource(resourceData, communityPubkey);
+        result = await actions.createResource(/** @type {any} */ (resourceData), communityPubkey);
       }
 
       if (result.naddr) {

@@ -37,12 +37,13 @@
     };
   });
 
+  /** @param {string} selectedSigner */
   async function createSigner(selectedSigner) {
     switch (selectedSigner) {
       case 'Extension': {
-        signer.signer = new ExtensionSigner();
-        const pk = await signer.signer.getPublicKey();
-        const account = new ExtensionAccount(pk, signer.signer);
+        /** @type {any} */ (signer).signer = new ExtensionSigner();
+        const pk = await /** @type {any} */ (signer).signer.getPublicKey();
+        const account = new ExtensionAccount(pk, /** @type {any} */ (signer).signer);
 
         if (!manager.getAccountForPubkey(pk)) {
           manager.addAccount(account);

@@ -31,7 +31,7 @@
 
     // Get the blossom server (user's preference or default)
     const userPubkey = manager.active?.pubkey;
-    const serverUrl = getActiveBlossomServer(userPubkey, eventStore);
+    const serverUrl = getActiveBlossomServer(userPubkey || '', eventStore);
 
     // Create Blossom client and upload
     const client = new BlossomClient(serverUrl, signerFn);

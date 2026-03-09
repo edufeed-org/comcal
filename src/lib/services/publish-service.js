@@ -86,13 +86,13 @@ function notifyStatusUpdate(status) {
 /**
  * Publish an event using outbox model + app relays + community relays
  *
- * @param {Object} signedEvent - The signed Nostr event
- * @param {string[]} taggedPubkeys - Array of pubkeys tagged in the event (p tags)
- * @param {Object} opts - Options
- * @param {number} opts.timeout - Timeout per relay in ms (default 15000)
- * @param {Object} opts.communityEvent - Community definition event (kind 10222) if community-targeted
- * @param {string[]} opts.additionalRelays - Additional relays to publish to
- * @returns {Promise<{success: boolean, relays: string[], successCount: number}>}
+ * @param {import('nostr-tools').NostrEvent} signedEvent - The signed Nostr event
+ * @param {string[]} [taggedPubkeys] - Array of pubkeys tagged in the event (p tags)
+ * @param {Object} [opts] - Options
+ * @param {number} [opts.timeout] - Timeout per relay in ms (default 5000)
+ * @param {import('nostr-tools').NostrEvent | null} [opts.communityEvent] - Community definition event (kind 10222) if community-targeted
+ * @param {string[]} [opts.additionalRelays] - Additional relays to publish to
+ * @returns {Promise<{success: boolean, relays: string[], successCount: number, results?: any[]}>}
  */
 export async function publishEvent(signedEvent, taggedPubkeys = [], opts = {}) {
   // Reduced timeout from 15s to 5s - warm connections should be fast
@@ -159,10 +159,10 @@ export async function publishEvent(signedEvent, taggedPubkeys = [], opts = {}) {
  * Publish an event in the background (fire-and-forget)
  * Calls onComplete callback when done with results
  *
- * @param {Object} signedEvent - The signed Nostr event
+ * @param {import('nostr-tools').NostrEvent} signedEvent - The signed Nostr event
  * @param {string[]} taggedPubkeys - Array of pubkeys tagged in the event (p tags)
  * @param {Function} onComplete - Callback with publish result
- * @param {Object} opts - Options passed to publishEvent
+ * @param {Object} [opts] - Options passed to publishEvent
  */
 export function publishEventInBackground(signedEvent, taggedPubkeys = [], onComplete, opts = {}) {
   publishEvent(signedEvent, taggedPubkeys, opts)
@@ -179,13 +179,13 @@ export function publishEventInBackground(signedEvent, taggedPubkeys = [], onComp
  * Optimistic publish - adds event to EventStore immediately, publishes in background
  * Returns as soon as ONE relay succeeds. Shows alert if all relays fail.
  *
- * @param {Object} signedEvent - The signed Nostr event
- * @param {string[]} taggedPubkeys - Array of pubkeys tagged in the event (p tags)
- * @param {Object} opts - Options
- * @param {number} opts.timeout - Timeout per relay in ms (default 5000)
- * @param {Object} opts.communityEvent - Community definition event if community-targeted
- * @param {string[]} opts.additionalRelays - Additional relays to publish to
- * @param {(status: PublishStatus) => void} opts.onStatusChange - Callback for status updates
+ * @param {import('nostr-tools').NostrEvent} signedEvent - The signed Nostr event
+ * @param {string[]} [taggedPubkeys] - Array of pubkeys tagged in the event (p tags)
+ * @param {Object} [opts] - Options
+ * @param {number} [opts.timeout] - Timeout per relay in ms (default 5000)
+ * @param {import('nostr-tools').NostrEvent | null} [opts.communityEvent] - Community definition event if community-targeted
+ * @param {string[]} [opts.additionalRelays] - Additional relays to publish to
+ * @param {(status: PublishStatus) => void} [opts.onStatusChange] - Callback for status updates
  * @returns {void} Returns immediately after adding to EventStore
  */
 export function publishEventOptimistic(signedEvent, taggedPubkeys = [], opts = {}) {
@@ -195,9 +195,10 @@ export function publishEventOptimistic(signedEvent, taggedPubkeys = [], opts = {
   eventStore.add(signedEvent);
 
   // 2. Initialize status
+  /** @type {{eventId: string, status: 'pending' | 'publishing' | 'success' | 'failed', successCount: number, totalRelays: number, error?: string}} */
   const status = {
     eventId: signedEvent.id,
-    status: /** @type {'pending' | 'publishing' | 'success' | 'failed'} */ ('pending'),
+    status: 'pending',
     successCount: 0,
     totalRelays: 0
   };
@@ -262,7 +263,7 @@ export function publishEventOptimistic(signedEvent, taggedPubkeys = [], opts = {
 
         return { relay: relayUrl, success: true };
       } catch (err) {
-        console.warn(`Failed to publish to ${relayUrl}:`, err?.message || err);
+        console.warn(`Failed to publish to ${relayUrl}:`, /** @type {any} */ (err)?.message || err);
         return { relay: relayUrl, success: false, error: err };
       }
     });

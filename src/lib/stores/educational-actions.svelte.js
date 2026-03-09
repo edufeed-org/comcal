@@ -55,9 +55,9 @@ import { getPrimaryWriteRelay } from '$lib/services/relay-service.svelte.js';
 
 /**
  * @typedef {Object} EducationalActions
- * @property {(formData: EducationalFormData, communityPubkey: string, communityEvent?: Object) => Promise<{event: import('nostr-tools').NostrEvent, naddr: string}>} createResource
- * @property {(formData: EducationalFormData, existingEvent: import('nostr-tools').NostrEvent, communityEvent?: Object) => Promise<{event: import('nostr-tools').NostrEvent, naddr: string}>} updateResource
- * @property {(resourceEvent: import('nostr-tools').NostrEvent, communityPubkey: string, communityEvent?: Object) => Promise<void>} createTargetedPublication
+ * @property {(formData: EducationalFormData, communityPubkey: string, communityEvent?: import('nostr-tools').NostrEvent | null) => Promise<{event: import('nostr-tools').NostrEvent, naddr: string}>} createResource
+ * @property {(formData: EducationalFormData, existingEvent: import('nostr-tools').NostrEvent, communityEvent?: import('nostr-tools').NostrEvent | null) => Promise<{event: import('nostr-tools').NostrEvent, naddr: string}>} updateResource
+ * @property {(resourceEvent: import('nostr-tools').NostrEvent, communityPubkey: string, communityEvent?: import('nostr-tools').NostrEvent | null) => Promise<void>} createTargetedPublication
  */
 
 /** Kind number for AMB Educational Resource events */
@@ -176,7 +176,7 @@ export function createEducationalActions() {
      * Create a new educational resource (kind:30142)
      * @param {EducationalFormData} formData - Form data from upload modal
      * @param {string} communityPubkey - Target community public key
-     * @param {Object} [communityEvent] - Optional community definition event (kind 10222) for relay routing
+     * @param {import('nostr-tools').NostrEvent | null} [communityEvent] - Optional community definition event (kind 10222) for relay routing
      * @returns {Promise<{event: import('nostr-tools').NostrEvent, naddr: string}>}
      */
     async createResource(formData, communityPubkey, communityEvent = null) {
@@ -230,7 +230,7 @@ export function createEducationalActions() {
         }
 
         // Add r-tags for external reference URLs (NIP-24)
-        if (formData.externalUrls?.length > 0) {
+        if (formData.externalUrls && formData.externalUrls.length > 0) {
           for (const url of formData.externalUrls) {
             if (url.trim()) {
               tags.push(['r', url.trim()]);
@@ -274,7 +274,7 @@ export function createEducationalActions() {
      * Update an existing educational resource
      * @param {EducationalFormData} formData - Updated form data
      * @param {import('nostr-tools').NostrEvent} existingEvent - Existing event to update
-     * @param {Object} [communityEvent] - Optional community definition event (kind 10222) for relay routing
+     * @param {import('nostr-tools').NostrEvent | null} [communityEvent] - Optional community definition event (kind 10222) for relay routing
      * @returns {Promise<{event: import('nostr-tools').NostrEvent, naddr: string}>}
      */
     async updateResource(formData, existingEvent, communityEvent = null) {
@@ -324,7 +324,7 @@ export function createEducationalActions() {
         }
 
         // Add r-tags for external reference URLs (NIP-24)
-        if (formData.externalUrls?.length > 0) {
+        if (formData.externalUrls && formData.externalUrls.length > 0) {
           for (const url of formData.externalUrls) {
             if (url.trim()) {
               tags.push(['r', url.trim()]);
@@ -362,7 +362,7 @@ export function createEducationalActions() {
      * Create a targeted publication event to associate resource with community
      * @param {import('nostr-tools').NostrEvent} resourceEvent - The educational resource event
      * @param {string} communityPubkey - Target community public key
-     * @param {Object} [communityEvent] - Optional community definition event (kind 10222) for relay routing
+     * @param {import('nostr-tools').NostrEvent | null} [communityEvent] - Optional community definition event (kind 10222) for relay routing
      * @returns {Promise<void>}
      */
     async createTargetedPublication(resourceEvent, communityPubkey, communityEvent = null) {

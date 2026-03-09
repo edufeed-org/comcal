@@ -9,7 +9,7 @@ import { of } from 'rxjs';
  * Fetch profile data for a given npub or pubkey
  * Uses the loader pattern with RxJS operators
  * @param {string} identifier - Either an npub or hex pubkey
- * @returns {Promise<Object>} Profile data with fallbacks
+ * @returns {Promise<{npub: string, pubkey: string, name: string, about: string, picture: string, website: string, nip05: string, lud16: string, banner: string, event: any}>} Profile data with fallbacks
  */
 export async function fetchProfileData(identifier) {
   // Convert npub to pubkey if needed, but preserve the original npub
@@ -81,7 +81,7 @@ export async function fetchProfileData(identifier) {
  * Create fallback profile data
  * @param {string} npub - User's npub
  * @param {string} pubkey - User's pubkey
- * @returns {Object} Fallback profile data
+ * @returns {{npub: string, pubkey: string, name: string, about: string, picture: string, website: string, nip05: string, lud16: string, banner: string, event: null}} Fallback profile data
  */
 function createFallbackProfile(npub, pubkey) {
   return {

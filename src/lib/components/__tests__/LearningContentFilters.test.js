@@ -34,9 +34,10 @@ vi.mock('$lib/helpers/educational/skosLoader.js', () => ({
     { id: 'https://example.com/text', prefLabel: { en: 'Text' }, level: 0 },
     { id: 'https://example.com/video', prefLabel: { en: 'Video' }, level: 0 }
   ]),
-  getConceptLabel: (concept, locale) => concept.prefLabel?.[locale] || concept.id,
-  sortConceptsByLabel: (concepts) => concepts,
-  filterConcepts: (concepts) => concepts
+  getConceptLabel: (/** @type {any} */ concept, /** @type {any} */ locale) =>
+    concept.prefLabel?.[locale] || concept.id,
+  sortConceptsByLabel: (/** @type {any} */ concepts) => concepts,
+  filterConcepts: (/** @type {any} */ concepts) => concepts
 }));
 
 describe('LearningContentFilters', () => {
@@ -48,7 +49,7 @@ describe('LearningContentFilters', () => {
     });
 
     // Should have a grid container
-    const grid = container.querySelector('.grid');
+    const grid = /** @type {HTMLElement} */ (container.querySelector('.grid'));
     expect(grid).toBeTruthy();
     // Should be 2 columns (not 3, since audience is disabled)
     expect(grid.classList.contains('md:grid-cols-2')).toBe(true);
@@ -79,7 +80,7 @@ describe('LearningContentFilters', () => {
     expect(summary).toBeTruthy();
 
     // Should display the search text
-    const searchBadge = container.querySelector('.badge-outline');
+    const searchBadge = /** @type {HTMLElement} */ (container.querySelector('.badge-outline'));
     expect(searchBadge).toBeTruthy();
     expect(searchBadge.textContent).toContain('mathematics');
   });

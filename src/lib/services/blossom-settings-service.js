@@ -60,7 +60,10 @@ export async function saveBlossomServers(servers, userPubkey) {
     return signedEvent;
   } catch (error) {
     console.error('Failed to save Blossom server list:', error);
-    throw new Error('Failed to save Blossom server list: ' + error.message);
+    throw new Error(
+      'Failed to save Blossom server list: ' +
+        (error instanceof Error ? error.message : String(error))
+    );
   }
 }
 
@@ -90,15 +93,15 @@ export function validateBlossomUrl(url) {
 
 /**
  * Parse a Blossom server list event (kind 10063) into a structured format
- * @param {Object} event - The kind 10063 event
+ * @param {import('nostr-tools').NostrEvent | null | undefined} event - The kind 10063 event
  * @returns {Array<{url: string}>}
  */
 export function parseBlossomServerEvent(event) {
   if (!event || !event.tags) return [];
 
   return event.tags
-    .filter((tag) => tag[0] === 'server')
-    .map((tag) => ({
+    .filter((/** @type {string[]} */ tag) => tag[0] === 'server')
+    .map((/** @type {string[]} */ tag) => ({
       url: tag[1]
     }));
 }

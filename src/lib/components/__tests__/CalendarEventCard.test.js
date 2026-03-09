@@ -33,7 +33,7 @@ vi.mock('$lib/paraglide/messages', () => ({
   attendee_indicator_modal_close: () => ''
 }));
 vi.mock('$lib/helpers/calendar.js', () => ({
-  formatCalendarDate: (date, format) => {
+  formatCalendarDate: (/** @type {any} */ date, /** @type {any} */ format) => {
     if (format === 'time') return '14:00';
     return 'Jan 15';
   }
@@ -117,7 +117,9 @@ describe('CalendarEventCard', () => {
         props: { event: mockTimeEvent, variant: 'list' }
       });
 
-      const listItem = container.querySelector('.calendar-event-card-list');
+      const listItem = /** @type {HTMLElement} */ (
+        container.querySelector('.calendar-event-card-list')
+      );
       expect(listItem).toBeTruthy();
       expect(listItem.classList.contains('flex')).toBe(true);
     });
