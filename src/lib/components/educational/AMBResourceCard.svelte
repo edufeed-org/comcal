@@ -9,7 +9,6 @@
   import { nip19 } from 'nostr-tools';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import ImageWithFallback from '../shared/ImageWithFallback.svelte';
   import ReactionBar from '../reactions/ReactionBar.svelte';
   import EventTags from '../calendar/EventTags.svelte';
   import EventDebugPanel from '../shared/EventDebugPanel.svelte';
@@ -45,6 +44,14 @@
 
   /** @type {Props} */
   let { resource, authorProfile = null, compact = false, variant = 'card' } = $props();
+
+  let imageError = $state(false);
+
+  // Reset error state when resource changes
+  $effect(() => {
+    resource; // track dependency
+    imageError = false;
+  });
 
   const isList = $derived(variant === 'list');
 
@@ -141,12 +148,16 @@
     <div
       class="list-thumbnail h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-base-200 sm:h-20 sm:w-20"
     >
-      {#if resource.image}
-        <ImageWithFallback
+      {#if resource.image && !imageError}
+        <img
           src={resource.image}
           alt={resource.name}
-          fallbackType="article"
+          loading="lazy"
+          decoding="async"
           class="h-full w-full object-cover"
+          onerror={() => {
+            imageError = true;
+          }}
         />
       {:else}
         <div class="flex h-full w-full items-center justify-center text-2xl text-base-content/30">
@@ -252,16 +263,24 @@
       {/if}
     </div>
 
-    <!-- Resource Image -->
-    {#if resource.image && !compact}
+    <!-- Resource Image — always shown for consistent card height -->
+    {#if !compact}
       <div class="mb-3">
-        <div class="aspect-[2/1] w-full overflow-hidden rounded-lg">
-          <ImageWithFallback
-            src={resource.image}
-            alt={resource.name}
-            fallbackType="article"
-            class="h-full w-full object-cover"
-          />
+        <div class="aspect-[2/1] w-full overflow-hidden rounded-lg bg-base-200">
+          {#if resource.image && !imageError}
+            <img
+              src={resource.image}
+              alt={resource.name}
+              loading="lazy"
+              decoding="async"
+              class="h-full w-full object-cover"
+              onerror={() => {
+                imageError = true;
+              }}
+            />
+          {:else}
+            <div class="flex h-full w-full items-center justify-center text-5xl">📚</div>
+          {/if}
         </div>
       </div>
     {/if}
