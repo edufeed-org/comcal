@@ -86,9 +86,12 @@
                     <img
                       src={getProfilePicture(profileEvent) || `https://robohash.org/${communityId}`}
                       alt={getDisplayName(profileEvent)}
-                      onerror={(e) =>
-                        /** @type {HTMLImageElement} */ ((e.target).src =
-                          `https://robohash.org/${communityId}`)}
+                      onerror={(e) => {
+                        const img = /** @type {HTMLImageElement} */ (
+                          /** @type {unknown} */ (e.target)
+                        );
+                        if (img) img.src = `https://robohash.org/${communityId}`;
+                      }}
                     />
                   </div>
                 </div>

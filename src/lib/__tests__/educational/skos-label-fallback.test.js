@@ -215,6 +215,52 @@ describe('getLabelsWithFallback', () => {
       }
     ]);
   });
+
+  it('skips URI values in prefLabel tags and falls through to SKOS lookup', () => {
+    // Some external publishers write the concept URI into prefLabel tags
+    const tags = [
+      ['about:id', 'https://w3id.org/kim/hochschulfaechersystematik/n091'],
+      ['about:prefLabel:de', 'https://w3id.org/kim/hochschulfaechersystematik/n091'],
+      ['learningResourceType:id', 'https://w3id.org/kim/hcrt/drill_and_practice'],
+      ['learningResourceType:prefLabel:de', 'https://w3id.org/kim/hcrt/drill_and_practice']
+    ];
+    const aboutConcepts = [
+      {
+        id: 'https://w3id.org/kim/hochschulfaechersystematik/n091',
+        labels: { de: 'Germanistik', en: 'German Studies' }
+      }
+    ];
+    const lrtConcepts = [
+      {
+        id: 'https://w3id.org/kim/hcrt/drill_and_practice',
+        labels: { de: 'Übung', en: 'Drill and Practice' }
+      }
+    ];
+
+    // Should skip the URI in prefLabel and resolve from SKOS concepts instead
+    const aboutResult = getLabelsWithFallback(tags, 'about', 'de', aboutConcepts);
+    expect(aboutResult).toEqual([
+      { id: 'https://w3id.org/kim/hochschulfaechersystematik/n091', label: 'Germanistik' }
+    ]);
+
+    const lrtResult = getLabelsWithFallback(tags, 'learningResourceType', 'de', lrtConcepts);
+    expect(lrtResult).toEqual([
+      { id: 'https://w3id.org/kim/hcrt/drill_and_practice', label: 'Übung' }
+    ]);
+  });
+
+  it('falls back to URI extraction when prefLabel is URI and no SKOS match', () => {
+    const tags = [
+      ['about:id', 'https://w3id.org/kim/hochschulfaechersystematik/n091'],
+      ['about:prefLabel:de', 'https://w3id.org/kim/hochschulfaechersystematik/n091']
+    ];
+
+    // No SKOS concepts available
+    const result = getLabelsWithFallback(tags, 'about', 'de', null);
+    expect(result).toHaveLength(1);
+    expect(result[0].label).toBe('n091');
+    expect(result[0]).not.toHaveProperty('fallbackLang');
+  });
 });
 
 describe('getLanguageDisplayName', () => {

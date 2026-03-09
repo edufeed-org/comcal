@@ -32,9 +32,10 @@
         src={avatarUrl || `https://robohash.org/${communityPubkey}`}
         alt={displayName}
         class="object-cover"
-        onerror={(e) =>
-          /** @type {HTMLImageElement} */ ((e.target).src =
-            `https://robohash.org/${communityPubkey}`)}
+        onerror={(e) => {
+          const img = /** @type {HTMLImageElement} */ (/** @type {unknown} */ (e.target));
+          if (img) img.src = `https://robohash.org/${communityPubkey}`;
+        }}
       />
     </div>
   </div>

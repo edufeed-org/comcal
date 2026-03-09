@@ -156,7 +156,7 @@
     </div>
     <!-- Resource List -->
   {:else}
-    <div class="space-y-4">
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       {#each resources as resource (resource.id)}
         <AMBResourceCard
           {resource}

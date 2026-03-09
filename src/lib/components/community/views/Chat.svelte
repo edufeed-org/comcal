@@ -219,9 +219,10 @@
                 <img
                   src={getUserAvatar(message.pubkey)}
                   alt={getUserDisplayName(message.pubkey)}
-                  onerror={(e) =>
-                    /** @type {HTMLImageElement} */ ((e.target).src =
-                      `https://robohash.org/${message.pubkey}`)}
+                  onerror={(e) => {
+                    const img = /** @type {HTMLImageElement} */ (/** @type {unknown} */ (e.target));
+                    if (img) img.src = `https://robohash.org/${message.pubkey}`;
+                  }}
                 />
               {:else}
                 <div

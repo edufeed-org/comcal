@@ -430,21 +430,25 @@ export function getLabelsWithFallback(tags, prefix, userLang = 'en', concepts = 
   }
 
   return ids.map((id, index) => {
+    // Helper: some publishers write the URI into prefLabel tags — treat as missing
+    const isUri = (/** @type {string | undefined} */ v) =>
+      v?.startsWith('http://') || v?.startsWith('https://');
+
     // Try user's language first
-    let label = userLangLabels[index];
+    let label = isUri(userLangLabels[index]) ? undefined : userLangLabels[index];
     /** @type {string | undefined} */
     let fallbackLang;
 
     // Fallback to English
     if (!label && userLang !== 'en') {
-      label = enLabels[index];
+      label = isUri(enLabels[index]) ? undefined : enLabels[index];
       if (label) fallbackLang = 'en';
     }
 
     // Fallback to any other available language from tags
     if (!label) {
       for (const [lang, labels] of Object.entries(otherLangLabels)) {
-        if (labels[index]) {
+        if (labels[index] && !isUri(labels[index])) {
           label = labels[index];
           fallbackLang = lang;
           break;

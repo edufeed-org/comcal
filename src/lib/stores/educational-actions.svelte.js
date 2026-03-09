@@ -6,6 +6,7 @@
 import { EventFactory } from 'applesauce-core/event-factory';
 import { manager } from '$lib/stores/accounts.svelte';
 import { flattenAMBToNostrTags } from '$lib/helpers/educational/ambTransform.js';
+import { extractLabelFromUri } from '$lib/helpers/educational/skosLoader.js';
 import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
 import {
   publishEventOptimistic,
@@ -101,7 +102,7 @@ function convertFormDataToAMB(formData) {
     /** @type {Record<string, any>} */
     const lrtObj = { id: formData.learningResourceType };
     lrtObj[`prefLabel:${lang}`] =
-      formData.learningResourceTypeLabel || formData.learningResourceType;
+      formData.learningResourceTypeLabel || extractLabelFromUri(formData.learningResourceType);
     amb.learningResourceType = lrtObj;
   }
 
@@ -111,7 +112,8 @@ function convertFormDataToAMB(formData) {
     amb.about = formData.about.map((uri, index) => {
       /** @type {Record<string, any>} */
       const aboutObj = { id: uri };
-      aboutObj[`prefLabel:${lang}`] = formData.aboutLabels?.[index]?.label || uri;
+      aboutObj[`prefLabel:${lang}`] =
+        formData.aboutLabels?.[index]?.label || extractLabelFromUri(uri);
       return aboutObj;
     });
   }
@@ -121,7 +123,8 @@ function convertFormDataToAMB(formData) {
   if (formData.educationalLevel) {
     /** @type {Record<string, any>} */
     const eduObj = { id: formData.educationalLevel };
-    eduObj[`prefLabel:${lang}`] = formData.educationalLevelLabel || formData.educationalLevel;
+    eduObj[`prefLabel:${lang}`] =
+      formData.educationalLevelLabel || extractLabelFromUri(formData.educationalLevel);
     amb.educationalLevel = eduObj;
   }
 
