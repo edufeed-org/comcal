@@ -190,7 +190,7 @@
 </script>
 
 <svelte:head>
-  <title>{event?.title || 'Event'} - Communikey</title>
+  <title>{event?.title || 'Event'} - {runtimeConfig.appName}</title>
   <meta name="description" content="View calendar event details" />
 </svelte:head>
 

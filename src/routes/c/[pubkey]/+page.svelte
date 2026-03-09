@@ -214,7 +214,7 @@
               </h1>
             </div>
           {:else}
-            <h1 class="text-lg font-semibold">Communikey</h1>
+            <h1 class="text-lg font-semibold">{runtimeConfig.appName}</h1>
           {/if}
 
           <div class="w-10"></div>

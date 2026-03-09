@@ -6,6 +6,7 @@
   import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
   import { formatAMBResource } from '$lib/helpers/educational';
   import { getTagValue } from 'applesauce-core/helpers';
+  import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
   /** @type {{ data: any }} */
   let { data } = $props();
@@ -58,26 +59,26 @@
   // Derive page title based on content type
   const pageTitle = $derived.by(() => {
     if (displayData?.type === 'calendar') {
-      return `${displayData.calendar?.title || 'Calendar Event'} - Communikey`;
+      return `${displayData.calendar?.title || 'Calendar Event'} - ${runtimeConfig.appName}`;
     } else if (displayData?.type === 'article') {
       const titleTag = data.event?.tags?.find((/** @type {any} */ t) => t[0] === 'title');
-      return `${titleTag?.[1] || 'Article'} - Communikey`;
+      return `${titleTag?.[1] || 'Article'} - ${runtimeConfig.appName}`;
     } else if (displayData?.type === 'amb') {
-      return `${/** @type {any} */ (displayData.resource)?.name || 'Educational Resource'} - Communikey`;
+      return `${/** @type {any} */ (displayData.resource)?.name || 'Educational Resource'} - ${runtimeConfig.appName}`;
     } else if (displayData?.type === 'kanban') {
       const boardTitle =
         getTagValue(displayData.event, 'title') ||
         getTagValue(displayData.event, 'name') ||
         'Kanban Board';
-      return `${boardTitle} - Communikey`;
+      return `${boardTitle} - ${runtimeConfig.appName}`;
     }
-    return 'Content - Communikey';
+    return `Content - ${runtimeConfig.appName}`;
   });
 </script>
 
 <svelte:head>
   <title>{pageTitle}</title>
-  <meta name="description" content="View content on Communikey" />
+  <meta name="description" content="View content on {runtimeConfig.appName}" />
 </svelte:head>
 
 <div class="container mx-auto px-4 py-8">

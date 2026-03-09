@@ -8,6 +8,7 @@
   import { getProfilePicture, getDisplayName } from 'applesauce-core/helpers';
   import { formatCalendarDate } from '$lib/helpers/calendar.js';
   import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
+  import { runtimeConfig } from '$lib/stores/config.svelte.js';
   import { useActiveUser } from '$lib/stores/accounts.svelte';
   import { nip19 } from 'nostr-tools';
   import { goto } from '$app/navigation';
@@ -224,8 +225,11 @@
 </script>
 
 <svelte:head>
-  <title>{resource.name} - Communikey</title>
-  <meta name="description" content={resource.description || 'Educational resource on Communikey'} />
+  <title>{resource.name} - {runtimeConfig.appName}</title>
+  <meta
+    name="description"
+    content={resource.description || `Educational resource on ${runtimeConfig.appName}`}
+  />
   <!-- eslint-disable-next-line svelte/no-at-html-tags -- safe: JSON.stringify output -->
   {@html jsonLdScriptTag}
 </svelte:head>

@@ -1,12 +1,13 @@
 <script>
   import CalendarView from '$lib/components/calendar/CalendarView.svelte';
+  import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
   /** @type {import('./$types').PageProps} */
   let { data } = $props();
 </script>
 
 <svelte:head>
-  <title>My Events - Communikey</title>
+  <title>My Events - {runtimeConfig.appName}</title>
   <meta name="description" content="View your calendar events" />
 </svelte:head>
 

@@ -1,5 +1,6 @@
 <script>
   import * as m from '$lib/paraglide/messages';
+  import { runtimeConfig } from '$lib/stores/config.svelte.js';
   import { useCalendarManagement } from '$lib/stores/calendar-management-store.svelte.js';
   import { manager } from '$lib/stores/accounts.svelte';
   import { EventFactory } from 'applesauce-core/event-factory';
@@ -335,7 +336,7 @@
 </script>
 
 <svelte:head>
-  <title>{m.calendar_management_page_title()}</title>
+  <title>{m.calendar_management_page_title({ appName: runtimeConfig.appName })}</title>
   <meta name="description" content={m.calendar_management_page_description()} />
 </svelte:head>
 

@@ -4,6 +4,7 @@
   import AMBResourceForm from '$lib/components/educational/AMBResourceForm.svelte';
   import { fetchEventById } from '$lib/helpers/nostrUtils';
   import { formatAMBResource } from '$lib/helpers/educational';
+  import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
   /** @type {{ data: { communityPubkey: string, editNaddr: string } }} */
   let { data } = $props();
@@ -54,7 +55,7 @@
 </script>
 
 <svelte:head>
-  <title>{isEditMode ? 'Edit' : 'Create'} Educational Resource - Communikey</title>
+  <title>{isEditMode ? 'Edit' : 'Create'} Educational Resource - {runtimeConfig.appName}</title>
 </svelte:head>
 
 <div class="min-h-[calc(100vh-4rem)]">

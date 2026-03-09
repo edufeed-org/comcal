@@ -8,6 +8,7 @@
   import { getProfilePicture, getDisplayName, getTagValue } from 'applesauce-core/helpers';
   import { formatCalendarDate } from '$lib/helpers/calendar.js';
   import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
+  import { runtimeConfig } from '$lib/stores/config.svelte.js';
   import { useActiveUser } from '$lib/stores/accounts.svelte';
   import { goto } from '$app/navigation';
   import { resolve as _resolve } from '$app/paths';
@@ -190,8 +191,8 @@
 </script>
 
 <svelte:head>
-  <title>{title} - Communikey</title>
-  <meta name="description" content={description || 'Kanban board on Communikey'} />
+  <title>{title} - {runtimeConfig.appName}</title>
+  <meta name="description" content={description || `Kanban board on ${runtimeConfig.appName}`} />
 </svelte:head>
 
 <article class="mx-auto max-w-4xl">

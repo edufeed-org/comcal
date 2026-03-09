@@ -1,4 +1,5 @@
 <script>
+  import { runtimeConfig } from '$lib/stores/config.svelte.js';
   import { SvelteSet } from 'svelte/reactivity';
   import { onMount } from 'svelte';
   import { articleTimelineLoader } from '$lib/loaders/articles.js';
@@ -1246,7 +1247,7 @@
 </script>
 
 <svelte:head>
-  <title>{m.discover_content_meta_title()}</title>
+  <title>{m.discover_content_meta_title({ appName: runtimeConfig.appName })}</title>
   <meta name="description" content={m.discover_content_meta_description()} />
 </svelte:head>
 

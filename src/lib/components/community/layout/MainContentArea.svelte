@@ -102,7 +102,7 @@
     <div class="flex h-full flex-col items-center justify-center p-8 text-center">
       <div class="max-w-md">
         <h2 class="mb-4 text-2xl font-bold text-base-content">
-          {m.community_layout_main_content_welcome_title()}
+          {m.community_layout_main_content_welcome_title({ appName: runtimeConfig.appName })}
         </h2>
         <p class="mb-6 text-base-content/60">
           {m.community_layout_main_content_welcome_description()}
