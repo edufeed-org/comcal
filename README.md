@@ -359,6 +359,37 @@ docker compose up -d
 docker compose logs -f
 ```
 
+## Architecture
+
+### Nostr Event Kinds
+
+Comcal uses the following Nostr event kinds:
+
+| Kind  | NIP        | Description                      |
+| ----- | ---------- | -------------------------------- |
+| 0     | NIP-01     | User profile (metadata)          |
+| 3     | NIP-02     | Contact list                     |
+| 5     | NIP-09     | Deletion event                   |
+| 7     | NIP-25     | Reaction                         |
+| 8     | NIP-58     | Badge award                      |
+| 9     | —          | Chat message                     |
+| 1111  | NIP-22     | Comment                          |
+| 10002 | NIP-65     | Relay list (outbox model)        |
+| 10063 | —          | Blossom server list              |
+| 10222 | Communikey | Community definition             |
+| 30002 | NIP-51     | Relay set (user relay overrides) |
+| 30009 | NIP-58     | Badge definition                 |
+| 30142 | AMB        | Educational resource (OER)       |
+| 30222 | Communikey | Targeted publication             |
+| 30301 | —          | Kanban board                     |
+| 30382 | Communikey | Community relationship           |
+| 31922 | NIP-52     | Date-based calendar event        |
+| 31923 | NIP-52     | Time-based calendar event        |
+| 31924 | NIP-52     | Calendar collection              |
+| 31925 | NIP-52     | Calendar RSVP                    |
+
+See `CLAUDE.md` for the full reference including implementation details.
+
 ## Resources & Support
 
 ### Protocol Documentation
