@@ -65,6 +65,7 @@
     filterContentByCommunity,
     getCommunityFilterOptions
   } from '$lib/helpers/communityContent.js';
+  import { matchesTextSearch } from '$lib/helpers/contentSearch.js';
   import * as m from '$lib/paraglide/messages';
 
   // State management
@@ -156,7 +157,6 @@
 
   // Initialize from URL params
   const initialFilters = parseFeedFilters($page.url.searchParams);
-  let selectedTags = $state(/** @type {string[]} */ (initialFilters.tags));
   let communityFilter = $state(/** @type {string | null} */ (initialFilters.community));
   let relayFilter = $state(/** @type {string | null} */ (null));
 
@@ -271,15 +271,6 @@
 
   // Watch for URL changes and sync to state
   $effect(() => {
-    const urlTags = $page.url.searchParams.getAll('tags');
-    const sortedUrlTags = [...urlTags].sort();
-    const sortedSelectedTags = [...selectedTags].sort();
-
-    if (JSON.stringify(sortedUrlTags) !== JSON.stringify(sortedSelectedTags)) {
-      selectedTags = urlTags;
-      displayLimit = DISPLAY_BATCH;
-    }
-
     const urlCommunity = $page.url.searchParams.get('community') || null;
     if (urlCommunity !== communityFilter) {
       communityFilter = urlCommunity;
@@ -768,7 +759,10 @@
   // This directly calls handleLearningFilterChange instead of relying on
   // LearningContentFilters component's $effect propagation
   $effect(() => {
-    if (contentType === 'learning' && activeSearchQuery !== previousActiveSearchQuery) {
+    if (
+      (contentType === 'learning' || contentType === 'all') &&
+      activeSearchQuery !== previousActiveSearchQuery
+    ) {
       previousActiveSearchQuery = activeSearchQuery;
       // Build filters with current search text and any selected SKOS filters
       const filters = {
@@ -1118,27 +1112,6 @@
     };
   });
 
-  // Get all unique tags
-  const allTags = $derived.by(() => {
-    const tags = new SvelteSet();
-
-    articles.forEach((article) => {
-      article.tags
-        ?.filter((/** @type {any} */ t) => t[0] === 't')
-        .forEach((/** @type {any} */ t) => tags.add(t[1]));
-    });
-
-    ambResources.forEach((resource) => {
-      resource.keywords?.forEach((/** @type {string} */ keyword) => tags.add(keyword));
-    });
-
-    calendarEvents.forEach((event) => {
-      event.hashtags?.forEach((/** @type {string} */ tag) => tags.add(tag));
-    });
-
-    return Array.from(tags).sort();
-  });
-
   // Helper functions for filtering (extracted for cleaner derivations)
   /**
    * Check if an item matches text search query
@@ -1147,83 +1120,6 @@
    * @param {Map<string, any>} profiles
    * @returns {boolean}
    */
-  function matchesTextSearch(item, query, profiles) {
-    const pubkey = item.data.pubkey;
-    const profile = profiles.get(pubkey);
-    const name = profile?.name?.toLowerCase() || '';
-    const displayName = profile?.display_name?.toLowerCase() || '';
-
-    if (item.type === 'article') {
-      const title = getTagValue(item.data, 'title')?.toLowerCase() || '';
-      const summary = getTagValue(item.data, 'summary')?.toLowerCase() || '';
-      return (
-        title.includes(query) ||
-        summary.includes(query) ||
-        name.includes(query) ||
-        displayName.includes(query)
-      );
-    } else if (item.type === 'amb') {
-      const resourceName = item.data.name?.toLowerCase() || '';
-      const description = item.data.description?.toLowerCase() || '';
-      return (
-        resourceName.includes(query) ||
-        description.includes(query) ||
-        name.includes(query) ||
-        displayName.includes(query)
-      );
-    } else if (item.type === 'event') {
-      const title = item.data.title?.toLowerCase() || '';
-      const summary = item.data.summary?.toLowerCase() || '';
-      const locations = item.data.locations?.join(' ').toLowerCase() || '';
-      return (
-        title.includes(query) ||
-        summary.includes(query) ||
-        locations.includes(query) ||
-        name.includes(query) ||
-        displayName.includes(query)
-      );
-    } else if (item.type === 'board') {
-      const title = getTagValue(item.data, 'title')?.toLowerCase() || '';
-      const description = getTagValue(item.data, 'description')?.toLowerCase() || '';
-      return (
-        title.includes(query) ||
-        description.includes(query) ||
-        name.includes(query) ||
-        displayName.includes(query)
-      );
-    }
-    return false;
-  }
-
-  /**
-   * Check if an item matches selected tags
-   * @param {{type: string, data: any}} item
-   * @param {string[]} tags
-   * @returns {boolean}
-   */
-  function matchesTagFilter(item, tags) {
-    if (item.type === 'article') {
-      const articleTags =
-        item.data.tags
-          ?.filter((/** @type {any} */ t) => t[0] === 't')
-          .map((/** @type {any} */ t) => t[1].toLowerCase()) || [];
-      return tags.some((tag) => articleTags.includes(tag.toLowerCase()));
-    } else if (item.type === 'amb') {
-      const keywords = item.data.keywords?.map((/** @type {string} */ k) => k.toLowerCase()) || [];
-      return tags.some((tag) => keywords.includes(tag.toLowerCase()));
-    } else if (item.type === 'event') {
-      const eventTags = item.data.hashtags?.map((/** @type {string} */ t) => t.toLowerCase()) || [];
-      return tags.some((tag) => eventTags.includes(tag.toLowerCase()));
-    } else if (item.type === 'board') {
-      const boardTags =
-        item.data.tags
-          ?.filter((/** @type {any} */ t) => t[0] === 't')
-          .map((/** @type {any} */ t) => t[1].toLowerCase()) || [];
-      return tags.some((tag) => boardTags.includes(tag.toLowerCase()));
-    }
-    return false;
-  }
-
   /**
    * Get timestamp for sorting
    * @param {{type: string, data: any}} item
@@ -1252,7 +1148,7 @@
     }
 
     if (contentType === 'learning' || contentType === 'all') {
-      if (contentType === 'learning' && isLearningSearchActive) {
+      if (isLearningSearchActive) {
         const searchResultIds = new Set(learningSearchResults.map((e) => e.id));
         const filteredAmbResources = ambResources.filter((r) =>
           searchResultIds.has(r.event?.id || r.id)
@@ -1297,25 +1193,26 @@
 
   // Step 4: Apply text search (only runs when search query changes)
   const searchFilteredItems = $derived.by(() => {
-    if (!activeSearchQuery.trim() || (contentType === 'learning' && isLearningSearchActive)) {
+    if (!activeSearchQuery.trim()) {
+      return relayFilteredItems;
+    }
+    if (contentType === 'learning' && isLearningSearchActive) {
       return relayFilteredItems;
     }
     const query = activeSearchQuery.toLowerCase();
-    return relayFilteredItems.filter((item) => matchesTextSearch(item, query, authorProfiles));
+    return relayFilteredItems.filter((item) => {
+      // AMB items already filtered by NIP-50 relay-side search — let them through
+      if (isLearningSearchActive && item.type === 'amb') return true;
+      return matchesTextSearch(item, query, authorProfiles);
+    });
   });
 
-  // Step 5: Apply tag filter (only runs when selected tags change)
-  const tagFilteredItems = $derived.by(() => {
-    if (selectedTags.length === 0) return searchFilteredItems;
-    return searchFilteredItems.filter((item) => matchesTagFilter(item, selectedTags));
-  });
-
-  // Step 6: Sort (only runs when filtered items or sort order changes)
+  // Step 5: Sort (only runs when filtered items or sort order changes)
   // Events tab defaults to 'oldest' (soonest first) - this is the expected behavior for calendar views
   const effectiveSortBy = $derived(contentType === 'events' ? 'oldest' : sortBy);
 
   const combinedContent = $derived.by(() => {
-    return [...tagFilteredItems].sort((a, b) => {
+    return [...searchFilteredItems].sort((a, b) => {
       const aDate = getItemTimestamp(a);
       const bDate = getItemTimestamp(b);
       return effectiveSortBy === 'newest' ? bDate - aDate : aDate - bDate;
@@ -1323,19 +1220,6 @@
   });
 
   const displayedContent = $derived(combinedContent.slice(0, displayLimit));
-
-  /**
-   * Toggle tag selection
-   * @param {string} tag
-   */
-  function toggleTag(tag) {
-    const newTags = selectedTags.includes(tag)
-      ? selectedTags.filter((t) => t !== tag)
-      : [...selectedTags, tag];
-
-    selectedTags = newTags;
-    updateQueryParams($page.url.searchParams, { tags: newTags });
-  }
 
   /**
    * Handle community filter change
@@ -1541,36 +1425,6 @@
         </div>
       {/if}
     </div>
-
-    <!-- Tag Filter (not shown for communities or learning) -->
-    {#if contentType !== 'communities' && contentType !== 'learning' && allTags.length > 0}
-      <div>
-        <div class="mb-2 text-sm font-medium text-base-content">{m.discover_filter_by_topic()}</div>
-        <div class="flex flex-wrap gap-2">
-          {#each allTags.slice(0, 20) as tag (tag)}
-            <button
-              class="badge cursor-pointer badge-lg transition-colors {selectedTags.includes(tag)
-                ? 'badge-primary'
-                : 'badge-outline hover:badge-primary'}"
-              onclick={() => toggleTag(tag)}
-            >
-              #{tag}
-            </button>
-          {/each}
-        </div>
-        {#if selectedTags.length > 0}
-          <button
-            class="btn mt-2 btn-ghost btn-xs"
-            onclick={() => {
-              selectedTags = [];
-              updateQueryParams($page.url.searchParams, { tags: [] });
-            }}
-          >
-            {m.discover_clear_filters()}
-          </button>
-        {/if}
-      </div>
-    {/if}
 
     <!-- Results count (not shown for communities which has its own) -->
     {#if contentType !== 'communities' && displayedContent.length > 0}
