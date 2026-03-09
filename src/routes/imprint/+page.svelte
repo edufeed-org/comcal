@@ -52,13 +52,23 @@
             </div>
           {/if}
           <!-- Funding Information -->
-          <div class="mb-6">
-            <h3 class="mb-2 font-semibold">Funding</h3>
-            <div class="flex flex-col gap-2">
-              <img src={imprint.funding.image} alt="Funding Logo" class="h-auto w-auto" />
-              <p class="text-sm">{imprint.funding.text}</p>
+          {#if imprint.funding.length > 0}
+            <div class="mb-6">
+              <h3 class="mb-2 font-semibold">Funding</h3>
+              <div class="flex flex-col gap-4">
+                {#each imprint.funding as entry, i (i)}
+                  <div class="flex flex-col gap-2">
+                    {#if entry.image}
+                      <img src={entry.image} alt="Funding Logo" class="h-auto w-auto" />
+                    {/if}
+                    {#if entry.text}
+                      <p class="text-sm">{entry.text}</p>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
             </div>
-          </div>
+          {/if}
 
           <!-- Optional fields -->
           {#if imprint.registrationNumber}

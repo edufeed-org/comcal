@@ -109,10 +109,7 @@ const defaultConfig = {
     registrationNumber: '',
     vatId: '',
     responsibleForContent: '',
-    funding: {
-      image: '/BMBFSFJ.png',
-      text: 'Förderkennzeichen: 01PZ24007'
-    }
+    funding: /** @type {Array<{image: string, text: string}>} */ ([])
   },
   footer: {
     fundingText: 'gefördert vom BMBFSFJ (FKZ01PZ24007)'
@@ -232,10 +229,7 @@ export function initializeConfig(runtimeConfig) {
         ...defaultConfig.imprint.contact,
         ...runtimeConfig.imprint?.contact
       },
-      funding: {
-        ...defaultConfig.imprint.funding,
-        ...runtimeConfig.imprint?.funding
-      }
+      funding: runtimeConfig.imprint?.funding || defaultConfig.imprint.funding
     },
     footer: {
       ...defaultConfig.footer,

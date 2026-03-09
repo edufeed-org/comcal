@@ -45,6 +45,40 @@ function parseBool(value, defaultValue) {
 }
 
 /**
+ * Parse JSON string with default
+ * @template T
+ * @param {string | undefined} value
+ * @param {T} defaultValue
+ * @returns {T}
+ */
+function parseJSON(value, defaultValue) {
+  if (!value) return defaultValue;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return defaultValue;
+  }
+}
+
+/**
+ * Parse funding config with backward compatibility.
+ * New format: IMPRINT_FUNDING as JSON array of {image, text}.
+ * Old format: IMPRINT_FUNDING_IMAGE + IMPRINT_FUNDING_TEXT as single entry.
+ * @param {Record<string, string|undefined>} env
+ * @returns {Array<{image: string, text: string}>}
+ */
+function parseFunding(env) {
+  if (env.IMPRINT_FUNDING) {
+    return parseJSON(env.IMPRINT_FUNDING, []);
+  }
+  // Backward compat: wrap old single-entry vars into an array
+  if (env.IMPRINT_FUNDING_IMAGE || env.IMPRINT_FUNDING_TEXT) {
+    return [{ image: env.IMPRINT_FUNDING_IMAGE || '', text: env.IMPRINT_FUNDING_TEXT || '' }];
+  }
+  return [];
+}
+
+/**
  * Parse theme value
  * @param {string | undefined} value
  * @param {'light' | 'dark' | 'stil' | 'stil-dark' | 'rpi' | 'rpi-dark'} defaultValue
@@ -218,10 +252,7 @@ export function GET() {
       registrationNumber: env.IMPRINT_REGISTRATION_NUMBER || '',
       vatId: env.IMPRINT_VAT_ID || '',
       responsibleForContent: env.IMPRINT_RESPONSIBLE_FOR_CONTENT || '',
-      funding: {
-        image: env.IMPRINT_FUNDING_IMAGE || '/BMBFSFJ.png',
-        text: env.IMPRINT_FUNDING_TEXT || 'Förderkennzeichen: 01PZ24007'
-      }
+      funding: parseFunding(env)
     },
 
     // Footer
