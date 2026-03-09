@@ -3,7 +3,7 @@
 This document tracks what E2E tests exist, what features they cover, and identifies gaps for future testing.
 
 **Last updated:** 2026-02-20
-**Total tests:** 261
+**Total tests:** 262
 
 ## Quick Summary
 
@@ -24,7 +24,7 @@ This document tracks what E2E tests exist, what features they cover, and identif
 | `community-creation.test.js`        | 23    | Yes  | Both keypair flows, all steps, settings            |
 | `discover.test.js`                  | 11    | No   | Discovery tabs, infinite scroll, profiles          |
 | `discover-events-filter.test.js`    | 9     | No   | Events tab date range filter, URL persistence      |
-| `learning-search.test.js`           | 13    | No   | Search input, SKOS filters, tab visibility         |
+| `learning-search.test.js`           | 14    | No   | Search input, SKOS filters, tab visibility, layout |
 | `relay-override-pagination.test.js` | 6     | Yes  | Kind 30002 relay overrides, multi-relay pagination |
 | `comments-reactions.test.js`        | 18    | Both | Comments, reactions, auth flows                    |
 | `chat-posting.test.js`              | 8     | Both | Chat input visibility, message posting flow        |
@@ -618,7 +618,7 @@ This file completes the full AMB creation flow that `amb-creation.test.js` canno
 
 ---
 
-### learning-search.test.js (13 tests)
+### learning-search.test.js (14 tests)
 
 **Route:** `/discover` (Learning tab)
 **Auth required:** No
@@ -654,6 +654,12 @@ This file completes the full AMB creation flow that `amb-creation.test.js` canno
 | ------------------------------------------------ | ------------------------------ |
 | Sort dropdown is visible on Learning tab         | Sort by Newest/Oldest dropdown |
 | Relay filter dropdown is visible on Learning tab | Relay filter UI present        |
+
+#### Filter Layout (1 test)
+
+| Test                                                          | What it verifies                                       |
+| ------------------------------------------------------------- | ------------------------------------------------------ |
+| general filters and tab-specific filters are in separate rows | Sort/Relay in general-filters, SKOS in tab-filters row |
 
 #### Error Handling (2 tests)
 

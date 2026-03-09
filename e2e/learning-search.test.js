@@ -214,6 +214,40 @@ test.describe('Learning Search - Common Filters', () => {
 });
 
 // ============================================================================
+// Filter Layout Tests
+// ============================================================================
+
+test.describe('Learning Search - Filter Layout', () => {
+  test('general filters and tab-specific filters are in separate rows', async ({ page }) => {
+    await navigateToLearningTab(page);
+
+    // General filters row should contain Sort and Relay
+    const generalFilters = page.locator('[data-testid="general-filters"]');
+    await expect(generalFilters).toBeVisible({ timeout: 10000 });
+
+    const sortDropdown = generalFilters.getByRole('combobox', { name: /sort/i });
+    await expect(sortDropdown).toBeVisible({ timeout: 5000 });
+
+    const relayLabel = generalFilters.locator('text=Relay:');
+    await expect(relayLabel).toBeVisible({ timeout: 5000 });
+
+    // Tab-specific filters row should contain SKOS dropdowns
+    const tabFilters = page.locator('[data-testid="tab-filters"]');
+    await expect(tabFilters).toBeVisible({ timeout: 10000 });
+
+    const resourceTypeLabel = tabFilters.locator('text=Resource Type');
+    await expect(resourceTypeLabel).toBeVisible({ timeout: 10000 });
+
+    const subjectLabel = tabFilters.getByText('Subject', { exact: true });
+    await expect(subjectLabel).toBeVisible({ timeout: 10000 });
+
+    // SKOS dropdowns should NOT be inside general-filters
+    const skosInGeneral = generalFilters.locator('text=Resource Type');
+    await expect(skosInGeneral).not.toBeVisible();
+  });
+});
+
+// ============================================================================
 // Error Handling Tests
 // ============================================================================
 

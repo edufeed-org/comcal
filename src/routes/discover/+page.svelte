@@ -1362,8 +1362,8 @@
       </button>
     </div>
 
-    <!-- Row 2: All dropdown filters in a unified row -->
-    <div class="flex flex-wrap items-end gap-4">
+    <!-- Row 2: General filters (sort, community, relay) -->
+    <div class="flex flex-wrap items-end gap-4" data-testid="general-filters">
       <!-- Sort (not shown for communities) -->
       {#if contentType !== 'communities'}
         <div class="form-control w-full sm:w-auto sm:min-w-[160px]">
@@ -1403,29 +1403,27 @@
           />
         </div>
       {/if}
-
-      <!-- Events Date Range Filter (shown only on events tab) -->
-      {#if contentType === 'events'}
-        <div class="w-full sm:w-auto">
-          <EventDateRangeFilter
-            start={eventsDateRangeStart}
-            end={eventsDateRangeEnd}
-            onrangechange={handleEventsDateRangeChange}
-          />
-        </div>
-      {/if}
-
-      <!-- Learning Content SKOS Filters (shown only on learning tab) -->
-      {#if contentType === 'learning'}
-        <div class="w-full sm:min-w-[200px] sm:flex-1">
-          <LearningContentFilters
-            onfilterchange={handleLearningFilterChange}
-            isSearching={isLearningSearchActive && learningSearchResults.length === 0}
-            searchText={activeSearchQuery}
-          />
-        </div>
-      {/if}
     </div>
+
+    <!-- Row 3: Tab-specific filters -->
+    {#if contentType === 'events'}
+      <div data-testid="tab-filters">
+        <EventDateRangeFilter
+          start={eventsDateRangeStart}
+          end={eventsDateRangeEnd}
+          onrangechange={handleEventsDateRangeChange}
+        />
+      </div>
+    {/if}
+    {#if contentType === 'learning'}
+      <div data-testid="tab-filters">
+        <LearningContentFilters
+          onfilterchange={handleLearningFilterChange}
+          isSearching={isLearningSearchActive && learningSearchResults.length === 0}
+          searchText={activeSearchQuery}
+        />
+      </div>
+    {/if}
 
     <!-- Results count (not shown for communities which has its own) -->
     {#if contentType !== 'communities' && displayedContent.length > 0}
