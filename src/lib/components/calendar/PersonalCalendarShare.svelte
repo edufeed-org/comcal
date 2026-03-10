@@ -1,36 +1,13 @@
 <!--
   PersonalCalendarShare Component
-  Manages adding/removing calendar events to/from personal calendars
-  Features:
-  - Automatically checks which calendars contain the event
-  - Shows correct checkbox states
-  - Handles add/remove operations
-  - Built-in debug logging
-  - Supports compact mode for different layouts
-  - Uses loader/model pattern for reactive calendar loading
+  Manages adding/removing calendar events to/from personal calendars.
+  Uses shared calendar management store for DRY calendar loading and CRUD.
 -->
 
 <script>
-  /* eslint-disable svelte/prefer-svelte-reactivity -- Map used intentionally to avoid infinite loops */
   import { resolve } from '$app/paths';
   import { PlusIcon, CheckIcon, AlertIcon } from '../icons';
-  import { userCalendarLoader } from '$lib/loaders/calendar.js';
-  import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-  import { getCalendarEventTitle } from 'applesauce-common/helpers';
-  import { EventFactory } from 'applesauce-core/event-factory';
-  import { publishEvent } from '$lib/services/publish-service.js';
-
-  /**
-   * @typedef {Object} Calendar
-   * @property {string} id - Event ID
-   * @property {string} pubkey - Calendar owner pubkey
-   * @property {number} kind - Event kind (31924)
-   * @property {string} title - Calendar title
-   * @property {string} description - Calendar description
-   * @property {string} dTag - Unique identifier (d-tag)
-   * @property {string[]} eventReferences - Array of event references (a-tags)
-   * @property {number} createdAt - Creation timestamp
-   */
+  import { useCalendarManagement } from '$lib/stores/calendar-management-store.svelte.js';
 
   /**
    * @typedef {Object} Props
@@ -42,88 +19,12 @@
   /** @type {Props} */
   let { event, activeUser, compact = false } = $props();
 
-  // Calendar state using loader/model pattern
-  let calendars = $state(/** @type {Calendar[]} */ ([]));
-  let loading = $state(false);
-  let _error = $state(/** @type {string | null} */ (null));
-  let loadedCalendars = new Map();
-
-  // Load calendars using proper loader/model pattern
-  $effect(() => {
-    if (!activeUser) {
-      calendars = [];
-      loading = false;
-      _error = null;
-      return;
-    }
-
-    loading = true;
-    _error = null;
-    loadedCalendars.clear();
-
-    const loaderSub = userCalendarLoader(activeUser.pubkey)().subscribe();
-    const modelSub = eventStore
-      .timeline({
-        kinds: [31924],
-        authors: [activeUser.pubkey]
-      })
-      .subscribe((events) => {
-        let hasNew = false;
-        for (const evt of events || []) {
-          if (!loadedCalendars.has(evt.id)) {
-            const calendar = convertEventToCalendar(evt);
-            loadedCalendars.set(evt.id, calendar);
-            hasNew = true;
-          }
-        }
-        if (hasNew) {
-          calendars = Array.from(loadedCalendars.values());
-        }
-        loading = false;
-      });
-
-    return () => {
-      loaderSub.unsubscribe();
-      modelSub.unsubscribe();
-    };
-  });
-
-  /**
-   * Convert event to Calendar object
-   * @param {any} evt - Calendar event
-   * @returns {Calendar} Calendar object
-   */
-  function convertEventToCalendar(evt) {
-    /** @type {Calendar} */
-    const calendar = {
-      id: evt.id || '',
-      pubkey: evt.pubkey || '',
-      kind: evt.kind,
-      title: getCalendarEventTitle(evt) || 'Untitled Calendar',
-      description: evt.content || '',
-      dTag: '',
-      eventReferences: [],
-      createdAt: evt.created_at || 0
-    };
-
-    // Extract data from tags
-    if (evt.tags) {
-      evt.tags.forEach(
-        /** @param {any[]} tag */ (tag) => {
-          switch (tag[0]) {
-            case 'd':
-              calendar.dTag = tag[1] || '';
-              break;
-            case 'a':
-              if (tag[1]) calendar.eventReferences.push(tag[1]);
-              break;
-          }
-        }
-      );
-    }
-
-    return calendar;
-  }
+  // Calendar management store — reuses singleton per pubkey
+  let calendarManagement = $derived.by(() =>
+    activeUser ? useCalendarManagement(activeUser.pubkey) : null
+  );
+  let calendars = $derived(calendarManagement?.calendars ?? []);
+  let loading = $derived(calendarManagement?.loading ?? false);
 
   // State management
   let selectedCalendarIds = $state(/** @type {string[]} */ ([]));
@@ -210,132 +111,10 @@
   }
 
   /**
-   * Add an event to a calendar following NIP-52 specification
-   * @param {string} calendarId - Calendar ID to add the event to
-   * @param {any} event - Calendar event to add (must have id, pubkey, kind, and dTag)
-   * @returns {Promise<boolean>} Success status
-   */
-  async function addEventToCalendar(calendarId, event) {
-    try {
-      // Find the calendar to update
-      const calendar = calendars.find((c) => c.id === calendarId);
-      if (!calendar) {
-        throw new Error('Calendar not found');
-      }
-
-      // Check if event is already in the calendar
-      const eventReference = `${event.kind}:${event.pubkey}:${event.dTag}`;
-      if (calendar.eventReferences.includes(eventReference)) {
-        return true;
-      }
-
-      // Create new calendar event with updated event references
-      const updatedEventReferences = [...calendar.eventReferences, eventReference];
-
-      // Build tags for the updated calendar
-      const tags = [
-        ['d', calendar.dTag],
-        ['title', calendar.title]
-      ];
-
-      // Add all existing event references as 'a' tags
-      updatedEventReferences.forEach((ref) => {
-        tags.push(['a', ref]);
-      });
-
-      // Create the updated calendar event using EventFactory
-      const eventFactory = new EventFactory();
-      const eventTemplate = await eventFactory.build({
-        kind: 31924,
-        content: calendar.description,
-        tags: tags
-      });
-
-      // Sign the event
-      const signedEvent = await activeUser.signEvent(eventTemplate);
-
-      // Publish using outbox model + app relays
-      const publishResult = await publishEvent(signedEvent, []);
-
-      if (publishResult.success) {
-        eventStore.add(signedEvent);
-        return true;
-      } else {
-        throw new Error('Failed to publish calendar update to any relay');
-      }
-    } catch (err) {
-      console.error('Error adding event to calendar:', err);
-      return false;
-    }
-  }
-
-  /**
-   * Remove an event from a calendar following NIP-52 specification
-   * @param {string} calendarId - Calendar ID to remove the event from
-   * @param {any} event - Calendar event to remove (must have id, pubkey, kind, and dTag)
-   * @returns {Promise<boolean>} Success status
-   */
-  async function removeEventFromCalendar(calendarId, event) {
-    try {
-      // Find the calendar to update
-      const calendar = calendars.find((c) => c.id === calendarId);
-      if (!calendar) {
-        throw new Error('Calendar not found');
-      }
-
-      // Check if event is in the calendar
-      const eventReference = `${event.kind}:${event.pubkey}:${event.dTag}`;
-      if (!calendar.eventReferences.includes(eventReference)) {
-        return true;
-      }
-
-      // Create new calendar event with updated event references (remove the event)
-      const updatedEventReferences = calendar.eventReferences.filter(
-        (ref) => ref !== eventReference
-      );
-
-      // Build tags for the updated calendar
-      const tags = [
-        ['d', calendar.dTag],
-        ['title', calendar.title]
-      ];
-
-      // Add all remaining event references as 'a' tags
-      updatedEventReferences.forEach((ref) => {
-        tags.push(['a', ref]);
-      });
-
-      // Create the updated calendar event using EventFactory
-      const eventFactory = new EventFactory();
-      const eventTemplate = await eventFactory.build({
-        kind: 31924,
-        content: calendar.description,
-        tags: tags
-      });
-
-      // Sign the event
-      const signedEvent = await activeUser.signEvent(eventTemplate);
-
-      // Publish using outbox model + app relays
-      const publishResult = await publishEvent(signedEvent, []);
-
-      if (publishResult.success) {
-        eventStore.add(signedEvent);
-        return true;
-      } else {
-        throw new Error('Failed to publish calendar update to any relay');
-      }
-    } catch (err) {
-      console.error('Error removing event from calendar:', err);
-      return false;
-    }
-  }
-
-  /**
    * Handle applying calendar changes (add/remove events)
    */
   async function handleApplyCalendarChanges() {
-    if (selectedCalendarIds.length === 0 || !activeUser || !event) {
+    if (selectedCalendarIds.length === 0 || !activeUser || !event || !calendarManagement) {
       return;
     }
 
@@ -344,20 +123,9 @@
     calendarChangesSuccess = false;
 
     try {
-      // Ensure event has a dTag
-      const eventRef = getEventReference(event);
-      if (!eventRef) {
-        throw new Error('Cannot process event: missing required properties');
-      }
-
-      // Extract dTag from the reference
-      const parts = eventRef.split(':');
-      const dTag = parts[2];
-
-      const eventWithDTag = {
-        ...event,
-        dTag: dTag
-      };
+      // Build event object with originalEvent for ActionRunner
+      // The ActionRunner needs the full NostrEvent (kind 31922/31923)
+      const calendarEvent = event.originalEvent || event;
 
       // Process each selected calendar
       const results = await Promise.allSettled(
@@ -365,9 +133,9 @@
           const isAlreadyInCalendar = calendarsContainingEvent.has(calendarId);
 
           if (isAlreadyInCalendar) {
-            return await removeEventFromCalendar(calendarId, eventWithDTag);
+            return await calendarManagement.removeEventFromCalendar(calendarId, calendarEvent);
           } else {
-            return await addEventToCalendar(calendarId, eventWithDTag);
+            return await calendarManagement.addEventToCalendar(calendarId, calendarEvent);
           }
         })
       );

@@ -5,10 +5,10 @@
   /** @type {(path: string) => string} */
   const resolve = /** @type {any} */ (_resolve);
   import { page } from '$app/stores';
-  import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
   import { calendarLoader } from '$lib/loaders/calendar.js';
   import { calendarStore } from '$lib/stores/calendar-events.svelte.js';
   import { manager } from '$lib/stores/accounts.svelte';
+  import { useCalendarManagement } from '$lib/stores/calendar-management-store.svelte.js';
   import { useJoinedCommunitiesList } from '$lib/stores/joined-communities-list.svelte';
   import { useUserProfile } from '$lib/stores/user-profile.svelte';
   import { modalStore } from '$lib/stores/modal.svelte.js';
@@ -24,38 +24,24 @@
   } from '$lib/components/icons';
   import PeopleIcon from '$lib/components/icons/social/People.svelte';
   import ChevronDownIcon from '$lib/components/icons/ui/ChevronDownIcon.svelte';
-  import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
-  import { TimelineModel } from 'applesauce-core/models';
   import { encodeEventToNaddr, hexToNpub } from '$lib/helpers/nostrUtils';
   import { getTagValue, getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
   import { nip19 } from 'nostr-tools';
   import * as m from '$paraglide/messages';
 
-  /**
-   * @typedef {Object} Calendar
-   * @property {string} id - Calendar event ID
-   * @property {string} pubkey - Calendar owner pubkey
-   * @property {number} kind - Event kind (31924)
-   * @property {string} title - Calendar title
-   * @property {string} description - Calendar description
-   * @property {string} dTag - Unique identifier (d-tag)
-   * @property {string[]} eventReferences - Array of event references (a-tags)
-   * @property {number} createdAt - Creation timestamp
-   */
-  /**
-   * @typedef {import('$lib/types/calendar.js').CalendarEvent} CalendarEvent
-   */
-
   // Props
   let { currentCalendar = null } = $props();
 
-  let calendars = $state(/** @type {CalendarEvent[]} */ ([]));
-  let loading = $state(false);
-  let _error = $state(/** @type {string | null} */ (null));
-  let activeUser = $state(manager.active);
+  let activeUser = $state(/** @type {any} */ (undefined));
   let selectedCalendar = $state(calendarStore.selectedCalendar);
   let selectedCalendarId = $derived(selectedCalendar?.id || '');
-  let personalCalendars = $state(/** @type {CalendarEvent[]} */ ([]));
+
+  // Calendar management store — derived from active user
+  let calendarManagement = $derived.by(() =>
+    activeUser ? useCalendarManagement(activeUser.pubkey) : null
+  );
+  let personalCalendars = $derived(calendarManagement?.calendars ?? []);
+  let loading = $derived(calendarManagement?.loading ?? false);
 
   // Load joined communities
   const getJoinedCommunities = useJoinedCommunitiesList();
@@ -67,6 +53,8 @@
   // subs
   /** @type {import('rxjs').Subscription | undefined} */
   let calendarSubscription;
+  /** @type {import('rxjs').Subscription | undefined} */
+  let userSubscription;
 
   let displayName = $derived.by(() => {
     // If viewing a specific calendar (via currentCalendar prop), show its name
@@ -110,42 +98,22 @@
 
   onMount(() => {
     calendarLoader()().subscribe();
-    loadUserCalendars();
+
+    userSubscription = manager.active$.subscribe({
+      next: (account) => {
+        activeUser = account;
+      }
+    });
 
     calendarSubscription = calendarStore.selectedCalendar$.subscribe((calendar) => {
       selectedCalendar = calendar;
     });
 
     return () => {
+      userSubscription?.unsubscribe();
       calendarSubscription?.unsubscribe();
     };
   });
-
-  manager.active$.subscribe({
-    next: (account) => {
-      console.log('user changed');
-      activeUser = account;
-      loadUserCalendars();
-    }
-  });
-
-  function loadUserCalendars() {
-    if (!manager.active) {
-      calendars = [];
-      return;
-    }
-
-    loading = true;
-    _error = null;
-
-    const filter = { kinds: [31924], authors: [manager.active.pubkey], limit: 1 };
-
-    eventStore.model(TimelineModel, filter).subscribe((events) => {
-      personalCalendars = events.map(getCalendarEventMetadata);
-    });
-
-    loading = false;
-  }
 
   /**
    * @param {string} calendarId
@@ -164,8 +132,8 @@
     modalStore.openModal('createCalendar');
   }
 
-  async function handleRefresh() {
-    loadUserCalendars();
+  function handleRefresh() {
+    calendarManagement?.refresh();
   }
 </script>
 
@@ -319,9 +287,9 @@
                     <CalendarIcon class_="h-4 w-4 text-primary flex-shrink-0" />
                     <div class="min-w-0 flex-1">
                       <div class="truncate text-sm font-medium">{calendar.title}</div>
-                      {#if calendar.summary}
+                      {#if calendar.description}
                         <div class="hidden truncate text-xs text-base-content/60 sm:block">
-                          {calendar.summary}
+                          {calendar.description}
                         </div>
                       {/if}
                     </div>
@@ -378,7 +346,7 @@
             </li>
 
             <!-- Refresh Button -->
-            {#if calendars.length > 0}
+            {#if personalCalendars.length > 0}
               <hr class="my-1 border-base-300" />
               <li>
                 <button

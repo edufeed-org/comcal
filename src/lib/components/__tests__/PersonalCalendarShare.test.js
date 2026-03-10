@@ -4,6 +4,7 @@
  * Regression tests for:
  * 1. Infinite loop from SvelteMap inside $effect (Pattern C)
  * 2. $derived(() => ...) returning a function instead of a value (Pattern B)
+ * 3. DRY consolidation: uses shared calendar management store
  *
  * @vitest-environment jsdom
  */
@@ -32,29 +33,52 @@ const mockActiveUser = {
   signEvent: vi.fn()
 };
 
-const mockCalendarRawEvents = [
+/** @type {import('$lib/stores/calendar-management-store.svelte.js').Calendar[]} */
+const mockCalendars = [
   {
     id: 'calendar-1',
     kind: 31924,
     pubkey: mockActiveUser.pubkey,
-    tags: [
-      ['d', 'my-calendar'],
-      ['title', 'My Calendar'],
-      ['a', `31923:${mockCalendarEvent.pubkey}:test-event-id`]
-    ],
-    created_at: 1700000000,
-    content: 'My personal calendar'
+    title: 'My Calendar',
+    description: 'My personal calendar',
+    dTag: 'my-calendar',
+    eventReferences: [`31923:${mockCalendarEvent.pubkey}:test-event-id`],
+    createdAt: 1700000000,
+    originalEvent: {
+      id: 'calendar-1',
+      kind: 31924,
+      pubkey: mockActiveUser.pubkey,
+      tags: [
+        ['d', 'my-calendar'],
+        ['title', 'My Calendar'],
+        ['a', `31923:${mockCalendarEvent.pubkey}:test-event-id`]
+      ],
+      created_at: 1700000000,
+      content: 'My personal calendar',
+      sig: 'mock-sig-1'
+    }
   },
   {
     id: 'calendar-2',
     kind: 31924,
     pubkey: mockActiveUser.pubkey,
-    tags: [
-      ['d', 'work-calendar'],
-      ['title', 'Work Calendar']
-    ],
-    created_at: 1700000001,
-    content: 'Work events'
+    title: 'Work Calendar',
+    description: 'Work events',
+    dTag: 'work-calendar',
+    eventReferences: [],
+    createdAt: 1700000001,
+    originalEvent: {
+      id: 'calendar-2',
+      kind: 31924,
+      pubkey: mockActiveUser.pubkey,
+      tags: [
+        ['d', 'work-calendar'],
+        ['title', 'Work Calendar']
+      ],
+      created_at: 1700000001,
+      content: 'Work events',
+      sig: 'mock-sig-2'
+    }
   }
 ];
 
@@ -62,36 +86,19 @@ vi.mock('$app/paths', () => ({
   resolve: (/** @type {string} */ path) => path
 }));
 
-vi.mock('$lib/stores/nostr-infrastructure.svelte', () => ({
-  eventStore: {
-    timeline: vi.fn(() => ({
-      subscribe: (/** @type {Function} */ cb) => {
-        // Emit synchronously (this triggers the SvelteMap infinite loop bug)
-        cb(mockCalendarRawEvents);
-        return { unsubscribe: vi.fn() };
-      }
-    })),
-    add: vi.fn()
-  }
-}));
+const mockAddEventToCalendar = vi.fn().mockResolvedValue(true);
+const mockRemoveEventFromCalendar = vi.fn().mockResolvedValue(true);
 
-vi.mock('$lib/loaders/calendar.js', () => ({
-  userCalendarLoader: () => () => ({
-    subscribe: () => ({ unsubscribe: vi.fn() })
-  })
-}));
-
-vi.mock('applesauce-common/helpers', () => ({
-  getCalendarEventTitle: (/** @type {any} */ event) =>
-    event?.tags?.find((/** @type {string[]} */ t) => t[0] === 'title')?.[1] || 'Untitled'
-}));
-
-vi.mock('applesauce-core/event-factory', () => ({
-  EventFactory: vi.fn()
-}));
-
-vi.mock('$lib/services/publish-service.js', () => ({
-  publishEvent: vi.fn()
+vi.mock('$lib/stores/calendar-management-store.svelte.js', () => ({
+  useCalendarManagement: vi.fn(() => ({
+    calendars: mockCalendars,
+    loading: false,
+    error: null,
+    addEventToCalendar: mockAddEventToCalendar,
+    removeEventFromCalendar: mockRemoveEventFromCalendar,
+    refresh: vi.fn(),
+    destroy: vi.fn()
+  }))
 }));
 
 // Stub icon components
@@ -108,8 +115,6 @@ describe('PersonalCalendarShare', () => {
   });
 
   it('renders calendar checkboxes without effect_update_depth_exceeded', () => {
-    // This test catches the SvelteMap bug: synchronous emission inside $effect
-    // triggers reactive loop when SvelteMap.has()/set() are read+write in same callback
     const { container } = render(PersonalCalendarShare, {
       props: {
         event: mockCalendarEvent,
@@ -121,19 +126,9 @@ describe('PersonalCalendarShare', () => {
     expect(checkboxes.length).toBe(2);
   });
 
-  it('renders with synchronous timeline emissions without infinite loop', async () => {
-    const { eventStore } = await import('$lib/stores/nostr-infrastructure.svelte');
-
-    let emissionCount = 0;
-    vi.mocked(eventStore.timeline).mockImplementation(
-      () =>
-        /** @type {any} */ ({
-          subscribe: (/** @type {Function} */ cb) => {
-            emissionCount++;
-            cb(mockCalendarRawEvents);
-            return { unsubscribe: vi.fn() };
-          }
-        })
+  it('renders with shared store data without infinite loop', async () => {
+    const { useCalendarManagement } = await import(
+      '$lib/stores/calendar-management-store.svelte.js'
     );
 
     const { container } = render(PersonalCalendarShare, {
@@ -146,14 +141,12 @@ describe('PersonalCalendarShare', () => {
     // Should render without hitting effect depth limit
     const checkboxes = container.querySelectorAll('input[type="checkbox"]');
     expect(checkboxes.length).toBe(2);
-    // Timeline subscription should only happen once
-    expect(emissionCount).toBe(1);
+
+    // Store should be called with the active user's pubkey
+    expect(useCalendarManagement).toHaveBeenCalledWith(mockActiveUser.pubkey);
   });
 
   it('calendarsContainingEvent returns a Set (not a function)', () => {
-    // This test catches the $derived(() => ...) bug where calendarsContainingEvent
-    // returns a function instead of a Set. Templates call it as calendarsContainingEvent()
-    // which re-executes the body on every access (no caching).
     const { container } = render(PersonalCalendarShare, {
       props: {
         event: mockCalendarEvent,
@@ -161,17 +154,12 @@ describe('PersonalCalendarShare', () => {
       }
     });
 
-    // If calendarsContainingEvent were a function (the bug), the template would
-    // still work but with console spam. The real regression is caught by
-    // checking that the component renders calendar-1 as "already added"
-    // and calendar-2 as available.
-
     // calendar-1 contains the event reference, so it should show "(Added - click to remove)"
     const addedLabels = container.querySelectorAll('.text-success');
     expect(addedLabels.length).toBe(1);
   });
 
-  it('shows loading state when no user is provided', () => {
+  it('shows empty state when no user is provided', () => {
     const { container } = render(PersonalCalendarShare, {
       props: {
         event: mockCalendarEvent,

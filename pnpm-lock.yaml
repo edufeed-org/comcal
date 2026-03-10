@@ -20,6 +20,9 @@ importers:
       applesauce-accounts:
         specifier: ^5.1.0
         version: 5.1.0(typescript@5.9.3)
+      applesauce-actions:
+        specifier: ^5.1.1
+        version: 5.1.1(typescript@5.9.3)
       applesauce-common:
         specifier: ^5.1.0
         version: 5.1.0(typescript@5.9.3)
@@ -1479,6 +1482,9 @@ packages:
 
   applesauce-accounts@5.1.0:
     resolution: {integrity: sha512-xFNqofcQx+GjLbJKqkhEGWPMKPA0Y523ZiLuPwiLxwxiQRN053Rsq+uOTV0qmg/Hspylg3EGR49wwCIE8WnNGg==}
+
+  applesauce-actions@5.1.1:
+    resolution: {integrity: sha512-nz7N0lFdcaHCAiL26eCFwehU4Z7Gud9LzIuA84NeLnDQHTupcL54xObjJlZPf+hUS6bD0Gp4uBThs/XfKjnwFQ==}
 
   applesauce-common@5.1.0:
     resolution: {integrity: sha512-qUEJibEtawkCgrxoyj0u+ECk3C/PKwGSmOq9kCupGjHVG21BU6Nh29BxU4vcmmBXH2ByiA6VuZgyJZb3t2JJuA==}
@@ -4775,6 +4781,15 @@ snapshots:
       applesauce-core: 5.1.0(typescript@5.9.3)
       applesauce-signers: 5.1.0(typescript@5.9.3)
       nanoid: 5.1.6
+      rxjs: 7.8.2
+    transitivePeerDependencies:
+      - supports-color
+      - typescript
+
+  applesauce-actions@5.1.1(typescript@5.9.3):
+    dependencies:
+      applesauce-common: 5.1.0(typescript@5.9.3)
+      applesauce-core: 5.1.0(typescript@5.9.3)
       rxjs: 7.8.2
     transitivePeerDependencies:
       - supports-color

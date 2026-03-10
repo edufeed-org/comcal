@@ -8,6 +8,7 @@
   import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
   import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
   import { showToast } from '$lib/helpers/toast.js';
+  import { modalStore } from '$lib/stores/modal.svelte.js';
   import { formatCalendarDate } from '$lib/helpers/calendar.js';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
@@ -199,7 +200,7 @@
    * Handle create new calendar
    */
   function handleCreateCalendar() {
-    // TODO: wire up calendar creation modal
+    modalStore.openModal('createCalendar');
   }
 
   /**
