@@ -2,6 +2,9 @@ import { nip19 } from 'nostr-tools';
 import { fetchEventById } from '$lib/helpers/nostrUtils';
 import { error, redirect } from '@sveltejs/kit';
 
+export const ssr = false;
+export const prerender = false;
+
 /**
  * @param {{ params: { naddr: string } }} context
  */
