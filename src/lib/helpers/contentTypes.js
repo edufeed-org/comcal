@@ -83,8 +83,8 @@ export const CONTENT_TYPE_CONFIG = {
     kind: 30023,
     name: 'Articles',
     icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-    supported: false,
-    component: null,
+    supported: true,
+    component: 'ArticlesView',
     description: 'Long-form articles'
   },
   30040: {
@@ -223,6 +223,7 @@ export function kindToContentType(kind) {
   /** @type {Record<number, string>} */
   const mapping = {
     9: 'chat',
+    30023: 'articles',
     30142: 'learning',
     30301: 'boards',
     31923: 'calendar',
@@ -231,6 +232,28 @@ export function kindToContentType(kind) {
     31925: 'calendar'
   };
   return mapping[kind] || null;
+}
+
+/**
+ * Get the default set of community navigation tabs.
+ * Includes structural tabs (home, chat) plus all supported content types, plus activity/settings.
+ * @returns {string[]} Tab IDs in display order
+ */
+export function getDefaultCommunityTabs() {
+  const tabs = ['home', 'chat'];
+
+  const seen = new Set(tabs);
+  for (const config of Object.values(CONTENT_TYPE_CONFIG)) {
+    if (!config.supported) continue;
+    const tabId = kindToContentType(config.kind);
+    if (tabId && !seen.has(tabId)) {
+      seen.add(tabId);
+      tabs.push(tabId);
+    }
+  }
+
+  tabs.push('activity', 'settings');
+  return tabs;
 }
 
 /**

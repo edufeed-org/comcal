@@ -6,6 +6,7 @@ import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
 import { getArticleRelays } from '$lib/helpers/relay-helper.js';
 import { timedPool } from './base.js';
 import { applyCuratedFilter } from '$lib/services/curated-authors-service.svelte.js';
+import { createCommunityContentLoader } from './community-content-loader.js';
 
 /**
  * Factory: Create a stateful timeline loader for kind 30023 articles with automatic pagination
@@ -17,3 +18,8 @@ export function articleTimelineLoader(limit = 20) {
   const filter = applyCuratedFilter({ kinds: [30023] });
   return createTimelineLoader(timedPool, getArticleRelays(), filter, { eventStore, limit });
 }
+
+/** Hook: Load articles for a specific community */
+export const useArticleCommunityLoader = createCommunityContentLoader([30023], getArticleRelays, {
+  filterFn: applyCuratedFilter
+});

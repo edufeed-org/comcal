@@ -4,13 +4,21 @@
 -->
 
 <script>
+  import * as m from '$lib/paraglide/messages';
+  import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { getProfilePicture, getDisplayName } from 'applesauce-core/helpers';
   import { getArticleTitle, getArticleImage } from 'applesauce-common/helpers';
   import { formatCalendarDate } from '$lib/helpers/calendar.js';
+  import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
   import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
   import { useActiveUser } from '$lib/stores/accounts.svelte';
+  import { deleteEvent } from '$lib/helpers/eventDeletion.js';
+  import { showToast } from '$lib/helpers/toast.js';
+  import { EditIcon, TrashIcon } from '$lib/components/icons';
   import ImageWithFallback from '../shared/ImageWithFallback.svelte';
   import MarkdownRenderer from '../shared/MarkdownRenderer.svelte';
+  import DeleteConfirmModal from '../shared/DeleteConfirmModal.svelte';
   import ReactionBar from '../reactions/ReactionBar.svelte';
   import CommentList from '../comments/CommentList.svelte';
   import EventTags from '../calendar/EventTags.svelte';
@@ -70,6 +78,43 @@
 
   // Share UI state
   let showShareUI = $state(false);
+
+  // Delete state
+  let showDeleteConfirmation = $state(false);
+  let isDeleting = $state(false);
+
+  const isAuthor = $derived(activeUser?.pubkey === event.pubkey);
+
+  /**
+   * Handle article deletion
+   */
+  async function handleDelete() {
+    if (!activeUser || !event) return;
+
+    isDeleting = true;
+    try {
+      const result = await deleteEvent(event, activeUser);
+      if (result.success) {
+        showToast(m.article_view_delete_success(), 'success');
+        showDeleteConfirmation = false;
+        history.back();
+      } else {
+        showToast(result.error || m.article_view_delete_failed(), 'error');
+      }
+    } catch (error) {
+      console.error('Failed to delete article:', error);
+      showToast(m.article_view_delete_failed(), 'error');
+    } finally {
+      isDeleting = false;
+    }
+  }
+
+  function handleEdit() {
+    const naddr = encodeEventToNaddr(event);
+    if (naddr) {
+      goto(resolve(`/create/article?edit=${naddr}`));
+    }
+  }
 </script>
 
 <article class="article-view mx-auto max-w-4xl">
@@ -99,16 +144,30 @@
         <div>
           <div class="font-semibold text-base-content">{authorName}</div>
           <div class="text-sm text-base-content/60">
-            Published {formatCalendarDate(publishedAt, 'short')}
+            {m.article_view_published({ date: formatCalendarDate(publishedAt, 'short') })}
           </div>
         </div>
       </div>
 
       <!-- Actions -->
       <div class="flex gap-2">
+        {#if isAuthor}
+          <button class="btn btn-outline btn-sm" onclick={handleEdit}>
+            <EditIcon class="h-4 w-4" />
+            {m.common_edit()}
+          </button>
+          <button
+            class="btn btn-outline btn-sm btn-error"
+            onclick={() => (showDeleteConfirmation = true)}
+            aria-label={m.common_delete()}
+          >
+            <TrashIcon class="h-4 w-4" />
+            {m.common_delete()}
+          </button>
+        {/if}
         {#if activeUser}
           <button class="btn btn-sm btn-secondary" onclick={() => (showShareUI = !showShareUI)}>
-            {showShareUI ? 'Hide Share' : 'Share'}
+            {showShareUI ? m.common_close() : m.common_share()}
           </button>
         {/if}
       </div>
@@ -117,7 +176,11 @@
     <!-- Share UI -->
     {#if showShareUI && activeUser}
       <div class="mt-4 rounded-lg bg-base-200 p-4">
-        <CommunityShare {event} {activeUser} shareButtonText="Share with Communities" />
+        <CommunityShare
+          {event}
+          {activeUser}
+          shareButtonText={m.article_view_share_with_communities()}
+        />
       </div>
     {/if}
   </header>
@@ -138,14 +201,17 @@
   {/if}
 
   <!-- Article Content -->
-  <div class="prose prose-lg mb-8 max-w-none">
-    <MarkdownRenderer content={event.content} />
+  <div class="mb-8">
+    <MarkdownRenderer
+      content={event.content}
+      class="prose prose-lg max-w-none prose-a:text-primary prose-blockquote:border-primary/50 prose-pre:rounded-lg prose-pre:bg-base-200 prose-img:rounded-lg"
+    />
   </div>
 
   <!-- Tags -->
   {#if hashtags.length > 0}
     <div class="mb-8 flex flex-wrap gap-2">
-      <span class="text-sm font-medium text-base-content/70">Topics:</span>
+      <span class="text-sm font-medium text-base-content/70">{m.article_view_topics()}</span>
       <EventTags tags={hashtags} size="md" targetRoute="/discover" />
     </div>
   {/if}
@@ -157,7 +223,16 @@
 
   <!-- Comments -->
   <div class="mt-8">
-    <h2 class="mb-4 text-2xl font-bold text-base-content">Comments</h2>
+    <h2 class="mb-4 text-2xl font-bold text-base-content">{m.article_view_comments()}</h2>
     <CommentList rootEvent={event} {activeUser} />
   </div>
 </article>
+
+<DeleteConfirmModal
+  open={showDeleteConfirmation}
+  title={m.article_view_delete_confirm_title()}
+  itemName={title}
+  {isDeleting}
+  onconfirm={handleDelete}
+  oncancel={() => (showDeleteConfirmation = false)}
+/>

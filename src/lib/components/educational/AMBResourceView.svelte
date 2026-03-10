@@ -30,7 +30,8 @@
   import MarkdownRenderer from '../shared/MarkdownRenderer.svelte';
   import { deleteEvent } from '$lib/helpers/eventDeletion.js';
   import { showToast } from '$lib/helpers/toast.js';
-  import { TrashIcon } from '$lib/components/icons';
+  import { EditIcon, TrashIcon } from '$lib/components/icons';
+  import DeleteConfirmModal from '../shared/DeleteConfirmModal.svelte';
 
   // Trigger SKOS vocabulary loading for label resolution
   ensureVocabularyLoaded('learningResourceType');
@@ -70,7 +71,7 @@
 
   // Delete state
   let showDeleteConfirmation = $state(false);
-  let isDeletingResource = $state(false);
+  let isDeleting = $state(false);
 
   // Check if current user owns this resource
   const isOwner = $derived(activeUser?.pubkey === event.pubkey);
@@ -94,7 +95,7 @@
   async function handleDeleteResource() {
     if (!activeUser || !event) return;
 
-    isDeletingResource = true;
+    isDeleting = true;
     try {
       const result = await deleteEvent(event, activeUser);
 
@@ -110,7 +111,7 @@
       console.error('Failed to delete resource:', error);
       showToast('An error occurred while deleting the resource', 'error');
     } finally {
-      isDeletingResource = false;
+      isDeleting = false;
     }
   }
 
@@ -325,36 +326,23 @@
           <button
             class="btn btn-outline btn-sm"
             onclick={handleEditClick}
-            aria-label="Edit resource"
+            aria-label={m.common_edit()}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-              />
-            </svg>
-            Edit
+            <EditIcon class="h-4 w-4" />
+            {m.common_edit()}
           </button>
           <button
             class="btn btn-outline btn-sm btn-error"
             onclick={() => (showDeleteConfirmation = true)}
-            aria-label="Delete resource"
+            aria-label={m.common_delete()}
           >
             <TrashIcon class="h-4 w-4" />
-            Delete
+            {m.common_delete()}
           </button>
         {/if}
         {#if activeUser}
           <button class="btn btn-sm btn-secondary" onclick={() => (showShareUI = !showShareUI)}>
-            {showShareUI ? 'Hide Share' : 'Share'}
+            {showShareUI ? m.common_close() : m.common_share()}
           </button>
         {/if}
       </div>
@@ -363,7 +351,7 @@
     <!-- Share UI -->
     {#if showShareUI && activeUser}
       <div class="mt-4 rounded-lg bg-base-200 p-4">
-        <CommunityShare {event} {activeUser} shareButtonText="Share with Communities" />
+        <CommunityShare {event} {activeUser} shareButtonText={m.common_share()} />
       </div>
     {/if}
   </header>
@@ -749,33 +737,11 @@
   </div>
 </article>
 
-<!-- Delete Confirmation Modal -->
-{#if showDeleteConfirmation}
-  <div class="modal-open modal">
-    <div class="modal-box">
-      <h3 class="text-lg font-bold">Delete Resource?</h3>
-      <p class="py-4">
-        Are you sure you want to delete <strong>{resource.name}</strong>?
-        <br />
-        This action cannot be undone.
-      </p>
-      <div class="modal-action">
-        <button
-          class="btn"
-          onclick={() => (showDeleteConfirmation = false)}
-          disabled={isDeletingResource}
-        >
-          Cancel
-        </button>
-        <button class="btn btn-error" onclick={handleDeleteResource} disabled={isDeletingResource}>
-          {#if isDeletingResource}
-            <span class="loading loading-sm loading-spinner"></span>
-            Deleting...
-          {:else}
-            Delete Resource
-          {/if}
-        </button>
-      </div>
-    </div>
-  </div>
-{/if}
+<DeleteConfirmModal
+  open={showDeleteConfirmation}
+  title={m.common_delete() + '?'}
+  itemName={resource.name}
+  {isDeleting}
+  onconfirm={handleDeleteResource}
+  oncancel={() => (showDeleteConfirmation = false)}
+/>

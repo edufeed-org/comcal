@@ -23,7 +23,8 @@ vi.mock('$lib/paraglide/messages', () => ({
   event_tags_more_count: () => '',
   debug_panel_raw_nostr_event: () => '',
   common_copied: () => '',
-  common_copy: () => ''
+  common_copy: () => '',
+  article_card_read_article: () => 'Read Article'
 }));
 vi.mock('$app/navigation', () => ({
   goto: vi.fn()

@@ -1,24 +1,36 @@
 <!--
   MarkdownRenderer Component
-  Safely renders markdown content with XSS protection
+  Safely renders markdown content with XSS protection.
+  Converts bare nostr: mentions to app links and renders nostr: protocol hrefs.
 -->
 
 <script>
   import { marked } from 'marked';
   import DOMPurify from 'dompurify';
   import { browser } from '$app/environment';
-  import { extractNostrIdentifiers } from '$lib/helpers/nostrUtils.js';
-  import NostrIdentifierParser from './NostrIdentifierParser.svelte';
+  import { preprocessNostrMentions } from '$lib/helpers/markdownNostr.js';
 
   let { content = '', class: className = 'prose prose-lg max-w-none' } = $props();
 
-  // Check if content contains NIP-19 identifiers
-  let hasIdentifiers = $derived(extractNostrIdentifiers(content).length > 0);
+  // Configure marked options and custom renderer
+  /** @type {import('marked').RendererObject} */
+  const renderer = {
+    link({ href, title, tokens }) {
+      // Rewrite nostr: protocol links to app routes
+      if (href?.startsWith('nostr:')) {
+        href = '/' + href.slice(6);
+      }
+      /** @type {string} */
+      const text = tokens ? /** @type {any} */ (this).parser.parseInline(tokens) : '';
+      const titleAttr = title ? ` title="${title}"` : '';
+      return `<a href="${href}"${titleAttr}>${text}</a>`;
+    }
+  };
 
-  // Configure marked for better compatibility
-  marked.setOptions({
-    breaks: true, // Convert line breaks to <br>
-    gfm: true // GitHub Flavored Markdown
+  marked.use({
+    breaks: true,
+    gfm: true,
+    renderer
   });
 
   // Parse and sanitize markdown content
@@ -28,14 +40,12 @@
     }
 
     try {
-      // Parse markdown to HTML (synchronous)
-      const rawHtml = marked.parse(content, { async: false });
+      // Pre-process bare nostr: mentions into markdown links, then parse
+      const rawHtml = marked.parse(preprocessNostrMentions(content), { async: false });
 
       // Only sanitize in browser context (DOMPurify requires DOM)
       if (browser && typeof DOMPurify?.sanitize === 'function') {
-        // Sanitize HTML to prevent XSS attacks
         return DOMPurify.sanitize(String(rawHtml), {
-          // Allow common markdown elements
           ALLOWED_TAGS: [
             'p',
             'br',
@@ -71,25 +81,15 @@
       }
 
       // During SSR or if DOMPurify unavailable, return raw HTML
-      // It will be sanitized on the client side during hydration
       return String(rawHtml);
     } catch (error) {
       console.error('Markdown parsing error:', error);
-      // Fallback to plain text with line breaks preserved
       return content.replace(/\n/g, '<br>');
     }
   });
 </script>
 
-{#if hasIdentifiers}
-  <!-- Content has NIP-19 identifiers - parse them inline -->
-  <div class={className}>
-    <NostrIdentifierParser text={content} />
-  </div>
-{:else}
-  <!-- No identifiers - use standard markdown rendering -->
-  <div class={className}>
-    <!-- eslint-disable-next-line svelte/no-at-html-tags -- safe: sanitized with DOMPurify -->
-    {@html html}
-  </div>
-{/if}
+<div class={className}>
+  <!-- eslint-disable-next-line svelte/no-at-html-tags -- safe: sanitized with DOMPurify -->
+  {@html html}
+</div>

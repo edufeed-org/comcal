@@ -19,6 +19,7 @@
   import CommunityShare from '../shared/CommunityShare.svelte';
   import MarkdownRenderer from '../shared/MarkdownRenderer.svelte';
   import { KanbanIcon, TrashIcon, ExternalLinkIcon } from '$lib/components/icons';
+  import DeleteConfirmModal from '../shared/DeleteConfirmModal.svelte';
   import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
   import { deleteEvent } from '$lib/helpers/eventDeletion.js';
   import { showToast } from '$lib/helpers/toast.js';
@@ -342,29 +343,11 @@
   </div>
 </article>
 
-<!-- Delete Confirmation Modal -->
-{#if showDeleteConfirmation}
-  <div class="modal-open modal">
-    <div class="modal-box">
-      <h3 class="text-lg font-bold">{m.common_delete()} Board?</h3>
-      <p class="py-4">
-        Are you sure you want to delete <strong>{title}</strong>?
-        <br />
-        This action cannot be undone.
-      </p>
-      <div class="modal-action">
-        <button class="btn" onclick={() => (showDeleteConfirmation = false)} disabled={isDeleting}>
-          {m.common_cancel()}
-        </button>
-        <button class="btn btn-error" onclick={handleDelete} disabled={isDeleting}>
-          {#if isDeleting}
-            <span class="loading loading-sm loading-spinner"></span>
-            Deleting...
-          {:else}
-            {m.common_delete()}
-          {/if}
-        </button>
-      </div>
-    </div>
-  </div>
-{/if}
+<DeleteConfirmModal
+  open={showDeleteConfirmation}
+  title={m.common_delete() + '?'}
+  itemName={title}
+  {isDeleting}
+  onconfirm={handleDelete}
+  oncancel={() => (showDeleteConfirmation = false)}
+/>

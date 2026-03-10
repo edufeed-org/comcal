@@ -4,6 +4,7 @@
 -->
 
 <script>
+  import * as m from '$lib/paraglide/messages';
   import { getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
   import { getArticleTitle, getArticleImage } from 'applesauce-common/helpers';
   import { formatCalendarDate } from '$lib/helpers/calendar.js';
@@ -213,7 +214,7 @@
             class="btn btn-sm btn-primary"
             onclick={(e) => e.stopPropagation()}
           >
-            Read Article
+            {m.article_card_read_article()}
           </a>
         </div>
       {/if}

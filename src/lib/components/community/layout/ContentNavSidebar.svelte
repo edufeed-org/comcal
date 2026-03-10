@@ -6,8 +6,10 @@
     BellIcon,
     SettingsIcon,
     BookIcon,
-    KanbanIcon
+    KanbanIcon,
+    ScrollTextIcon
   } from '$lib/components/icons';
+  import { getDefaultCommunityTabs } from '$lib/helpers/contentTypes.js';
   import * as m from '$lib/paraglide/messages';
 
   let {
@@ -16,15 +18,35 @@
     communitySelected = true
   } = $props();
 
-  const contentTypes = [
-    { id: 'home', label: m.community_layout_bottom_tab_bar_home(), icon: HomeIcon },
-    { id: 'chat', label: m.community_layout_bottom_tab_bar_chat(), icon: ChatIcon },
-    { id: 'calendar', label: m.community_layout_bottom_tab_bar_calendar(), icon: CalendarIcon },
-    { id: 'learning', label: m.community_layout_bottom_tab_bar_learning(), icon: BookIcon },
-    { id: 'boards', label: m.community_layout_bottom_tab_bar_boards(), icon: KanbanIcon },
-    { id: 'activity', label: m.community_layout_bottom_tab_bar_activity(), icon: BellIcon },
-    { id: 'settings', label: m.community_layout_bottom_tab_bar_settings(), icon: SettingsIcon }
-  ];
+  /** @type {Record<string, any>} */
+  const iconMap = {
+    home: HomeIcon,
+    chat: ChatIcon,
+    calendar: CalendarIcon,
+    learning: BookIcon,
+    boards: KanbanIcon,
+    articles: ScrollTextIcon,
+    activity: BellIcon,
+    settings: SettingsIcon
+  };
+
+  /** @type {Record<string, () => string>} */
+  const labelMap = {
+    home: () => m.community_layout_bottom_tab_bar_home(),
+    chat: () => m.community_layout_bottom_tab_bar_chat(),
+    calendar: () => m.community_layout_bottom_tab_bar_calendar(),
+    learning: () => m.community_layout_bottom_tab_bar_learning(),
+    boards: () => m.community_layout_bottom_tab_bar_boards(),
+    articles: () => m.community_layout_bottom_tab_bar_articles(),
+    activity: () => m.community_layout_bottom_tab_bar_activity(),
+    settings: () => m.community_layout_bottom_tab_bar_settings()
+  };
+
+  const contentTypes = getDefaultCommunityTabs().map((id) => ({
+    id,
+    label: labelMap[id]?.() ?? id,
+    icon: iconMap[id] ?? ChatIcon
+  }));
 
   /**
    * Handle content type selection

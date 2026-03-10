@@ -8,13 +8,10 @@ import { manager } from '$lib/stores/accounts.svelte';
 import { flattenAMBToNostrTags } from '$lib/helpers/educational/ambTransform.js';
 import { extractLabelFromUri } from '$lib/helpers/educational/skosLoader.js';
 import { encodeEventToNaddr } from '$lib/helpers/nostrUtils.js';
-import {
-  publishEventOptimistic,
-  buildATagWithHint,
-  buildETagWithHint
-} from '$lib/services/publish-service.js';
+import { publishEventOptimistic } from '$lib/services/publish-service.js';
 import { getAppRelaysForCategory } from '$lib/services/app-relay-service.svelte.js';
 import { getPrimaryWriteRelay } from '$lib/services/relay-service.svelte.js';
+import { createTargetedPublication } from '$lib/services/targeted-publication.js';
 
 /**
  * @typedef {Object} Creator
@@ -63,9 +60,6 @@ import { getPrimaryWriteRelay } from '$lib/services/relay-service.svelte.js';
 
 /** Kind number for AMB Educational Resource events */
 const AMB_RESOURCE_KIND = 30142;
-
-/** Kind number for Targeted Publication events (Communikey) */
-const TARGETED_PUBLICATION_KIND = 30222;
 
 /**
  * Generate a random 8-character identifier
@@ -369,52 +363,7 @@ export function createEducationalActions() {
      * @returns {Promise<void>}
      */
     async createTargetedPublication(resourceEvent, communityPubkey, communityEvent = null) {
-      // Get current account
-      const currentAccount = manager.active;
-      if (!currentAccount) {
-        throw new Error('No account selected. Please log in to create targeted publications.');
-      }
-
-      try {
-        // Extract d-tag from resource event
-        const dTag = resourceEvent.tags.find((/** @type {string[]} */ t) => t[0] === 'd')?.[1];
-        if (!dTag) {
-          throw new Error('Resource event missing d-tag');
-        }
-
-        // Build the coordinate for the 'a' tag
-        const coordinate = `${resourceEvent.kind}:${resourceEvent.pubkey}:${dTag}`;
-
-        // Build tags with relay hints for discoverability
-        const aTagWithHint = await buildATagWithHint(coordinate);
-        const eTagWithHint = await buildETagWithHint(resourceEvent.id, resourceEvent.pubkey);
-
-        // Create targeting event using Communikey spec (kind 30222)
-        const eventFactory = new EventFactory();
-
-        const tags = [
-          ['d', `${communityPubkey}:${dTag}`], // Unique d-tag for this publication
-          ['h', communityPubkey], // Target community
-          aTagWithHint, // Reference to the resource with relay hint
-          eTagWithHint // Reference to specific event with relay hint
-        ];
-
-        const eventTemplate = await eventFactory.build({
-          kind: TARGETED_PUBLICATION_KIND,
-          content: '',
-          tags: tags
-        });
-
-        // Sign and publish optimistically (kind 30222 uses communikey relays)
-        const targetingEvent = await currentAccount.signEvent(eventTemplate);
-        publishEventOptimistic(targetingEvent, [communityPubkey], { communityEvent });
-
-        console.log('📚 Targeted publication created for community:', communityPubkey);
-      } catch (error) {
-        console.error('Error creating targeted publication:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        throw new Error(`Failed to create targeted publication: ${errorMessage}`);
-      }
+      await createTargetedPublication(resourceEvent, communityPubkey, communityEvent);
     }
   };
 }

@@ -6,11 +6,13 @@
     BellIcon,
     SettingsIcon,
     BookIcon,
-    KanbanIcon
+    KanbanIcon,
+    ScrollTextIcon
   } from '$lib/components/icons';
   import {
     getCommunityAvailableContentTypes,
-    kindToContentType
+    kindToContentType,
+    getDefaultCommunityTabs
   } from '$lib/helpers/contentTypes.js';
   import { onMount } from 'svelte';
   import * as m from '$lib/paraglide/messages';
@@ -29,8 +31,18 @@
     calendar: CalendarIcon,
     learning: BookIcon,
     boards: KanbanIcon,
+    articles: ScrollTextIcon,
     activity: BellIcon,
     settings: SettingsIcon
+  };
+
+  /** @type {Record<string, () => string>} */
+  const tabLabelMap = {
+    chat: () => m.community_layout_bottom_tab_bar_chat(),
+    calendar: () => m.community_layout_bottom_tab_bar_calendar(),
+    learning: () => m.community_layout_bottom_tab_bar_learning(),
+    boards: () => m.community_layout_bottom_tab_bar_boards(),
+    articles: () => m.community_layout_bottom_tab_bar_articles()
   };
 
   // State for scroll indicators
@@ -59,7 +71,6 @@
       for (const contentType of availableTypes) {
         const typeId = kindToContentType(contentType.kind);
         if (typeId && contentType.enabled && typeId !== 'home') {
-          // Get icon and label
           const icon = iconMap[typeId] || ChatIcon;
           const label = contentType.name;
 
@@ -71,32 +82,18 @@
           });
         }
       }
+    }
 
-      // Always include Learning tab even if community doesn't define kind 30142
-      if (!types.some((t) => t.id === 'learning')) {
+    // Ensure all default tabs are present (replaces per-type forced blocks)
+    for (const tabId of getDefaultCommunityTabs()) {
+      if (tabId === 'home' || tabId === 'activity' || tabId === 'settings') continue;
+      if (!types.some((t) => t.id === tabId)) {
         types.push({
-          id: 'learning',
-          label: m.community_layout_bottom_tab_bar_learning(),
-          icon: BookIcon
+          id: tabId,
+          label: tabLabelMap[tabId]?.() ?? tabId,
+          icon: iconMap[tabId] || ChatIcon
         });
       }
-
-      // Always include Boards tab even if community doesn't define kind 30301
-      if (!types.some((t) => t.id === 'boards')) {
-        types.push({
-          id: 'boards',
-          label: m.community_layout_bottom_tab_bar_boards(),
-          icon: KanbanIcon
-        });
-      }
-    } else {
-      // Default content types when no community
-      types.push(
-        { id: 'chat', label: m.community_layout_bottom_tab_bar_chat(), icon: ChatIcon },
-        { id: 'calendar', label: m.community_layout_bottom_tab_bar_calendar(), icon: CalendarIcon },
-        { id: 'learning', label: m.community_layout_bottom_tab_bar_learning(), icon: BookIcon },
-        { id: 'boards', label: m.community_layout_bottom_tab_bar_boards(), icon: KanbanIcon }
-      );
     }
 
     // Add common types at the end

@@ -7,6 +7,7 @@
   import { showToast } from '$lib/helpers/toast.js';
   import { deleteCalendarEvent } from '$lib/helpers/eventDeletion.js';
   import { EditIcon, TrashIcon } from '$lib/components/icons';
+  import DeleteConfirmModal from '../shared/DeleteConfirmModal.svelte';
   import * as m from '$lib/paraglide/messages';
 
   /**
@@ -85,33 +86,11 @@
   </ul>
 </div>
 
-<!-- Delete Confirmation Modal -->
-{#if showDeleteConfirmation && event}
-  <div class="modal-open modal">
-    <div class="modal-box">
-      <h3 class="text-lg font-bold">{m.event_management_delete_confirm_title()}</h3>
-      <p class="py-4">
-        {m.event_management_delete_confirm_text()} <strong>{event.title}</strong>?
-        <br />
-        {m.event_management_delete_cannot_undo()}
-      </p>
-      <div class="modal-action">
-        <button
-          class="btn"
-          onclick={() => (showDeleteConfirmation = false)}
-          disabled={isDeletingEvent}
-        >
-          {m.common_cancel()}
-        </button>
-        <button class="btn btn-error" onclick={handleDeleteEvent} disabled={isDeletingEvent}>
-          {#if isDeletingEvent}
-            <span class="loading loading-sm loading-spinner"></span>
-            {m.event_management_deleting()}
-          {:else}
-            {m.event_management_delete()}
-          {/if}
-        </button>
-      </div>
-    </div>
-  </div>
-{/if}
+<DeleteConfirmModal
+  open={showDeleteConfirmation && !!event}
+  title={m.event_management_delete_confirm_title()}
+  itemName={event?.title || ''}
+  isDeleting={isDeletingEvent}
+  onconfirm={handleDeleteEvent}
+  oncancel={() => (showDeleteConfirmation = false)}
+/>
