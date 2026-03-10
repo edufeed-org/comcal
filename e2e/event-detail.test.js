@@ -44,10 +44,15 @@ test.describe('Event detail page - naddr routes', () => {
     await expect(page.locator('article').getByText('Content for article 0')).toBeVisible();
   });
 
-  test('calendar date event detail page loads', async ({ page }) => {
+  test('calendar date event redirects to dedicated detail page', async ({ page }) => {
     await navigateToNaddr(page, TEST_NADDRS.calendarDate);
 
-    // The CalendarView renders the event title in the sidebar list or page body
+    // Should redirect to /calendar/event/{naddr}
+    await expect(async () => {
+      expect(page.url()).toContain('/calendar/event/');
+    }).toPass({ timeout: 15_000 });
+
+    // The dedicated calendar event page renders the event title
     await expect(async () => {
       const pageContent = await page.locator('body').textContent();
       expect(pageContent).toContain('Mathematics Workshop');

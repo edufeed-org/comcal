@@ -1,9 +1,7 @@
 <script>
-  import CalendarView from '$lib/components/calendar/CalendarView.svelte';
   import ArticleView from '$lib/components/article/ArticleView.svelte';
   import AMBResourceView from '$lib/components/educational/AMBResourceView.svelte';
   import KanbanBoardView from '$lib/components/kanban/KanbanBoardView.svelte';
-  import { getCalendarEventMetadata } from '$lib/helpers/eventUtils';
   import { formatAMBResource } from '$lib/helpers/educational';
   import { getTagValue } from 'applesauce-core/helpers';
   import { runtimeConfig } from '$lib/stores/config.svelte.js';
@@ -14,15 +12,6 @@
   // Transform event data based on kind
   const displayData = $derived.by(() => {
     if (!data.event) return null;
-
-    // Calendar events (kinds 31922, 31923)
-    if (data.kind === 31922 || data.kind === 31923) {
-      return {
-        type: 'calendar',
-        calendar: getCalendarEventMetadata(data.event),
-        rawCalendar: data.event
-      };
-    }
 
     // Long-form articles (kind 30023)
     if (data.kind === 30023) {
@@ -58,9 +47,7 @@
 
   // Derive page title based on content type
   const pageTitle = $derived.by(() => {
-    if (displayData?.type === 'calendar') {
-      return `${displayData.calendar?.title || 'Calendar Event'} - ${runtimeConfig.appName}`;
-    } else if (displayData?.type === 'article') {
+    if (displayData?.type === 'article') {
       const titleTag = data.event?.tags?.find((/** @type {any} */ t) => t[0] === 'title');
       return `${titleTag?.[1] || 'Article'} - ${runtimeConfig.appName}`;
     } else if (displayData?.type === 'amb') {
@@ -82,14 +69,7 @@
 </svelte:head>
 
 <div class="container mx-auto px-4 py-8">
-  {#if displayData?.type === 'calendar'}
-    <!-- Calendar Event Display -->
-    <CalendarView
-      calendar={displayData.calendar}
-      rawCalendar={displayData.rawCalendar}
-      globalMode={false}
-    />
-  {:else if displayData?.type === 'article'}
+  {#if displayData?.type === 'article'}
     <!-- Article Display -->
     <ArticleView event={displayData.event} />
   {:else if displayData?.type === 'amb'}

@@ -1,6 +1,6 @@
 import { nip19 } from 'nostr-tools';
 import { fetchEventById } from '$lib/helpers/nostrUtils';
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 
 /**
  * @param {{ params: { naddr: string } }} context
@@ -15,6 +15,15 @@ export async function load({ params }) {
       throw error(400, 'Invalid address format - expected naddr');
     }
 
+    // Redirect calendar events to their dedicated detail pages
+    const kind = decoded.data.kind;
+    if (kind === 31922 || kind === 31923) {
+      redirect(307, `/calendar/event/${params.naddr}`);
+    }
+    if (kind === 31924) {
+      redirect(307, `/calendar/${params.naddr}`);
+    }
+
     // Fetch the actual event
     const event = await fetchEventById(params.naddr);
 
@@ -22,14 +31,11 @@ export async function load({ params }) {
       throw error(404, 'Event not found');
     }
 
-    // Determine the kind from decoded data or event
-    const kind = decoded.data.kind || event.kind;
-
     return {
       naddr: params.naddr,
       decoded: decoded.data,
       event,
-      kind
+      kind: kind || event.kind
     };
   } catch (err) {
     console.error('Error loading naddr route:', err);
