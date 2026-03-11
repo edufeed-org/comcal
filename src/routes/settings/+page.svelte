@@ -25,7 +25,7 @@
     parseRelaySetEvent,
     updateUserOverrideCache
   } from '$lib/services/app-relay-service.svelte.js';
-  import { createAppRelaySetLoader } from '$lib/loaders/app-relay-set-loader.js';
+  import { addressLoader } from '$lib/loaders/base.js';
   import { publishEvent } from '$lib/services/publish-service.js';
   import { appSettings } from '$lib/stores/app-settings.svelte.js';
   import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
@@ -182,9 +182,20 @@
 
     const lookupRelays = getRelayListLookupRelays();
 
-    // Create loader for kind 30002 (app relay sets)
-    const loader = createAppRelaySetLoader(pool, lookupRelays, eventStore, activeAccount.pubkey);
-    const loaderSub = loader()().subscribe();
+    // Load kind 30002 events via addressLoader (one per category)
+    /** @type {import('rxjs').Subscription[]} */
+    const loaderSubs = [];
+    for (const category of Object.keys(CATEGORIES)) {
+      const dTag = getRelaySetDTag(category);
+      loaderSubs.push(
+        addressLoader({
+          kind: 30002,
+          pubkey: activeAccount.pubkey,
+          identifier: dTag,
+          relays: lookupRelays
+        }).subscribe()
+      );
+    }
 
     // Subscribe to each category's relay set
     /** @type {import('rxjs').Subscription[]} */
@@ -230,7 +241,7 @@
     }, 3000);
 
     return () => {
-      loaderSub?.unsubscribe();
+      loaderSubs.forEach((sub) => sub?.unsubscribe());
       subscriptions.forEach((sub) => sub?.unsubscribe());
       clearTimeout(timeout);
     };
@@ -469,7 +480,12 @@
       };
 
       const signedEvent = await activeAccount.signer.signEvent(event);
-      await publishEvent(signedEvent, []);
+      const lookupRelays = getRelayListLookupRelays();
+      const result = await publishEvent(signedEvent, [], { additionalRelays: lookupRelays });
+      if (!result.success) {
+        appRelaysError = 'Failed to save relay settings to any relay';
+        return;
+      }
       eventStore.add(signedEvent);
 
       // Update local state

@@ -86,8 +86,8 @@ async function initializeAccountPersistence() {
       return;
     }
 
-    const { pool, eventStore } = await import('$lib/stores/nostr-infrastructure.svelte');
-    const { createAppRelaySetLoader } = await import('$lib/loaders/app-relay-set-loader.js');
+    const { eventStore } = await import('$lib/stores/nostr-infrastructure.svelte');
+    const { addressLoader } = await import('$lib/loaders/base.js');
     const { getRelayListLookupRelays } = await import('$lib/services/relay-service.svelte.js');
 
     const lookupRelays = getRelayListLookupRelays();
@@ -105,12 +105,17 @@ async function initializeAccountPersistence() {
       lookupRelays.length,
       'lookup relays'
     );
-    const loader = createAppRelaySetLoader(pool, lookupRelays, eventStore, account.pubkey);
-    loader()().subscribe();
 
-    // Subscribe to each category and populate cache
+    // Load and subscribe to each category's relay set via addressLoader
     for (const category of Object.keys(CATEGORIES)) {
       const dTag = getRelaySetDTag(category);
+      addressLoader({
+        kind: 30002,
+        pubkey: account.pubkey,
+        identifier: dTag,
+        relays: lookupRelays
+      }).subscribe();
+
       eventStore.replaceable(30002, account.pubkey, dTag).subscribe((event) => {
         const relays = parseRelaySetEvent(event);
         updateUserOverrideCache(category, relays);
