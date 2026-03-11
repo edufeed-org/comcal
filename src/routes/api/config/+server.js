@@ -128,6 +128,19 @@ function resolveCuratedConfig(env, suffix) {
 }
 
 /**
+ * Resolve WoT anchor config for a specific category.
+ * Category-specific var overrides global; falls back to global WOT_ANCHOR_PUBKEYS.
+ * @param {Record<string, string|undefined>} env
+ * @param {string} suffix - Category suffix, e.g. 'EDUCATIONAL'
+ * @returns {{ anchors: string[] }}
+ */
+function resolveWotConfig(env, suffix) {
+  const catAnchors = env[`WOT_ANCHOR_PUBKEYS_${suffix}`];
+  if (catAnchors !== undefined) return { anchors: parseArray(catAnchors) };
+  return { anchors: parseArray(env.WOT_ANCHOR_PUBKEYS) };
+}
+
+/**
  * GET /api/config
  * Returns public configuration that can be safely exposed to the browser
  */
@@ -163,6 +176,17 @@ export function GET() {
       educational: resolveCuratedConfig(env, 'EDUCATIONAL'),
       longform: resolveCuratedConfig(env, 'LONGFORM'),
       kanban: resolveCuratedConfig(env, 'KANBAN')
+    },
+
+    // WoT mode: include follows of anchor pubkeys as allowed authors
+    wotMode: {
+      enabled: parseBool(env.WOT_ENABLED, false),
+      includeUserFollows: parseBool(env.WOT_INCLUDE_USER_FOLLOWS, true),
+      calendar: resolveWotConfig(env, 'CALENDAR'),
+      communikey: resolveWotConfig(env, 'COMMUNIKEY'),
+      educational: resolveWotConfig(env, 'EDUCATIONAL'),
+      longform: resolveWotConfig(env, 'LONGFORM'),
+      kanban: resolveWotConfig(env, 'KANBAN')
     },
 
     // NIP-65 relay list discovery

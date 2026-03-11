@@ -58,7 +58,7 @@
 
   // Use reactive getter for active user to ensure proper reactivity on login/logout
   const getActiveUser = useActiveUser();
-  let activeUser = $derived(getActiveUser());
+  let _activeUser = $derived(getActiveUser());
 
   // Calendar view state (local to this component)
   let currentDate = $state(new Date());
@@ -106,6 +106,7 @@
 
   // Track initial relays at component mount for supplemental loading pattern
   // When user override relays (kind 30002) arrive asynchronously, we detect and query them
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- internal tracking, not reactive state
   const initialCalendarRelays = new Set(getCalendarRelays());
 
   // Track previous community pubkey to detect actual changes
@@ -319,7 +320,12 @@
    * Load calendar events using direct loader/model pattern
    */
   function loadEvents() {
-    // Clean up existing subscriptions
+    // Global/author mode: loader and model subscriptions are fully managed
+    // by reactive $effects that respond to viewMode, currentDate, and filter changes.
+    // Do not interfere with effect-owned subscriptions here.
+    if (globalMode || authorPubkey) return;
+
+    // Clean up existing subscriptions (for community/calendar modes)
     loaderSubscription?.unsubscribe();
     modelSubscription?.unsubscribe();
 
@@ -331,15 +337,6 @@
     if (communityMode && communityPubkey) {
       // Community mode: Use the event loader composable
       communityEventLoader.loadByCommunity(communityPubkey);
-    } else if (globalMode || authorPubkey) {
-      // Global mode or Author mode: Loading is handled by the reactive $effect
-      // Reset relay filter state
-      const relays = calendarFilters.selectedRelays;
-      relayFilterActive = relays.length > 0;
-      relayFilteredEventIds = [];
-
-      // Note: The actual loader and model subscriptions are managed by the reactive $effects
-      // which will run after mount and react to currentDate/viewMode changes
     } else if (calendar && rawCalendar) {
       // Calendar mode: Load events from specific calendar
       loaderSubscription = calendarEventReferencesLoader(rawCalendar)().subscribe({
@@ -495,27 +492,27 @@
 
   /**
    * Handle tag filter changes
-   * @param {string[]} tags
+   * @param {string[]} _tags
    */
-  function handleTagFilterChange(tags) {
+  function handleTagFilterChange(_tags) {
     // Tag filtering is client-side, so no refresh needed
     // The displayedEvents derived state will automatically update
   }
 
   /**
    * Handle search query changes
-   * @param {string} query
+   * @param {string} _query
    */
-  function handleSearchQueryChange(query) {
+  function handleSearchQueryChange(_query) {
     // Search filtering is client-side, so no refresh needed
     // The displayedEvents derived state will automatically update
   }
 
   /**
    * Handle follow list filter changes
-   * @param {string[]} listIds
+   * @param {string[]} _listIds
    */
-  function handleFollowListFilterChange(listIds) {
+  function handleFollowListFilterChange(_listIds) {
     // Trigger a refresh with the new author filters
     handleRefresh();
   }

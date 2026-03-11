@@ -282,6 +282,15 @@ The `.env.example` file contains all available configuration options. Key catego
 - `CURATED_PUBKEYS_SETS`: Comma-separated NIP-19 naddr identifiers pointing to kind 30000 follow sets. When set, only content from pubkeys in these follow sets is shown for primary content (calendar events, AMB resources, articles, community definitions). Social content (reactions, comments, chat, targeted publications) is not filtered. Leave empty to disable.
 - `CURATED_PUBKEYS`: Comma-separated hex pubkeys or npub-encoded pubkeys for direct curated author filtering. These are unioned with pubkeys from `CURATED_PUBKEYS_SETS`. If either has entries, curated mode is active. Simpler than follow sets for small deployments.
 
+**WoT (Web of Trust) Mode**
+
+WoT extends curated mode by using anchor pubkeys' follow graphs. Anchor pubkeys' kind 3 contact lists are fetched at startup, and their follows become allowed authors. The effective author set is the union of curated authors, WoT anchors, WoT follows, and (optionally) the logged-in user's own follows.
+
+- `WOT_ENABLED`: Enable WoT content filtering (true/false, default: false)
+- `WOT_INCLUDE_USER_FOLLOWS`: Include logged-in user's own follows as allowed authors (true/false, default: true)
+- `WOT_ANCHOR_PUBKEYS`: Global anchor pubkeys (hex or npub, comma-separated). These pubkeys + their follows become allowed authors for all categories
+- `WOT_ANCHOR_PUBKEYS_CALENDAR`: Per-category anchor override (replaces global for calendar). Same pattern for `_COMMUNIKEY`, `_EDUCATIONAL`, `_LONGFORM`, `_KANBAN`
+
 **Calendar Settings**
 
 - `CALENDAR_WEEK_START_DAY`: Week start day (0=Sunday, 1=Monday)

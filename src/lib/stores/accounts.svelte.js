@@ -149,6 +149,36 @@ async function initializeAccountPersistence() {
       contactsStore.clear();
     }
   });
+
+  // Step 8: Set WoT user follows on login/logout
+  manager.active$.subscribe(async (account) => {
+    const { setUserFollows, clearUserFollows } = await import(
+      '$lib/services/curated-authors-service.svelte.js'
+    );
+
+    if (!account) {
+      clearUserFollows();
+      return;
+    }
+
+    // Subscribe to user's kind 3 contact list and extract follow pubkeys
+    const { eventStore } = await import('$lib/stores/nostr-infrastructure.svelte');
+    eventStore
+      .timeline({
+        kinds: [3],
+        authors: [account.pubkey],
+        limit: 1
+      })
+      .subscribe((events) => {
+        if (events.length > 0) {
+          const latestEvent = events[events.length - 1];
+          const pubkeys = latestEvent.tags
+            .filter((/** @type {string[]} */ t) => t[0] === 'p' && t[1])
+            .map((/** @type {string[]} */ t) => t[1]);
+          setUserFollows(pubkeys);
+        }
+      });
+  });
 }
 
 // Initialize persistence when module loads (client-side only)

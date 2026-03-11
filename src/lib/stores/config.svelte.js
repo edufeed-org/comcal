@@ -42,6 +42,16 @@ const defaultConfig = {
     longform: { sets: /** @type {string[]} */ ([]), direct: /** @type {string[]} */ ([]) },
     kanban: { sets: /** @type {string[]} */ ([]), direct: /** @type {string[]} */ ([]) }
   },
+  // WoT mode: include follows of anchor pubkeys as allowed authors
+  wotMode: {
+    enabled: false,
+    includeUserFollows: true,
+    calendar: { anchors: /** @type {string[]} */ ([]) },
+    communikey: { anchors: /** @type {string[]} */ ([]) },
+    educational: { anchors: /** @type {string[]} */ ([]) },
+    longform: { anchors: /** @type {string[]} */ ([]) },
+    kanban: { anchors: /** @type {string[]} */ ([]) }
+  },
   // Default Blossom servers for new users
   defaultBlossomServers: [],
   calendar: {
@@ -196,6 +206,16 @@ export function initializeConfig(runtimeConfig) {
       longform: runtimeConfig.curatedMode?.longform || defaultConfig.curatedMode.longform,
       kanban: runtimeConfig.curatedMode?.kanban || defaultConfig.curatedMode.kanban
     },
+    wotMode: {
+      enabled: runtimeConfig.wotMode?.enabled ?? defaultConfig.wotMode.enabled,
+      includeUserFollows:
+        runtimeConfig.wotMode?.includeUserFollows ?? defaultConfig.wotMode.includeUserFollows,
+      calendar: runtimeConfig.wotMode?.calendar || defaultConfig.wotMode.calendar,
+      communikey: runtimeConfig.wotMode?.communikey || defaultConfig.wotMode.communikey,
+      educational: runtimeConfig.wotMode?.educational || defaultConfig.wotMode.educational,
+      longform: runtimeConfig.wotMode?.longform || defaultConfig.wotMode.longform,
+      kanban: runtimeConfig.wotMode?.kanban || defaultConfig.wotMode.kanban
+    },
     defaultBlossomServers:
       runtimeConfig.defaultBlossomServers || defaultConfig.defaultBlossomServers,
     calendar: {
@@ -327,6 +347,9 @@ export const runtimeConfig = {
   },
   get curatedMode() {
     return config.curatedMode;
+  },
+  get wotMode() {
+    return config.wotMode;
   },
   get favicon() {
     return config.favicon;

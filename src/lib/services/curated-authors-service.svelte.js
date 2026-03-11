@@ -4,9 +4,15 @@
  * Restricts primary content (calendar events, AMB resources, articles, community definitions,
  * kanban boards) to specific authors, with per-content-type granularity.
  *
+ * Two author sources are unioned per category:
+ * 1. **Curated** — Direct pubkeys and follow set naddrs (kind 30000)
+ * 2. **WoT (Web of Trust)** — Anchor pubkeys + their kind 3 follows + optional user follows
+ *
  * Configured via per-category env vars with global fallback:
  * - CURATED_PUBKEYS_SETS / CURATED_PUBKEYS: global defaults
  * - CURATED_PUBKEYS_SETS_CALENDAR / CURATED_PUBKEYS_CALENDAR: category override (replaces global)
+ * - WOT_ENABLED / WOT_ANCHOR_PUBKEYS: global WoT config
+ * - WOT_ANCHOR_PUBKEYS_EDUCATIONAL: category-specific WoT anchors
  * - Same pattern for COMMUNIKEY, EDUCATIONAL, LONGFORM, KANBAN
  *
  * If a category has its own env vars, they completely replace the global config for that category.
@@ -45,6 +51,22 @@ const directPubkeysInitialized = new Set();
 /** Categories whose follow sets have been fully initialized */
 // eslint-disable-next-line svelte/prefer-svelte-reactivity -- module-level cache, not reactive state
 const followSetsInitialized = new Set();
+
+// --- WoT (Web of Trust) state ---
+
+/**
+ * Per-category cache of WoT author pubkeys (anchor pubkeys + their follows).
+ * @type {Map<string, string[]>}
+ */
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- module-level cache, not reactive state
+const wotAuthorsCache = new Map();
+
+/** Categories whose WoT anchors have been fetched */
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- module-level cache, not reactive state
+const wotInitialized = new Set();
+
+/** Logged-in user's follow pubkeys (set on login, cleared on logout) */
+let userFollowPubkeys = /** @type {string[]} */ ([]);
 
 /**
  * Get the curated mode config for a category from runtime config.
@@ -134,15 +156,25 @@ export function isCuratedModeActive(category) {
 }
 
 /**
- * Get the curated author pubkeys for a specific category.
- * Returns null when curated mode is not configured for the category (no filtering).
+ * Get the combined author pubkeys for a specific category.
+ * Unions curated authors + WoT anchor follows + user follows (if enabled).
+ * Returns null when no author source is configured for the category (no filtering).
  * Returns string[] when active (add as `authors` filter).
  * @param {string} category
  * @returns {string[] | null}
  */
 export function getCuratedAuthors(category) {
   ensureDirectPubkeysInitialized(category);
-  return curatedAuthorsCache.get(category) ?? null;
+  const curated = curatedAuthorsCache.get(category) ?? null;
+  const wot = wotAuthorsCache.get(category) ?? null;
+  const includeUser = runtimeConfig.wotMode?.includeUserFollows && userFollowPubkeys.length > 0;
+
+  if (!curated && !wot && !includeUser) return null;
+
+  const combined = [...(curated || []), ...(wot || []), ...(includeUser ? userFollowPubkeys : [])];
+  if (combined.length === 0) return null;
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- dedup only, not reactive state
+  return [...new Set(combined)];
 }
 
 /**
@@ -317,6 +349,89 @@ export async function initializeAllCuratedAuthors() {
   await Promise.all(ALL_CATEGORIES.map((cat) => initializeCuratedAuthors(cat)));
 }
 
+// --- WoT initialization ---
+
+/**
+ * Get the WoT config for a category from runtime config.
+ * @param {string} category
+ * @returns {{ anchors: string[] }}
+ */
+function getWotCategoryConfig(category) {
+  const cfg = /** @type {Record<string, {anchors: string[]}>} */ (
+    /** @type {unknown} */ (runtimeConfig.wotMode)
+  )?.[category];
+  return {
+    anchors: Array.isArray(cfg?.anchors) ? cfg.anchors : []
+  };
+}
+
+/**
+ * Initialize WoT authors for a specific category.
+ * Fetches kind 3 (contact list) events for anchor pubkeys and extracts their follows.
+ * Safe to call multiple times — subsequent calls are no-ops.
+ * @param {string} category
+ */
+export async function initializeWotAuthors(category) {
+  if (wotInitialized.has(category)) return;
+  if (!runtimeConfig.wotMode?.enabled) return;
+
+  const { anchors: rawAnchors } = getWotCategoryConfig(category);
+  if (rawAnchors.length === 0) return;
+
+  wotInitialized.add(category);
+
+  const anchorPubkeys = parseDirectPubkeys(rawAnchors);
+  if (anchorPubkeys.length === 0) return;
+
+  try {
+    const relays = getAllLookupRelays();
+    const filter = { kinds: [3], authors: anchorPubkeys };
+
+    const events = await lastValueFrom(
+      pool.request(relays, filter, /** @type {any} */ ({ timeout: 5000 })).pipe(toArray())
+    );
+
+    // Extract p-tags from kind 3 events (reuse existing function)
+    const followPubkeys = extractPubkeysFromFollowSets(events);
+
+    // Union anchor pubkeys + their follows (deduplicated)
+    const allPubkeys = [...anchorPubkeys, ...followPubkeys].filter(
+      (pk, i, arr) => arr.indexOf(pk) === i
+    );
+
+    if (allPubkeys.length > 0) {
+      wotAuthorsCache.set(category, allPubkeys);
+    }
+  } catch (err) {
+    console.error(`WoT authors [${category}]: Initialization failed`, err);
+  }
+}
+
+/**
+ * Initialize WoT authors for all categories in parallel.
+ * Call this after runtime config is loaded.
+ */
+export async function initializeAllWotAuthors() {
+  if (!runtimeConfig.wotMode?.enabled) return;
+  await Promise.all(ALL_CATEGORIES.map((cat) => initializeWotAuthors(cat)));
+}
+
+/**
+ * Set the logged-in user's follow pubkeys (called on login).
+ * These are included in the author union when wotMode.includeUserFollows is true.
+ * @param {string[]} pubkeys - Hex pubkeys from user's kind 3 contact list
+ */
+export function setUserFollows(pubkeys) {
+  userFollowPubkeys = pubkeys;
+}
+
+/**
+ * Clear user follows (called on logout).
+ */
+export function clearUserFollows() {
+  userFollowPubkeys = [];
+}
+
 /**
  * Reset curated authors state (for testing).
  * @param {string} [category] - If provided, reset only that category. Otherwise reset all.
@@ -326,9 +441,14 @@ export function _resetForTesting(category) {
     curatedAuthorsCache.delete(category);
     directPubkeysInitialized.delete(category);
     followSetsInitialized.delete(category);
+    wotAuthorsCache.delete(category);
+    wotInitialized.delete(category);
   } else {
     curatedAuthorsCache.clear();
     directPubkeysInitialized.clear();
     followSetsInitialized.clear();
+    wotAuthorsCache.clear();
+    wotInitialized.clear();
+    userFollowPubkeys = [];
   }
 }

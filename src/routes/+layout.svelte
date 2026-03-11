@@ -43,15 +43,26 @@
     }
   });
 
-  // Initialize curated authors for all categories after config is loaded (fire-and-forget)
+  // Initialize curated/WoT authors before rendering children.
+  // Follow set naddrs require async relay fetches — without awaiting, discover page
+  // loaders fire before the cache is populated, causing getCuratedAuthors() to return
+  // null and allowing unfiltered content through.
+  let curatedReady = $state(!browser);
+
   $effect(() => {
-    if (browser) {
-      import('$lib/services/curated-authors-service.svelte.js').then(
-        ({ initializeAllCuratedAuthors }) => {
-          initializeAllCuratedAuthors();
-        }
-      );
-    }
+    if (!browser) return;
+    const TIMEOUT_MS = 5_000;
+    import('$lib/services/curated-authors-service.svelte.js')
+      .then(async ({ initializeAllCuratedAuthors, initializeAllWotAuthors }) => {
+        await Promise.race([
+          Promise.all([initializeAllCuratedAuthors(), initializeAllWotAuthors()]),
+          new Promise((resolve) => setTimeout(resolve, TIMEOUT_MS))
+        ]);
+        curatedReady = true;
+      })
+      .catch(() => {
+        curatedReady = true;
+      });
   });
 </script>
 
@@ -74,6 +85,12 @@
 
 <Navbar />
 <ModalManager />
-{@render children?.()}
+{#if curatedReady}
+  {@render children?.()}
+{:else}
+  <div class="flex min-h-[60vh] items-center justify-center">
+    <div class="loading loading-lg loading-spinner text-primary"></div>
+  </div>
+{/if}
 <Footer />
 <PublishStatusToast />

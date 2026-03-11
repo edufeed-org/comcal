@@ -721,4 +721,225 @@ describe('curated-authors-service', () => {
       expect(service.getCuratedAuthors('educational')).toEqual([hexPubkey]);
     });
   });
+
+  describe('initializeCuratedAuthors (async)', () => {
+    it('should fetch kind 30000 follow sets and populate cache', async () => {
+      vi.resetModules();
+
+      const { of } = await import('rxjs');
+      const followSetEvent = {
+        kind: 30000,
+        pubkey: 'setowner',
+        tags: [
+          ['d', 'curated-list'],
+          ['p', 'follow1'],
+          ['p', 'follow2']
+        ]
+      };
+
+      vi.doMock('$lib/stores/nostr-infrastructure.svelte', () => ({
+        pool: {
+          request: vi.fn(() => of(followSetEvent))
+        },
+        eventStore: { add: vi.fn() }
+      }));
+
+      vi.doMock('nostr-tools', () => ({
+        nip19: {
+          decode: vi.fn(() => ({
+            type: 'naddr',
+            data: {
+              kind: 30000,
+              pubkey: 'setowner',
+              identifier: 'curated-list',
+              relays: ['wss://relay.test']
+            }
+          }))
+        }
+      }));
+
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: ['naddr1followset'], direct: [] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      // Before init, only direct pubkeys are parsed (none configured)
+      expect(service.getCuratedAuthors('calendar')).toBeNull();
+
+      await service.initializeCuratedAuthors('calendar');
+
+      const authors = service.getCuratedAuthors('calendar');
+      expect(authors).toContain('follow1');
+      expect(authors).toContain('follow2');
+    });
+
+    it('should union direct pubkeys and follow set pubkeys', async () => {
+      vi.resetModules();
+
+      const { of } = await import('rxjs');
+      const directPubkey = 'a'.repeat(64);
+      const followSetEvent = {
+        kind: 30000,
+        pubkey: 'setowner',
+        tags: [
+          ['d', 'curated-list'],
+          ['p', 'follow1']
+        ]
+      };
+
+      vi.doMock('$lib/stores/nostr-infrastructure.svelte', () => ({
+        pool: {
+          request: vi.fn(() => of(followSetEvent))
+        },
+        eventStore: { add: vi.fn() }
+      }));
+
+      vi.doMock('nostr-tools', () => ({
+        nip19: {
+          decode: vi.fn(() => ({
+            type: 'naddr',
+            data: {
+              kind: 30000,
+              pubkey: 'setowner',
+              identifier: 'curated-list',
+              relays: ['wss://relay.test']
+            }
+          }))
+        }
+      }));
+
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: ['naddr1followset'], direct: [directPubkey] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+
+      const service = await import('../services/curated-authors-service.svelte.js');
+      await service.initializeCuratedAuthors('calendar');
+
+      const authors = service.getCuratedAuthors('calendar');
+      expect(authors).toContain(directPubkey);
+      expect(authors).toContain('follow1');
+      expect(authors).toHaveLength(2);
+    });
+
+    it('should handle relay failure gracefully and keep direct pubkeys', async () => {
+      vi.resetModules();
+
+      const { throwError } = await import('rxjs');
+      const directPubkey = 'b'.repeat(64);
+
+      vi.doMock('$lib/stores/nostr-infrastructure.svelte', () => ({
+        pool: {
+          request: vi.fn(() => throwError(() => new Error('Relay timeout')))
+        },
+        eventStore: { add: vi.fn() }
+      }));
+
+      vi.doMock('nostr-tools', () => ({
+        nip19: {
+          decode: vi.fn(() => ({
+            type: 'naddr',
+            data: {
+              kind: 30000,
+              pubkey: 'setowner',
+              identifier: 'curated-list',
+              relays: ['wss://relay.test']
+            }
+          }))
+        }
+      }));
+
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: ['naddr1followset'], direct: [directPubkey] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      // Should not throw
+      await service.initializeCuratedAuthors('calendar');
+
+      // Direct pubkeys should still be available
+      const authors = service.getCuratedAuthors('calendar');
+      expect(authors).toEqual([directPubkey]);
+    });
+
+    it('should be idempotent (no-op on second call)', async () => {
+      vi.resetModules();
+
+      const { of } = await import('rxjs');
+      const requestMock = vi.fn(() =>
+        of({
+          kind: 30000,
+          pubkey: 'setowner',
+          tags: [
+            ['d', 'curated-list'],
+            ['p', 'follow1']
+          ]
+        })
+      );
+
+      vi.doMock('$lib/stores/nostr-infrastructure.svelte', () => ({
+        pool: { request: requestMock },
+        eventStore: { add: vi.fn() }
+      }));
+
+      vi.doMock('nostr-tools', () => ({
+        nip19: {
+          decode: vi.fn(() => ({
+            type: 'naddr',
+            data: {
+              kind: 30000,
+              pubkey: 'setowner',
+              identifier: 'curated-list',
+              relays: ['wss://relay.test']
+            }
+          }))
+        }
+      }));
+
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: ['naddr1followset'], direct: [] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      await service.initializeCuratedAuthors('calendar');
+      await service.initializeCuratedAuthors('calendar');
+
+      // pool.request should only be called once
+      expect(requestMock).toHaveBeenCalledTimes(1);
+    });
+  });
 });
