@@ -2,6 +2,7 @@
   import { resolve } from '$app/paths';
   import * as m from '$lib/paraglide/messages';
   import { modalStore } from '$lib/stores/modal.svelte.js';
+  import { runtimeConfig } from '$lib/stores/config.svelte.js';
 
   // Note: These functions are kept for future CTA buttons
   function _handleGetStarted() {
@@ -17,21 +18,24 @@
 </script>
 
 <section
-  class="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-secondary py-20 text-primary-content"
+  class="relative overflow-hidden py-20 text-primary-content {runtimeConfig.ui?.landingHeroImage
+    ? ''
+    : 'bg-gradient-to-br from-primary to-secondary'}"
 >
-  <!-- Decorative elements -->
-  <div class="absolute inset-0 opacity-10">
-    <div class="absolute top-10 -left-4 h-72 w-72 rounded-full bg-white blur-3xl"></div>
-    <div class="absolute -right-4 bottom-10 h-96 w-96 rounded-full bg-white blur-3xl"></div>
-  </div>
-
+  {#if runtimeConfig.ui?.landingHeroImage}
+    <img
+      src={runtimeConfig.ui.landingHeroImage}
+      alt=""
+      class="absolute inset-0 h-full w-full object-cover"
+    />
+  {/if}
   <div class="relative z-10 container mx-auto px-4">
-    <!-- Main headline -->
-    <div class="mx-auto max-w-4xl text-center">
-      <h1 class="mb-6 text-4xl leading-tight font-bold md:text-5xl lg:text-6xl">
+    <!-- Frosted glass card -->
+    <div class="mx-auto max-w-4xl rounded-2xl bg-black/30 p-8 text-center backdrop-blur-md md:p-12">
+      <h1 class="mb-6 text-4xl leading-tight font-bold text-white md:text-5xl lg:text-6xl">
         {m.landing_hero_title()}
       </h1>
-      <p class="mb-4 text-lg opacity-90 md:text-xl lg:text-2xl">
+      <p class="mb-4 text-lg text-white/90 md:text-xl lg:text-2xl">
         {m.landing_hero_subtitle()}
       </p>
 
@@ -40,7 +44,7 @@
         href="https://onboarding.edufeed.org"
         target="_blank"
         rel="noopener noreferrer"
-        class="group mb-8 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-5 py-2.5 text-sm font-medium backdrop-blur-sm transition-all hover:border-white/50 hover:bg-white/25 md:text-base"
+        class="group mb-8 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-5 py-2.5 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-white/50 hover:bg-white/25 md:text-base"
       >
         <span class="text-lg">🚀</span>
         {m.landing_hero_onboarding()}
@@ -60,21 +64,21 @@
       <div class="mb-10 flex flex-wrap justify-center gap-4">
         <a
           href={resolve('/discover?type=communities')}
-          class="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 backdrop-blur-sm transition-opacity hover:opacity-80"
+          class="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-white backdrop-blur-sm transition-opacity hover:opacity-80"
         >
           <span class="text-2xl">🏘️</span>
           <span class="font-medium">{m.landing_features_communities()}</span>
         </a>
         <a
           href={resolve('/calendar')}
-          class="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 backdrop-blur-sm transition-opacity hover:opacity-80"
+          class="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-white backdrop-blur-sm transition-opacity hover:opacity-80"
         >
           <span class="text-2xl">📅</span>
           <span class="font-medium">{m.landing_features_calendar()}</span>
         </a>
         <a
           href={resolve('/discover?type=boards')}
-          class="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 backdrop-blur-sm transition-opacity hover:opacity-80"
+          class="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-white backdrop-blur-sm transition-opacity hover:opacity-80"
         >
           <span class="text-2xl">📋</span>
           <span class="font-medium">{m.landing_features_kanban()}</span>

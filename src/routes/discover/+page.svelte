@@ -1,6 +1,7 @@
 <script>
   import { runtimeConfig } from '$lib/stores/config.svelte.js';
   import { SvelteSet } from 'svelte/reactivity';
+  import { untrack } from 'svelte';
   import { onMount } from 'svelte';
   import { articleTimelineLoader } from '$lib/loaders/articles.js';
   import { ambTimelineLoader } from '$lib/loaders/amb.js';
@@ -38,7 +39,11 @@
   import CommunityFilterDropdown from '$lib/components/feed/CommunityFilterDropdown.svelte';
   import RelayFilterDropdown from '$lib/components/feed/RelayFilterDropdown.svelte';
   import { getAppRelaysForCategory } from '$lib/services/app-relay-service.svelte.js';
-  import { applyCuratedFilter } from '$lib/services/curated-authors-service.svelte.js';
+  import {
+    applyCuratedFilter,
+    isAllowedAuthor,
+    getCuratedCacheVersion
+  } from '$lib/services/curated-authors-service.svelte.js';
   import { getSeenRelays } from 'applesauce-core/helpers/relays';
   import { normalizeURL } from 'applesauce-core/helpers';
   import CommunikeyCard from '$lib/components/CommunikeyCard.svelte';
@@ -67,6 +72,7 @@
     getCommunityFilterOptions
   } from '$lib/helpers/communityContent.js';
   import { matchesTextSearch } from '$lib/helpers/contentSearch.js';
+  import AuthorSearchDropdown from '$lib/components/discover/AuthorSearchDropdown.svelte';
   import * as m from '$lib/paraglide/messages';
 
   // State management
@@ -92,7 +98,8 @@
       ...articles.map((a) => a.pubkey),
       ...ambResources.map((r) => r.pubkey),
       ...calendarEvents.map((e) => e.pubkey),
-      ...kanbanBoards.map((b) => b.pubkey)
+      ...kanbanBoards.map((b) => b.pubkey),
+      ...authorFilter
     ].filter(Boolean);
   });
   let authorProfiles = $derived(getAuthorProfiles());
@@ -128,11 +135,14 @@
   /** @type {Map<string, number>} */
   let perRelayOldestTimestamp = $state.raw(new Map());
 
+  // Initialize from URL params (must be before state that depends on it)
+  const initialFilters = parseFeedFilters($page.url.searchParams);
+
   let sortBy = $state('newest');
-  let searchQuery = $state('');
+  let searchQuery = $state(initialFilters.search || '');
 
   // Active search query (set when user presses Enter or clicks search button)
-  let activeSearchQuery = $state('');
+  let activeSearchQuery = $state(initialFilters.search || '');
 
   // Lazy rendering - track which items are visible
   let visibleItemIds = $state(/** @type {Set<string>} */ (new Set()));
@@ -156,8 +166,6 @@
   // Valid content types
   const VALID_CONTENT_TYPES = ['all', 'events', 'learning', 'articles', 'boards', 'communities'];
 
-  // Initialize from URL params
-  const initialFilters = parseFeedFilters($page.url.searchParams);
   let communityFilter = $state(/** @type {string | null} */ (initialFilters.community));
   let relayFilter = $state(/** @type {string | null} */ (null));
 
@@ -175,6 +183,14 @@
     ? initialFilters.type
     : 'all';
   let contentType = $state(initialContentType); // 'events', 'learning', 'articles', 'communities', 'all'
+
+  // Author filter state (multi-author: array of hex pubkeys)
+  /** @type {string[]} */
+  let authorFilter = $state(initialFilters.author);
+  let showAuthorDropdown = $state(false);
+
+  /** @type {import('$lib/components/discover/AuthorSearchDropdown.svelte').default | undefined} */
+  let authorDropdownRef;
 
   // Relay filter: map current tab to relay category
   const tabRelayCategory = $derived(
@@ -282,6 +298,42 @@
     if (VALID_CONTENT_TYPES.includes(urlType) && urlType !== contentType) {
       contentType = urlType;
     }
+
+    // Sync author filter from URL (comma-separated pubkeys)
+    const urlAuthorParam = $page.url.searchParams.get('author') || '';
+    const urlAuthors = urlAuthorParam
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (
+      urlAuthors.length !== authorFilter.length ||
+      urlAuthors.some((pk, i) => pk !== authorFilter[i])
+    ) {
+      authorFilter = urlAuthors;
+    }
+
+    // Sync search from URL (handles back-navigation)
+    // Use untrack for activeSearchQuery so this effect only re-runs on $page changes,
+    // not when activeSearchQuery is set programmatically (which would race with goto())
+    const urlSearch = $page.url.searchParams.get('search') || '';
+    if (urlSearch !== untrack(() => activeSearchQuery)) {
+      searchQuery = urlSearch;
+      activeSearchQuery = urlSearch;
+    }
+  });
+
+  // Write activeSearchQuery to URL (reactive sync — replaces manual updateQueryParams calls)
+  // Use untrack for $page so this effect only triggers on activeSearchQuery changes,
+  // not on every URL change (which would loop with the read effect above)
+  $effect(() => {
+    const search = activeSearchQuery;
+    const urlSearch = untrack(() => $page.url.searchParams.get('search')) || '';
+    if (search !== urlSearch) {
+      updateQueryParams(
+        untrack(() => $page.url.searchParams),
+        { search: search || null }
+      );
+    }
   });
 
   /**
@@ -293,9 +345,14 @@
     relayFilter = null;
     displayLimit = DISPLAY_BATCH;
 
-    // Clear search when switching tabs (search is tab-specific)
+    // Clear search and author filter when switching tabs
     searchQuery = '';
     activeSearchQuery = '';
+    showAuthorDropdown = false;
+    if (authorFilter.length > 0) {
+      authorFilter = [];
+      updateQueryParams($page.url.searchParams, { author: null });
+    }
 
     // Update URL - use null for 'all' to keep URL clean
     updateQueryParams($page.url.searchParams, { type: newType === 'all' ? null : newType });
@@ -526,6 +583,57 @@
     };
   });
 
+  // Relay-side author filtering: when authors are selected, fire targeted
+  // queries with authors:[pubkeys] to fetch their content from relays.
+  // Events land in EventStore and flow through existing model subscriptions.
+  $effect(() => {
+    if (authorFilter.length === 0) return;
+
+    const authors = authorFilter;
+    /** @type {import('rxjs').Subscription[]} */
+    const subs = [];
+
+    if (contentType === 'articles' || contentType === 'all') {
+      const loader = createTimelineLoader(
+        timedPool,
+        getArticleRelays(),
+        { kinds: [30023], authors },
+        { eventStore, limit: 100 }
+      );
+      subs.push(loader().subscribe());
+    }
+
+    if (contentType === 'learning' || contentType === 'all') {
+      const loader = createTimelineLoader(
+        timedPool,
+        getEducationalRelays(),
+        { kinds: [30142], authors },
+        { eventStore, limit: 100 }
+      );
+      subs.push(loader().subscribe());
+    }
+
+    if (contentType === 'events' || contentType === 'all') {
+      const loader = createDateRangeCalendarLoader(
+        { startAfter: eventsDateRangeStart, startBefore: eventsDateRangeEnd },
+        { authors }
+      );
+      subs.push(loader().subscribe());
+    }
+
+    if (contentType === 'boards' || contentType === 'all') {
+      const loader = createTimelineLoader(
+        timedPool,
+        getKanbanRelays(),
+        { kinds: [30301], authors },
+        { eventStore, limit: 100 }
+      );
+      subs.push(loader().subscribe());
+    }
+
+    return () => subs.forEach((s) => s.unsubscribe());
+  });
+
   // Subscribe to targeted publications model (debounced via RxJS)
   const targetedPubsModelSub = eventStore
     .model(TimelineModel, { kinds: [30222], '#k': ['30023', '30142', '31922', '31923', '30301'] })
@@ -720,11 +828,23 @@
     };
   });
 
-  // Auto-focus search input on mount
+  // Auto-focus search input on mount + click-outside handler for author dropdown
   onMount(() => {
     if (searchInputRef) {
       searchInputRef.focus();
     }
+
+    function handleClickOutside(/** @type {MouseEvent} */ e) {
+      if (
+        showAuthorDropdown &&
+        searchInputRef &&
+        !searchInputRef.closest('.relative')?.contains(/** @type {Node} */ (e.target))
+      ) {
+        showAuthorDropdown = false;
+      }
+    }
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   });
 
   /**
@@ -739,9 +859,17 @@
    * @param {KeyboardEvent} event
    */
   function handleSearchKeydown(event) {
+    // Let the author dropdown handle keyboard events first
+    if (showAuthorDropdown && authorDropdownRef?.handleKeydown(event)) {
+      return;
+    }
     if (event.key === 'Enter') {
       event.preventDefault();
+      showAuthorDropdown = false;
       executeSearch();
+    }
+    if (event.key === 'Escape') {
+      showAuthorDropdown = false;
     }
   }
 
@@ -751,6 +879,48 @@
   function clearSearch() {
     searchQuery = '';
     activeSearchQuery = '';
+    showAuthorDropdown = false;
+  }
+
+  /**
+   * Handle author selection from dropdown (additive — adds to multi-author filter)
+   * @param {any} author
+   */
+  function handleAuthorSelect(author) {
+    if (!author) {
+      showAuthorDropdown = false;
+      return;
+    }
+    // Deduplicate: skip if already selected
+    if (authorFilter.includes(author.pubkey)) {
+      showAuthorDropdown = false;
+      searchQuery = '';
+      return;
+    }
+    authorFilter = [...authorFilter, author.pubkey];
+    showAuthorDropdown = false;
+    searchQuery = '';
+    activeSearchQuery = '';
+    displayLimit = DISPLAY_BATCH;
+    updateQueryParams($page.url.searchParams, {
+      author: authorFilter.join(',')
+    });
+  }
+
+  /**
+   * Clear author filter — remove a single author by pubkey, or clear all if no pubkey given
+   * @param {string} [pubkey]
+   */
+  function clearAuthorFilter(pubkey) {
+    if (pubkey) {
+      authorFilter = authorFilter.filter((pk) => pk !== pubkey);
+    } else {
+      authorFilter = [];
+    }
+    displayLimit = DISPLAY_BATCH;
+    updateQueryParams($page.url.searchParams, {
+      author: authorFilter.length > 0 ? authorFilter.join(',') : null
+    });
   }
 
   // Track previous search query to avoid unnecessary re-triggers
@@ -1141,11 +1311,18 @@
   // Combined and filtered content - split into pipeline for better reactivity
   // Step 1: Build raw items (only runs when source arrays change)
   const rawItems = $derived.by(() => {
+    // Read curatedCacheVersion to re-derive when curated cache populates asynchronously
+    const _cacheVer = getCuratedCacheVersion();
     /** @type {Array<{type: string, data: any}>} */
     let items = [];
 
     if (contentType === 'events' || contentType === 'all') {
-      items = [...items, ...calendarEvents.map((e) => ({ type: 'event', data: e }))];
+      items = [
+        ...items,
+        ...calendarEvents
+          .filter((e) => isAllowedAuthor('calendar', e.pubkey))
+          .map((e) => ({ type: 'event', data: e }))
+      ];
     }
 
     if (contentType === 'learning' || contentType === 'all') {
@@ -1156,16 +1333,31 @@
         );
         items = [...items, ...filteredAmbResources.map((r) => ({ type: 'amb', data: r }))];
       } else {
-        items = [...items, ...ambResources.map((r) => ({ type: 'amb', data: r }))];
+        items = [
+          ...items,
+          ...ambResources
+            .filter((r) => isAllowedAuthor('educational', r.pubkey))
+            .map((r) => ({ type: 'amb', data: r }))
+        ];
       }
     }
 
     if (contentType === 'articles' || contentType === 'all') {
-      items = [...items, ...articles.map((a) => ({ type: 'article', data: a }))];
+      items = [
+        ...items,
+        ...articles
+          .filter((a) => isAllowedAuthor('longform', a.pubkey))
+          .map((a) => ({ type: 'article', data: a }))
+      ];
     }
 
     if (contentType === 'boards' || contentType === 'all') {
-      items = [...items, ...kanbanBoards.map((b) => ({ type: 'board', data: b }))];
+      items = [
+        ...items,
+        ...kanbanBoards
+          .filter((b) => isAllowedAuthor('kanban', b.pubkey))
+          .map((b) => ({ type: 'board', data: b }))
+      ];
     }
 
     return items;
@@ -1192,23 +1384,30 @@
     });
   });
 
-  // Step 4: Apply text search (only runs when search query changes)
+  // Step 4: Apply author filter (only runs when author filter changes)
+  const authorFilteredItems = $derived.by(() => {
+    if (authorFilter.length === 0) return relayFilteredItems;
+    const pubkeySet = new Set(authorFilter);
+    return relayFilteredItems.filter((item) => pubkeySet.has(item.data?.pubkey));
+  });
+
+  // Step 5: Apply text search (only runs when search query changes)
   const searchFilteredItems = $derived.by(() => {
     if (!activeSearchQuery.trim()) {
-      return relayFilteredItems;
+      return authorFilteredItems;
     }
     if (contentType === 'learning' && isLearningSearchActive) {
-      return relayFilteredItems;
+      return authorFilteredItems;
     }
     const query = activeSearchQuery.toLowerCase();
-    return relayFilteredItems.filter((item) => {
+    return authorFilteredItems.filter((item) => {
       // AMB items already filtered by NIP-50 relay-side search — let them through
       if (isLearningSearchActive && item.type === 'amb') return true;
       return matchesTextSearch(item, query, authorProfiles);
     });
   });
 
-  // Step 5: Sort (only runs when filtered items or sort order changes)
+  // Step 6: Sort (only runs when filtered items or sort order changes)
   // Events tab defaults to 'oldest' (soonest first) - this is the expected behavior for calendar views
   const effectiveSortBy = $derived(contentType === 'events' ? 'oldest' : sortBy);
 
@@ -1253,26 +1452,56 @@
 
 <div class="min-h-screen bg-base-100">
   <!-- Hero Section -->
-  <div class="bg-gradient-to-br from-primary/10 to-secondary/10 py-12">
-    <div class="container mx-auto px-4">
-      <h1 class="mb-4 text-center text-4xl font-bold text-base-content md:text-5xl">
-        {m.discover_content_title()}
-      </h1>
-      <p class="text-center text-lg text-base-content/70">
-        {m.discover_content_subtitle()}
-      </p>
-      <p class="mt-3 text-center text-sm text-base-content/50">
-        <a
-          href="https://onboarding.edufeed.org"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="underline underline-offset-2 transition-colors hover:text-base-content/70"
-        >
-          {m.discover_onboarding_cta()} ↗
-        </a>
-      </p>
+  {#if runtimeConfig.ui?.discoverHeroImage}
+    <div class="relative overflow-hidden py-12 text-primary-content">
+      <img
+        src={runtimeConfig.ui.discoverHeroImage}
+        alt=""
+        class="absolute inset-0 h-full w-full object-cover"
+      />
+      <div class="relative z-10 container mx-auto px-4">
+        <div class="mx-auto max-w-3xl rounded-2xl bg-black/20 p-8 text-center backdrop-blur-sm">
+          <h1 class="mb-4 text-4xl font-bold text-white md:text-5xl">
+            {m.discover_content_title()}
+          </h1>
+          <p class="text-lg text-white/90">
+            {m.discover_content_subtitle()}
+          </p>
+          <p class="mt-3 text-sm text-white/70">
+            <a
+              href="https://onboarding.edufeed.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="underline underline-offset-2 transition-colors hover:text-white/90"
+            >
+              {m.discover_onboarding_cta()} ↗
+            </a>
+          </p>
+        </div>
+      </div>
     </div>
-  </div>
+  {:else}
+    <div class="bg-gradient-to-br from-primary/10 to-secondary/10 py-12">
+      <div class="container mx-auto px-4">
+        <h1 class="mb-4 text-center text-4xl font-bold text-base-content md:text-5xl">
+          {m.discover_content_title()}
+        </h1>
+        <p class="text-center text-lg text-base-content/70">
+          {m.discover_content_subtitle()}
+        </p>
+        <p class="mt-3 text-center text-sm text-base-content/50">
+          <a
+            href="https://onboarding.edufeed.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="underline underline-offset-2 transition-colors hover:text-base-content/70"
+          >
+            {m.discover_onboarding_cta()} ↗
+          </a>
+        </p>
+      </div>
+    </div>
+  {/if}
 
   <!-- Content Type Tabs -->
   <div class="border-b border-base-300 bg-base-100">
@@ -1342,6 +1571,18 @@
           placeholder={m.discover_content_search_placeholder()}
           bind:value={searchQuery}
           onkeydown={handleSearchKeydown}
+          oninput={() => {
+            if (searchQuery.length >= 2 && contentType !== 'communities') {
+              showAuthorDropdown = true;
+            } else {
+              showAuthorDropdown = false;
+            }
+          }}
+          onfocus={() => {
+            if (searchQuery.length >= 2 && contentType !== 'communities') {
+              showAuthorDropdown = true;
+            }
+          }}
           class="input-bordered input w-full pr-10 pl-9"
           aria-label={m.discover_content_search_aria()}
         />
@@ -1355,12 +1596,52 @@
             ✕
           </button>
         {/if}
+        <AuthorSearchDropdown
+          bind:this={authorDropdownRef}
+          searchTerm={searchQuery}
+          profileMap={authorProfiles}
+          onselect={handleAuthorSelect}
+          visible={showAuthorDropdown}
+        />
       </div>
       <button type="button" class="btn btn-primary" onclick={executeSearch}>
         <SearchIcon class_="h-5 w-5" />
         <span class="sr-only sm:not-sr-only">{m.discover_search_button()}</span>
       </button>
     </div>
+
+    <!-- Author filter badges -->
+    {#if authorFilter.length > 0}
+      <div class="flex flex-wrap items-center gap-2" data-testid="author-filter-badge">
+        {#each authorFilter as pubkey (pubkey)}
+          {@const profile = authorProfiles.get(pubkey)}
+          <div class="badge gap-2 badge-lg badge-primary">
+            {#if profile?.picture}
+              <img src={profile.picture} alt="" class="h-5 w-5 rounded-full object-cover" />
+            {/if}
+            <span>{profile?.display_name || profile?.name || pubkey.slice(0, 12) + '...'}</span>
+            <button
+              type="button"
+              class="btn btn-circle btn-ghost btn-xs"
+              onclick={() => clearAuthorFilter(pubkey)}
+              aria-label="Remove author filter"
+            >
+              ✕
+            </button>
+          </div>
+        {/each}
+        {#if authorFilter.length > 1}
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs"
+            onclick={() => clearAuthorFilter()}
+            aria-label="Clear all author filters"
+          >
+            Clear all
+          </button>
+        {/if}
+      </div>
+    {/if}
 
     <!-- Row 2: General filters (sort, community, relay) -->
     <div class="flex flex-wrap items-end gap-4" data-testid="general-filters">

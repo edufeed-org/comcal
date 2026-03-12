@@ -134,7 +134,9 @@ const defaultConfig = {
   },
   ui: {
     defaultLightTheme: 'light',
-    defaultDarkTheme: 'dark'
+    defaultDarkTheme: 'dark',
+    landingHeroImage: '',
+    discoverHeroImage: ''
   },
   // Favicon configuration (allows whitelabel override)
   favicon: {

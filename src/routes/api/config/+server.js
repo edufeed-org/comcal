@@ -301,7 +301,9 @@ export function GET() {
     // UI settings
     ui: {
       defaultLightTheme: parseTheme(env.THEME_DEFAULT_LIGHT, 'light'),
-      defaultDarkTheme: parseTheme(env.THEME_DEFAULT_DARK, 'dark')
+      defaultDarkTheme: parseTheme(env.THEME_DEFAULT_DARK, 'dark'),
+      landingHeroImage: env.LANDING_HERO_IMAGE || '',
+      discoverHeroImage: env.DISCOVER_HERO_IMAGE || ''
     },
 
     // Favicon configuration (allows whitelabel override)
