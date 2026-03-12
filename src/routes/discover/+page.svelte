@@ -42,7 +42,8 @@
   import {
     applyCuratedFilter,
     isAllowedAuthor,
-    getCuratedCacheVersion
+    getCuratedCacheVersion,
+    getCuratedAuthors
   } from '$lib/services/curated-authors-service.svelte.js';
   import { getSeenRelays } from 'applesauce-core/helpers/relays';
   import { normalizeURL } from 'applesauce-core/helpers';
@@ -581,6 +582,42 @@
     return () => {
       supplementalSubs.forEach((sub) => sub.unsubscribe());
     };
+  });
+
+  // Supplemental curated author loading: when new authors join the curated set
+  // (user login, WoT anchor load, user follows), fetch their content from relays.
+  const CURATED_CONTENT_CONFIGS = [
+    { category: 'educational', kinds: [30142], getRelays: getEducationalRelays },
+    { category: 'longform', kinds: [30023], getRelays: getArticleRelays },
+    { category: 'calendar', kinds: [31922, 31923], getRelays: getCalendarRelays },
+    { category: 'kanban', kinds: [30301], getRelays: getKanbanRelays }
+  ];
+
+  const baselineCuratedAuthors = Object.fromEntries(
+    CURATED_CONTENT_CONFIGS.map((c) => [c.category, new Set(getCuratedAuthors(c.category) || [])])
+  );
+
+  $effect(() => {
+    const _ver = getCuratedCacheVersion();
+
+    for (const { category, kinds, getRelays } of CURATED_CONTENT_CONFIGS) {
+      const current = getCuratedAuthors(category);
+      if (!current) continue;
+
+      const newAuthors = current.filter((a) => !baselineCuratedAuthors[category].has(a));
+      if (newAuthors.length === 0) continue;
+
+      newAuthors.forEach((a) => baselineCuratedAuthors[category].add(a));
+      const loader = createTimelineLoader(
+        timedPool,
+        getRelays(),
+        { kinds, authors: newAuthors },
+        { eventStore, limit: BATCH_SIZE }
+      );
+      loader().subscribe();
+    }
+    // No cleanup — loaders are one-shot (complete on EOSE or timedPool 2s timeout).
+    // baselineCuratedAuthors tracking prevents duplicate loaders for the same authors.
   });
 
   // Relay-side author filtering: when authors are selected, fire targeted
