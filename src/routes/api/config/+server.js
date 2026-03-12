@@ -112,8 +112,10 @@ function resolveCuratedConfig(env, suffix) {
   const catSets = env[`CURATED_PUBKEYS_SETS_${suffix}`];
   const catDirect = env[`CURATED_PUBKEYS_${suffix}`];
 
-  // If either category-specific var is defined (even empty), use category vars exclusively
-  if (catSets !== undefined || catDirect !== undefined) {
+  // If either category-specific var is defined and non-empty, use category vars exclusively
+  const hasCategorySets = catSets !== undefined && catSets.trim() !== '';
+  const hasCategoryDirect = catDirect !== undefined && catDirect.trim() !== '';
+  if (hasCategorySets || hasCategoryDirect) {
     return {
       sets: parseArray(catSets),
       direct: parseArray(catDirect)
@@ -136,7 +138,9 @@ function resolveCuratedConfig(env, suffix) {
  */
 function resolveWotConfig(env, suffix) {
   const catAnchors = env[`WOT_ANCHOR_PUBKEYS_${suffix}`];
-  if (catAnchors !== undefined) return { anchors: parseArray(catAnchors) };
+  if (catAnchors !== undefined && catAnchors.trim() !== '') {
+    return { anchors: parseArray(catAnchors) };
+  }
   return { anchors: parseArray(env.WOT_ANCHOR_PUBKEYS) };
 }
 

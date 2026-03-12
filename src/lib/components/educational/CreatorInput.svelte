@@ -38,7 +38,7 @@
   // State for contact search dropdown
   let showDropdown = $state(false);
   let selectedDropdownIndex = $state(-1);
-  /** @type {import('$lib/models/contacts-model.js').EnrichedContact[]} */
+  /** @type {import('$lib/stores/contacts.svelte.js').EnrichedContact[]} */
   let filteredContacts = $state([]);
 
   /**
@@ -212,7 +212,7 @@
 
   /**
    * Select a contact from the dropdown
-   * @param {import('$lib/models/contacts-model.js').EnrichedContact} contact
+   * @param {import('$lib/stores/contacts.svelte.js').EnrichedContact} contact
    */
   function selectContact(contact) {
     newCreator.pubkey = contact.pubkey;

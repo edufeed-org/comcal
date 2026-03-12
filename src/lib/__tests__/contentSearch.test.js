@@ -10,7 +10,7 @@
  * @vitest-environment node
  */
 import { describe, it, expect } from 'vitest';
-import { matchesTextSearch } from '../helpers/contentSearch.js';
+import { matchesTextSearch, searchProfileMap } from '../helpers/contentSearch.js';
 
 /** @param {Partial<Record<string, string>>} [overrides] */
 function makeProfile(overrides = {}) {
@@ -240,5 +240,101 @@ describe('matchesTextSearch', () => {
       };
       expect(matchesTextSearch(item, 'something', new Map())).toBe(false);
     });
+  });
+});
+
+describe('searchProfileMap', () => {
+  /** @param {[string, Record<string, string>][]} entries */
+  function buildMap(entries) {
+    const map = new Map();
+    for (const [pubkey, profile] of entries) {
+      map.set(pubkey, profile);
+    }
+    return map;
+  }
+
+  const profiles = buildMap([
+    [
+      'pk1',
+      {
+        name: 'alice',
+        display_name: 'Alice Wonderland',
+        picture: 'pic1.jpg',
+        nip05: 'alice@example.com'
+      }
+    ],
+    ['pk2', { name: 'bob', display_name: 'Bob Builder', picture: 'pic2.jpg' }],
+    ['pk3', { name: 'charlie', display_name: 'Charlie Alpha' }],
+    ['pk4', { name: 'alicia', display_name: 'Alicia Keys', picture: 'pic4.jpg' }],
+    ['pk5', { name: 'david', display_name: '' }]
+  ]);
+
+  it('returns empty array for terms shorter than 2 chars', () => {
+    expect(searchProfileMap('a', profiles)).toEqual([]);
+    expect(searchProfileMap('', profiles)).toEqual([]);
+  });
+
+  it('matches on name (case-insensitive)', () => {
+    const results = searchProfileMap('bob', profiles);
+    expect(results).toHaveLength(1);
+    expect(results[0].pubkey).toBe('pk2');
+  });
+
+  it('matches on display_name (case-insensitive)', () => {
+    const results = searchProfileMap('Builder', profiles);
+    expect(results).toHaveLength(1);
+    expect(results[0].pubkey).toBe('pk2');
+  });
+
+  it('returns multiple matches', () => {
+    const results = searchProfileMap('ali', profiles);
+    expect(results.length).toBeGreaterThanOrEqual(2);
+    const pubkeys = results.map((r) => r.pubkey);
+    expect(pubkeys).toContain('pk1');
+    expect(pubkeys).toContain('pk4');
+  });
+
+  it('sorts prefix matches before substring matches', () => {
+    // 'al' matches: alice (name prefix), alicia (name prefix), charlie (has 'al' in 'charlie')
+    const results = searchProfileMap('al', profiles);
+    // alice and alicia should come before charlie
+    const charlieIndex = results.findIndex((r) => r.pubkey === 'pk3');
+    const aliceIndex = results.findIndex((r) => r.pubkey === 'pk1');
+    const aliciaIndex = results.findIndex((r) => r.pubkey === 'pk4');
+
+    if (charlieIndex !== -1) {
+      expect(aliceIndex).toBeLessThan(charlieIndex);
+      expect(aliciaIndex).toBeLessThan(charlieIndex);
+    }
+  });
+
+  it('respects limit parameter', () => {
+    const results = searchProfileMap('al', profiles, 1);
+    expect(results).toHaveLength(1);
+  });
+
+  it('returns result objects with expected fields', () => {
+    const results = searchProfileMap('alice', profiles);
+    expect(results[0]).toEqual({
+      pubkey: 'pk1',
+      name: 'alice',
+      display_name: 'Alice Wonderland',
+      picture: 'pic1.jpg',
+      nip05: 'alice@example.com'
+    });
+  });
+
+  it('handles missing picture and nip05 gracefully', () => {
+    const results = searchProfileMap('charlie', profiles);
+    expect(results[0].picture).toBe('');
+    expect(results[0].nip05).toBe('');
+  });
+
+  it('handles empty profile map', () => {
+    expect(searchProfileMap('test', new Map())).toEqual([]);
+  });
+
+  it('does not match when no profiles match', () => {
+    expect(searchProfileMap('zzz', profiles)).toEqual([]);
   });
 });
