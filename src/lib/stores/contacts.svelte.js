@@ -1,21 +1,33 @@
 /**
  * Contacts Store using Svelte 5 runes
  * Manages user's contact list (kind 3 follows) globally across the app
+ *
+ * Uses applesauce's built-in ContactsModel (returns ProfilePointer[]) instead of
+ * a custom model with combineLatest. Profiles are looked up synchronously from
+ * EventStore at search time, so contacts appear as soon as kind 3 loads —
+ * missing profiles don't block the list.
  */
 
 import { eventStore, pool } from './nostr-infrastructure.svelte.js';
 import { createContactListLoader } from '$lib/loaders/contact-list-loader.js';
-import { ContactsModel } from '$lib/models/contacts-model.js';
+import { ContactsModel } from 'applesauce-core/models';
+import { getProfileContent } from 'applesauce-core/helpers';
 import { getWriteRelays } from '$lib/services/relay-service.svelte.js';
 import { profileLoader } from '$lib/loaders/profile.js';
 import { getProfileLookupRelays } from '$lib/helpers/relay-helper.js';
 
 /**
- * @typedef {import('$lib/models/contacts-model.js').EnrichedContact} EnrichedContact
+ * @typedef {Object} EnrichedContact
+ * @property {string} pubkey - Contact's public key
+ * @property {string|null} name - Profile name
+ * @property {string|null} display_name - Display name
+ * @property {string|null} picture - Profile picture URL
+ * @property {string|null} nip05 - NIP-05 identifier
+ * @property {string|null} about - Profile about/bio
  */
 
-/** @type {EnrichedContact[]} */
-let contacts = $state([]);
+/** @type {string[]} */
+let followedPubkeys = $state([]);
 let isLoading = $state(false);
 let isLoaded = $state(false);
 /** @type {import('rxjs').Subscription[]} */
@@ -23,7 +35,7 @@ let activeSubscriptions = [];
 
 export const contactsStore = {
   get contacts() {
-    return contacts;
+    return followedPubkeys;
   },
   get isLoading() {
     return isLoading;
@@ -41,7 +53,7 @@ export const contactsStore = {
 
     isLoading = true;
     isLoaded = false;
-    contacts = [];
+    followedPubkeys = [];
 
     // Clean up any existing subscriptions
     this.clear();
@@ -59,49 +71,29 @@ export const contactsStore = {
       });
       activeSubscriptions.push(loaderSubscription);
 
-      // Step 2: Subscribe to kind 3 to get pubkeys, then load their profiles
-      const kind3Sub = eventStore
-        .timeline({
-          kinds: [3],
-          authors: [userPubkey],
-          limit: 1
-        })
-        .subscribe({
-          next: (events) => {
-            if (events.length > 0) {
-              const latestEvent = events[events.length - 1];
-              const pubkeys = latestEvent.tags
-                .filter((/** @type {string[]} */ t) => t[0] === 'p')
-                .map((/** @type {string[]} */ t) => t[1]);
-
-              // Load profiles using profile lookup relays
-              const relays = getProfileLookupRelays();
-              if (relays.length > 0) {
-                pubkeys.forEach((pubkey) => {
-                  const profileSub = profileLoader({
-                    kind: 0,
-                    pubkey,
-                    relays
-                  }).subscribe();
-                  activeSubscriptions.push(profileSub);
-                });
-              }
-            }
-          }
-        });
-      activeSubscriptions.push(kind3Sub);
-
-      // Step 3: Use model to get enriched contacts
+      // Step 2: Use applesauce ContactsModel — emits ProfilePointer[] immediately
+      // (no combineLatest blocking on missing profiles)
+      // Also loads profiles for each contact so they're available at search time.
       const modelSubscription = eventStore.model(ContactsModel, userPubkey).subscribe({
-        next: (enrichedContacts) => {
-          contacts = enrichedContacts;
+        next: (pointers) => {
+          const pubkeys = (pointers || []).map((/** @type {{ pubkey: string }} */ p) => p.pubkey);
+          followedPubkeys = pubkeys;
           isLoading = false;
           isLoaded = true;
+
+          // Load profiles for contacts
+          const relays = getProfileLookupRelays();
+          if (relays.length > 0) {
+            pubkeys.forEach((pubkey) => {
+              const profileSub = profileLoader({ kind: 0, pubkey, relays }).subscribe();
+              activeSubscriptions.push(profileSub);
+            });
+          }
         },
         error: (error) => {
           console.error('Error loading contact profiles:', error);
           isLoading = false;
-          isLoaded = true; // Mark as loaded even on error
+          isLoaded = true;
         }
       });
       activeSubscriptions.push(modelSubscription);
@@ -114,24 +106,43 @@ export const contactsStore = {
 
   /**
    * Search contacts by display name or name
+   * Looks up profiles synchronously from EventStore at search time,
+   * so missing profiles are skipped rather than blocking the entire list.
    * @param {string} searchTerm - Search query
    * @param {number} [limit=10] - Maximum results to return
    * @returns {EnrichedContact[]} Filtered contacts
    */
   searchContacts(searchTerm, limit = 10) {
-    if (!searchTerm || searchTerm.trim().length === 0) {
+    if (!searchTerm || searchTerm.trim().length < 2) {
       return [];
     }
 
     const term = searchTerm.toLowerCase().trim();
 
-    return contacts
-      .filter((contact) => {
-        const displayName = contact.display_name?.toLowerCase() || '';
-        const name = contact.name?.toLowerCase() || '';
-        return displayName.includes(term) || name.includes(term);
-      })
-      .slice(0, limit);
+    /** @type {EnrichedContact[]} */
+    const results = [];
+    for (const pubkey of followedPubkeys) {
+      const event = eventStore.getReplaceable(0, pubkey);
+      if (!event) continue; // Profile not loaded yet — skip, don't block
+
+      const profile = getProfileContent(event);
+      if (!profile) continue;
+
+      const name = (profile.name || '').toLowerCase();
+      const displayName = (profile.display_name || '').toLowerCase();
+      if (name.includes(term) || displayName.includes(term)) {
+        results.push({
+          pubkey,
+          name: profile.name || null,
+          display_name: profile.display_name || null,
+          picture: profile.picture || null,
+          nip05: profile.nip05 || null,
+          about: profile.about || null
+        });
+      }
+      if (results.length >= limit) break;
+    }
+    return results;
   },
 
   /**
@@ -148,7 +159,7 @@ export const contactsStore = {
     });
     activeSubscriptions = [];
 
-    contacts = [];
+    followedPubkeys = [];
     isLoading = false;
     isLoaded = false;
   }

@@ -1,6 +1,49 @@
 import { getTagValue } from 'applesauce-core/helpers';
 
 /**
+ * Search a profile map by name/display_name.
+ * @param {string} term - Search term (min 2 chars)
+ * @param {Map<string, any>} profileMap - Map<pubkey, profile>
+ * @param {number} [limit=8]
+ * @returns {Array<{pubkey: string, name: string, display_name: string, picture: string, nip05: string}>}
+ */
+export function searchProfileMap(term, profileMap, limit = 8) {
+  if (!term || term.length < 2) return [];
+
+  const lowerTerm = term.toLowerCase();
+  /** @type {Array<{pubkey: string, name: string, display_name: string, picture: string, nip05: string, prefix: boolean}>} */
+  const matches = [];
+
+  for (const [pubkey, profile] of profileMap) {
+    const name = (profile?.name || '').toLowerCase();
+    const displayName = (profile?.display_name || '').toLowerCase();
+
+    const nameMatch = name.includes(lowerTerm);
+    const displayMatch = displayName.includes(lowerTerm);
+
+    if (nameMatch || displayMatch) {
+      const prefix = name.startsWith(lowerTerm) || displayName.startsWith(lowerTerm);
+      matches.push({
+        pubkey,
+        name: profile?.name || '',
+        display_name: profile?.display_name || '',
+        picture: profile?.picture || '',
+        nip05: profile?.nip05 || '',
+        prefix
+      });
+    }
+  }
+
+  // Sort: prefix matches first, then alphabetical by name
+  matches.sort((a, b) => {
+    if (a.prefix !== b.prefix) return a.prefix ? -1 : 1;
+    return (a.name || a.display_name).localeCompare(b.name || b.display_name);
+  });
+
+  return matches.slice(0, limit).map(({ prefix: _prefix, ...rest }) => rest);
+}
+
+/**
  * Check if a discover-page item matches a text search query.
  *
  * @param {{type: string, data: any}} item - Content item with type and data

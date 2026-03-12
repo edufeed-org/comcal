@@ -199,6 +199,8 @@ export function clearAllFilters(basePath = '/calendar', options = {}) {
  * @property {string} type - Content type filter ('all', 'events', 'learning', 'articles', 'communities')
  * @property {number | null} eventStart - Events date range start (Unix timestamp in seconds)
  * @property {number | null} eventEnd - Events date range end (Unix timestamp in seconds)
+ * @property {string[]} author - Author filter (pubkeys, comma-separated in URL)
+ * @property {string} search - Search query text
  */
 
 /**
@@ -226,7 +228,12 @@ export function parseFeedFilters(searchParams) {
     community: searchParams.get('community') || null,
     type: searchParams.get('type') || 'all',
     eventStart: eventStartStr ? parseInt(eventStartStr, 10) : null,
-    eventEnd: eventEndStr ? parseInt(eventEndStr, 10) : null
+    eventEnd: eventEndStr ? parseInt(eventEndStr, 10) : null,
+    author: (searchParams.get('author') || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+    search: searchParams.get('search') || ''
   };
 }
 
@@ -274,6 +281,8 @@ export function hasFeedFilters(searchParams) {
     searchParams.getAll('tags').length > 0 ||
     searchParams.get('community') !== null ||
     searchParams.get('eventStart') !== null ||
-    searchParams.get('eventEnd') !== null
+    searchParams.get('eventEnd') !== null ||
+    searchParams.get('author') !== null ||
+    (searchParams.get('search') !== null && searchParams.get('search') !== '')
   );
 }

@@ -85,12 +85,12 @@ function getDefaultSettings() {
       : runtimeConfig.ui?.defaultLightTheme || 'light'
   );
 
-  const { themeFamily } = parseThemeToSettings(defaultTheme);
+  const { themeFamily, colorMode } = parseThemeToSettings(defaultTheme);
 
   return {
     debugMode: false,
     themeFamily,
-    colorMode: 'system', // Always default to system, but with correct theme family
+    colorMode,
     gatedMode: runtimeConfig.gatedMode?.default ?? false
   };
 }

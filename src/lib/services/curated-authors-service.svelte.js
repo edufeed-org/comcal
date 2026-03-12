@@ -69,6 +69,22 @@ const wotInitialized = new Set();
 let userFollowPubkeys = /** @type {string[]} */ ([]);
 
 /**
+ * Reactive version counter — increments on every cache mutation.
+ * Components call getCuratedCacheVersion() in $derived to re-evaluate
+ * when the cache changes asynchronously.
+ */
+let curatedCacheVersion = $state(0);
+
+/**
+ * Get the current cache version. Read this inside $derived to establish
+ * a reactive dependency on cache mutations.
+ * @returns {number}
+ */
+export function getCuratedCacheVersion() {
+  return curatedCacheVersion;
+}
+
+/**
  * Get the curated mode config for a category from runtime config.
  * @param {string} category
  * @returns {{ sets: string[], direct: string[] }}
@@ -96,6 +112,7 @@ function ensureDirectPubkeysInitialized(category) {
     const parsed = parseDirectPubkeys(direct);
     if (parsed.length > 0 && !curatedAuthorsCache.has(category)) {
       curatedAuthorsCache.set(category, parsed);
+      curatedCacheVersion++;
     }
   }
 }
@@ -211,8 +228,7 @@ export function applyCuratedFilter(filter) {
  * @returns {boolean}
  */
 export function isAllowedAuthor(category, pubkey) {
-  ensureDirectPubkeysInitialized(category);
-  const authors = curatedAuthorsCache.get(category);
+  const authors = getCuratedAuthors(category);
   if (!authors) return true;
   return authors.includes(pubkey);
 }
@@ -333,6 +349,7 @@ export async function initializeCuratedAuthors(category) {
 
     if (allPubkeys.length > 0) {
       curatedAuthorsCache.set(category, allPubkeys);
+      curatedCacheVersion++;
     } else {
       console.warn(`Curated authors [${category}]: No pubkeys found, curated mode inactive`);
     }
@@ -401,6 +418,7 @@ export async function initializeWotAuthors(category) {
 
     if (allPubkeys.length > 0) {
       wotAuthorsCache.set(category, allPubkeys);
+      curatedCacheVersion++;
     }
   } catch (err) {
     console.error(`WoT authors [${category}]: Initialization failed`, err);
@@ -423,6 +441,7 @@ export async function initializeAllWotAuthors() {
  */
 export function setUserFollows(pubkeys) {
   userFollowPubkeys = pubkeys;
+  curatedCacheVersion++;
 }
 
 /**
@@ -430,6 +449,7 @@ export function setUserFollows(pubkeys) {
  */
 export function clearUserFollows() {
   userFollowPubkeys = [];
+  curatedCacheVersion++;
 }
 
 /**
@@ -443,6 +463,7 @@ export function _resetForTesting(category) {
     followSetsInitialized.delete(category);
     wotAuthorsCache.delete(category);
     wotInitialized.delete(category);
+    curatedCacheVersion++;
   } else {
     curatedAuthorsCache.clear();
     directPubkeysInitialized.clear();
@@ -450,5 +471,6 @@ export function _resetForTesting(category) {
     wotAuthorsCache.clear();
     wotInitialized.clear();
     userFollowPubkeys = [];
+    curatedCacheVersion = 0;
   }
 }

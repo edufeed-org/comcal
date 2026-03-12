@@ -459,6 +459,96 @@ describe('curated-authors-service', () => {
       expect(service.isAllowedAuthor('calendar', hexPubkey)).toBe(true);
       expect(service.isAllowedAuthor('calendar', 'c'.repeat(64))).toBe(false);
     });
+
+    it('should allow WoT authors (not just curated cache)', async () => {
+      vi.resetModules();
+
+      const { of } = await import('rxjs');
+      const curatedPubkey = 'a'.repeat(64);
+      const wotAnchor = 'b'.repeat(64);
+      const wotFollow = 'c'.repeat(64);
+
+      // WoT anchor's kind 3 contact list contains wotFollow
+      vi.doMock('$lib/stores/nostr-infrastructure.svelte', () => ({
+        pool: {
+          request: vi.fn(() =>
+            of({
+              kind: 3,
+              pubkey: wotAnchor,
+              tags: [['p', wotFollow]]
+            })
+          )
+        },
+        eventStore: { add: vi.fn() }
+      }));
+
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [curatedPubkey] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          },
+          wotMode: {
+            enabled: true,
+            includeUserFollows: false,
+            calendar: { anchors: [wotAnchor] }
+          }
+        }
+      }));
+
+      const service = await import('../services/curated-authors-service.svelte.js');
+      await service.initializeWotAuthors('calendar');
+
+      // Curated pubkey should be allowed
+      expect(service.isAllowedAuthor('calendar', curatedPubkey)).toBe(true);
+      // WoT anchor itself should be allowed
+      expect(service.isAllowedAuthor('calendar', wotAnchor)).toBe(true);
+      // WoT follow should be allowed
+      expect(service.isAllowedAuthor('calendar', wotFollow)).toBe(true);
+      // Unknown pubkey should NOT be allowed
+      expect(service.isAllowedAuthor('calendar', 'd'.repeat(64))).toBe(false);
+    });
+
+    it('should allow user follow pubkeys when includeUserFollows is enabled', async () => {
+      vi.resetModules();
+
+      const curatedPubkey = 'a'.repeat(64);
+      const userFollow = 'e'.repeat(64);
+
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [curatedPubkey] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          },
+          wotMode: {
+            enabled: false,
+            includeUserFollows: true
+          }
+        }
+      }));
+
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      // Before setting user follows, unknown pubkey is rejected
+      expect(service.isAllowedAuthor('calendar', userFollow)).toBe(false);
+
+      // Set user follows
+      service.setUserFollows([userFollow]);
+
+      // Now user follow should be allowed
+      expect(service.isAllowedAuthor('calendar', userFollow)).toBe(true);
+      // Curated pubkey still allowed
+      expect(service.isAllowedAuthor('calendar', curatedPubkey)).toBe(true);
+      // Unknown pubkey still NOT allowed
+      expect(service.isAllowedAuthor('calendar', 'f'.repeat(64))).toBe(false);
+    });
   });
 
   describe('per-category isolation', () => {
@@ -719,6 +809,207 @@ describe('curated-authors-service', () => {
       // Both should re-initialize from config
       expect(service.getCuratedAuthors('calendar')).toEqual([hexPubkey]);
       expect(service.getCuratedAuthors('educational')).toEqual([hexPubkey]);
+    });
+  });
+
+  describe('curatedCacheVersion', () => {
+    it('should increment on direct pubkey lazy init', async () => {
+      vi.resetModules();
+      const hexPubkey = 'a'.repeat(64);
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [hexPubkey] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      const versionBefore = service.getCuratedCacheVersion();
+      service.getCuratedAuthors('calendar'); // triggers ensureDirectPubkeysInitialized
+      expect(service.getCuratedCacheVersion()).toBe(versionBefore + 1);
+    });
+
+    it('should increment on follow set fetch completion', async () => {
+      vi.resetModules();
+
+      const { of } = await import('rxjs');
+      const followSetEvent = {
+        kind: 30000,
+        pubkey: 'setowner',
+        tags: [
+          ['d', 'curated-list'],
+          ['p', 'follow1']
+        ]
+      };
+
+      vi.doMock('$lib/stores/nostr-infrastructure.svelte', () => ({
+        pool: { request: vi.fn(() => of(followSetEvent)) },
+        eventStore: { add: vi.fn() }
+      }));
+
+      vi.doMock('nostr-tools', () => ({
+        nip19: {
+          decode: vi.fn(() => ({
+            type: 'naddr',
+            data: {
+              kind: 30000,
+              pubkey: 'setowner',
+              identifier: 'curated-list',
+              relays: ['wss://relay.test']
+            }
+          }))
+        }
+      }));
+
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: ['naddr1followset'], direct: [] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      const versionBefore = service.getCuratedCacheVersion();
+      await service.initializeCuratedAuthors('calendar');
+      expect(service.getCuratedCacheVersion()).toBeGreaterThan(versionBefore);
+    });
+
+    it('should increment on WoT author initialization', async () => {
+      vi.resetModules();
+
+      const { of } = await import('rxjs');
+      const wotAnchor = 'b'.repeat(64);
+      const wotFollow = 'c'.repeat(64);
+
+      vi.doMock('$lib/stores/nostr-infrastructure.svelte', () => ({
+        pool: {
+          request: vi.fn(() => of({ kind: 3, pubkey: wotAnchor, tags: [['p', wotFollow]] }))
+        },
+        eventStore: { add: vi.fn() }
+      }));
+
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          },
+          wotMode: {
+            enabled: true,
+            includeUserFollows: false,
+            calendar: { anchors: [wotAnchor] }
+          }
+        }
+      }));
+
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      const versionBefore = service.getCuratedCacheVersion();
+      await service.initializeWotAuthors('calendar');
+      expect(service.getCuratedCacheVersion()).toBe(versionBefore + 1);
+    });
+
+    it('should increment on setUserFollows', async () => {
+      vi.resetModules();
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      const versionBefore = service.getCuratedCacheVersion();
+      service.setUserFollows(['a'.repeat(64)]);
+      expect(service.getCuratedCacheVersion()).toBe(versionBefore + 1);
+    });
+
+    it('should increment on clearUserFollows', async () => {
+      vi.resetModules();
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      service.setUserFollows(['a'.repeat(64)]);
+      const versionBefore = service.getCuratedCacheVersion();
+      service.clearUserFollows();
+      expect(service.getCuratedCacheVersion()).toBe(versionBefore + 1);
+    });
+
+    it('should reset to 0 on full _resetForTesting()', async () => {
+      vi.resetModules();
+      const hexPubkey = 'a'.repeat(64);
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [hexPubkey] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      // Trigger some mutations to bump version
+      service.getCuratedAuthors('calendar');
+      service.setUserFollows(['b'.repeat(64)]);
+      expect(service.getCuratedCacheVersion()).toBeGreaterThan(0);
+
+      // Full reset should set version back to 0
+      service._resetForTesting();
+      expect(service.getCuratedCacheVersion()).toBe(0);
+    });
+
+    it('should increment (not reset) on category-specific _resetForTesting()', async () => {
+      vi.resetModules();
+      const hexPubkey = 'a'.repeat(64);
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [hexPubkey] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          }
+        }
+      }));
+      const service = await import('../services/curated-authors-service.svelte.js');
+
+      service.getCuratedAuthors('calendar'); // bumps to 1
+      const versionBefore = service.getCuratedCacheVersion();
+      service._resetForTesting('calendar');
+      expect(service.getCuratedCacheVersion()).toBe(versionBefore + 1);
     });
   });
 
