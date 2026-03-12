@@ -95,12 +95,18 @@
   // The getter reads profileTrigger to re-run when data changes (since $state.raw doesn't track)
   const getAuthorProfiles = useProfileMap(() => {
     const _ = profileTrigger; // Establish dependency on trigger
+    const __ = getCuratedCacheVersion(); // React to async curated/WoT set resolution
     return [
       ...articles.map((a) => a.pubkey),
       ...ambResources.map((r) => r.pubkey),
       ...calendarEvents.map((e) => e.pubkey),
       ...kanbanBoards.map((b) => b.pubkey),
-      ...authorFilter
+      ...authorFilter,
+      ...(getCuratedAuthors('calendar') || []),
+      ...(getCuratedAuthors('communikey') || []),
+      ...(getCuratedAuthors('educational') || []),
+      ...(getCuratedAuthors('longform') || []),
+      ...(getCuratedAuthors('kanban') || [])
     ].filter(Boolean);
   });
   let authorProfiles = $derived(getAuthorProfiles());
