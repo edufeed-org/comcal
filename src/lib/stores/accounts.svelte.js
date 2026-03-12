@@ -155,16 +155,19 @@ async function initializeAccountPersistence() {
     }
   });
 
-  // Step 8: Set WoT user follows on login/logout
+  // Step 8: Set WoT user follows and active user pubkey on login/logout
   manager.active$.subscribe(async (account) => {
-    const { setUserFollows, clearUserFollows } = await import(
-      '$lib/services/curated-authors-service.svelte.js'
-    );
+    const { setUserFollows, clearUserFollows, setActiveUserPubkey, clearActiveUserPubkey } =
+      await import('$lib/services/curated-authors-service.svelte.js');
 
     if (!account) {
       clearUserFollows();
+      clearActiveUserPubkey();
       return;
     }
+
+    // Immediately include user's own pubkey in curated filters
+    setActiveUserPubkey(account.pubkey);
 
     // Subscribe to user's kind 3 contact list and extract follow pubkeys
     const { eventStore } = await import('$lib/stores/nostr-infrastructure.svelte');

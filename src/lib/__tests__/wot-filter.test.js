@@ -562,6 +562,137 @@ describe('WoT content filtering', () => {
     });
   });
 
+  describe('active user pubkey', () => {
+    const activeUser = 'aa'.repeat(32);
+
+    it('should include active user pubkey in getCuratedAuthors when curated filtering is active', async () => {
+      vi.resetModules();
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [curatedPubkey] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          },
+          wotMode: {
+            enabled: false,
+            includeUserFollows: false,
+            educational: { anchors: [] },
+            calendar: { anchors: [] },
+            communikey: { anchors: [] },
+            longform: { anchors: [] },
+            kanban: { anchors: [] }
+          }
+        }
+      }));
+
+      const service = await import('../services/curated-authors-service.svelte.js');
+      service.setActiveUserPubkey(activeUser);
+
+      const authors = service.getCuratedAuthors('educational');
+      expect(authors).toContain(curatedPubkey);
+      expect(authors).toContain(activeUser);
+    });
+
+    it('should NOT return active user pubkey when no curated config exists (null case preserved)', async () => {
+      vi.resetModules();
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          },
+          wotMode: {
+            enabled: false,
+            includeUserFollows: false,
+            educational: { anchors: [] },
+            calendar: { anchors: [] },
+            communikey: { anchors: [] },
+            longform: { anchors: [] },
+            kanban: { anchors: [] }
+          }
+        }
+      }));
+
+      const service = await import('../services/curated-authors-service.svelte.js');
+      // No active user set, no curated config — should still be null
+      expect(service.getCuratedAuthors('educational')).toBeNull();
+    });
+
+    it('should remove active user from set after clearActiveUserPubkey', async () => {
+      vi.resetModules();
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [curatedPubkey] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          },
+          wotMode: {
+            enabled: false,
+            includeUserFollows: false,
+            educational: { anchors: [] },
+            calendar: { anchors: [] },
+            communikey: { anchors: [] },
+            longform: { anchors: [] },
+            kanban: { anchors: [] }
+          }
+        }
+      }));
+
+      const service = await import('../services/curated-authors-service.svelte.js');
+      service.setActiveUserPubkey(activeUser);
+      expect(service.getCuratedAuthors('educational')).toContain(activeUser);
+
+      service.clearActiveUserPubkey();
+      const authors = service.getCuratedAuthors('educational');
+      expect(authors).toEqual([curatedPubkey]);
+      expect(authors).not.toContain(activeUser);
+    });
+
+    it('should include active user even when includeUserFollows is false', async () => {
+      vi.resetModules();
+      const userFollow = 'e'.repeat(64);
+      vi.doMock('$lib/stores/config.svelte.js', () => ({
+        runtimeConfig: {
+          curatedMode: {
+            calendar: { sets: [], direct: [] },
+            communikey: { sets: [], direct: [] },
+            educational: { sets: [], direct: [curatedPubkey] },
+            longform: { sets: [], direct: [] },
+            kanban: { sets: [], direct: [] }
+          },
+          wotMode: {
+            enabled: true,
+            includeUserFollows: false,
+            educational: { anchors: [] },
+            calendar: { anchors: [] },
+            communikey: { anchors: [] },
+            longform: { anchors: [] },
+            kanban: { anchors: [] }
+          }
+        }
+      }));
+
+      const service = await import('../services/curated-authors-service.svelte.js');
+      service.setActiveUserPubkey(activeUser);
+      service.setUserFollows([userFollow]);
+
+      const authors = service.getCuratedAuthors('educational');
+      // Active user is included unconditionally
+      expect(authors).toContain(activeUser);
+      // User follows are NOT included (includeUserFollows is false)
+      expect(authors).not.toContain(userFollow);
+    });
+  });
+
   describe('initializeAllWotAuthors', () => {
     it('should initialize all categories in parallel', async () => {
       vi.resetModules();

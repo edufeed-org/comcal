@@ -68,6 +68,9 @@ const wotInitialized = new Set();
 /** Logged-in user's follow pubkeys (set on login, cleared on logout) */
 let userFollowPubkeys = /** @type {string[]} */ ([]);
 
+/** Logged-in user's own pubkey (always included in curated filter when set) */
+let activeUserPubkey = '';
+
 /**
  * Reactive version counter — increments on every cache mutation.
  * Components call getCuratedCacheVersion() in $derived to re-evaluate
@@ -186,9 +189,14 @@ export function getCuratedAuthors(category) {
   const wot = wotAuthorsCache.get(category) ?? null;
   const includeUser = runtimeConfig.wotMode?.includeUserFollows && userFollowPubkeys.length > 0;
 
-  if (!curated && !wot && !includeUser) return null;
+  if (!curated && !wot && !includeUser && !activeUserPubkey) return null;
 
-  const combined = [...(curated || []), ...(wot || []), ...(includeUser ? userFollowPubkeys : [])];
+  const combined = [
+    ...(curated || []),
+    ...(wot || []),
+    ...(includeUser ? userFollowPubkeys : []),
+    ...(activeUserPubkey ? [activeUserPubkey] : [])
+  ];
   if (combined.length === 0) return null;
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- dedup only, not reactive state
   return [...new Set(combined)];
@@ -453,6 +461,24 @@ export function clearUserFollows() {
 }
 
 /**
+ * Set the active user's pubkey (called on login).
+ * Always included in curated author filters regardless of WoT config.
+ * @param {string} pubkey - Hex pubkey of the logged-in user
+ */
+export function setActiveUserPubkey(pubkey) {
+  activeUserPubkey = pubkey;
+  curatedCacheVersion++;
+}
+
+/**
+ * Clear the active user's pubkey (called on logout).
+ */
+export function clearActiveUserPubkey() {
+  activeUserPubkey = '';
+  curatedCacheVersion++;
+}
+
+/**
  * Reset curated authors state (for testing).
  * @param {string} [category] - If provided, reset only that category. Otherwise reset all.
  */
@@ -471,6 +497,7 @@ export function _resetForTesting(category) {
     wotAuthorsCache.clear();
     wotInitialized.clear();
     userFollowPubkeys = [];
+    activeUserPubkey = '';
     curatedCacheVersion = 0;
   }
 }
