@@ -132,7 +132,7 @@
         <div tabindex="0" role="button" class="btn btn-circle btn-ghost">
           <ProfileAvatar pubkey={activeAccount.pubkey} size="md" fallbackType="robohash" />
         </div>
-        <ul class="dropdown-content menu z-1 mt-3 w-52 menu-sm rounded-box bg-base-100 p-2 shadow">
+        <ul class="dropdown-content menu z-50 mt-3 w-52 menu-sm rounded-box bg-base-100 p-2 shadow">
           <li>
             <a href={resolve(`/p/${activeAccount.pubkey}`)} class="justify-between">
               {m.common_profile()}

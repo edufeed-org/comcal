@@ -44,7 +44,7 @@
     </svg>
     <span class="uppercase">{currentLocale}</span>
   </div>
-  <ul class="dropdown-content menu z-[1] mt-3 w-52 rounded-box bg-base-100 p-2 shadow">
+  <ul class="dropdown-content menu z-50 mt-3 w-52 rounded-box bg-base-100 p-2 shadow">
     {#each locales as locale (locale)}
       <li>
         <button
