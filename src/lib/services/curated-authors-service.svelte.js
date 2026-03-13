@@ -189,7 +189,7 @@ export function getCuratedAuthors(category) {
   const wot = wotAuthorsCache.get(category) ?? null;
   const includeUser = runtimeConfig.wotMode?.includeUserFollows && userFollowPubkeys.length > 0;
 
-  if (!curated && !wot && !includeUser && !activeUserPubkey) return null;
+  if (!curated && !wot && !includeUser) return null;
 
   const combined = [
     ...(curated || []),
