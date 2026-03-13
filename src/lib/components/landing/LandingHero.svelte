@@ -3,6 +3,7 @@
   import * as m from '$lib/paraglide/messages';
   import { modalStore } from '$lib/stores/modal.svelte.js';
   import { runtimeConfig } from '$lib/stores/config.svelte.js';
+  import { getProxiedImageUrl } from '$lib/helpers/image-proxy.js';
 
   // Note: These functions are kept for future CTA buttons
   function _handleGetStarted() {
@@ -24,7 +25,8 @@
 >
   {#if runtimeConfig.ui?.landingHeroImage}
     <img
-      src={runtimeConfig.ui.landingHeroImage}
+      src={getProxiedImageUrl(runtimeConfig.ui.landingHeroImage, 'hero') ||
+        runtimeConfig.ui.landingHeroImage}
       alt=""
       class="absolute inset-0 h-full w-full object-cover"
     />

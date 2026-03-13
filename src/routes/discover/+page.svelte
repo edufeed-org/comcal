@@ -1,5 +1,6 @@
 <script>
   import { runtimeConfig } from '$lib/stores/config.svelte.js';
+  import { getProxiedImageUrl } from '$lib/helpers/image-proxy.js';
   import { SvelteSet } from 'svelte/reactivity';
   import { untrack } from 'svelte';
   import { onMount } from 'svelte';
@@ -1498,7 +1499,8 @@
   {#if runtimeConfig.ui?.discoverHeroImage}
     <div class="relative overflow-hidden py-12 text-primary-content">
       <img
-        src={runtimeConfig.ui.discoverHeroImage}
+        src={getProxiedImageUrl(runtimeConfig.ui.discoverHeroImage, 'hero') ||
+          runtimeConfig.ui.discoverHeroImage}
         alt=""
         class="absolute inset-0 h-full w-full object-cover"
       />
