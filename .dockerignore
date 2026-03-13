@@ -43,6 +43,7 @@ DEPLOYMENT.md
 *.md
 
 # CI/CD
+.forgejo
 .github
 .gitlab-ci.yml
 
