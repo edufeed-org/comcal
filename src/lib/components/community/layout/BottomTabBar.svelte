@@ -7,7 +7,8 @@
     SettingsIcon,
     BookIcon,
     KanbanIcon,
-    ScrollTextIcon
+    ScrollTextIcon,
+    ForumIcon
   } from '$lib/components/icons';
   import {
     getCommunityAvailableContentTypes,
@@ -32,6 +33,7 @@
     learning: BookIcon,
     boards: KanbanIcon,
     articles: ScrollTextIcon,
+    forum: ForumIcon,
     activity: BellIcon,
     settings: SettingsIcon
   };
@@ -42,7 +44,8 @@
     calendar: () => m.community_layout_bottom_tab_bar_calendar(),
     learning: () => m.community_layout_bottom_tab_bar_learning(),
     boards: () => m.community_layout_bottom_tab_bar_boards(),
-    articles: () => m.community_layout_bottom_tab_bar_articles()
+    articles: () => m.community_layout_bottom_tab_bar_articles(),
+    forum: () => m.community_layout_bottom_tab_bar_forum()
   };
 
   // State for scroll indicators

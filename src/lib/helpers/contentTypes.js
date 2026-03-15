@@ -99,8 +99,8 @@ export const CONTENT_TYPE_CONFIG = {
     kind: 11,
     name: 'Forum',
     icon: 'M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z',
-    supported: false,
-    component: null,
+    supported: true,
+    component: 'ForumView',
     description: 'Forum discussions'
   }
 };
@@ -223,6 +223,7 @@ export function kindToContentType(kind) {
   /** @type {Record<number, string>} */
   const mapping = {
     9: 'chat',
+    11: 'forum',
     30023: 'articles',
     30142: 'learning',
     30301: 'boards',

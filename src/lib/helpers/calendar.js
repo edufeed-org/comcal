@@ -38,6 +38,21 @@ export function parseCalendarTimestamp(value, _eventKind) {
 }
 
 /**
+ * Format a unix timestamp as a relative time string (e.g. "3m ago", "2d ago")
+ * Falls back to short date format (e.g. "Mar 6") for dates older than a week.
+ * @param {number} unixSeconds - Unix timestamp in seconds
+ * @returns {string} Relative time string
+ */
+export function formatRelativeTime(unixSeconds) {
+  const diff = Date.now() - unixSeconds * 1000;
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return `${Math.max(1, Math.floor(diff / 60000))}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
+  return formatCalendarDate(new Date(unixSeconds * 1000), 'short');
+}
+
+/**
  * Format a date for calendar display using configured locale
  * @param {Date} date - Date to format
  * @param {string} format - Format string ('YYYY-MM-DD', 'MM/DD', 'full', 'long', 'short', 'time')

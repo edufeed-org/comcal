@@ -7,7 +7,8 @@
     SettingsIcon,
     BookIcon,
     KanbanIcon,
-    ScrollTextIcon
+    ScrollTextIcon,
+    ForumIcon
   } from '$lib/components/icons';
   import { getDefaultCommunityTabs } from '$lib/helpers/contentTypes.js';
   import * as m from '$lib/paraglide/messages';
@@ -26,6 +27,7 @@
     learning: BookIcon,
     boards: KanbanIcon,
     articles: ScrollTextIcon,
+    forum: ForumIcon,
     activity: BellIcon,
     settings: SettingsIcon
   };
@@ -38,6 +40,7 @@
     learning: () => m.community_layout_bottom_tab_bar_learning(),
     boards: () => m.community_layout_bottom_tab_bar_boards(),
     articles: () => m.community_layout_bottom_tab_bar_articles(),
+    forum: () => m.community_layout_bottom_tab_bar_forum(),
     activity: () => m.community_layout_bottom_tab_bar_activity(),
     settings: () => m.community_layout_bottom_tab_bar_settings()
   };

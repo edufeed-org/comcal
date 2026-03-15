@@ -37,11 +37,24 @@
   let communikeyEvent = $state(/** @type {any} */ (null));
   let communityProfile = $state(/** @type {any} */ (null));
 
-  // Check URL params for initial view (e.g., ?view=calendar)
+  // Valid content types for ?view= query param
+  const validContentTypes = new Set([
+    'home',
+    'chat',
+    'calendar',
+    'learning',
+    'boards',
+    'articles',
+    'forum',
+    'activity',
+    'settings'
+  ]);
+
+  // Check URL params for initial view (e.g., ?view=forum)
   $effect(() => {
     const viewParam = $page.url.searchParams.get('view');
-    if (viewParam === 'calendar') {
-      selectedContentType = 'calendar';
+    if (viewParam && validContentTypes.has(viewParam)) {
+      selectedContentType = viewParam;
     }
   });
 

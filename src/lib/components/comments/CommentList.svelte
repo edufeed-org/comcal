@@ -2,7 +2,7 @@
   // Use regular Map for internal tracking - SvelteMap inside subscription callbacks
   // can cause effect_update_depth_exceeded errors. UI updates driven by flatComments ($state).
   /* eslint-disable svelte/prefer-svelte-reactivity -- Map used intentionally to avoid infinite loops */
-  import { createCommentLoader } from '$lib/loaders/comments.js';
+  import { createCommentLoaderForEvent } from '$lib/loaders/comments.js';
   import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
   import { CommentsModel } from 'applesauce-common/models';
   import { buildCommentTree, countComments } from '$lib/helpers/commentThreading.js';
@@ -14,10 +14,11 @@
    * @typedef {Object} CommentListProps
    * @property {any} rootEvent - The root event being commented on
    * @property {any} activeUser - The currently active user (null if not logged in)
+   * @property {boolean} [collapsedReplies] - When true, replies start collapsed with expand toggle
    */
 
   /** @type {CommentListProps} */
-  let { rootEvent, activeUser } = $props();
+  let { rootEvent, activeUser, collapsedReplies = false } = $props();
 
   let flatComments = $state(/** @type {any[]} */ ([]));
   let isLoading = $state(true);
@@ -29,18 +30,6 @@
   let loaderSubscription;
   // Map to track model subscriptions for each comment (commentId -> subscription)
   let modelSubscriptions = new Map();
-
-  // Generate event address for comments
-  let eventAddress = $derived.by(() => {
-    if (!rootEvent) return null;
-    if (rootEvent.kind >= 30000 && rootEvent.kind < 40000) {
-      // Addressable event
-      const dTag = rootEvent.tags?.find((/** @type {string[]} */ t) => t[0] === 'd')?.[1] || '';
-      return `${rootEvent.kind}:${rootEvent.pubkey}:${dTag}`;
-    }
-    // For regular events, we can still use the kind:pubkey:id format
-    return `${rootEvent.kind}:${rootEvent.pubkey}:${rootEvent.id}`;
-  });
 
   /**
    * Subscribe to CommentsModel for a specific comment to watch for replies
@@ -89,7 +78,7 @@
 
   // Load comments using loader + recursive model subscriptions
   $effect(() => {
-    if (!rootEvent || !eventAddress) return;
+    if (!rootEvent) return;
 
     isLoading = true;
 
@@ -102,7 +91,7 @@
     subscribeToCommentReplies(rootEvent);
 
     // Source: Loader fetches ALL comments from relays and adds to EventStore
-    const commentLoader = createCommentLoader(eventAddress);
+    const commentLoader = createCommentLoaderForEvent(rootEvent);
     loaderSubscription = commentLoader().subscribe({
       next: (/** @type {any} */ comment) => {
         // Add to our loaded comments map
@@ -207,6 +196,7 @@
               {rootEvent}
               {activeUser}
               depth={0}
+              {collapsedReplies}
               onCommentPosted={handleCommentPosted}
             />
           {/each}

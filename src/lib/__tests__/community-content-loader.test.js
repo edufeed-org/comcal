@@ -24,7 +24,8 @@ vi.mock('$lib/stores/nostr-infrastructure.svelte', () => {
     },
     eventStore: {
       model: vi.fn(() => modelSubject),
-      add: vi.fn()
+      add: vi.fn(),
+      getReplaceable: vi.fn(() => null)
     }
   };
 });
@@ -75,6 +76,10 @@ vi.mock('$lib/loaders/targeted-publications.js', () => ({
   communityTargetedPublicationsLoader: vi.fn(() => () => ({
     subscribe: vi.fn(() => ({ unsubscribe: vi.fn() }))
   }))
+}));
+
+vi.mock('$lib/helpers/communityRelays.js', () => ({
+  getCommunityGlobalRelays: vi.fn(() => [])
 }));
 
 // Import after mocks

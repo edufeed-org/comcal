@@ -1,7 +1,7 @@
 /**
  * Generic community content loader factory.
  * Extracts the shared 3-step loading pattern used by amb.js and kanban-community.js:
- * 1. Direct content (h-tagged events from content relays)
+ * 1. Direct content (h-tagged events from content relays + community relays)
  * 2. Targeted publications (kind 30222 from communikey relays)
  * 3. Reference resolution (load events referenced by targeted publications)
  */
@@ -14,6 +14,7 @@ import { onlyEvents } from 'applesauce-relay/operators';
 import { mapEventsToStore } from 'applesauce-core/observable';
 import { addressLoader, timedPool } from './base.js';
 import { communityTargetedPublicationsLoader } from './targeted-publications.js';
+import { getCommunityGlobalRelays } from '$lib/helpers/communityRelays.js';
 
 /**
  * Create a community content loader for any content type.
@@ -35,7 +36,13 @@ export function createCommunityContentLoader(kinds, getRelays, options = {}) {
       return { subscriptions, cleanup: () => {} };
     }
 
-    const relays = getRelays();
+    const appRelays = getRelays();
+
+    // Merge app relays with the community's own relays from its kind 10222 event.
+    // The community event is already in EventStore (loaded by MainContentArea).
+    const communityEvent = eventStore.getReplaceable(10222, communityPubkey);
+    const communityRelays = getCommunityGlobalRelays(communityEvent);
+    const relays = [...new Set([...appRelays, ...communityRelays])];
 
     // 1. Direct community content (events with h-tag matching community)
     const directFilter = { kinds, '#h': [communityPubkey] };
