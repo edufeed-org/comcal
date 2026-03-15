@@ -1,5 +1,5 @@
 <script>
-  import { goto } from '$app/navigation';
+  import { goto, replaceState } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/stores';
   import { useActiveUser } from '$lib/stores/accounts.svelte';
@@ -141,6 +141,14 @@
    */
   function handleContentTypeSelect(type) {
     selectedContentType = type;
+    // Sync URL query param so the view is shareable/bookmarkable
+    const url = new URL($page.url);
+    if (type === 'home') {
+      url.searchParams.delete('view');
+    } else {
+      url.searchParams.set('view', type);
+    }
+    replaceState(url, {});
   }
 
   /**
@@ -155,7 +163,7 @@
     });
     const contentType = kindMap[kind];
     if (contentType) {
-      selectedContentType = contentType;
+      handleContentTypeSelect(contentType);
     }
   }
 
