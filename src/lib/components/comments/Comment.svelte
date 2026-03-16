@@ -3,14 +3,17 @@
   import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
   import { getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
   import CommentInput from './CommentInput.svelte';
-  import { ChatIcon, TrashIcon } from '$lib/components/icons';
+  import { ChatIcon, TrashIcon, CopyIcon } from '$lib/components/icons';
   import MarkdownRenderer from '$lib/components/shared/MarkdownRenderer.svelte';
   import { hexToNpub } from '$lib/helpers/nostrUtils';
-  import { formatCalendarDate } from '$lib/helpers/calendar.js';
+  import { formatRelativeTime } from '$lib/helpers/calendar.js';
+  import { getPlainTextExcerpt } from '$lib/helpers/commentThreading.js';
   import ReactionBar from '$lib/components/reactions/ReactionBar.svelte';
   import { deleteComment } from '$lib/helpers/comments.js';
   import { showToast } from '$lib/helpers/toast.js';
   import { runtimeConfig } from '$lib/stores/config.svelte.js';
+  import { nip19 } from 'nostr-tools';
+  import { getSeenRelays } from 'applesauce-core/helpers';
   import * as m from '$lib/paraglide/messages';
 
   /**
@@ -38,22 +41,28 @@
   const getUserProfile = useUserProfile(() => comment.pubkey);
   let authorProfile = $derived(getUserProfile());
 
+  // Get parent author profile (for reply context header)
+  const getParentProfile = useUserProfile(() => comment.parentComment?.pubkey);
+  let parentProfile = $derived(depth > 0 && comment.parentComment ? getParentProfile() : null);
+  let parentName = $derived(
+    parentProfile ? getDisplayName(parentProfile) : comment.parentComment?.pubkey?.slice(0, 8)
+  );
+  let parentExcerpt = $derived(getPlainTextExcerpt(comment.parentComment?.content, 60));
+
   // Check if user can delete this comment (must be the author)
   let canDelete = $derived(activeUser && comment.pubkey === activeUser.pubkey);
 
   /**
-   * Format timestamp
+   * Copy a deep-link URL for this comment to the clipboard
    */
-  function formatTimestamp(/** @type {number} */ timestamp) {
-    const date = new Date(timestamp * 1000);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-
-    if (diff < 60000) return 'just now';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-    if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
-    return formatCalendarDate(date, 'short');
+  function copyCommentLink() {
+    const relays = getSeenRelays(comment);
+    const nevent = nip19.neventEncode({
+      id: comment.id,
+      relays: relays ? [...relays].slice(0, 3) : []
+    });
+    const url = `${window.location.origin}/${nevent}`;
+    navigator.clipboard.writeText(url).then(() => showToast(m.comments_link_copied(), 'success'));
   }
 
   /**
@@ -103,22 +112,37 @@
     }
   }
 
-  // Calculate indentation using padding (16px per level, max 5 levels)
-  const maxDepth = 5;
-  let effectiveDepth = $derived(Math.min(depth, maxDepth));
-  let indent = $derived(effectiveDepth * 16); // 16px per level
+  /**
+   * Scroll to parent comment
+   */
+  function scrollToParent() {
+    if (!comment.parentComment) return;
+    const parentEl = document.querySelector(`[data-comment-id="${comment.parentComment.id}"]`);
+    if (parentEl) {
+      parentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      parentEl.classList.add('comment-highlight');
+      setTimeout(() => parentEl.classList.remove('comment-highlight'), 2000);
+    }
+  }
 </script>
 
-<div
-  class="comment-wrapper"
-  data-testid="comment"
-  data-comment-id={comment.id}
-  style="
-		padding-left: {indent}px;
-		border-left: {depth > 0 ? '2px solid hsl(var(--bc) / 0.15)' : 'none'};
-	"
->
+<div class="comment-wrapper" data-testid="comment" data-comment-id={comment.id}>
   <div class="relative rounded-lg bg-base-100 p-4">
+    <!-- Reply Context Header -->
+    {#if depth > 0 && comment.parentComment}
+      <button
+        class="mb-2 flex cursor-pointer items-center gap-1 text-xs text-base-content/50 transition-colors hover:text-base-content/70"
+        onclick={scrollToParent}
+        title={m.comments_replying_to({ name: parentName || '...' })}
+      >
+        <span>↩</span>
+        <span class="font-medium">{m.comments_replying_to({ name: parentName || '...' })}</span>
+        {#if parentExcerpt}
+          <span class="max-w-xs truncate italic">"{parentExcerpt}"</span>
+        {/if}
+      </button>
+    {/if}
+
     <!-- Comment Header -->
     <div class="mb-3 flex items-start gap-3">
       <!-- Avatar -->
@@ -150,7 +174,7 @@
               `${comment.pubkey.slice(0, 8)}...${comment.pubkey.slice(-4)}`}
           </a>
           <span class="text-xs text-base-content/50">
-            {formatTimestamp(comment.created_at)}
+            {formatRelativeTime(comment.created_at)}
           </span>
         </div>
 
@@ -178,6 +202,14 @@
               {m.comments_reply_button()}
             </button>
           {/if}
+          <button
+            class="btn gap-1 btn-ghost btn-xs"
+            onclick={copyCommentLink}
+            title={m.comments_copy_link()}
+            data-testid="comment-copy-link-btn"
+          >
+            <CopyIcon class_="w-4 h-4" />
+          </button>
           {#if canDelete}
             <button
               class="btn gap-1 text-error btn-ghost btn-xs hover:bg-error/10"
@@ -221,5 +253,18 @@
 <style>
   .comment-wrapper {
     position: relative;
+  }
+
+  :global(.comment-highlight) {
+    animation: highlight-fade 2s ease-out;
+  }
+
+  @keyframes highlight-fade {
+    0% {
+      background-color: oklch(0.9 0.05 250 / 0.3);
+    }
+    100% {
+      background-color: transparent;
+    }
   }
 </style>

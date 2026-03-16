@@ -25,10 +25,11 @@
    * @typedef {Object} Props
    * @property {any} event - Thread event (kind 11)
    * @property {() => void} [onBack] - Callback to navigate back
+   * @property {string|null} [initialFocusCommentId] - Comment ID to auto-focus (deep-linking)
    */
 
   /** @type {Props} */
-  let { event, onBack } = $props();
+  let { event, onBack, initialFocusCommentId = null } = $props();
 
   const getActiveUser = useActiveUser();
   const activeUser = $derived(getActiveUser());
@@ -154,7 +155,7 @@
 
   <!-- Comments (flat replies) -->
   <div class="mt-6">
-    <CommentList rootEvent={event} {activeUser} collapsedReplies={true} />
+    <CommentList rootEvent={event} {activeUser} collapsedReplies={true} {initialFocusCommentId} />
   </div>
 </article>
 

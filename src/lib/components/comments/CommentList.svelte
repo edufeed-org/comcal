@@ -5,9 +5,16 @@
   import { createCommentLoaderForEvent } from '$lib/loaders/comments.js';
   import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
   import { CommentsModel } from 'applesauce-common/models';
-  import { buildCommentTree, countComments } from '$lib/helpers/commentThreading.js';
+  import {
+    buildCommentTree,
+    countComments,
+    getParentChain,
+    getSubtree
+  } from '$lib/helpers/commentThreading.js';
   import CommentThread from './CommentThread.svelte';
   import CommentInput from './CommentInput.svelte';
+  import AncestorChain from './AncestorChain.svelte';
+  import { ChevronLeftIcon } from '$lib/components/icons';
   import * as m from '$lib/paraglide/messages';
 
   /**
@@ -15,15 +22,69 @@
    * @property {any} rootEvent - The root event being commented on
    * @property {any} activeUser - The currently active user (null if not logged in)
    * @property {boolean} [collapsedReplies] - When true, replies start collapsed with expand toggle
+   * @property {string|null} [initialFocusCommentId] - Comment ID to auto-focus on mount (deep-linking)
    */
 
   /** @type {CommentListProps} */
-  let { rootEvent, activeUser, collapsedReplies = false } = $props();
+  let { rootEvent, activeUser, collapsedReplies = false, initialFocusCommentId = null } = $props();
 
   let flatComments = $state(/** @type {any[]} */ ([]));
   let isLoading = $state(true);
+
+  // Stack-based focus history: each entry is a commentId
+  /** @type {string[]} */
+  let focusHistory = $state.raw([]);
+
+  // Comment ID to scroll to after back navigation (cleared after scroll completes)
+  /** @type {string|null} */
+  let scrollToCommentId = $state(null);
+
+  // IDs of comments whose replies should be force-expanded (path to scrollToCommentId)
+  /** @type {Set<string>} */
+  let expandedIds = $state.raw(new Set());
+
+  let focusedCommentId = $derived(focusHistory.at(-1) ?? null);
+
   let commentTree = $derived(buildCommentTree(flatComments));
   let totalCount = $derived(countComments(commentTree));
+
+  // When focused on a subtree, compute the subtree and ancestor chain
+  let focusedSubtree = $derived.by(() => {
+    if (!focusedCommentId) return null;
+    return getSubtree(commentTree, focusedCommentId);
+  });
+
+  // Ancestors: path from root to focused comment, exclusive of the focused comment itself
+  let ancestors = $derived.by(() => {
+    if (!focusedCommentId) return [];
+    const chain = getParentChain(commentTree, focusedCommentId);
+    // Remove last element (the focused comment itself)
+    return chain.length > 1 ? chain.slice(0, -1) : [];
+  });
+
+  // Comments to display: either full tree or focused subtree
+  let displayComments = $derived.by(() => {
+    if (focusedSubtree) {
+      return [focusedSubtree];
+    }
+    return commentTree;
+  });
+
+  // Auto-focus on mount for deep-linked comments
+  $effect(() => {
+    if (
+      initialFocusCommentId &&
+      !isLoading &&
+      flatComments.length > 0 &&
+      focusHistory.length === 0
+    ) {
+      const subtree = getSubtree(commentTree, initialFocusCommentId);
+      if (subtree) {
+        focusHistory = [initialFocusCommentId];
+      }
+    }
+  });
+
   // Map to track loaded comments and prevent duplicates
   let loadedComments = new Map();
   /** @type {import('rxjs').Subscription | undefined} */
@@ -150,6 +211,73 @@
       subscribeToCommentReplies(event);
     }
   }
+
+  /**
+   * Push a new focus level onto the stack
+   * @param {string} commentId
+   */
+  function handleFocusThread(commentId) {
+    focusHistory = [...focusHistory, commentId];
+  }
+
+  /**
+   * Pop one level from the stack (go back)
+   */
+  function handleBack() {
+    const returningToId = focusHistory.at(-1);
+    focusHistory = focusHistory.slice(0, -1);
+
+    if (returningToId) {
+      const chain = getParentChain(commentTree, returningToId);
+      expandedIds = new Set(chain.map((c) => c.id));
+      scrollToCommentId = returningToId;
+    }
+  }
+
+  /**
+   * Clear the entire stack (back to full thread)
+   */
+  function handleBackToFullThread() {
+    const returningToId = focusHistory[0];
+    focusHistory = [];
+
+    if (returningToId) {
+      const chain = getParentChain(commentTree, returningToId);
+      expandedIds = new Set(chain.map((c) => c.id));
+      scrollToCommentId = returningToId;
+    }
+  }
+
+  /**
+   * Navigate to an ancestor: if already in stack, pop to it; otherwise push
+   * @param {string} commentId
+   */
+  function handleAncestorClick(commentId) {
+    const idx = focusHistory.indexOf(commentId);
+    if (idx !== -1) {
+      // Already in stack — pop to that level
+      focusHistory = focusHistory.slice(0, idx + 1);
+    } else {
+      // Not in stack — push it
+      focusHistory = [...focusHistory, commentId];
+    }
+  }
+
+  // Scroll to comment after back navigation
+  $effect(() => {
+    if (!scrollToCommentId) return;
+    const targetId = scrollToCommentId;
+
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-comment-id="${targetId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('comment-highlight');
+        setTimeout(() => el.classList.remove('comment-highlight'), 2000);
+      }
+      scrollToCommentId = null;
+    });
+  });
 </script>
 
 <div class="comment-list" data-testid="comment-list">
@@ -162,8 +290,29 @@
         {/if}
       </div>
 
+      <!-- Navigation bar when focused on subtree -->
+      {#if focusedCommentId}
+        <nav class="mt-3 flex flex-wrap items-center gap-1" data-testid="thread-navigation">
+          <button class="btn gap-1 btn-ghost btn-sm" onclick={handleBack}>
+            <ChevronLeftIcon class_="w-4 h-4" />
+            {m.comments_back_button()}
+          </button>
+          {#if focusHistory.length > 1}
+            <button
+              class="btn text-base-content/60 btn-ghost btn-xs"
+              onclick={handleBackToFullThread}
+            >
+              {m.comments_back_to_full_thread()}
+            </button>
+          {/if}
+        </nav>
+
+        <!-- Ancestor chain -->
+        <AncestorChain {ancestors} onAncestorClick={handleAncestorClick} />
+      {/if}
+
       <!-- Comment Input Form (top-level) -->
-      {#if activeUser}
+      {#if activeUser && !focusedCommentId}
         <div class="mt-4">
           <CommentInput
             {rootEvent}
@@ -173,7 +322,7 @@
             onCommentPosted={handleCommentPosted}
           />
         </div>
-      {:else}
+      {:else if !activeUser}
         <div class="mt-4 rounded-lg bg-base-300 p-4 text-center" data-testid="comment-login-prompt">
           <p class="text-base-content/70">{m.comments_list_login_prompt()}</p>
         </div>
@@ -185,18 +334,35 @@
           <div class="flex items-center justify-center py-8">
             <span class="loading loading-lg loading-spinner"></span>
           </div>
-        {:else if commentTree.length === 0}
+        {:else if displayComments.length === 0}
           <div class="py-8 text-center text-base-content/60">
             {m.comments_list_empty()}
           </div>
+        {:else if focusedCommentId}
+          <!-- Focused mode: render at depth 0, ancestor chain provides context -->
+          {#each displayComments as comment (comment.id)}
+            <CommentThread
+              {comment}
+              {rootEvent}
+              {activeUser}
+              depth={0}
+              maxDepth={3}
+              {collapsedReplies}
+              {expandedIds}
+              onFocusThread={handleFocusThread}
+              onCommentPosted={handleCommentPosted}
+            />
+          {/each}
         {:else}
-          {#each commentTree as comment (comment.id)}
+          {#each displayComments as comment (comment.id)}
             <CommentThread
               {comment}
               {rootEvent}
               {activeUser}
               depth={0}
               {collapsedReplies}
+              {expandedIds}
+              onFocusThread={handleFocusThread}
               onCommentPosted={handleCommentPosted}
             />
           {/each}

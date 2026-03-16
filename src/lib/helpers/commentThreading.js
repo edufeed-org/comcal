@@ -4,6 +4,22 @@
  */
 
 /**
+ * Strips markdown formatting and truncates text to produce a plain-text excerpt.
+ *
+ * @param {string|null|undefined} text - Raw markdown text
+ * @param {number} [maxLength=100] - Maximum character length before truncation
+ * @returns {string} Plain-text excerpt, possibly truncated with '…'
+ */
+export function getPlainTextExcerpt(text, maxLength = 100) {
+  if (!text) return '';
+  const plain = text
+    .replace(/[#*`[\]>~_\\-]/g, '')
+    .replace(/\n+/g, ' ')
+    .trim();
+  return plain.length > maxLength ? plain.slice(0, maxLength) + '…' : plain;
+}
+
+/**
  * Builds a hierarchical comment tree from a flat list of comments
  *
  * @param {any[]} comments - Flat array of comment events (kind 1111)
@@ -35,21 +51,25 @@ export function buildCommentTree(comments) {
     });
   });
 
-  // Second pass: Build tree structure
+  // Second pass: Build tree structure and attach parent references
   comments.forEach((comment) => {
     const parentId = getParentCommentId(comment);
+    const node = commentMap.get(comment.id);
 
     if (!parentId) {
       // This is a top-level comment (parent is the root event)
-      topLevelComments.push(commentMap.get(comment.id));
+      node.parentComment = null;
+      topLevelComments.push(node);
     } else {
       // This is a reply to another comment
       const parent = commentMap.get(parentId);
       if (parent) {
-        parent.replies.push(commentMap.get(comment.id));
+        node.parentComment = parent;
+        parent.replies.push(node);
       } else {
         // Parent not found (orphaned comment), treat as top-level
-        topLevelComments.push(commentMap.get(comment.id));
+        node.parentComment = null;
+        topLevelComments.push(node);
       }
     }
   });
@@ -70,7 +90,7 @@ export function buildCommentTree(comments) {
  * @param {any} comment - The comment event
  * @returns {string|null} Parent comment ID or null
  */
-function getParentCommentId(comment) {
+export function getParentCommentId(comment) {
   // According to NIP-22:
   // - Lowercase 'e' tag points to parent item
   // - Lowercase 'k' tag indicates parent kind
@@ -154,6 +174,62 @@ export function getCommentDepth(commentTree, commentId, currentDepth = 0) {
     }
   }
   return -1;
+}
+
+/**
+ * Flattens a comment tree back into a flat array
+ * Useful for counting or searching
+ *
+ * @param {any[]} commentTree - Tree of comments
+ * @returns {any[]} Flat array of all comments
+ */
+/**
+ * Gets the chain of parent comments from root to the target comment
+ *
+ * @param {any[]} commentTree - Tree of comments with replies
+ * @param {string} commentId - ID of the target comment
+ * @returns {any[]} Array of comments from root to target (inclusive)
+ */
+export function getParentChain(commentTree, commentId) {
+  /** @type {any[]} */
+  const path = [];
+
+  /**
+   * @param {any[]} comments
+   * @returns {boolean}
+   */
+  function findPath(comments) {
+    for (const comment of comments) {
+      path.push(comment);
+      if (comment.id === commentId) return true;
+      if (comment.replies && comment.replies.length > 0) {
+        if (findPath(comment.replies)) return true;
+      }
+      path.pop();
+    }
+    return false;
+  }
+
+  findPath(commentTree);
+  return path;
+}
+
+/**
+ * Gets a subtree rooted at the given comment ID
+ *
+ * @param {any[]} commentTree - Tree of comments with replies
+ * @param {string} commentId - ID of the comment to use as root
+ * @returns {any|null} The comment node with its replies, or null if not found
+ */
+export function getSubtree(commentTree, commentId) {
+  for (const comment of commentTree) {
+    if (comment.id === commentId) return comment;
+    if (comment.replies && comment.replies.length > 0) {
+      const found = getSubtree(comment.replies, commentId);
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
 /**

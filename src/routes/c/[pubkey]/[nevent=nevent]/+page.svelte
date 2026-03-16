@@ -22,7 +22,11 @@
         <ChevronLeftIcon class_="w-4 h-4" />
         {m.thread_forum_back_to_list()}
       </button>
-      <ThreadDetailView event={data.event} onBack={handleBack} />
+      <ThreadDetailView
+        event={data.event}
+        onBack={handleBack}
+        initialFocusCommentId={data.focusCommentId}
+      />
     </div>
   </div>
 {:else}

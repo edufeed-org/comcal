@@ -10,6 +10,7 @@
   import { debounceTime } from 'rxjs/operators';
   import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
   import { formatRelativeTime } from '$lib/helpers/calendar.js';
+  import { getPlainTextExcerpt } from '$lib/helpers/commentThreading.js';
   import { ChatIcon } from '$lib/components/icons';
   import EventTags from '../calendar/EventTags.svelte';
   import * as m from '$lib/paraglide/messages';
@@ -73,11 +74,7 @@
   );
 
   // Get content excerpt
-  const excerpt = $derived.by(() => {
-    if (!thread.content) return '';
-    const plainText = thread.content.replace(/[#*`[\]]/g, '').trim();
-    return plainText.length > 200 ? plainText.slice(0, 200) + '...' : plainText;
-  });
+  const excerpt = $derived(getPlainTextExcerpt(thread.content, 200));
 
   // Get hashtags
   const hashtags = $derived(
