@@ -214,6 +214,28 @@ export const fetchEventById = async (identifier) => {
         console.error('Error decoding naddr:', error);
         return null;
       }
+    } else if (identifier.startsWith('nevent')) {
+      // If it's a nevent, decode it to get the event pointer
+      try {
+        const decoded = nip19.decode(identifier);
+        if (decoded.type === 'nevent') {
+          const data = decoded.data;
+
+          // Check EventStore first
+          const localEvent = eventStore.getEvent(data.id);
+          if (localEvent) return localEvent;
+
+          // Use eventLoader with relay hints if present
+          const event$ = eventLoader({ id: data.id, relays: data.relays });
+          const event = await firstValueFrom(event$, { defaultValue: null });
+          return event || null;
+        } else {
+          throw new Error('Invalid nevent format');
+        }
+      } catch (error) {
+        console.error('Error decoding nevent:', error);
+        return null;
+      }
     } else if (identifier.startsWith('note')) {
       // If it's a note ID
       try {

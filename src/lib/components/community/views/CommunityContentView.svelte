@@ -14,8 +14,6 @@
    * @property {any} [communityProfile]
    * @property {(pubkey: string) => { subscriptions: Map<string, any>, cleanup: () => void }} loaderHook
    * @property {(pubkey: string) => (eventStore: any) => import('rxjs').Observable<any[]>} model
-   * @property {string} title
-   * @property {string} description
    * @property {string} loadingText
    * @property {string} emptyTitle
    * @property {string} emptyDescription
@@ -29,8 +27,6 @@
     communityProfile: _communityProfile = null,
     loaderHook,
     model,
-    title,
-    description,
     loadingText,
     emptyTitle,
     emptyDescription,
@@ -100,12 +96,6 @@
 </script>
 
 <div class="community-content-view p-4">
-  <!-- Header -->
-  <div class="mb-6">
-    <h2 class="text-2xl font-bold text-base-content">{title}</h2>
-    <p class="mt-1 text-base-content/60">{description}</p>
-  </div>
-
   <!-- Loading State -->
   {#if isLoading}
     <div class="flex flex-col items-center justify-center py-16">

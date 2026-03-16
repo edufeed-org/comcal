@@ -20,8 +20,6 @@
   {communityProfile}
   loaderHook={useAMBCommunityLoader}
   model={CommunityAMBResourceModel}
-  title={m.community_learning_title()}
-  description={m.community_learning_description()}
   loadingText={m.community_learning_loading()}
   emptyTitle={m.community_learning_empty_title()}
   emptyDescription={m.community_learning_empty_description()}

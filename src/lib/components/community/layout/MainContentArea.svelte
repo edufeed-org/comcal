@@ -66,6 +66,7 @@
   $effect(() => {
     if (selectedCommunityId) {
       isLoading = true;
+      let loaderDone = false;
 
       const pointer = {
         kind: 10222,
@@ -76,14 +77,19 @@
       const loaderSub = addressLoader({
         ...pointer,
         relays: getCommunikeyRelays()
-      }).subscribe(() => {
-        // Loader automatically populates eventStore
+      }).subscribe({
+        complete: () => {
+          loaderDone = true;
+          // If no event found after loader finishes, stop loading anyway
+          if (!communikeyEvent) isLoading = false;
+        }
       });
 
       // 2. Subscribe to eventStore for reactive updates
       const sub = eventStore.replaceable(pointer).subscribe((event) => {
         communikeyEvent = event || null;
-        isLoading = false;
+        // Only stop loading when event arrives OR loader already finished
+        if (event || loaderDone) isLoading = false;
       });
 
       return () => {
@@ -98,7 +104,7 @@
 </script>
 
 <!-- Main Content Area -->
-<div class="flex-1 overflow-auto pb-16 transition-all duration-300 lg:ml-[304px] lg:pb-0">
+<div class="flex-1 overflow-auto transition-all duration-300 lg:ml-[304px]">
   {#if !selectedCommunityId}
     <!-- Empty state: No community selected -->
     <div class="flex h-full flex-col items-center justify-center p-8 text-center">

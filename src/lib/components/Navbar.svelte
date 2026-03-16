@@ -132,7 +132,9 @@
         <div tabindex="0" role="button" class="btn btn-circle btn-ghost">
           <ProfileAvatar pubkey={activeAccount.pubkey} size="md" fallbackType="robohash" />
         </div>
-        <ul class="dropdown-content menu z-50 mt-3 w-52 menu-sm rounded-box bg-base-100 p-2 shadow">
+        <ul
+          class="dropdown-content menu z-[60] mt-3 w-52 menu-sm rounded-box bg-base-100 p-2 shadow"
+        >
           <li>
             <a href={resolve(`/p/${activeAccount.pubkey}`)} class="justify-between">
               {m.common_profile()}
@@ -162,7 +164,7 @@
       <div tabindex="0" role="button" class="btn btn-circle btn-ghost" aria-label={m.navbar_menu()}>
         <MenuIcon class_="w-6 h-6" />
       </div>
-      <ul class="dropdown-content menu z-50 mt-3 w-56 rounded-box bg-base-100 p-2 shadow-lg">
+      <ul class="dropdown-content menu z-[60] mt-3 w-56 rounded-box bg-base-100 p-2 shadow-lg">
         <!-- Navigation Links -->
         <li>
           <a href={resolve('/communities')} onclick={closeDropdown}>

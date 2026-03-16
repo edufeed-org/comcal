@@ -16,8 +16,17 @@
   let {
     selectedContentType = $bindable(),
     onContentTypeSelect,
-    communitySelected = true
+    communitySelected = true,
+    communityProfile = /** @type {any} */ (null),
+    communityPubkey: _communityPubkey = /** @type {string | null} */ (null)
   } = $props();
+
+  import { getProfilePicture } from 'applesauce-core/helpers';
+
+  let communityDisplayName = $derived(
+    communityProfile?.name || communityProfile?.display_name || 'Community'
+  );
+  let communityAvatarUrl = $derived(getProfilePicture(communityProfile));
 
   /** @type {Record<string, any>} */
   const iconMap = {
@@ -73,6 +82,16 @@
       <p class="text-sm">{m.community_layout_content_nav_select_community()}</p>
     </div>
   {:else}
+    {#if communityProfile}
+      <div class="flex items-center gap-3 p-4">
+        <div class="avatar">
+          <div class="w-9 rounded-full ring-1 ring-base-300">
+            <img src={communityAvatarUrl} alt={communityDisplayName} class="object-cover" />
+          </div>
+        </div>
+        <h2 class="truncate text-sm font-semibold text-base-content">{communityDisplayName}</h2>
+      </div>
+    {/if}
     <nav class="menu space-y-1 p-4">
       {#each contentTypes as type (type.id)}
         {@const isActive = selectedContentType === type.id}

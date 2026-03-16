@@ -20,8 +20,6 @@
   {communityProfile}
   loaderHook={useArticleCommunityLoader}
   model={CommunityArticleModel}
-  title={m.community_articles_title()}
-  description={m.community_articles_description()}
   loadingText={m.community_articles_loading()}
   emptyTitle={m.community_articles_empty_title()}
   emptyDescription={m.community_articles_empty_description()}

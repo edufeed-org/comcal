@@ -19,8 +19,6 @@
   {communityProfile}
   loaderHook={useKanbanCommunityLoader}
   model={CommunityBoardModel}
-  title={m.community_boards_title()}
-  description={m.community_boards_description()}
   loadingText={m.community_boards_loading()}
   emptyTitle={m.community_boards_empty_title()}
   emptyDescription={m.community_boards_empty_description()}
