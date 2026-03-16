@@ -6,7 +6,7 @@
 
 <script>
   import { getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
-  import { CommentsModel } from 'applesauce-common/models';
+  import { TimelineModel } from 'applesauce-core/models';
   import { debounceTime } from 'rxjs/operators';
   import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
   import { formatRelativeTime } from '$lib/helpers/calendar.js';
@@ -25,15 +25,17 @@
   /** @type {Props} */
   let { thread, authorProfile = null, commenterProfiles = new Map(), onSelect } = $props();
 
-  // Comment count + commenter pubkeys via CommentsModel
+  // Comment count + commenter pubkeys via #E (root scope) timeline query.
+  // Using #E instead of CommentsModel (#e) because some NIP-22 clients only
+  // set the uppercase E tag on comments, missing the lowercase e parent tag.
   let commentCount = $state(0);
   let commenterPubkeys = $state(/** @type {string[]} */ ([]));
 
   $effect(() => {
-    if (!thread) return;
+    if (!thread?.id) return;
 
     const sub = eventStore
-      .model(CommentsModel, thread)
+      .model(TimelineModel, { kinds: [1111], '#E': [thread.id] })
       .pipe(debounceTime(100))
       .subscribe((comments) => {
         commentCount = comments?.length || 0;
