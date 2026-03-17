@@ -4,7 +4,7 @@
   import { getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
   import CommentInput from './CommentInput.svelte';
   import { ChatIcon, TrashIcon, CopyIcon } from '$lib/components/icons';
-  import MarkdownRenderer from '$lib/components/shared/MarkdownRenderer.svelte';
+  import NostrContentRenderer from '$lib/components/shared/NostrContentRenderer.svelte';
   import { hexToNpub, generateAuthorColorRGB } from '$lib/helpers/nostrUtils';
   import { formatRelativeTime } from '$lib/helpers/calendar.js';
   import { getPlainTextExcerpt } from '$lib/helpers/commentThreading.js';
@@ -186,8 +186,8 @@
         </div>
 
         <!-- Comment Content -->
-        <MarkdownRenderer
-          content={comment.content}
+        <NostrContentRenderer
+          event={comment}
           class="prose-sm mt-2 max-w-none text-base-content/80"
         />
 
