@@ -9,6 +9,7 @@
   import LearningView from '../views/LearningView.svelte';
   import BoardsView from '../views/BoardsView.svelte';
   import ArticlesView from '../views/ArticlesView.svelte';
+  import WikisView from '../views/WikisView.svelte';
   import HomeView from '../views/HomeView.svelte';
   import ActivityView from '../views/ActivityView.svelte';
   import SettingsView from '../views/SettingsView.svelte';
@@ -139,6 +140,8 @@
         <BoardsView communityPubkey={selectedCommunityId} {communityProfile} />
       {:else if selectedContentType === 'articles'}
         <ArticlesView communityPubkey={selectedCommunityId} {communityProfile} />
+      {:else if selectedContentType === 'wikis'}
+        <WikisView communityPubkey={selectedCommunityId} {communityProfile} />
       {:else if selectedContentType === 'activity'}
         <ActivityView
           communityId={selectedCommunityId}

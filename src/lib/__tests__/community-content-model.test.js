@@ -13,7 +13,8 @@ import {
   CommunityBoardModel,
   CommunityAMBResourceModel,
   CommunityCalendarEventModel,
-  CommunityArticleModel
+  CommunityArticleModel,
+  CommunityWikiModel
 } from '$lib/models/community-content.js';
 
 const COMMUNITY_PUBKEY = 'community123';
@@ -532,5 +533,107 @@ describe('CommunityArticleModel', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('article-shared');
+  });
+});
+
+describe('CommunityWikiModel', () => {
+  it('returns wiki events for kind 30818', () => {
+    const wiki = mockEvent({
+      kind: 30818,
+      tags: [
+        ['h', COMMUNITY_PUBKEY],
+        ['d', 'test-topic'],
+        ['title', 'Test Wiki']
+      ],
+      content: '# Test Wiki Content'
+    });
+
+    const store = {
+      model: (/** @type {any} */ ModelClass, /** @type {any} */ filter) => {
+        if (filter.kinds?.includes(30222)) return of([]);
+        if (filter['#h']) return of([wiki]);
+        return of([wiki]);
+      }
+    };
+
+    /** @type {any} */
+    let result;
+    CommunityWikiModel(COMMUNITY_PUBKEY)(/** @type {any} */ (store)).subscribe(
+      (items) => (result = items)
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(wiki.id);
+    expect(result[0].content).toBe('# Test Wiki Content');
+  });
+
+  it('resolves shared wikis via targeted publications', () => {
+    const wiki = mockEvent({
+      id: 'wiki-shared',
+      kind: 30818,
+      pubkey: 'author1',
+      tags: [['d', 'shared-topic']]
+    });
+    const share = mockEvent({
+      kind: 30222,
+      tags: [
+        ['p', COMMUNITY_PUBKEY],
+        ['a', '30818:author1:shared-topic'],
+        ['k', '30818']
+      ]
+    });
+
+    const store = {
+      model: (/** @type {any} */ ModelClass, /** @type {any} */ filter) => {
+        if (filter.kinds?.includes(30222)) return of([share]);
+        if (filter['#h']) return of([]);
+        return of([wiki]);
+      }
+    };
+
+    /** @type {any} */
+    let result;
+    CommunityWikiModel(COMMUNITY_PUBKEY)(/** @type {any} */ (store)).subscribe(
+      (items) => (result = items)
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('wiki-shared');
+  });
+
+  it('combines direct and shared wikis with deduplication', () => {
+    const wiki = mockEvent({
+      id: 'wiki-both',
+      kind: 30818,
+      tags: [
+        ['h', COMMUNITY_PUBKEY],
+        ['d', 'dup-topic']
+      ]
+    });
+    const share = mockEvent({
+      kind: 30222,
+      tags: [
+        ['p', COMMUNITY_PUBKEY],
+        ['e', 'wiki-both'],
+        ['k', '30818']
+      ]
+    });
+
+    const store = {
+      model: (/** @type {any} */ ModelClass, /** @type {any} */ filter) => {
+        if (filter.kinds?.includes(30222)) return of([share]);
+        if (filter['#h']) return of([wiki]);
+        return of([wiki]);
+      }
+    };
+
+    /** @type {any} */
+    let result;
+    CommunityWikiModel(COMMUNITY_PUBKEY)(/** @type {any} */ (store)).subscribe(
+      (items) => (result = items)
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('wiki-both');
   });
 });

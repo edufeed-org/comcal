@@ -26,6 +26,7 @@
     learning: BookIcon,
     boards: KanbanIcon,
     articles: ScrollTextIcon,
+    wikis: BookIcon,
     activity: BellIcon,
     settings: SettingsIcon
   };
@@ -38,6 +39,7 @@
     learning: () => m.community_layout_bottom_tab_bar_learning(),
     boards: () => m.community_layout_bottom_tab_bar_boards(),
     articles: () => m.community_layout_bottom_tab_bar_articles(),
+    wikis: () => m.community_wikis_title(),
     activity: () => m.community_layout_bottom_tab_bar_activity(),
     settings: () => m.community_layout_bottom_tab_bar_settings()
   };

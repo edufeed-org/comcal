@@ -2,6 +2,7 @@
   import ArticleView from '$lib/components/article/ArticleView.svelte';
   import AMBResourceView from '$lib/components/educational/AMBResourceView.svelte';
   import KanbanBoardView from '$lib/components/kanban/KanbanBoardView.svelte';
+  import WikiView from '$lib/components/wiki/WikiView.svelte';
   import { formatAMBResource } from '$lib/helpers/educational';
   import { getTagValue } from 'applesauce-core/helpers';
   import { runtimeConfig } from '$lib/stores/config.svelte.js';
@@ -38,6 +39,14 @@
       };
     }
 
+    // Wiki event (kind 30818 / NIP-54)
+    if (data.kind === 30818) {
+      return {
+        type: 'wiki',
+        event: data.event
+      };
+    }
+
     // Unsupported kind
     return {
       type: 'unsupported',
@@ -58,6 +67,10 @@
         getTagValue(displayData.event, 'name') ||
         'Kanban Board';
       return `${boardTitle} - ${runtimeConfig.appName}`;
+    } else if (displayData?.type === 'wiki') {
+      const wikiTitle =
+        getTagValue(displayData.event, 'title') || getTagValue(displayData.event, 'd') || 'Wiki';
+      return `${wikiTitle} - ${runtimeConfig.appName}`;
     }
     return `Content - ${runtimeConfig.appName}`;
   });
@@ -78,6 +91,9 @@
   {:else if displayData?.type === 'kanban'}
     <!-- Kanban Board Preview -->
     <KanbanBoardView event={displayData.event} />
+  {:else if displayData?.type === 'wiki'}
+    <!-- Wiki Display -->
+    <WikiView event={displayData.event} />
   {:else if displayData?.type === 'unsupported'}
     <!-- Unsupported Content Type -->
     <div class="alert alert-warning">

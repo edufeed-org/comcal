@@ -101,3 +101,6 @@ export const CommunityCalendarEventModel = createCommunityContentModel([31922, 3
 
 /** Community article model for kind 30023 long-form content */
 export const CommunityArticleModel = createCommunityContentModel([30023]);
+
+/** Community wiki model for kind 30818 wiki articles (NIP-54) */
+export const CommunityWikiModel = createCommunityContentModel([30818]);

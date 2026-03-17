@@ -2,14 +2,13 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { nip19 } from 'nostr-tools';
+  import { normalizeIdentifier } from 'nostr-tools/nip54';
   import { ChevronLeftIcon } from '$lib/components/icons';
   import { fetchEventById } from '$lib/helpers/nostrUtils';
   import { runtimeConfig } from '$lib/stores/config.svelte.js';
-  import { getArticleTitle, getArticleSummary, getArticleImage } from 'applesauce-common/helpers';
-  import { createArticle, updateArticle } from '$lib/stores/article-actions.svelte.js';
+  import { createWiki, updateWiki } from '$lib/stores/wiki-actions.svelte.js';
   import MarkdownEditor from '$lib/components/shared/MarkdownEditor.svelte';
   import EditableList from '$lib/components/shared/EditableList.svelte';
-  import BlossomUploader from '$lib/components/educational/BlossomUploader.svelte';
   import * as m from '$lib/paraglide/messages';
 
   /** @type {{ data: { communityPubkey: string, editNaddr: string } }} */
@@ -24,16 +23,17 @@
 
   // Form state
   let title = $state('');
+  let topic = $state('');
   let summary = $state('');
   let editorContent = $state('');
-  let coverImageFiles = $state(/** @type {any[]} */ ([]));
   let hashtags = $state(/** @type {string[]} */ ([]));
 
   // UI state
   let isPublishing = $state(false);
   let validationError = $state('');
 
-  const coverImage = $derived(coverImageFiles[0]?.url || '');
+  // Preview of normalized topic
+  const normalizedTopic = $derived(topic.trim() ? normalizeIdentifier(topic.trim()) : '');
 
   // Resolve edit naddr to event
   $effect(() => {
@@ -52,25 +52,25 @@
 
         const event = await fetchEventById(data.editNaddr);
         if (!event) {
-          editError = 'Article not found';
+          editError = 'Wiki not found';
           return;
         }
 
         editEvent = event;
-        title = getArticleTitle(event) || '';
-        summary = getArticleSummary(event) || '';
+        const titleTag = event.tags?.find((/** @type {any} */ t) => t[0] === 'title');
+        title = titleTag?.[1] || '';
+        const dTag = event.tags?.find((/** @type {any} */ t) => t[0] === 'd');
+        topic = dTag?.[1] || '';
+        const summaryTag = event.tags?.find((/** @type {any} */ t) => t[0] === 'summary');
+        summary = summaryTag?.[1] || '';
         editorContent = event.content || '';
-        const img = getArticleImage(event);
-        if (img) {
-          coverImageFiles = [{ url: img, name: 'cover', type: 'image/*', size: 0 }];
-        }
         hashtags =
           event.tags
             ?.filter((/** @type {any} */ t) => t[0] === 't')
             .map((/** @type {any} */ t) => t[1]) || [];
       } catch (err) {
-        console.error('Error loading article for edit:', err);
-        editError = 'Failed to load article';
+        console.error('Error loading wiki for edit:', err);
+        editError = 'Failed to load wiki';
       } finally {
         isLoadingEdit = false;
       }
@@ -85,31 +85,35 @@
     validationError = '';
 
     if (!title.trim()) {
-      validationError = m.article_editor_validation_title();
+      validationError = m.wiki_editor_validation_title();
+      return;
+    }
+    if (!topic.trim()) {
+      validationError = m.wiki_editor_validation_topic();
       return;
     }
     if (!editorContent.trim()) {
-      validationError = m.article_editor_validation_content();
+      validationError = m.wiki_editor_validation_content();
       return;
     }
 
     isPublishing = true;
     try {
-      /** @type {import('$lib/stores/article-actions.svelte.js').ArticleFormData} */
+      /** @type {import('$lib/stores/wiki-actions.svelte.js').WikiFormData} */
       const formData = {
         title: title.trim(),
         content: editorContent,
+        topic: topic.trim(),
         summary: summary.trim() || undefined,
-        image: coverImage || undefined,
         hashtags: hashtags.length > 0 ? hashtags : undefined
       };
 
       let naddr;
       if (isEditMode && editEvent) {
-        const result = await updateArticle(formData, editEvent);
+        const result = await updateWiki(formData, editEvent);
         naddr = result.naddr;
       } else {
-        const result = await createArticle(formData, data.communityPubkey || undefined, undefined);
+        const result = await createWiki(formData, data.communityPubkey || undefined, undefined);
         naddr = result.naddr;
       }
 
@@ -129,7 +133,7 @@
 
 <svelte:head>
   <title>
-    {isEditMode ? m.article_editor_page_title_edit() : m.article_editor_page_title_create()} - {runtimeConfig.appName}
+    {isEditMode ? m.wiki_editor_page_title_edit() : m.wiki_editor_page_title_create()} - {runtimeConfig.appName}
   </title>
 </svelte:head>
 
@@ -141,7 +145,7 @@
         <ChevronLeftIcon class_="w-5 h-5" />
       </button>
       <h1 class="text-lg font-semibold text-base-content">
-        {isEditMode ? m.article_editor_page_title_edit() : m.article_editor_page_title_create()}
+        {isEditMode ? m.wiki_editor_page_title_edit() : m.wiki_editor_page_title_create()}
       </h1>
     </div>
   </div>
@@ -164,37 +168,52 @@
       <input
         type="text"
         class="input w-full text-2xl font-bold"
-        placeholder={m.article_editor_title_placeholder()}
+        placeholder={m.wiki_editor_title_placeholder()}
         bind:value={title}
       />
 
-      <!-- Cover Image -->
-      <BlossomUploader
-        bind:files={coverImageFiles}
-        multiple={false}
-        accept="image/*"
-        label={m.article_editor_cover_image()}
-      />
+      <!-- Topic -->
+      <div>
+        <label class="label" for="wiki-topic">
+          <span class="label-text font-medium">{m.wiki_editor_topic_label()}</span>
+        </label>
+        <input
+          id="wiki-topic"
+          type="text"
+          class="input w-full"
+          placeholder={m.wiki_editor_topic_placeholder()}
+          bind:value={topic}
+          disabled={isEditMode}
+        />
+        <div class="label">
+          <span class="label-text-alt text-base-content/60">{m.wiki_editor_topic_help()}</span>
+        </div>
+        {#if normalizedTopic && !isEditMode}
+          <div class="mt-1">
+            <span class="badge badge-sm badge-secondary">{normalizedTopic}</span>
+          </div>
+        {/if}
+      </div>
 
       <!-- Summary -->
       <textarea
         class="textarea w-full"
         rows="2"
-        placeholder={m.article_editor_summary_placeholder()}
+        placeholder={m.wiki_editor_summary_placeholder()}
         bind:value={summary}
       ></textarea>
 
       <!-- Markdown Editor -->
       <MarkdownEditor
         bind:content={editorContent}
-        placeholder={m.article_editor_content_placeholder()}
+        placeholder={m.wiki_editor_content_placeholder()}
       />
 
       <!-- Hashtags -->
       <EditableList
         bind:items={hashtags}
-        label={m.article_editor_hashtags_label()}
-        placeholder={m.article_editor_hashtags_placeholder()}
+        label={m.wiki_editor_hashtags_label()}
+        placeholder={m.wiki_editor_hashtags_placeholder()}
         buttonText="+"
         itemType="hashtag"
       />
@@ -210,11 +229,11 @@
       <button class="btn w-full btn-primary" onclick={handlePublish} disabled={isPublishing}>
         {#if isPublishing}
           <span class="loading loading-sm loading-spinner"></span>
-          {m.article_editor_publishing()}
+          {m.wiki_editor_publishing()}
         {:else if isEditMode}
-          {m.article_editor_update()}
+          {m.wiki_editor_update()}
         {:else}
-          {m.article_editor_publish()}
+          {m.wiki_editor_publish()}
         {/if}
       </button>
     </div>

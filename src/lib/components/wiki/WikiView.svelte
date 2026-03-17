@@ -1,0 +1,200 @@
+<!--
+  WikiView Component
+  Full wiki article display for detail pages (kind 30818 / NIP-54)
+-->
+
+<script>
+  import * as m from '$lib/paraglide/messages';
+  import { getProfilePicture, getDisplayName } from 'applesauce-core/helpers';
+  import { formatCalendarDate } from '$lib/helpers/calendar.js';
+  import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
+  import { useActiveUser } from '$lib/stores/accounts.svelte';
+  import { deleteEvent } from '$lib/helpers/eventDeletion.js';
+  import { showToast } from '$lib/helpers/toast.js';
+  import { TrashIcon } from '$lib/components/icons';
+  import { preprocessWikilinks } from '$lib/helpers/markdownNostr.js';
+  import MarkdownRenderer from '../shared/MarkdownRenderer.svelte';
+  import DeleteConfirmModal from '../shared/DeleteConfirmModal.svelte';
+  import ReactionBar from '../reactions/ReactionBar.svelte';
+  import CommentList from '../comments/CommentList.svelte';
+  import EventTags from '../calendar/EventTags.svelte';
+  import CommunityShare from '../shared/CommunityShare.svelte';
+
+  /**
+   * @typedef {Object} Props
+   * @property {any} event - Wiki event (kind 30818)
+   */
+
+  /** @type {Props} */
+  let { event } = $props();
+
+  const getActiveUser = useActiveUser();
+  const activeUser = $derived(getActiveUser());
+
+  const getAuthorProfile = useUserProfile(() => event.pubkey);
+  const authorProfile = $derived(getAuthorProfile());
+
+  // Extract wiki metadata
+  const title = $derived.by(() => {
+    const titleTag = event.tags?.find((/** @type {any} */ t) => t[0] === 'title');
+    const dTag = event.tags?.find((/** @type {any} */ t) => t[0] === 'd');
+    return titleTag?.[1] || dTag?.[1] || 'Untitled Wiki';
+  });
+
+  const summary = $derived.by(() => {
+    const summaryTag = event.tags?.find((/** @type {any} */ t) => t[0] === 'summary');
+    return summaryTag?.[1] || '';
+  });
+
+  const topic = $derived.by(() => {
+    const dTag = event.tags?.find((/** @type {any} */ t) => t[0] === 'd');
+    return dTag?.[1] || '';
+  });
+
+  const publishedAt = $derived(new Date(event.created_at * 1000));
+
+  const hashtags = $derived.by(() => {
+    return (
+      event.tags
+        ?.filter((/** @type {any} */ t) => t[0] === 't')
+        .map((/** @type {any} */ t) => t[1]) || []
+    );
+  });
+
+  const authorName = $derived(
+    getDisplayName(authorProfile ?? undefined, event.pubkey.slice(0, 8) + '...')
+  );
+  const authorAvatar = $derived(
+    getProfilePicture(authorProfile ?? undefined) || `https://robohash.org/${event.pubkey}`
+  );
+
+  let showShareUI = $state(false);
+  let showDeleteConfirmation = $state(false);
+  let isDeleting = $state(false);
+
+  const isAuthor = $derived(activeUser?.pubkey === event.pubkey);
+
+  async function handleDelete() {
+    if (!activeUser || !event) return;
+
+    isDeleting = true;
+    try {
+      const result = await deleteEvent(event, activeUser);
+      if (result.success) {
+        showToast(m.wiki_view_delete_success(), 'success');
+        showDeleteConfirmation = false;
+        history.back();
+      } else {
+        showToast(result.error || m.wiki_view_delete_failed(), 'error');
+      }
+    } catch (error) {
+      console.error('Failed to delete wiki:', error);
+      showToast(m.wiki_view_delete_failed(), 'error');
+    } finally {
+      isDeleting = false;
+    }
+  }
+</script>
+
+<article class="wiki-view mx-auto max-w-4xl">
+  <!-- Wiki Header -->
+  <header class="mb-8">
+    <h1 class="mb-4 text-4xl font-bold text-base-content md:text-5xl">
+      {title}
+    </h1>
+
+    {#if summary}
+      <p class="mb-6 text-xl text-base-content/70">
+        {summary}
+      </p>
+    {/if}
+
+    {#if topic}
+      <div class="mb-4">
+        <span class="badge badge-lg badge-secondary">{topic}</span>
+      </div>
+    {/if}
+
+    <!-- Author Info & Metadata -->
+    <div class="flex flex-col gap-4 border-y border-base-300 py-4 md:flex-row md:items-center">
+      <div class="flex flex-1 items-center gap-3">
+        <div class="avatar">
+          <div class="h-12 w-12 rounded-full">
+            <img src={authorAvatar} alt={authorName} />
+          </div>
+        </div>
+        <div>
+          <div class="font-semibold text-base-content">{authorName}</div>
+          <div class="text-sm text-base-content/60">
+            {m.wiki_view_published({ date: formatCalendarDate(publishedAt, 'short') })}
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex gap-2">
+        {#if isAuthor}
+          <button
+            class="btn btn-outline btn-sm btn-error"
+            onclick={() => (showDeleteConfirmation = true)}
+            aria-label={m.common_delete()}
+          >
+            <TrashIcon class="h-4 w-4" />
+            {m.common_delete()}
+          </button>
+        {/if}
+        {#if activeUser}
+          <button class="btn btn-sm btn-secondary" onclick={() => (showShareUI = !showShareUI)}>
+            {showShareUI ? m.common_close() : m.common_share()}
+          </button>
+        {/if}
+      </div>
+    </div>
+
+    <!-- Share UI -->
+    {#if showShareUI && activeUser}
+      <div class="mt-4 rounded-lg bg-base-200 p-4">
+        <CommunityShare
+          {event}
+          {activeUser}
+          shareButtonText={m.wiki_view_share_with_communities()}
+        />
+      </div>
+    {/if}
+  </header>
+
+  <!-- Wiki Content -->
+  <div class="mb-8">
+    <MarkdownRenderer
+      content={preprocessWikilinks(event.content)}
+      class="prose prose-lg max-w-none prose-a:text-primary prose-blockquote:border-primary/50 prose-pre:rounded-lg prose-pre:bg-base-200 prose-img:rounded-lg"
+    />
+  </div>
+
+  <!-- Tags -->
+  {#if hashtags.length > 0}
+    <div class="mb-8 flex flex-wrap gap-2">
+      <EventTags tags={hashtags} size="md" targetRoute="/discover" />
+    </div>
+  {/if}
+
+  <!-- Reactions -->
+  <div class="mb-8 border-y border-base-300 py-4">
+    <ReactionBar {event} />
+  </div>
+
+  <!-- Comments -->
+  <div class="mt-8">
+    <h2 class="mb-4 text-2xl font-bold text-base-content">{m.wiki_view_comments()}</h2>
+    <CommentList rootEvent={event} {activeUser} />
+  </div>
+</article>
+
+<DeleteConfirmModal
+  open={showDeleteConfirmation}
+  title={m.wiki_view_delete_confirm_title()}
+  itemName={title}
+  {isDeleting}
+  onconfirm={handleDelete}
+  oncancel={() => (showDeleteConfirmation = false)}
+/>
