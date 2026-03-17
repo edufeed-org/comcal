@@ -169,6 +169,15 @@ export function isCalendarIdentifier(decoded) {
 }
 
 /**
+ * Check if identifier points to a wiki event (NIP-54)
+ * @param {ReturnType<typeof decodeNostrIdentifier>} decoded - Decoded identifier
+ * @returns {boolean}
+ */
+export function isWikiIdentifier(decoded) {
+  return decoded.success && decoded.type === 'naddr' && decoded.data.kind === 30818;
+}
+
+/**
  * Fetches a Nostr event using various identifier types
  *
  * @param identifier {string} - Can be an event ID, naddr, or other identifier
