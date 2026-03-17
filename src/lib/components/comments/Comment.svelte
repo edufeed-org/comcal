@@ -23,6 +23,7 @@
    * @property {any} activeUser - The currently active user
    * @property {number} [depth] - Nesting depth (0 for top-level)
    * @property {(event: any) => void} [onCommentPosted] - Callback when reply is posted
+   * @property {string} [communityPubkey] - Community hex pubkey for #h tag on comments
    */
 
   /** @type {CommentProps} */
@@ -31,7 +32,8 @@
     rootEvent,
     activeUser,
     depth = 0,
-    onCommentPosted = (/** @type {any} */ _event) => {}
+    onCommentPosted = (/** @type {any} */ _event) => {},
+    communityPubkey = undefined
   } = $props();
 
   let showReplyForm = $state(false);
@@ -249,6 +251,7 @@
           onCommentPosted={handleReplyPosted}
           onCancel={handleCancelReply}
           autoFocus={true}
+          {communityPubkey}
         />
       </div>
     {/if}

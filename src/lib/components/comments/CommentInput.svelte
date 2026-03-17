@@ -14,6 +14,7 @@
    * @property {(event: any) => void} [onCommentPosted] - Callback when comment is successfully posted
    * @property {(() => void)|null} [onCancel] - Callback when cancel is clicked (for reply forms)
    * @property {boolean} [autoFocus] - Whether to auto-focus the textarea
+   * @property {string} [communityPubkey] - Community hex pubkey to add as #h tag
    */
 
   /** @type {CommentInputProps} */
@@ -24,7 +25,8 @@
     placeholder = 'Write a comment...',
     onCommentPosted = (/** @type {any} */ _event) => {},
     onCancel = null,
-    autoFocus = false
+    autoFocus = false,
+    communityPubkey = undefined
   } = $props();
 
   let content = $state('');
@@ -58,6 +60,12 @@
       // CommentBlueprint handles NIP-22 tag generation (root/reply pointers)
       const parent = parentItem || rootEvent;
       const draft = await factory.create(CommentBlueprint, parent, commentContent);
+
+      // Add community #h tag for deep-linking support
+      if (communityPubkey) {
+        draft.tags.push(['h', communityPubkey]);
+      }
+
       const signedEvent = await factory.sign(draft);
       isPosting = false;
 

@@ -26,10 +26,11 @@
    * @property {any} event - Thread event (kind 11)
    * @property {() => void} [onBack] - Callback to navigate back
    * @property {string|null} [initialFocusCommentId] - Comment ID to auto-focus (deep-linking)
+   * @property {string} [communityPubkey] - Community hex pubkey for #h tag on comments
    */
 
   /** @type {Props} */
-  let { event, onBack, initialFocusCommentId = null } = $props();
+  let { event, onBack, initialFocusCommentId = null, communityPubkey = undefined } = $props();
 
   const getActiveUser = useActiveUser();
   const activeUser = $derived(getActiveUser());
@@ -155,7 +156,13 @@
 
   <!-- Comments (flat replies) -->
   <div class="mt-6">
-    <CommentList rootEvent={event} {activeUser} collapsedReplies={true} {initialFocusCommentId} />
+    <CommentList
+      rootEvent={event}
+      {activeUser}
+      collapsedReplies={true}
+      {initialFocusCommentId}
+      {communityPubkey}
+    />
   </div>
 </article>
 

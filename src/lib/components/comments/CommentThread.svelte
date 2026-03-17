@@ -20,6 +20,7 @@
    * @property {Set<string>} [expandedIds] - IDs to force-expand (after back navigation)
    * @property {(commentId: string) => void} [onFocusThread] - Callback to focus on a subtree
    * @property {(event: any) => void} [onCommentPosted] - Callback when new comment is posted
+   * @property {string} [communityPubkey] - Community hex pubkey for #h tag on comments
    */
 
   /** @type {CommentThreadProps} */
@@ -32,7 +33,8 @@
     collapsedReplies = false,
     expandedIds = new Set(),
     onFocusThread,
-    onCommentPosted = (/** @type {any} */ _event) => {}
+    onCommentPosted = (/** @type {any} */ _event) => {},
+    communityPubkey = undefined
   } = $props();
 
   let expanded = $state(false);
@@ -53,7 +55,7 @@
 
 <div class="comment-thread">
   <!-- Render the comment -->
-  <Comment {comment} {rootEvent} {activeUser} {depth} {onCommentPosted} />
+  <Comment {comment} {rootEvent} {activeUser} {depth} {onCommentPosted} {communityPubkey} />
 
   <!-- Recursively render replies -->
   {#if hasReplies}
@@ -131,6 +133,7 @@
               {expandedIds}
               {onFocusThread}
               {onCommentPosted}
+              {communityPubkey}
             />
           </div>
         {/each}

@@ -4,10 +4,16 @@
   import { page } from '$app/stores';
   import { ChevronLeftIcon } from '$lib/components/icons';
   import ThreadDetailView from '$lib/components/thread/ThreadDetailView.svelte';
+  import { npubToHex } from '$lib/helpers/nostrUtils';
   import * as m from '$lib/paraglide/messages';
 
   /** @type {{ data: any }} */
   let { data } = $props();
+
+  // Convert community npub from URL to hex for #h tags on comments
+  const communityPubkey = $derived(
+    $page.params.pubkey ? (npubToHex($page.params.pubkey) ?? undefined) : undefined
+  );
 
   function handleBack() {
     goto(resolve(`/c/${$page.data.npub}?view=forum`));
@@ -26,6 +32,7 @@
         event={data.event}
         onBack={handleBack}
         initialFocusCommentId={data.focusCommentId}
+        {communityPubkey}
       />
     </div>
   </div>

@@ -23,10 +23,17 @@
    * @property {any} activeUser - The currently active user (null if not logged in)
    * @property {boolean} [collapsedReplies] - When true, replies start collapsed with expand toggle
    * @property {string|null} [initialFocusCommentId] - Comment ID to auto-focus on mount (deep-linking)
+   * @property {string} [communityPubkey] - Community hex pubkey for #h tag on comments
    */
 
   /** @type {CommentListProps} */
-  let { rootEvent, activeUser, collapsedReplies = false, initialFocusCommentId = null } = $props();
+  let {
+    rootEvent,
+    activeUser,
+    collapsedReplies = false,
+    initialFocusCommentId = null,
+    communityPubkey = undefined
+  } = $props();
 
   let flatComments = $state(/** @type {any[]} */ ([]));
   let isLoading = $state(true);
@@ -316,6 +323,7 @@
             {activeUser}
             placeholder={m.comments_list_placeholder()}
             onCommentPosted={handleCommentPosted}
+            {communityPubkey}
           />
         </div>
       {:else if !activeUser}
@@ -347,6 +355,7 @@
               {expandedIds}
               onFocusThread={handleFocusThread}
               onCommentPosted={handleCommentPosted}
+              {communityPubkey}
             />
           {/each}
         {:else}
@@ -360,6 +369,7 @@
               {expandedIds}
               onFocusThread={handleFocusThread}
               onCommentPosted={handleCommentPosted}
+              {communityPubkey}
             />
           {/each}
         {/if}
