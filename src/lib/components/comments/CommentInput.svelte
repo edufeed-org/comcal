@@ -1,9 +1,8 @@
 <script>
   import { EventFactory } from 'applesauce-core/event-factory';
+  import { CommentBlueprint } from 'applesauce-common/blueprints';
   import { publishEventOptimistic } from '$lib/services/publish-service.js';
-  import { getPrimaryWriteRelay } from '$lib/services/relay-service.svelte.js';
   import { eventStore } from '$lib/stores/nostr-infrastructure.svelte';
-  import { generateCommentTags } from '$lib/helpers/commentTags.js';
   import * as m from '$lib/paraglide/messages';
 
   /**
@@ -54,29 +53,13 @@
     isPosting = true; // Show loading during signing (may require user approval)
 
     try {
-      // Create EventFactory for the user
-      const factory = new EventFactory({
-        signer: activeUser.signer
-      });
+      const factory = new EventFactory({ signer: activeUser.signer });
 
-      // Get relay hint for the root event author
-      const relayHint = await getPrimaryWriteRelay(rootEvent.pubkey);
-
-      // Generate NIP-22 tags
-      const tags = generateCommentTags(rootEvent, parentItem, relayHint);
-
-      // Create the comment event
-      const commentEvent = await factory.build({
-        kind: 1111,
-        content: commentContent,
-        tags
-      });
-
-      // Sign the event (may require user approval in browser extension)
-      const signedEvent = await factory.sign(commentEvent);
-      isPosting = false; // Signing complete
-
-      console.log('Comment event created:', signedEvent);
+      // CommentBlueprint handles NIP-22 tag generation (root/reply pointers)
+      const parent = parentItem || rootEvent;
+      const draft = await factory.create(CommentBlueprint, parent, commentContent);
+      const signedEvent = await factory.sign(draft);
+      isPosting = false;
 
       // Add to eventStore immediately for instant UI update
       eventStore.add(signedEvent);

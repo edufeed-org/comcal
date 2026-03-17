@@ -9,8 +9,8 @@
   import { useUserProfile } from '$lib/stores/user-profile.svelte.js';
   import { getDisplayName, getProfilePicture } from 'applesauce-core/helpers';
   import { formatRelativeTime } from '$lib/helpers/calendar.js';
-  import { getPlainTextExcerpt } from '$lib/helpers/commentThreading.js';
-  import { hexToNpub } from '$lib/helpers/nostrUtils';
+
+  import { hexToNpub, generateAuthorColorRGB } from '$lib/helpers/nostrUtils';
 
   /**
    * @typedef {Object} AncestorChainProps
@@ -29,12 +29,15 @@
       {@const profile = getProfile()}
       {@const displayName = getDisplayName(profile) || ancestor.pubkey.slice(0, 8) + '...'}
       {@const avatar = getProfilePicture(profile)}
-      {@const excerpt = getPlainTextExcerpt(ancestor.content, 100)}
+
       {@const timestamp = formatRelativeTime(ancestor.created_at)}
+      {@const ancestorRgb = generateAuthorColorRGB(ancestor.pubkey)}
+      {@const ancestorBg = `rgba(${ancestorRgb.r},${ancestorRgb.g},${ancestorRgb.b},0.07)`}
 
       <!-- Ancestor card -->
       <button
         class="flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left transition-colors hover:bg-base-200"
+        style="background-color: {ancestorBg}"
         onclick={() => onAncestorClick?.(ancestor.id)}
         data-testid="ancestor-card"
       >
@@ -63,8 +66,8 @@
             <span class="truncate text-xs font-semibold text-base-content">{displayName}</span>
             <span class="shrink-0 text-xs text-base-content/40">{timestamp}</span>
           </div>
-          {#if excerpt}
-            <p class="mt-0.5 line-clamp-2 text-xs text-base-content/60">{excerpt}</p>
+          {#if ancestor.content}
+            <p class="mt-0.5 text-xs text-base-content/60">{ancestor.content}</p>
           {/if}
         </div>
       </button>

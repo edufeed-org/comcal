@@ -1,7 +1,7 @@
+import { nip19 } from 'nostr-tools';
 import { decodeEventPointer } from 'applesauce-core/helpers';
 import { fetchEventById } from '$lib/helpers/nostrUtils.js';
 import { error } from '@sveltejs/kit';
-import { nip19 } from 'nostr-tools';
 
 export const ssr = false;
 export const prerender = false;
@@ -31,12 +31,7 @@ export async function load({ params }) {
       const [kind, pubkey, ...rest] = aTag[1].split(':');
       const identifier = rest.join(':'); // Handle d-tags with colons
       const relays = aTag[2] ? [aTag[2]] : [];
-      const naddr = nip19.naddrEncode({
-        kind: parseInt(kind),
-        pubkey,
-        identifier,
-        relays
-      });
+      const naddr = nip19.naddrEncode({ kind: parseInt(kind), pubkey, identifier, relays });
       const rootThread = await fetchEventById(naddr);
       if (rootThread) {
         return {

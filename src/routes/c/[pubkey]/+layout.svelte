@@ -14,17 +14,7 @@
   import { addressLoader } from '$lib/loaders/base.js';
   import { getProfilePicture } from 'applesauce-core/helpers';
   import { runtimeConfig } from '$lib/stores/config.svelte.js';
-
-  /**
-   * Get communikey relays from app config
-   * @returns {string[]}
-   */
-  function getCommunikeyRelays() {
-    return [
-      ...(runtimeConfig.appRelays?.communikey || []),
-      ...(runtimeConfig.fallbackRelays || [])
-    ];
-  }
+  import { getCommunikeyRelays } from '$lib/helpers/relay-helper.js';
 
   /** @type {{ data: any, children: import('svelte').Snippet }} */
   let { data, children } = $props();

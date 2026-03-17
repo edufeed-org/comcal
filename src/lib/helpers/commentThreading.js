@@ -4,33 +4,10 @@
  */
 
 /**
- * Strips markdown formatting and truncates text to produce a plain-text excerpt.
- *
- * @param {string|null|undefined} text - Raw markdown text
- * @param {number} [maxLength=100] - Maximum character length before truncation
- * @returns {string} Plain-text excerpt, possibly truncated with '…'
- */
-export function getPlainTextExcerpt(text, maxLength = 100) {
-  if (!text) return '';
-  const plain = text
-    .replace(/[#*`[\]>~_\\-]/g, '')
-    .replace(/\n+/g, ' ')
-    .trim();
-  return plain.length > maxLength ? plain.slice(0, maxLength) + '…' : plain;
-}
-
-/**
  * Builds a hierarchical comment tree from a flat list of comments
  *
  * @param {any[]} comments - Flat array of comment events (kind 1111)
  * @returns {any[]} Array of top-level comments with nested replies
- *
- * @example
- * const commentTree = buildCommentTree(flatComments);
- * // Returns: [
- * //   { ...comment, replies: [{ ...reply, replies: [...] }] },
- * //   { ...comment, replies: [] }
- * // ]
  */
 export function buildCommentTree(comments) {
   if (!comments || comments.length === 0) {
@@ -51,25 +28,21 @@ export function buildCommentTree(comments) {
     });
   });
 
-  // Second pass: Build tree structure and attach parent references
+  // Second pass: Build tree structure
   comments.forEach((comment) => {
     const parentId = getParentCommentId(comment);
-    const node = commentMap.get(comment.id);
 
     if (!parentId) {
       // This is a top-level comment (parent is the root event)
-      node.parentComment = null;
-      topLevelComments.push(node);
+      topLevelComments.push(commentMap.get(comment.id));
     } else {
       // This is a reply to another comment
       const parent = commentMap.get(parentId);
       if (parent) {
-        node.parentComment = parent;
-        parent.replies.push(node);
+        parent.replies.push(commentMap.get(comment.id));
       } else {
         // Parent not found (orphaned comment), treat as top-level
-        node.parentComment = null;
-        topLevelComments.push(node);
+        topLevelComments.push(commentMap.get(comment.id));
       }
     }
   });
@@ -84,29 +57,26 @@ export function buildCommentTree(comments) {
 }
 
 /**
- * Gets the parent comment ID from a comment event
- * Returns null if the comment is a top-level comment (parent is root event)
+ * Gets the parent comment ID from a comment event.
+ * Returns null if the comment is a top-level comment (parent is root event).
+ *
+ * Pure function — no applesauce caching helpers (those use getOrComputeCachedValue
+ * which mutates the event, causing state_unsafe_mutation in $derived contexts).
  *
  * @param {any} comment - The comment event
  * @returns {string|null} Parent comment ID or null
  */
-export function getParentCommentId(comment) {
-  // According to NIP-22:
-  // - Lowercase 'e' tag points to parent item
-  // - Lowercase 'k' tag indicates parent kind
-  // - If parent kind is 1111, it's a comment-on-comment
-  // - Otherwise, it's a top-level comment on the root event
-
+function getParentCommentId(comment) {
+  // NIP-22: lowercase 'k' tag = parent kind, lowercase 'e' tag = parent event id
+  // If parent kind is 1111, this is a reply to another comment
   const parentKindTag = comment.tags.find((/** @type {any[]} */ t) => t[0] === 'k');
   const parentKind = parentKindTag ? parseInt(parentKindTag[1]) : null;
 
-  // If parent kind is 1111, this is a reply to a comment
   if (parentKind === 1111) {
     const parentETag = comment.tags.find((/** @type {any[]} */ t) => t[0] === 'e');
     return parentETag ? parentETag[1] : null;
   }
 
-  // Otherwise, this is a top-level comment
   return null;
 }
 
@@ -126,6 +96,22 @@ function sortRepliesRecursively(comments) {
       sortRepliesRecursively(comment.replies);
     }
   });
+}
+
+/**
+ * Strips markdown formatting and truncates text to produce a plain-text excerpt.
+ *
+ * @param {string|null|undefined} text - Raw markdown text
+ * @param {number} [maxLength=100] - Maximum character length before truncation
+ * @returns {string} Plain-text excerpt, possibly truncated with '…'
+ */
+export function getPlainTextExcerpt(text, maxLength = 100) {
+  if (!text) return '';
+  const plain = text
+    .replace(/[#*`[\]>~_\\-]/g, '')
+    .replace(/\n+/g, ' ')
+    .trim();
+  return plain.length > maxLength ? plain.slice(0, maxLength) + '…' : plain;
 }
 
 /**
@@ -177,13 +163,6 @@ export function getCommentDepth(commentTree, commentId, currentDepth = 0) {
 }
 
 /**
- * Flattens a comment tree back into a flat array
- * Useful for counting or searching
- *
- * @param {any[]} commentTree - Tree of comments
- * @returns {any[]} Flat array of all comments
- */
-/**
  * Gets the chain of parent comments from root to the target comment
  *
  * @param {any[]} commentTree - Tree of comments with replies
@@ -230,31 +209,4 @@ export function getSubtree(commentTree, commentId) {
     }
   }
   return null;
-}
-
-/**
- * Flattens a comment tree back into a flat array
- * Useful for counting or searching
- *
- * @param {any[]} commentTree - Tree of comments
- * @returns {any[]} Flat array of all comments
- */
-export function flattenCommentTree(commentTree) {
-  /** @type {any[]} */
-  const flat = [];
-
-  /**
-   * @param {any[]} comments
-   */
-  function flattenRecursive(comments) {
-    comments.forEach((comment) => {
-      flat.push(comment);
-      if (comment.replies && comment.replies.length > 0) {
-        flattenRecursive(comment.replies);
-      }
-    });
-  }
-
-  flattenRecursive(commentTree);
-  return flat;
 }

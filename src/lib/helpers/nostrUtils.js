@@ -454,29 +454,50 @@ export const encodeEventToNaddr = (event, relays = []) => {
 };
 
 /**
- * Generate a color based on the author's pubkey
+ * Generate deterministic RGB values from a pubkey (NIP-C1).
  * Algorithm:
- * 1. Convert HEX pubkey to Int (using first 8 chars)
- * 2. Calculate Hue: Int % 360
- * 3. Set Saturation: 90 for Hues 216-273, otherwise 80
- * 4. Set Brightness: 65 for Hues 32-212, otherwise 85
+ * 1. Convert full HEX pubkey to BigInt
+ * 2. Hue = BigInt % 360
+ * 3. Saturation = 70% (fixed)
+ * 4. Value/Brightness: 75% for hue 32-204, 96% for 216-273, 90% otherwise
+ * 5. Convert HSV to RGB
  *
  * @param {string} pubkey - Hex public key
- * @returns {{ hue: number, saturation: number, lightness: number }} HSL color values
+ * @returns {{r: number, g: number, b: number}} RGB values (0-255)
+ */
+export function generateAuthorColorRGB(pubkey) {
+  if (!pubkey || typeof pubkey !== 'string') return { r: 128, g: 128, b: 128 };
+
+  const hue = Number(BigInt('0x' + pubkey) % 360n);
+  const s = 0.7;
+  const v = hue >= 32 && hue <= 204 ? 0.75 : hue >= 216 && hue <= 273 ? 0.96 : 0.9;
+
+  // HSV to RGB
+  const c = v * s;
+  const x = c * (1 - Math.abs(((hue / 60) % 2) - 1));
+  const m = v - c;
+  let r1, g1, b1;
+  if (hue < 60) [r1, g1, b1] = [c, x, 0];
+  else if (hue < 120) [r1, g1, b1] = [x, c, 0];
+  else if (hue < 180) [r1, g1, b1] = [0, c, x];
+  else if (hue < 240) [r1, g1, b1] = [0, x, c];
+  else if (hue < 300) [r1, g1, b1] = [x, 0, c];
+  else [r1, g1, b1] = [c, 0, x];
+
+  return {
+    r: Math.round((r1 + m) * 255),
+    g: Math.round((g1 + m) * 255),
+    b: Math.round((b1 + m) * 255)
+  };
+}
+
+/**
+ * Generate a deterministic CSS color from a pubkey (NIP-C1).
+ *
+ * @param {string} pubkey - Hex public key
+ * @returns {string} CSS rgb() color string
  */
 export function generateAuthorColor(pubkey) {
-  // Use first 8 hex characters to avoid BigInt complexity
-  const hexSubset = pubkey.slice(0, 8);
-  const int = parseInt(hexSubset, 16);
-
-  // Calculate hue (0-360)
-  const hue = int % 360;
-
-  // Set saturation based on hue range
-  const saturation = hue >= 216 && hue <= 273 ? 90 : 80;
-
-  // Set lightness (brightness) based on hue range
-  const lightness = hue >= 32 && hue <= 212 ? 65 : 85;
-
-  return { hue, saturation, lightness };
+  const { r, g, b } = generateAuthorColorRGB(pubkey);
+  return `rgb(${r},${g},${b})`;
 }

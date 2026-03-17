@@ -30,6 +30,14 @@
 
   let flatComments = $state(/** @type {any[]} */ ([]));
   let isLoading = $state(true);
+  let commentTree = $derived(buildCommentTree(flatComments));
+  let totalCount = $derived(countComments(commentTree));
+  // Map to track loaded comments and prevent duplicates
+  let loadedComments = new Map();
+  /** @type {import('rxjs').Subscription | undefined} */
+  let loaderSubscription;
+  // Map to track model subscriptions for each comment (commentId -> subscription)
+  let modelSubscriptions = new Map();
 
   // Stack-based focus history: each entry is a commentId
   /** @type {string[]} */
@@ -44,9 +52,6 @@
   let expandedIds = $state.raw(new Set());
 
   let focusedCommentId = $derived(focusHistory.at(-1) ?? null);
-
-  let commentTree = $derived(buildCommentTree(flatComments));
-  let totalCount = $derived(countComments(commentTree));
 
   // When focused on a subtree, compute the subtree and ancestor chain
   let focusedSubtree = $derived.by(() => {
@@ -75,7 +80,7 @@
     if (
       initialFocusCommentId &&
       !isLoading &&
-      flatComments.length > 0 &&
+      commentTree.length > 0 &&
       focusHistory.length === 0
     ) {
       const subtree = getSubtree(commentTree, initialFocusCommentId);
@@ -84,13 +89,6 @@
       }
     }
   });
-
-  // Map to track loaded comments and prevent duplicates
-  let loadedComments = new Map();
-  /** @type {import('rxjs').Subscription | undefined} */
-  let loaderSubscription;
-  // Map to track model subscriptions for each comment (commentId -> subscription)
-  let modelSubscriptions = new Map();
 
   /**
    * Subscribe to CommentsModel for a specific comment to watch for replies
@@ -179,8 +177,6 @@
     });
 
     // Fallback timeout: If loader doesn't complete within 3s, stop loading.
-    // This handles edge cases where createTimelineLoader doesn't signal completion
-    // (e.g., when no events are found and internal logic prevents complete() firing).
     const loadingTimeout = setTimeout(() => {
       if (isLoading) {
         isLoading = false;

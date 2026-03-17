@@ -3,20 +3,11 @@
   import CommentThread from './CommentThread.svelte';
   import { countComments } from '$lib/helpers/commentThreading.js';
   import { ChatIcon } from '$lib/components/icons';
+  import { generateAuthorColor } from '$lib/helpers/nostrUtils.js';
   import * as m from '$lib/paraglide/messages';
 
   /** Max visual nesting depth before showing "Continue thread" */
   const MAX_NESTING_DEPTH = 3;
-
-  /** Thread line colors cycling through DaisyUI theme colors */
-  const THREAD_COLORS = [
-    'var(--color-primary)',
-    'var(--color-secondary)',
-    'var(--color-accent)',
-    'var(--color-info)',
-    'var(--color-success)',
-    'var(--color-warning)'
-  ];
 
   /**
    * @typedef {Object} CommentThreadProps
@@ -53,6 +44,7 @@
     }
   });
 
+  let authorColor = $derived(generateAuthorColor(comment.pubkey));
   let hasReplies = $derived(comment.replies && comment.replies.length > 0);
   let replyCount = $derived(hasReplies ? countComments(comment.replies) : 0);
   let shouldCollapse = $derived(collapsedReplies && hasReplies && !expanded);
@@ -66,61 +58,81 @@
   <!-- Recursively render replies -->
   {#if hasReplies}
     {#if shouldShowContinueThread}
-      <!-- Depth limit reached: show "Continue thread" button -->
-      <button
-        class="btn mt-1 gap-1 text-base-content/60 btn-ghost btn-sm"
-        style="margin-left: 20px;"
-        onclick={() => onFocusThread?.(comment.id)}
-        data-testid="continue-thread-btn"
-      >
-        <ChatIcon class_="w-4 h-4" />
-        {replyCount === 1
-          ? m.comments_continue_thread_singular()
-          : m.comments_continue_thread({ count: replyCount })}
-      </button>
-    {:else if shouldCollapse}
-      <!-- Collapsed reply summary -->
-      <button
-        class="btn mt-1 gap-1 text-base-content/60 btn-ghost btn-sm"
-        style="margin-left: 20px;"
-        onclick={() => (expanded = true)}
-        data-testid="expand-replies-btn"
-      >
-        <ChatIcon class_="w-4 h-4" />
-        {replyCount === 1
-          ? m.comments_view_reply()
-          : m.comments_view_replies({ count: replyCount })}
-      </button>
-    {:else}
-      {#if collapsedReplies && expanded}
-        <!-- Hide replies link -->
+      <!-- Depth limit: terminal L-bend connector + button -->
+      <div style="position: relative; margin-left: 20px; padding-left: 10px; margin-top: 2px;">
+        <div
+          style="position: absolute; left: 0; top: 0; height: 50%; width: 10px; border-left: 2px solid {authorColor}; border-bottom: 2px solid {authorColor}; border-bottom-left-radius: 8px;"
+        ></div>
         <button
-          class="btn mt-1 text-base-content/50 btn-ghost btn-xs"
-          style="margin-left: 20px;"
-          onclick={() => (expanded = false)}
-          data-testid="collapse-replies-btn"
+          class="btn mt-1 gap-1 text-base-content/60 btn-ghost btn-sm"
+          onclick={() => onFocusThread?.(comment.id)}
+          data-testid="continue-thread-btn"
         >
-          {m.comments_hide_replies()}
+          <ChatIcon class_="w-4 h-4" />
+          {replyCount === 1
+            ? m.comments_continue_thread_singular()
+            : m.comments_continue_thread({ count: replyCount })}
         </button>
-      {/if}
-      <div
-        class="replies mt-2"
-        style="border-left: 3px solid {THREAD_COLORS[
-          depth % THREAD_COLORS.length
-        ]}; margin-left: 8px; padding-left: 12px;"
-      >
-        {#each comment.replies as reply (reply.id)}
-          <CommentThread
-            comment={reply}
-            {rootEvent}
-            {activeUser}
-            depth={depth + 1}
-            {maxDepth}
-            {collapsedReplies}
-            {expandedIds}
-            {onFocusThread}
-            {onCommentPosted}
-          />
+      </div>
+    {:else if shouldCollapse}
+      <!-- Collapsed: terminal L-bend connector + button -->
+      <div style="position: relative; margin-left: 20px; padding-left: 10px; margin-top: 2px;">
+        <div
+          style="position: absolute; left: 0; top: 0; height: 50%; width: 10px; border-left: 2px solid {authorColor}; border-bottom: 2px solid {authorColor}; border-bottom-left-radius: 8px;"
+        ></div>
+        <button
+          class="btn mt-1 gap-1 text-base-content/60 btn-ghost btn-sm"
+          onclick={() => (expanded = true)}
+          data-testid="expand-replies-btn"
+        >
+          <ChatIcon class_="w-4 h-4" />
+          {replyCount === 1
+            ? m.comments_view_reply()
+            : m.comments_view_replies({ count: replyCount })}
+        </button>
+      </div>
+    {:else}
+      <!-- Expanded replies with tree-style connectors -->
+      <div class="replies" style="margin-left: 20px; margin-top: 2px;">
+        {#if collapsedReplies && expanded}
+          <button
+            class="btn text-base-content/50 btn-ghost btn-xs"
+            style="margin-left: 10px;"
+            onclick={() => (expanded = false)}
+            data-testid="collapse-replies-btn"
+          >
+            {m.comments_hide_replies()}
+          </button>
+        {/if}
+        {#each comment.replies as reply, i (reply.id)}
+          {@const isLast = i === comment.replies.length - 1}
+          <div style="position: relative; padding-left: 10px;">
+            {#if isLast}
+              <!-- └ connector: L-bend for last child -->
+              <div
+                style="position: absolute; left: 0; top: 0; height: 36px; width: 10px; border-left: 2px solid {authorColor}; border-bottom: 2px solid {authorColor}; border-bottom-left-radius: 8px;"
+              ></div>
+            {:else}
+              <!-- ├ connector: vertical line + horizontal stub -->
+              <div
+                style="position: absolute; left: 0; top: 0; bottom: 0; border-left: 2px solid {authorColor};"
+              ></div>
+              <div
+                style="position: absolute; left: 0; top: 36px; width: 10px; border-top: 2px solid {authorColor};"
+              ></div>
+            {/if}
+            <CommentThread
+              comment={reply}
+              {rootEvent}
+              {activeUser}
+              depth={depth + 1}
+              {maxDepth}
+              {collapsedReplies}
+              {expandedIds}
+              {onFocusThread}
+              {onCommentPosted}
+            />
+          </div>
         {/each}
       </div>
     {/if}

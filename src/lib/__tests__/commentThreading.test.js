@@ -1,63 +1,190 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import {
+  buildCommentTree,
   getPlainTextExcerpt,
   getParentChain,
   getSubtree,
-  buildCommentTree
+  countComments,
+  getCommentDepth
 } from '$lib/helpers/commentThreading.js';
 
-// Helper to build a minimal comment tree for testing
+/**
+ * @typedef {{ id: string, created_at: number, tags: any[], content: string, replies: any[], parentComment: any }} TreeNode
+ */
+
+// Helper to build a minimal comment tree for testing navigation utilities.
 function makeTree() {
-  const comments = [
-    {
-      id: 'a',
-      created_at: 100,
-      tags: [
-        ['k', '11'],
-        ['e', 'root']
-      ],
-      content: 'top-level A'
-    },
-    {
-      id: 'b',
-      created_at: 200,
-      tags: [
-        ['k', '11'],
-        ['e', 'root']
-      ],
-      content: 'top-level B'
-    },
-    {
-      id: 'c',
-      created_at: 150,
-      tags: [
-        ['k', '1111'],
-        ['e', 'a']
-      ],
-      content: 'reply to A'
-    },
-    {
-      id: 'd',
-      created_at: 160,
-      tags: [
-        ['k', '1111'],
-        ['e', 'c']
-      ],
-      content: 'reply to C (deep)'
-    },
-    {
-      id: 'e',
-      created_at: 170,
-      tags: [
-        ['k', '1111'],
-        ['e', 'd']
-      ],
-      content: 'reply to D (deeper)'
-    }
-  ];
-  return buildCommentTree(comments);
+  /** @type {TreeNode} */
+  const e = {
+    id: 'e',
+    created_at: 170,
+    tags: [],
+    content: 'reply to D (deeper)',
+    replies: [],
+    parentComment: null
+  };
+  /** @type {TreeNode} */
+  const d = {
+    id: 'd',
+    created_at: 160,
+    tags: [],
+    content: 'reply to C (deep)',
+    replies: [e],
+    parentComment: null
+  };
+  e.parentComment = d;
+
+  /** @type {TreeNode} */
+  const c = {
+    id: 'c',
+    created_at: 150,
+    tags: [],
+    content: 'reply to A',
+    replies: [d],
+    parentComment: null
+  };
+  d.parentComment = c;
+
+  /** @type {TreeNode} */
+  const a = {
+    id: 'a',
+    created_at: 100,
+    tags: [],
+    content: 'top-level A',
+    replies: [c],
+    parentComment: null
+  };
+  c.parentComment = a;
+
+  /** @type {TreeNode} */
+  const b = {
+    id: 'b',
+    created_at: 200,
+    tags: [],
+    content: 'top-level B',
+    replies: [],
+    parentComment: null
+  };
+
+  // Return sorted newest first (b, a)
+  return [b, a];
 }
+
+/**
+ * Helper: create a flat comment event with proper NIP-22 tags.
+ * @param {string} id
+ * @param {number} created_at
+ * @param {string} content
+ * @param {{ parentEventId?: string, rootEventId: string, rootKind: number }} opts
+ */
+function makeComment(id, created_at, content, opts) {
+  const { parentEventId, rootEventId, rootKind } = opts;
+
+  // Root scope tags (uppercase)
+  const tags = [
+    ['E', rootEventId],
+    ['K', String(rootKind)]
+  ];
+
+  if (parentEventId) {
+    // Reply to another comment: lowercase e/k point to parent comment
+    tags.push(['e', parentEventId]);
+    tags.push(['k', '1111']);
+  } else {
+    // Top-level comment: lowercase e/k point to root event
+    tags.push(['e', rootEventId]);
+    tags.push(['k', String(rootKind)]);
+  }
+
+  return { id, kind: 1111, created_at, content, tags, pubkey: 'testpub', sig: 'testsig' };
+}
+
+describe('buildCommentTree', () => {
+  it('returns empty array for null/undefined/empty input', () => {
+    expect(buildCommentTree(/** @type {any} */ (null))).toEqual([]);
+    expect(buildCommentTree(/** @type {any} */ (undefined))).toEqual([]);
+    expect(buildCommentTree([])).toEqual([]);
+  });
+
+  it('builds a flat list of top-level comments', () => {
+    const comments = [
+      makeComment('a', 100, 'first', { rootEventId: 'root1', rootKind: 11 }),
+      makeComment('b', 200, 'second', { rootEventId: 'root1', rootKind: 11 })
+    ];
+
+    const tree = buildCommentTree(comments);
+    expect(tree).toHaveLength(2);
+    // Sorted newest first
+    expect(tree[0].id).toBe('b');
+    expect(tree[1].id).toBe('a');
+    expect(tree[0].replies).toEqual([]);
+    expect(tree[1].replies).toEqual([]);
+  });
+
+  it('nests replies under their parent comments', () => {
+    const comments = [
+      makeComment('a', 100, 'top-level', { rootEventId: 'root1', rootKind: 11 }),
+      makeComment('b', 200, 'reply to a', {
+        rootEventId: 'root1',
+        rootKind: 11,
+        parentEventId: 'a'
+      }),
+      makeComment('c', 300, 'reply to b', {
+        rootEventId: 'root1',
+        rootKind: 11,
+        parentEventId: 'b'
+      })
+    ];
+
+    const tree = buildCommentTree(comments);
+    expect(tree).toHaveLength(1);
+    expect(tree[0].id).toBe('a');
+    expect(tree[0].replies).toHaveLength(1);
+    expect(tree[0].replies[0].id).toBe('b');
+    expect(tree[0].replies[0].replies).toHaveLength(1);
+    expect(tree[0].replies[0].replies[0].id).toBe('c');
+  });
+
+  it('treats orphaned comments (missing parent) as top-level', () => {
+    const comments = [
+      makeComment('a', 100, 'top-level', { rootEventId: 'root1', rootKind: 11 }),
+      makeComment('orphan', 200, 'orphan reply', {
+        rootEventId: 'root1',
+        rootKind: 11,
+        parentEventId: 'nonexistent'
+      })
+    ];
+
+    const tree = buildCommentTree(comments);
+    // Both should be top-level since orphan's parent is not in the list
+    expect(tree).toHaveLength(2);
+  });
+
+  it('sorts replies newest first', () => {
+    const comments = [
+      makeComment('a', 100, 'top-level', { rootEventId: 'root1', rootKind: 11 }),
+      makeComment('r1', 200, 'first reply', {
+        rootEventId: 'root1',
+        rootKind: 11,
+        parentEventId: 'a'
+      }),
+      makeComment('r2', 300, 'second reply', {
+        rootEventId: 'root1',
+        rootKind: 11,
+        parentEventId: 'a'
+      }),
+      makeComment('r3', 250, 'third reply', {
+        rootEventId: 'root1',
+        rootKind: 11,
+        parentEventId: 'a'
+      })
+    ];
+
+    const tree = buildCommentTree(comments);
+    expect(tree[0].replies.map((/** @type {any} */ r) => r.id)).toEqual(['r2', 'r3', 'r1']);
+  });
+});
 
 describe('getPlainTextExcerpt', () => {
   it('returns empty string for null/undefined/empty', () => {
@@ -111,7 +238,7 @@ describe('getPlainTextExcerpt', () => {
 describe('getParentChain', () => {
   it('returns path from root to target (inclusive)', () => {
     const tree = makeTree();
-    // Comment 'e' is nested: b(top) or a(top) -> c -> d -> e
+    // Comment 'e' is nested: a -> c -> d -> e
     const chain = getParentChain(tree, 'e');
     const ids = chain.map((n) => n.id);
     expect(ids).toEqual(['a', 'c', 'd', 'e']);
@@ -157,5 +284,37 @@ describe('getSubtree', () => {
 
   it('returns null for empty tree', () => {
     expect(getSubtree([], 'a')).toBeNull();
+  });
+});
+
+describe('countComments', () => {
+  it('counts all comments including nested replies', () => {
+    const tree = makeTree();
+    // b(1) + a(1) + c(1) + d(1) + e(1) = 5
+    expect(countComments(tree)).toBe(5);
+  });
+
+  it('returns 0 for empty tree', () => {
+    expect(countComments([])).toBe(0);
+  });
+});
+
+describe('getCommentDepth', () => {
+  it('returns 0 for top-level comments', () => {
+    const tree = makeTree();
+    expect(getCommentDepth(tree, 'a')).toBe(0);
+    expect(getCommentDepth(tree, 'b')).toBe(0);
+  });
+
+  it('returns correct depth for nested comments', () => {
+    const tree = makeTree();
+    expect(getCommentDepth(tree, 'c')).toBe(1);
+    expect(getCommentDepth(tree, 'd')).toBe(2);
+    expect(getCommentDepth(tree, 'e')).toBe(3);
+  });
+
+  it('returns -1 for non-existent ID', () => {
+    const tree = makeTree();
+    expect(getCommentDepth(tree, 'nonexistent')).toBe(-1);
   });
 });
