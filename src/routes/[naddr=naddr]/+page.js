@@ -1,14 +1,22 @@
 import { nip19 } from 'nostr-tools';
 import { fetchEventById } from '$lib/helpers/nostrUtils';
+import { initializeConfig } from '$lib/stores/config.svelte.js';
 import { error, redirect } from '@sveltejs/kit';
 
 export const ssr = false;
 export const prerender = false;
 
 /**
- * @param {{ params: { naddr: string } }} context
+ * @param {{ params: { naddr: string }, parent: () => Promise<any> }} context
  */
-export async function load({ params }) {
+export async function load({ params, parent }) {
+  // Ensure runtime config is initialized before fetching.
+  // Config is normally initialized in +layout.svelte (after all load functions),
+  // but we need it here for relay resolution. The guard prevents double-init.
+  const parentData = await parent();
+  if (parentData.config) {
+    initializeConfig(parentData.config);
+  }
   try {
     // Decode the naddr parameter
     const decoded = nip19.decode(params.naddr);

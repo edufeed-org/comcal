@@ -95,7 +95,7 @@ export function getAllLookupRelays() {
     ...getAppRelaysForCategory('educational'),
     ...getAppRelaysForCategory('longform'),
     ...getAppRelaysForCategory('kanban'),
-    ...getFallbackRelays()
+    ...(runtimeConfig.fallbackRelays || [])
   ];
 }
 

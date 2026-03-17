@@ -83,14 +83,18 @@
   />
 </svelte:head>
 
-<Navbar />
-<ModalManager />
-{#if curatedReady}
-  {@render children?.()}
-{:else}
-  <div class="flex min-h-[60vh] items-center justify-center">
-    <div class="loading loading-lg loading-spinner text-primary"></div>
-  </div>
-{/if}
-<Footer />
+<div class="flex min-h-screen flex-col">
+  <Navbar />
+  <ModalManager />
+  <main class="flex-1">
+    {#if curatedReady}
+      {@render children?.()}
+    {:else}
+      <div class="flex min-h-[60vh] items-center justify-center">
+        <div class="loading loading-lg loading-spinner text-primary"></div>
+      </div>
+    {/if}
+  </main>
+  <Footer />
+</div>
 <PublishStatusToast />

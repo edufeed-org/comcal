@@ -12,6 +12,7 @@
   import { deleteEvent } from '$lib/helpers/eventDeletion.js';
   import { showToast } from '$lib/helpers/toast.js';
   import { TrashIcon } from '$lib/components/icons';
+  import { preprocessWikilinks } from '$lib/helpers/markdownNostr.js';
   import MarkdownRenderer from '../shared/MarkdownRenderer.svelte';
   import DeleteConfirmModal from '../shared/DeleteConfirmModal.svelte';
   import ReactionBar from '../reactions/ReactionBar.svelte';
@@ -165,7 +166,7 @@
   <!-- Wiki Content -->
   <div class="mb-8">
     <MarkdownRenderer
-      content={event.content}
+      content={preprocessWikilinks(event.content)}
       class="prose prose-lg max-w-none prose-a:text-primary prose-blockquote:border-primary/50 prose-pre:rounded-lg prose-pre:bg-base-200 prose-img:rounded-lg"
     />
   </div>

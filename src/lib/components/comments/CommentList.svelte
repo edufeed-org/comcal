@@ -82,16 +82,19 @@
     return commentTree;
   });
 
-  // Auto-focus on mount for deep-linked comments
+  // Auto-focus on mount for deep-linked comments (one-shot)
+  let hasAutoFocused = false;
   $effect(() => {
     if (
       initialFocusCommentId &&
       !isLoading &&
       commentTree.length > 0 &&
-      focusHistory.length === 0
+      focusHistory.length === 0 &&
+      !hasAutoFocused
     ) {
       const subtree = getSubtree(commentTree, initialFocusCommentId);
       if (subtree) {
+        hasAutoFocused = true;
         focusHistory = [initialFocusCommentId];
       }
     }

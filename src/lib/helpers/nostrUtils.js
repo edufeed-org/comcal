@@ -2,6 +2,7 @@ import { nip19 } from 'nostr-tools';
 import { eventLoader, addressLoader } from '$lib/loaders';
 import { firstValueFrom } from 'rxjs';
 import { getSeenRelays } from 'applesauce-core/helpers';
+import { getAllLookupRelays } from '$lib/helpers/relay-helper.js';
 import { getCalendarEventStart } from 'applesauce-common/helpers';
 import { eventStore } from '$lib/stores/nostr-infrastructure.svelte.js';
 import { parseCalendarTimestamp } from '$lib/helpers/calendar.js';
@@ -210,6 +211,11 @@ export const fetchEventById = async (identifier) => {
           // Include relay hints if present (addressLoader will prioritize them)
           if (data.relays && data.relays.length > 0) {
             addressPointer.relays = data.relays;
+          } else {
+            // No relay hints in naddr — provide lookup relays explicitly.
+            // addressLoader's lookupRelays config is captured at module init
+            // (before runtimeConfig loads), so we must pass relays in the pointer.
+            addressPointer.relays = getAllLookupRelays();
           }
 
           // Use addressLoader for addressable events (fetches from relays)
