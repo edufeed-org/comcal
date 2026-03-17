@@ -10,6 +10,7 @@
   import BoardsView from '../views/BoardsView.svelte';
   import ArticlesView from '../views/ArticlesView.svelte';
   import ForumView from '../views/ForumView.svelte';
+  import WikisView from '../views/WikisView.svelte';
   import HomeView from '../views/HomeView.svelte';
   import ActivityView from '../views/ActivityView.svelte';
   import SettingsView from '../views/SettingsView.svelte';
@@ -148,6 +149,8 @@
         <ArticlesView communityPubkey={selectedCommunityId} {communityProfile} />
       {:else if selectedContentType === 'forum'}
         <ForumView communityPubkey={selectedCommunityId} {communityProfile} />
+      {:else if selectedContentType === 'wikis'}
+        <WikisView communityPubkey={selectedCommunityId} {communityProfile} />
       {:else if selectedContentType === 'activity'}
         <ActivityView
           communityId={selectedCommunityId}

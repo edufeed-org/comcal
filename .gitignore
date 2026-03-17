@@ -57,3 +57,4 @@ playwright-report/
 screenshots/
 
 .claude/settings.local.json
+.playwright-mcp
